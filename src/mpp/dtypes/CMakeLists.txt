@@ -9,7 +9,6 @@ set(MPP_DTYPES_SOURCES
   UnstructuredGridType.F90
  )
 
-#include_directories(${CMAKE_BINARY_DIR}/src/stub_clm)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
