@@ -1,0 +1,11 @@
+before_script:
+  - apt-get update -qq
+  - apt-get install -y cmake gcc libopenmpi-dev openmpi-bin liblapack-dev gfortran mercurial git netcdf-bin libnetcdf-dev
+
+tests:
+  script:
+    - .ci-scripts/install-petsc.sh
+    - export PETSC_DIR=$PWD/petsc; export PETSC_ARCH=linux-gnu
+    - make VERBOSE=1 config
+    - make VERBOSE=1 all
+
