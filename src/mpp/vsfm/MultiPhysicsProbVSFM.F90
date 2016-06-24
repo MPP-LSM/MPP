@@ -106,8 +106,8 @@ contains
        discretization_type, ncols_ghost, filter_vsfmc,            &
        xc_col, yc_col, zc_col, z, zi, dz,                         &
        area_col, grid_owner, col_itype,                           &
-       watsat, hksat, bsw, sucsat, eff_porosity, zwt,             &
-       vsfm_satfunc_type, density_type)
+       watsat, hksat, bsw, sucsat, eff_porosity, residual_sat,    &
+       zwt, vsfm_satfunc_type, density_type)
     !
     ! !DESCRIPTION:
     ! Sets up the Variably Saturated Flow Model (VSFM) - Multi-Phyiscs Problem 
@@ -153,6 +153,7 @@ contains
     PetscReal, intent(in), pointer :: bsw(:,:)
     PetscReal, intent(in), pointer :: sucsat(:,:)
     PetscReal, intent(in), pointer :: eff_porosity(:,:)
+    PetscReal, intent(in), pointer :: residual_sat(:,:)
     PetscReal, intent(in), pointer :: zwt(:)
     character(len=32), intent(in)  :: vsfm_satfunc_type
     PetscInt, intent(in)           :: density_type
@@ -197,7 +198,7 @@ contains
     ! Initliaze the VSFM-MPP
     call VSFMMPPInitialize(this, begc, endc, ncols_ghost, &
          zc_col, filter_vsfmc, watsat, hksat, bsw, sucsat, &
-         eff_porosity, zwt, vsfm_satfunc_type, density_type)
+         eff_porosity, residual_sat, zwt, vsfm_satfunc_type, density_type)
 
   end subroutine VSFMMPPSetup
 
@@ -315,8 +316,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPInitialize(vsfm_mpp, begc, endc, ncols_ghost, &
-       zc_col, filter_vsfmc, watsat, hksat, bsw, sucsat, eff_porosity, zwt, &
-       vsfm_satfunc_type, density_type)
+       zc_col, filter_vsfmc, watsat, hksat, bsw, sucsat, eff_porosity, &
+       residual_sat, zwt, vsfm_satfunc_type, density_type)
 
     !
     ! !DESCRIPTION:
@@ -349,6 +350,7 @@ contains
     PetscReal, intent(in), pointer                    :: bsw(:,:)
     PetscReal, intent(in), pointer                    :: sucsat(:,:)
     PetscReal, intent(in), pointer                    :: eff_porosity(:,:)
+    PetscReal, intent(in), pointer                    :: residual_sat(:,:)
     PetscReal, intent(in), pointer                    :: zwt(:)
     character(len=32), intent(in)                     :: vsfm_satfunc_type
     PetscInt, intent(in)                              :: density_type
@@ -366,8 +368,8 @@ contains
 
     ! Set initial coniditions
     call VSFMMPPSetSoils(vsfm_mpp, begc, endc, ncols_ghost, filter_vsfmc, &
-         watsat, hksat, bsw, sucsat, eff_porosity, vsfm_satfunc_type, &
-         density_type)
+         watsat, hksat, bsw, sucsat, eff_porosity, residual_sat,          &
+         vsfm_satfunc_type, density_type)
 
     call VSFMMPPSetICs(  vsfm_mpp, begc, endc, zc_col, filter_vsfmc, zwt)
 
@@ -434,7 +436,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetSoils(vsfm_mpp, begc, endc, ncols_ghost, filter_vsfmc, &
-       watsat, hksat, bsw, sucsat, eff_porosity, vsfm_satfunc_type, density_type)
+       watsat, hksat, bsw, sucsat, eff_porosity, residual_sat, &
+       vsfm_satfunc_type, density_type)
     !
     ! !DESCRIPTION:
     ! Sets soil properties for VSFM solver
@@ -454,13 +457,15 @@ contains
     PetscReal, intent(in), pointer :: bsw(:,:)
     PetscReal, intent(in), pointer :: sucsat(:,:)
     PetscReal, intent(in), pointer :: eff_porosity(:,:)
+    PetscReal, intent(in), pointer :: residual_sat(:,:)
     character(len=32), intent(in)  :: vsfm_satfunc_type
     PetscInt                       :: density_type
 
     select case(vsfm_mpp%id)
     case (MPP_VSFM_SNES_CLM)
        call VSFMMPPSetSoilsCLM(vsfm_mpp, begc, endc, ncols_ghost, filter_vsfmc, &
-            watsat, hksat, bsw, sucsat, eff_porosity, vsfm_satfunc_type, density_type)
+            watsat, hksat, bsw, sucsat, eff_porosity, residual_sat, &
+            vsfm_satfunc_type, density_type)
     case default
        write(iulog,*) 'VSFMMPPSetSoils: Unknown mpp_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -470,7 +475,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetSoilsCLM(vsfm_mpp, begc, endc, ncols_ghost, filter_vsfmc, &
-       watsat, hksat, bsw, sucsat, eff_porosity, vsfm_satfunc_type, density_type)
+       watsat, hksat, bsw, sucsat, eff_porosity, residual_sat,                   &
+       vsfm_satfunc_type, density_type)
     !
     ! !DESCRIPTION:
     ! Sets soil properties for VSFM solver from CLM
@@ -501,6 +507,7 @@ contains
     PetscReal, intent(in), pointer                    :: bsw(:,:)
     PetscReal, intent(in), pointer                    :: sucsat(:,:)
     PetscReal, intent(in), pointer                    :: eff_porosity(:,:)
+    PetscReal, intent(in), pointer                    :: residual_sat(:,:)
     character(len=32), intent(in)                     :: vsfm_satfunc_type
     PetscInt                                          :: density_type
     !
@@ -597,7 +604,7 @@ contains
              ! lambda = 1/bsw
              lambda = 1.d0/bsw(col_id,j)
 
-             sat_res = 0.d0
+             sat_res = residual_sat(col_id,j)
              por = watsat(col_id,j)
 
              ode_aux_vars_in(icell)%perm(1:3) = perm
@@ -655,6 +662,9 @@ contains
              ode_aux_vars_bc(sum_conn)%porParams     = ode_aux_vars_in(ghosted_id)%porParams
 
              ode_aux_vars_bc(sum_conn)%pressure_prev = 3.5355d3
+
+             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+
           enddo
           cur_cond => cur_cond%next
        enddo
@@ -1221,7 +1231,7 @@ contains
           do iauxvar = iauxvar_beg_bc, iauxvar_end_bc
              call soe%aux_vars_bc(iauxvar)%Init()
 
-             soe%aux_vars_bc(iauxvar)%is_ss        = PETSC_FALSE
+             soe%aux_vars_bc(iauxvar)%is_bc        = PETSC_TRUE
              soe%aux_vars_bc(iauxvar)%goveqn_id    = igoveqn
              soe%aux_vars_bc(iauxvar)%condition_id = icond
           enddo

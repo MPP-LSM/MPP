@@ -1088,7 +1088,8 @@ contains
           sum_conn = sum_conn + 1
           select case(cur_cond%itype)
           case (COND_DIRICHLET, COND_SEEPAGE_BC)
-             this%aux_vars_bc(sum_conn)%pressure = cur_cond%value(iconn)
+             this%aux_vars_bc(sum_conn)%pressure = &
+                  this%aux_vars_bc(sum_conn)%condition_value
           case (COND_MASS_RATE, COND_MASS_FLUX)
              ghosted_id = cur_conn_set%id_dn(iconn)
              this%aux_vars_bc(sum_conn)%pressure =  &
