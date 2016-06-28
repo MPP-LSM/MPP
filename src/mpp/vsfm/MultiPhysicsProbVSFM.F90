@@ -38,17 +38,18 @@ module MultiPhysicsProbVSFM
      class(sysofeqns_vsfm_type),pointer          :: sysofeqns
      type(sysofeqns_base_pointer_type), pointer  :: sysofeqns_ptr
    contains
-     procedure, public :: Init                   => VSFMMPPInit
-     procedure, public :: Clean                  => VSFMMPPClean
-     procedure, public :: Setup                  => VSFMMPPSetup
-     procedure, public :: Restart                => VSFMMPPRestart
-     procedure, public :: UpdateSysOfEqnsAuxVars => VSFMMPPUpdateSysOfEqnsAuxVars
-     procedure, public :: SetMPIRank             => VSFMMPPSetMPIRank
-     procedure, public :: SetMeshesOfGoveqns     => VSFMMPPSetMeshesOfGoveqns
-     procedure, public :: AddGovEqn              => VSFMMPPAddGovEqn
-     procedure, public :: GovEqnAddCondition     => VSFMMPPGovEqnAddCondition
-     procedure, public :: AllocateAuxVars        => VSFMMPPAllocateAuxVars
-     procedure, public :: SetupProblem           => VSFMMPPSetupProblem
+     procedure, public :: Init                         => VSFMMPPInit
+     procedure, public :: Clean                        => VSFMMPPClean
+     procedure, public :: Setup                        => VSFMMPPSetup
+     procedure, public :: Restart                      => VSFMMPPRestart
+     procedure, public :: UpdateSysOfEqnsAuxVars       => VSFMMPPUpdateSysOfEqnsAuxVars
+     procedure, public :: SetMPIRank                   => VSFMMPPSetMPIRank
+     procedure, public :: SetMeshesOfGoveqns           => VSFMMPPSetMeshesOfGoveqns
+     procedure, public :: AddGovEqn                    => VSFMMPPAddGovEqn
+     procedure, public :: GovEqnAddCondition           => VSFMMPPGovEqnAddCondition
+     procedure, public :: AllocateAuxVars              => VSFMMPPAllocateAuxVars
+     procedure, public :: SetupProblem                 => VSFMMPPSetupProblem
+     procedure, public :: GovEqnUpdateConditionConnSet => VSFMMPPGovEqnUpdateConditionConnSet
 
   end type mpp_vsfm_type
 
@@ -1071,6 +1072,54 @@ contains
     endif
 
   end subroutine VSFMMPPGovEqnAddCondition
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPGovEqnUpdateConditionConnSet(this, igoveqn, icond, &
+       ss_or_bc_type, nconn,  conn_id_up, conn_id_dn, &
+       conn_dist_up, conn_dist_dn,  conn_unitvec, conn_area)
+    !
+    ! !DESCRIPTION:
+    ! For a given governing equation, updates connection set of a
+    ! boundary/source-sink condition
+    !
+    use GoverningEquationBaseType, only : goveqn_base_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)            :: this
+    PetscInt                        :: igoveqn
+    PetscInt                        :: icond
+    PetscInt                        :: ss_or_bc_type
+    PetscInt                        :: nconn
+    PetscInt, pointer               :: conn_id_up(:)   !
+    PetscInt, pointer               :: conn_id_dn(:)   !
+    PetscReal, pointer              :: conn_dist_up(:) !
+    PetscReal, pointer              :: conn_dist_dn(:) !
+    PetscReal, pointer              :: conn_area(:)    !
+    PetscReal, pointer              :: conn_type(:)    !
+    PetscReal, pointer              :: conn_unitvec(:,:)
+    !
+    class(goveqn_base_type),pointer :: cur_goveq
+    class(goveqn_base_type),pointer :: other_goveq
+    PetscInt                        :: ii
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    call cur_goveq%UpdateConditionConnSet(icond, ss_or_bc_type, nconn, &
+         conn_id_up, conn_id_dn, conn_dist_up, conn_dist_dn,    &
+         conn_unitvec, conn_area)
+
+  end subroutine VSFMMPPGovEqnUpdateConditionConnSet
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPAllocateAuxVars(this)

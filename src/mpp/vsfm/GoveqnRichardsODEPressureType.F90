@@ -656,8 +656,11 @@ contains
           case (COND_DIRICHLET, COND_MASS_RATE, COND_MASS_FLUX)
              ge_avars(sum_conn)%condition_value =  &
                   soe_avars(iconn + iauxvar_off)%condition_value
-          case (COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC)
+          case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
+          case (COND_SEEPAGE_BC)
+             ge_avars(sum_conn)%condition_value = &
+                  soe_avars(iconn + iauxvar_off)%condition_value
           case default
              write(string,*) cur_cond%itype
              write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
