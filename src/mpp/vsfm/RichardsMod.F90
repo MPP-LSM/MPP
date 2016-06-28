@@ -194,13 +194,13 @@ contains
     if (compute_deriv) then
 
        dden_ave_dP_up       = upweight*dden_dP_up
-       dden_ave_dP_dn       = upweight*dden_dP_dn
+       dden_ave_dP_dn       = (1.d0 - upweight)*dden_dP_dn
 
        dgravityterm_dden_up = upweight*dist_gravity*FMWH2O
-       dgravityterm_dden_dn = (1.0-upweight)*dist_gravity*FMWH2O
+       dgravityterm_dden_dn = (1.d0-upweight)*dist_gravity*FMWH2O
 
-       dphi_dP_up           =  1.0 + dgravityterm_dden_up*dden_ave_dP_up;
-       dphi_dP_dn           = -1.0 + dgravityterm_dden_dn*dden_ave_dP_dn;
+       dphi_dP_up           =  1.d0 + dgravityterm_dden_up*dden_dP_up;
+       dphi_dP_dn           = -1.d0 + dgravityterm_dden_dn*dden_dP_dn;
 
        if (seepage_bc_update) dphi_dP_dn = 0.d0
 
@@ -219,8 +219,9 @@ contains
           dflux_dP_up = 0.d0
           dflux_dP_dn = 0.d0
        else
-          dflux_dP_up = (dq_dp_up*den_ave + q*dden_ave_dp_up);
-          dflux_dP_dn = (dq_dp_dn*den_ave + q*dden_ave_dp_dn);
+          dflux_dP_up = (dq_dp_up*den_ave - q*dden_ave_dp_up);
+          dflux_dP_dn = (dq_dp_dn*den_ave - q*dden_ave_dp_dn);
+
        endif
 
     endif
