@@ -1,5 +1,6 @@
 set(VSFM_DRIVER_SOURCES
   vsfm_celia1990.F90
+  vsfm_vchannel.F90
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
@@ -17,8 +18,10 @@ link_libraries(${MPP_LIBRARIES})
 link_libraries(${PETSC_LIBRARIES})
 link_libraries(${NETCDF_LIBRARY})
 link_libraries(${NETCDF_F90_LIBRARIES})
+
 include(add_mpp_executable)
 add_mpp_executable(vsfm_celia1990 vsfm_celia1990.F90)
+add_mpp_executable(vsfm_vchannel vsfm_vchannel.F90)
 
 message ("MPP_LIBRARIES = ${MPP_LIBRARIES} ")
 
