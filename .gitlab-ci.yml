@@ -8,4 +8,5 @@ tests:
     - export PETSC_DIR=$PWD/petsc; export PETSC_ARCH=linux-gnu
     - make VERBOSE=1 config
     - make VERBOSE=1 all
+    - make VERBOSE=a test
 

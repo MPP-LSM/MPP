@@ -156,6 +156,9 @@ include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${PROJECT_BINARY_DIR}/include")
 link_directories("${PROJECT_BINARY_DIR}/lib")
 
+# Unit testing.
+enable_testing()
+
 # Source code itself.
 include_directories("${PROJECT_SOURCE_DIR}")
 add_subdirectory(src)
