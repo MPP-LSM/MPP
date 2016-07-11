@@ -19,12 +19,13 @@ module EOSWaterMod
 
   public :: Density
   public :: Viscosity
+  public :: InternalEnergyAndEnthalpy
 
   !------------------------------------------------------------------------
 contains
 
   !------------------------------------------------------------------------
-  subroutine Density(p, t_K, denity_itype, den, dden_dp)
+  subroutine Density(p, t_K, density_itype, den, dden_dp, dden_dT)
     !
     ! !DESCRIPTION:
     ! Given pressure, temperature and type of density formulation, compute:
@@ -39,15 +40,16 @@ contains
     ! !ARGUMENTS
     PetscReal, intent(in)   :: p
     PetscReal, intent(in)   :: t_K
-    PetscInt, intent(in)    :: denity_itype
+    PetscInt, intent(in)    :: density_itype
     PetscReal, intent(out)  :: den
     PetscReal, intent(out)  :: dden_dp
+    PetscReal, intent(out)  :: dden_dT
 
-    select case(denity_itype)
+    select case(density_itype)
     case (DENSITY_CONSTANT)
-       call DensityConstant(p, t_K, den, dden_dp)
+       call DensityConstant(p, t_K, den, dden_dp, dden_dT)
     case (DENSITY_TGDPB01)
-       call DensityTGDPB01 (p , t_K, den, dden_dp)
+       call DensityTGDPB01 (p , t_K, den, dden_dp,dden_dT )
     case default
        write(iulog,*)'Density: Unknown denity_itype. '
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -56,7 +58,7 @@ contains
   end subroutine Density
 
   !------------------------------------------------------------------------
-  subroutine DensityConstant(p, t_K, den, dden_dp)
+  subroutine DensityConstant(p, t_K, den, dden_dp, dden_dT)
     !
     ! !DESCRIPTION:
     ! Return constant density of water
@@ -72,14 +74,16 @@ contains
     PetscReal, intent(in)  :: t_K       ! [K]
     PetscReal, intent(out) :: den       ! [kmol m^{-3}]
     PetscReal, intent(out) :: dden_dp   ! [kmol m^{-3} Pa^{-1}]
+    PetscReal, intent(out) :: dden_dT   ! [kmol m^{-3} K^{-1}]
 
     den     = denh2o/FMWH2O ! [kmol m^{-3}]
     dden_dp = 0.d0
+    dden_dT = 0.d0
 
   end subroutine DensityConstant
 
   !------------------------------------------------------------------------
-  subroutine DensityTGDPB01(p, t_K, den, dden_dp)
+  subroutine DensityTGDPB01(p, t_K, den, dden_dp, dden_dT)
     !
     ! !DESCRIPTION:
     ! Return density and deriv. w.r.t. pressure based on Tanaka et al. (2001)
@@ -100,6 +104,7 @@ contains
     PetscReal, intent(in)  :: t_K              ! [K]
     PetscReal, intent(out) :: den              ! [kmol m^{-3}]
     PetscReal, intent(out) :: dden_dp          ! [kmol m^{-3} Pa^{-1}]
+    PetscReal, intent(out) :: dden_dT          ! [kmol m^{-3} K^{-1}]
 
     !
     PetscReal,parameter    :: a1 = -3.983035d0     ! [degC]
@@ -121,7 +126,6 @@ contains
     PetscReal              :: ddent_dp
     PetscReal              :: dkappa_dp
     PetscReal              :: dkappa_dt
-    PetscReal              :: dden_dt
 
     t_c = t_K - 273.15d0
 
@@ -153,7 +157,7 @@ contains
        dkappa_dt  = 0.d0
     endif
 
-    dden_dt    = (ddent_dt*kappa + dent*dkappa_dt)/FMWH2O
+    dden_dT    = (ddent_dt*kappa + dent*dkappa_dt)/FMWH2O
     dden_dp    = (ddent_dp*kappa + dent*dkappa_dp)/FMWH2O
 
   end subroutine DensityTGDPB01
@@ -176,6 +180,42 @@ contains
     dvis_dp = 0.d0
 
   end subroutine Viscosity
+
+  !------------------------------------------------------------------------
+  subroutine InternalEnergyAndEnthalpy(p, t_K, den, dden_dT, &
+       u, h, du_dT, dh_dT)
+    !
+    ! !DESCRIPTION:
+    ! Return internal energy of water
+    !
+    use MultiPhysicsProbConstants, only : FMWH2O
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    PetscReal, intent(in)  :: p        ! [Pa]
+    PetscReal, intent(in)  :: t_K      ! [K]
+    PetscReal, intent(in)  :: den      ! [kg m^{-3}]
+    PetscReal, intent(in)  :: dden_dT  ! [kg m^{-3} K^{-1}]
+    PetscReal, intent(out) :: u        ! [J kmol^{-1}]
+    PetscReal, intent(out) :: h        ! [J kmol^{-1}]
+    PetscReal, intent(out) :: du_dT    ! [J kmol^{-1} K^{-1}]
+    PetscReal, intent(out) :: dh_dT    ! [J kmol^{-1} K^{-1}]
+    !
+    PetscReal, parameter :: u0 = 4.217 * 1.d3 ! [J kg^{-1} K^{-1}]
+
+    u     = u0 * (t_K - 273.15d0)         ! [J kg^{-1}]
+    du_dT = u0                            ! [J kg^{-1} K^{-1}]
+
+    h     = u + P/den                     ! [J kg^{-1}]
+    dh_dT = du_dT - P/(den**2.d0)*dden_dT ! [J kg^{-1} K^{-1}]
+
+    u     = u * FMWH2O                    ! [J kmol^{-1}]
+    h     = h * FMWH2O                    ! [J kmol^{-1}]
+    du_dT = du_dT * FMWH2O                ! [J kmol^{-1} K^{-1}]
+    dh_dT = dh_dT * FMWH2O                ! [J kmol^{-1} K^{-1}]
+
+  end subroutine InternalEnergyAndEnthalpy
 
 #endif
 

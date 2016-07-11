@@ -4,8 +4,8 @@ module RichardsODEPressureAuxType
 
   ! !USES:
   use mpp_varctl          , only : iulog
-  use mpp_abortutils          , only : endrun
-  use mpp_shr_log_mod         , only : errMsg => shr_log_errMsg
+  use mpp_abortutils      , only : endrun
+  use mpp_shr_log_mod     , only : errMsg => shr_log_errMsg
   use PorosityFunctionMod , only : porosity_params_type
   use SaturationFunction  , only : saturation_params_type
   !
@@ -240,6 +240,7 @@ contains
     class(rich_ode_pres_auxvar_type)   :: this
     !
     ! LOCAL VARIABLES
+    PetscReal :: dden_dT
 
     ! Compute saturation
     call SatFunc_PressToSat(this%satParams , &
@@ -261,7 +262,8 @@ contains
          this%temperature                           , &
          this%density_type                          , &
          this%den                                   , &
-         this%dden_dP                                 &
+         this%dden_dP                               , &
+         dden_dT                                      &
          )
 
     ! Compute viscosity
