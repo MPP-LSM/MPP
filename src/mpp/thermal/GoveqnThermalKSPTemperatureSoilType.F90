@@ -8,8 +8,8 @@ module GoveqnThermalKSPTemperatureSoilType
 
   ! !USES:
   use mpp_varctl                       , only : iulog
-  use mpp_abortutils                       , only : endrun
-  use mpp_shr_log_mod                      , only : errMsg => shr_log_errMsg
+  use mpp_abortutils                   , only : endrun
+  use mpp_shr_log_mod                  , only : errMsg => shr_log_errMsg
   use GoverningEquationBaseType        , only : goveqn_base_type
   use ThermalKSPTemperatureSoilAuxType , only : therm_ksp_temp_soil_auxvar_type
   use SystemOfEquationsThermalAuxType  , only : sysofeqns_thermal_auxvar_type
