@@ -27,6 +27,7 @@ message ("MPP_LIBRARIES = ${MPP_LIBRARIES} ")
 
 if (NOT CMAKE_INSTALL_PREFIX STREQUAL "INSTALL_DISABLED")
   install(TARGETS vsfm_celia1990 DESTINATION bin)
+  install(TARGETS vsfm_vchannel DESTINATION bin)
   file(GLOB HEADERS *.mod)
   install(FILES ${HEADERS} DESTINATION include/mpp/driver)
 endif()
