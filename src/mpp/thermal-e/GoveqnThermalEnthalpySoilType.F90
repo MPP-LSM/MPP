@@ -237,7 +237,6 @@ contains
     do iauxvar = 1, nauxvar
        this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
        this%aux_vars_in(iauxvar)%pressure    = soe_avars(iauxvar+offset)%pressure
-       this%aux_vars_in(iauxvar)%pressure    = 091325.d0
     enddo
 
   end subroutine ThermEnthalpySoilGetFromSOEAuxVarsIntrn

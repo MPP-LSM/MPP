@@ -467,6 +467,7 @@ subroutine set_initial_conditions()
   !
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use mesh_info                       , only : nz, ncells_local, ncells_ghost
+  use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL, VAR_PRESSURE
   !
   implicit none
   !
@@ -475,13 +476,15 @@ subroutine set_initial_conditions()
 #include "finclude/petscvec.h90"
 #include "finclude/petscviewer.h"
   !
-  PetscErrorCode     :: ierr
-  PetscInt                                          :: nDM
-  DM, pointer                                       :: dms(:)
-  Vec, pointer                                      :: soln_subvecs(:)
-  PetscReal, pointer                                :: temp_p(:)
-  PetscInt :: ii
-  PetscViewer        :: viewer
+  PetscErrorCode      :: ierr
+  PetscInt            :: nDM
+  DM        , pointer :: dms(:)
+  Vec       , pointer :: soln_subvecs(:)
+  PetscReal , pointer :: temp_p(:)
+  PetscInt            :: ii
+  PetscViewer         :: viewer
+  PetscReal , pointer :: pressure(:)
+  PetscInt            :: soe_auxvar_id
 
   ! Find number of GEs packed within the SoE
   call DMCompositeGetNumberDM(thermal_enthalpy_mpp%sysofeqns%dm, nDM, ierr)
@@ -510,6 +513,13 @@ subroutine set_initial_conditions()
   call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, thermal_enthalpy_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
   call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, thermal_enthalpy_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
 
+  allocate(pressure(ncells_local))
+  pressure(:) = 091325.d0
+  soe_auxvar_id = -1
+  call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_INTERNAL,  &
+       VAR_PRESSURE, soe_auxvar_id, pressure)
+  deallocate(pressure)
+
 end subroutine set_initial_conditions
 
 !------------------------------------------------------------------------
@@ -520,18 +530,22 @@ subroutine set_bondary_conditions()
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use mesh_info                       , only : nz, ncells_local, ncells_ghost
   use MultiPhysicsProbConstants       , only : AUXVAR_BC, VAR_BC_SS_CONDITION
+  use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL, VAR_PRESSURE
   !
   implicit none
   !
   PetscReal, pointer :: top_bc(:)
   PetscReal, pointer :: bot_bc(:)
+  PetscReal, pointer :: pressure(:)
   PetscInt           :: soe_auxvar_id
 
   allocate(top_bc(1))
   allocate(bot_bc(1))
+  allocate(pressure(ncells_local))
 
   top_bc(:) = 303.15d0
   bot_bc(:) = 293.15d0
+  pressure(:) = 091325.d0
 
   soe_auxvar_id = 1
   call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
@@ -541,7 +555,12 @@ subroutine set_bondary_conditions()
   call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
        VAR_BC_SS_CONDITION, soe_auxvar_id, bot_bc)
   
+  soe_auxvar_id = -1
+  call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_INTERNAL,  &
+       VAR_PRESSURE, soe_auxvar_id, pressure)
+
   deallocate(top_bc)
   deallocate(bot_bc)
+  deallocate(pressure)
 
 end subroutine set_bondary_conditions
