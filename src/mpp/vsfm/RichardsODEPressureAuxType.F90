@@ -241,6 +241,7 @@ contains
     !
     ! LOCAL VARIABLES
     PetscReal :: dden_dT
+    PetscReal :: dvis_dT
 
     ! Compute saturation
     call SatFunc_PressToSat(this%satParams , &
@@ -270,7 +271,8 @@ contains
     call Viscosity(this%pressure                    , &
          this%temperature                           , &
          this%vis                                   , &
-         this%dvis_dP                                 &
+         this%dvis_dP                               , &
+         dvis_dT                                      &
          )
 
     ! Compute porosity

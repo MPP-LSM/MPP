@@ -34,9 +34,9 @@ contains
        den_dn,                    &
        dden_dn_dT_dn,             &
        therm_cond_dn,             &
-       v_darcy,                   &
-       dv_darcy_dT_up,            &
-       dv_darcy_dT_dn,            &
+       mflux,                   &
+       dmflux_dT_up,            &
+       dmflux_dT_dn,            &
        area,                      &
        dist_up,                   &
        dist_dn,                   &
@@ -67,9 +67,9 @@ contains
     PetscReal, intent(in)  :: den_dn
     PetscReal, intent(in)  :: dden_dn_dT_dn
     PetscReal, intent(in)  :: therm_cond_dn
-    PetscReal, intent(in)  :: v_darcy
-    PetscReal, intent(in)  :: dv_darcy_dT_up
-    PetscReal, intent(in)  :: dv_darcy_dT_dn
+    PetscReal, intent(in)  :: mflux
+    PetscReal, intent(in)  :: dmflux_dT_up
+    PetscReal, intent(in)  :: dmflux_dT_dn
     PetscReal, intent(in)  :: area
     PetscReal, intent(in)  :: dist_up
     PetscReal, intent(in)  :: dist_dn
@@ -112,22 +112,22 @@ contains
 
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
 
-    if (v_darcy < 0.d0) then
+    if (mflux < 0.d0) then
        h = h_up
     else
        h = h_dn
     end if
 
 
-    flux = v_darcy * den_ave * h * area + &
+    flux = mflux * h + &
          -therm_cond_ave_over_dist*(T_up - T_dn)*area
 
-    if (compute_deriv) then
+    !if (compute_deriv) then
 
        dden_ave_dT_up = upweight         *dden_up_dT_up
        dden_ave_dT_dn = (1.d0 - upweight)*dden_dn_dT_dn
 
-       if (v_darcy < 0.d0) then
+       if (mflux < 0.d0) then
           dh_dT_up = dh_up_dT_up
           dh_dT_dn = 0.d0
        else
@@ -136,17 +136,29 @@ contains
        endif
 
 
-       dflux_dT_up = dv_darcy_dT_up * den_ave        * h        * area + &
-                     v_darcy        * dden_ave_dT_up * h        * area + &
-                     v_darcy        * den_ave        * dh_dT_up * area + &
+       dflux_dT_up = dmflux_dT_up * h         + &
+                     mflux        * dh_dT_up  + &
                      -therm_cond_ave_over_dist * area
 
-       dflux_dT_dn = dv_darcy_dT_dn * den_ave        * h        * area + &
-                     v_darcy        * dden_ave_dT_dn * h        * area + &
-                     v_darcy        * den_ave        * dh_dT_dn * area + &
+       dflux_dT_dn = dmflux_dT_dn * h        + &
+                     mflux        * dh_dT_dn + &
                      +therm_cond_ave_over_dist * area
-    endif
+    !endif
 
+!       write(*,*)''
+!       write(*,*)'h = ',h
+!       write(*,*)'mflux/flux_advec = ',mflux,mflux*h*1.0d-6
+!       write(*,*)''
+       !stop
+!      write(*,*)'duh_dt_up = ',dh_dt_up,dmflux_dT_up*h,mflux*dh_dT_up
+!      write(*,*)'duh_dt_dn = ',dh_dt_dn,dmflux_dT_dn*h,mflux*dh_dT_dn
+!       write(*,*)''
+!       write(*,*)'Jup(2,2) ',dmflux_dT_up * h + mflux * dh_dT_up
+!       write(*,*)'Jdn(2,2) ',dmflux_dT_dn * h + mflux * dh_dT_dn
+!       write(*,*)'Jup(2,2) ',dflux_dT_up, therm_cond_ave_over_dist
+!       write(*,*)'Jdn(2,2) ',dflux_dT_dn, therm_cond_ave_over_dist
+       !write(*,*)'stopping in ThermalEnthalpyFlux'
+!       stop
   end subroutine ThermalEnthalpyFlux
 
 #endif

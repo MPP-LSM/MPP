@@ -574,7 +574,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseAddCondition(this, ss_or_bc_type, name, unit, &
-       cond_type, region_type, id_of_other_goveq, itype_of_other_goveq)
+       cond_type, region_type, id_of_other_goveq, itype_of_other_goveq, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds boundary/source-sink condition to governing equation
@@ -587,6 +587,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use ConnectionSetType         , only : connection_set_type
     !
     implicit none
     !
@@ -599,6 +600,7 @@ contains
     PetscInt                      :: region_type
     PetscInt, optional            :: id_of_other_goveq
     PetscInt, optional            :: itype_of_other_goveq
+    type(connection_set_type),pointer, optional :: conn_set
     !
     type(condition_type), pointer :: cond
 
@@ -610,7 +612,13 @@ contains
     cond%region_itype = region_type
 
     allocate(cond%conn_set)
-    call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
+    if (.not. present(conn_set)) then
+       call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
+    else
+       cond%conn_set => conn_set
+       cond%ncells = conn_set%num_connections
+       nullify(conn_set)
+    endif
 
     allocate(cond%value(cond%ncells))
     cond%value(:) = 0.d0

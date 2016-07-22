@@ -50,7 +50,7 @@ contains
     class(sysofeqns_thermal_enthalpy_auxvar_type) :: this
 
     this%temperature     = 273.15d0
-    this%pressure        = 0
+    this%pressure        = 101325.d0
 
     this%is_active       = PETSC_FALSE
 
