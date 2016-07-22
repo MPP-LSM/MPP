@@ -1,7 +1,7 @@
 
 module mesh_info
 #include "finclude/petscsys.h"
-  PetscInt  , parameter :: nx       = 1
+  PetscInt  , parameter :: nx       = 100
   PetscInt  , parameter :: ny       = 1
   PetscReal , parameter :: x_column = 1.d0
   PetscReal , parameter :: y_column = 1.d0
@@ -12,7 +12,7 @@ module mesh_info
 end module mesh_info
 
 !------------------------------------------------------------------------
-program heat_transport_1D
+program heat_transport_1D_with_advection
 
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use mpp_varpar                      , only : mpp_varpar_init
@@ -54,9 +54,9 @@ program heat_transport_1D
   PETSC_COMM_SELF  = MPI_COMM_SELF
 
   ! Set default settings
-  nz                = 100
+  nz                = 1
   dtime             = 3600.d0
-  nstep             = 2
+  nstep             = 1
   save_initial_soln = PETSC_FALSE
   save_final_soln   = PETSC_FALSE
   output_suffix     = ''
@@ -105,7 +105,7 @@ program heat_transport_1D
      call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
-end program heat_transport_1D
+end program heat_transport_1D_with_advection
 
 !------------------------------------------------------------------------
 subroutine Init()
@@ -230,25 +230,25 @@ subroutine add_meshes()
   ncells_local = nx*ny*nz
   ncells_ghost = 0
 
-  allocate(soil_xc(nz))
-  allocate(soil_yc(nz))
-  allocate(soil_zc(nz))
-  allocate(soil_dx(nz))
-  allocate(soil_dy(nz))
-  allocate(soil_dz(nz))
-  allocate(soil_area(nz))
-  allocate(soil_filter(nz))
+  allocate(soil_xc(ncells_local))
+  allocate(soil_yc(ncells_local))
+  allocate(soil_zc(ncells_local))
+  allocate(soil_dx(ncells_local))
+  allocate(soil_dy(ncells_local))
+  allocate(soil_dz(ncells_local))
+  allocate(soil_area(ncells_local))
+  allocate(soil_filter(ncells_local))
   
   soil_filter (:) = 1
   soil_area   (:) = dx*dy
   soil_dx     (:) = dx
   soil_dy     (:) = dy
   soil_dz     (:) = dz
-  soil_xc     (:) = dx/2.d0
-  soil_xc     (:) = dy/2.d0
+  soil_yc     (:) = dy/2.d0
+  soil_zc     (:) = dz/2.d0
 
-  do kk = 1,nz
-     soil_zc(kk) = dz/2.d0 + dz * (kk - 1)
+  do kk = 1,nx
+     soil_xc(kk) = dx/2.d0 + dx * (kk - 1)
   enddo
   
   !
@@ -271,22 +271,22 @@ subroutine add_meshes()
   call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
   call thermal_enthalpy_mpp%MeshComputeVolume          (imesh)
 
-  allocate (vert_conn_id_up   (nz-1))
-  allocate (vert_conn_id_dn   (nz-1))
-  allocate (vert_conn_dist_up (nz-1))
-  allocate (vert_conn_dist_dn (nz-1))
-  allocate (vert_conn_area    (nz-1))
-  allocate (vert_conn_type    (nz-1))
+  allocate (vert_conn_id_up   (nx-1))
+  allocate (vert_conn_id_dn   (nx-1))
+  allocate (vert_conn_dist_up (nx-1))
+  allocate (vert_conn_dist_dn (nx-1))
+  allocate (vert_conn_area    (nx-1))
+  allocate (vert_conn_type    (nx-1))
 
   iconn = 0
-  do kk = 1, nz-1
+  do kk = 1, nx-1
 
      iconn = iconn + 1
      vert_conn_id_up(iconn)   = kk
      vert_conn_id_dn(iconn)   = vert_conn_id_up(iconn) + 1
-     vert_conn_dist_up(iconn) = 0.5d0*dz
-     vert_conn_dist_dn(iconn) = 0.5d0*dz
-     vert_conn_area(iconn)    = soil_area(kk)
+     vert_conn_dist_up(iconn) = 0.5d0*dx
+     vert_conn_dist_dn(iconn) = 0.5d0*dx
+     vert_conn_area(iconn)    = dy*dz
      vert_conn_type(iconn)    = CONN_VERTICAL
 
   end do
@@ -335,26 +335,86 @@ subroutine add_conditions_to_goveqns()
   !
   ! !USES:
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
-  use MultiPhysicsProbConstants , only : SOIL_CELLS
-  use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
-  use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
-  use MultiPhysicsProbConstants , only : COND_BC
-  use MultiPhysicsProbConstants , only : COND_DIRICHLET
+  use MultiPhysicsProbConstants       , only : SOIL_CELLS
+  use MultiPhysicsProbConstants       , only : SOIL_TOP_CELLS
+  use MultiPhysicsProbConstants       , only : SOIL_BOTTOM_CELLS
+  use MultiPhysicsProbConstants       , only : COND_BC
+  use MultiPhysicsProbConstants       , only : COND_DIRICHLET
+  use mesh_info                       , only : nx, ny, x_column, y_column, z_column, nz
+  use ConnectionSetType               , only : connection_set_type
+  use MeshType                        , only : MeshCreateConnectionSet
   !
   ! !ARGUMENTS
   implicit none
   !
-  PetscInt :: ieqn
+  PetscInt                            :: ieqn
+  PetscInt                            :: nconn
+  PetscReal                           :: dx, dy, dz
+  PetscInt                  , pointer :: id_up(:)
+  PetscInt                  , pointer :: id_dn(:)
+  PetscReal                 , pointer :: dist_up(:)
+  PetscReal                 , pointer :: dist_dn(:)
+  PetscReal                 , pointer :: area(:)
+  PetscReal                 , pointer :: unit_vec(:,:)
+  type(connection_set_type) , pointer :: conn_set
+  
+  nconn         = 1
+
+  allocate(id_up    (nconn   ))
+  allocate(id_dn    (nconn   ))
+  allocate(dist_up  (nconn   ))
+  allocate(dist_dn  (nconn   ))
+  allocate(area     (nconn   ))
+  allocate(unit_vec (nconn,3 ))
+
+  dx = x_column/nx
+  dy = y_column/ny
+  dz = z_column/nz
+
+  id_up(1)      = 0
+  id_dn(1)      = 1
+  dist_up(1)    = 0.d0
+  dist_dn(1)    = 0.5d0*dx
+  area(1)       = dy*dz
+  unit_vec(1,1) = 1.d0
+  unit_vec(1,2) = 0.d0
+  unit_vec(1,3) = 0.d0
+
+  allocate(conn_set)
+  call MeshCreateConnectionSet(thermal_enthalpy_mpp%meshes(1), &
+       -1, nconn, id_up, id_dn, &
+       dist_up, dist_dn, area, unit_vec, conn_set)
 
   ieqn = 1
 
   call thermal_enthalpy_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
        'Constant temperature condition at top', 'K', COND_DIRICHLET, &
-       SOIL_TOP_CELLS)
+       SOIL_TOP_CELLS, conn_set=conn_set)
+
+  id_up(1)      = 0
+  id_dn(1)      = nx
+  dist_up(1)    = 0.d0
+  dist_dn(1)    = 0.5d0*dx
+  area(1)       = dy*dz
+  unit_vec(1,1) = -1.d0
+  unit_vec(1,2) = 0.d0
+  unit_vec(1,3) = 0.d0
+
+  allocate(conn_set)
+  call MeshCreateConnectionSet(thermal_enthalpy_mpp%meshes(1), &
+       -1, nconn, id_up, id_dn, &
+       dist_up, dist_dn, area, unit_vec, conn_set)
 
   call thermal_enthalpy_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
        'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
-       SOIL_BOTTOM_CELLS)
+       SOIL_BOTTOM_CELLS, conn_set=conn_set)
+
+  deallocate(id_up   )
+  deallocate(id_dn   )
+  deallocate(dist_up )
+  deallocate(dist_dn )
+  deallocate(area    )
+  deallocate(unit_vec)
 
 end subroutine add_conditions_to_goveqns
 
@@ -382,9 +442,9 @@ subroutine set_material_properties()
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use MultiPhysicsProbThermalEnthalpy , only : MPPThermalSetSoils
   use MultiPhysicsProbConstants       , only : GRAVITY_CONSTANT
-  use EOSWaterMod                     , only : DENSITY_TGDPB01, DENSITY_CONSTANT
-  use EOSWaterMod                     , only : INT_ENERGY_ENTHALPY_CONSTANT
-  use mesh_info                       , only : nz, ncells_local, ncells_ghost
+  use EOSWaterMod                     , only : DENSITY_TGDPB01, DENSITY_CONSTANT, DENSITY_IFC67
+  use EOSWaterMod                     , only : INT_ENERGY_ENTHALPY_IFC67
+  use mesh_info                       , only : nx,ny, nz, ncells_local, ncells_ghost
   use mpp_varcon                      , only : denh2o
   use mpp_varcon                      , only : grav
   !
@@ -412,21 +472,21 @@ subroutine set_material_properties()
   !-----------------------------------------------------------------------
 
   begc = 1
-  endc = 1
+  endc = nx
 
   satfunc_type = 'van_genuchten'
   
-  allocate(watsat       (1,nz))
-  allocate(hksat        (1,nz))
-  allocate(bsw          (1,nz))
-  allocate(sucsat       (1,nz))
-  allocate(eff_porosity (1,nz))
-  allocate(residual_sat (1,nz))
-  allocate(filter       (nz))
-  allocate(lun_type     (nz))
-  allocate(csol         (1,nz))
-  allocate(tkmg         (1,nz))
-  allocate(tkdry        (1,nz))
+  allocate(watsat       (nx*ny,nz))
+  allocate(hksat        (nx*ny,nz))
+  allocate(bsw          (nx*ny,nz))
+  allocate(sucsat       (nx*ny,nz))
+  allocate(eff_porosity (nx*ny,nz))
+  allocate(residual_sat (nx*ny,nz))
+  allocate(filter       (ncells_local))
+  allocate(lun_type     (ncells_local))
+  allocate(csol         (nx*ny,nz))
+  allocate(tkmg         (nx*ny,nz))
+  allocate(tkdry        (nx*ny,nz))
 
   ! Soil properties
   filter(:)         = 1
@@ -445,7 +505,7 @@ subroutine set_material_properties()
   call MPPThermalSetSoils(thermal_enthalpy_mpp, begc, endc, filter, &
        lun_type, watsat, csol, tkmg, tkdry,                           &
        hksat, bsw, sucsat, eff_porosity, residual_sat,                &
-       satfunc_type, DENSITY_CONSTANT, INT_ENERGY_ENTHALPY_CONSTANT)
+       satfunc_type, DENSITY_IFC67, INT_ENERGY_ENTHALPY_IFC67)
 
   deallocate(watsat       )
   deallocate(hksat        )
@@ -484,7 +544,8 @@ subroutine set_initial_conditions()
   PetscReal , pointer :: temp_p(:)
   PetscInt            :: ii
   PetscViewer         :: viewer
-  PetscReal , pointer :: pressure(:)
+  Vec                 :: pressure_ic
+  PetscReal, pointer  :: v_p(:)
   PetscInt            :: soe_auxvar_id
 
   ! Find number of GEs packed within the SoE
@@ -498,7 +559,8 @@ subroutine set_initial_conditions()
   allocate(soln_subvecs(nDM))
 
   ! Get solution vectors for individual GEs
-  call DMCompositeGetAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
+  call DMCompositeGetAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, &
+       thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
        PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
   do ii = 1, nDM
@@ -508,18 +570,14 @@ subroutine set_initial_conditions()
   enddo
 
   ! Restore solution vectors for individual GEs
-  call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
+  call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, &
+       thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
        PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-  call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, thermal_enthalpy_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
-  call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, thermal_enthalpy_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
-
-  allocate(pressure(ncells_local))
-  pressure(:) = 091325.d0
-  soe_auxvar_id = -1
-  call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_INTERNAL,  &
-       VAR_PRESSURE, soe_auxvar_id, pressure)
-  deallocate(pressure)
+  call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, &
+       thermal_enthalpy_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
+  call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, &
+       thermal_enthalpy_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
 
 end subroutine set_initial_conditions
 
@@ -531,22 +589,18 @@ subroutine set_bondary_conditions()
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use mesh_info                       , only : nz, ncells_local, ncells_ghost
   use MultiPhysicsProbConstants       , only : AUXVAR_BC, VAR_BC_SS_CONDITION
-  use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL, VAR_PRESSURE
   !
   implicit none
   !
   PetscReal, pointer :: top_bc(:)
   PetscReal, pointer :: bot_bc(:)
-  PetscReal, pointer :: pressure(:)
   PetscInt           :: soe_auxvar_id
 
   allocate(top_bc(1))
   allocate(bot_bc(1))
-  allocate(pressure(ncells_local))
 
   top_bc(:) = 303.15d0
   bot_bc(:) = 293.15d0
-  pressure(:) = 091325.d0
 
   soe_auxvar_id = 1
   call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
@@ -556,12 +610,7 @@ subroutine set_bondary_conditions()
   call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
        VAR_BC_SS_CONDITION, soe_auxvar_id, bot_bc)
   
-  soe_auxvar_id = -1
-  call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_INTERNAL,  &
-       VAR_PRESSURE, soe_auxvar_id, pressure)
-
   deallocate(top_bc)
   deallocate(bot_bc)
-  deallocate(pressure)
 
 end subroutine set_bondary_conditions
