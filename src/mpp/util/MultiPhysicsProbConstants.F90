@@ -23,11 +23,13 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: MPP_VSFM_SNES_CLM                 = 11
   PetscInt, parameter, public :: MPP_THERMAL_TBASED_KSP_CLM        = 12
   PetscInt, parameter, public :: MPP_THERMAL_EBASED_SNES_CLM       = 13
+  PetscInt, parameter, public :: MPP_TH_SNES_CLM                   = 14
 
   ! soe_itype
   PetscInt, parameter, public :: SOE_RE_ODE                        = 101
   PetscInt, parameter, public :: SOE_THERMAL_TBASED                = 102
   PetscInt, parameter, public :: SOE_THERMAL_EBASED                = 103
+  PetscInt, parameter, public :: SOE_TH                            = 104
 
   ! ge_itype
   PetscInt, parameter, public :: GE_RE                             = 201

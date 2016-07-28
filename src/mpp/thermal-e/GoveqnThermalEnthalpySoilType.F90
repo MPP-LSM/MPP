@@ -48,6 +48,10 @@ module GoveqnThermalEnthalpySoilType
      procedure, public :: GetConditionNames       => ThermEnthalpySoilGetConditionNames
      procedure, public :: GetNumCellsInConditions => ThermEnthalpySoilGetNumCellsInConditions
 
+     procedure, public :: SetFromSOEAuxVarsIntrn  => ThermEnthalpySoilSetFromSOEAuxVarsIntrn
+     procedure, public :: SetFromSOEAuxVarsBC     => ThermEnthalpySoilSetFromSOEAuxVarsBC
+     procedure, public :: SetFromSOEAuxVarsSS     => ThermEnthalpySoilSetFromSOEAuxVarsSS
+
      procedure, public :: SetDataInSOEAuxVar      => ThermEnthalpySoilSetDataInSOEAuxVar
      procedure, public :: SetSOEAuxVarOffsets     => ThermEnthalpySoilSetSOEAuxVarOffsets
      procedure, public :: SetDensityType          => ThermEnthalpySetDensityType
@@ -60,6 +64,7 @@ module GoveqnThermalEnthalpySoilType
 
      procedure, public :: Residual                => ThermEnthalpySoilRes
      procedure, public :: Jacobian                => ThermEnthalpySoilJac
+     procedure, public :: JacobianOffDiag         => ThermEnthalpySoilJacOffDiag
      procedure, public :: PreSolve                => ThermEnthalpySoilPreSolve
 
      procedure, public :: CreateVectors           => ThermEnthalpySoilCreateVectors
@@ -243,6 +248,52 @@ contains
   end subroutine ThermEnthalpySoilGetFromSOEAuxVarsIntrn
 
   !------------------------------------------------------------------------
+  subroutine ThermEnthalpySoilSetFromSOEAuxVarsIntrn(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Saves values in the GE auxiliary variable for internal nodes.
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants , only : VAR_PRESSURE
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type) , intent(inout)       :: this
+    PetscInt                                 , intent(in)          :: var_type
+    PetscInt                                 , intent(in)          :: ndata
+    PetscReal                                , intent(in), pointer :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt :: iauxvar
+    PetscInt :: nauxvar
+
+    nauxvar = size(this%aux_vars_in)
+    if( nauxvar /= ndata ) then
+       write(iulog,*) 'size(this%aux_vars_in) /= ndata)'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    select case (var_type)
+    case (VAR_TEMPERATURE)
+       do iauxvar = 1, nauxvar
+          this%aux_vars_in(iauxvar)%temperature = data(iauxvar)
+       enddo
+
+    case (VAR_PRESSURE)
+       do iauxvar = 1, nauxvar
+          this%aux_vars_in(iauxvar)%pressure    = data(iauxvar)
+       enddo
+
+    case default
+       write(iulog,*) 'Unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine ThermEnthalpySoilSetFromSOEAuxVarsIntrn
+
+  !------------------------------------------------------------------------
 
   subroutine ThermEnthalpySoilGetFromSOEAuxVarsBC(this, soe_avars)
     !
@@ -344,6 +395,93 @@ contains
 
   end subroutine ThermEnthalpySoilGetFromSOEAuxVarsBC
 
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySoilSetFromSOEAuxVarsBC(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Saves values in the GE auxiliary variable for boundary conditions.
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants , only : VAR_PRESSURE
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants , only : VAR_BC_SS_CONDITION
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type) , intent(inout)       :: this
+    PetscInt                                 , intent(in)          :: var_type
+    PetscInt                                 , intent(in)          :: ndata
+    PetscReal                                , intent(in), pointer :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt                                                       :: nauxvar
+    integer                                                        :: iconn
+    integer                                                        :: condition_id
+    integer                                                        :: sum_conn
+    integer                                                        :: data_counter
+    type(condition_type)                     , pointer             :: cur_cond
+    type(connection_set_type)                , pointer             :: cur_conn_set
+    type (therm_enthalpy_soil_auxvar_type)   , pointer             :: ge_avars(:)
+
+    ge_avars => this%aux_vars_bc
+
+    nauxvar = size(this%aux_vars_bc)
+    if( ndata > nauxvar ) then
+       write(iulog,*) 'ndata > size(this%aux_vars_bc)'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    condition_id = 0
+    sum_conn = 0
+    data_counter = 0
+    cur_cond => this%boundary_conditions%first
+    do
+       if (.not.associated(cur_cond)) exit
+       condition_id = condition_id + 1
+
+       if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          cur_conn_set => cur_cond%conn_set
+          sum_conn = sum_conn + cur_conn_set%num_connections
+          cur_cond => cur_cond%next
+          cycle
+       endif
+
+       cur_conn_set => cur_cond%conn_set
+       do iconn = 1, cur_conn_set%num_connections
+
+          sum_conn = sum_conn + 1
+          data_counter = data_counter + 1
+
+          select case(cur_cond%itype)
+          case (COND_DIRICHLET, COND_HEAT_FLUX)
+             select case(var_type)
+                case (VAR_BC_SS_CONDITION)
+                   ge_avars(sum_conn)%condition_value =  data(data_counter)
+
+                case default
+                   write(iulog,*) 'Unknown var_type ',var_type
+                   call endrun(msg=errMsg(__FILE__, __LINE__))
+                end select
+
+          case (COND_DIRICHLET_FRM_OTR_GOVEQ)
+             ! Do nothing
+
+          case default
+             write(iulog,*) 'Unknown cur_cond%itype = ', cur_cond%itype
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+       enddo
+
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine ThermEnthalpySoilSetFromSOEAuxVarsBC
 
   !------------------------------------------------------------------------
   subroutine ThermEnthalpySoilGetFromSOEAuxVarsSS(this, soe_avars)
@@ -432,6 +570,75 @@ contains
     enddo
 
   end subroutine ThermEnthalpySoilGetFromSOEAuxVarsSS
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySoilSetFromSOEAuxVarsSS(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Saves values in the GE auxiliary variable for source-sink conditions.
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants , only : VAR_PRESSURE
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_HEAT_RATE
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type) , intent(inout)       :: this
+    PetscInt                                 , intent(in)          :: var_type
+    PetscInt                                 , intent(in)          :: ndata
+    PetscReal                                , intent(in), pointer :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt                                                       :: nauxvar
+    integer                                                        :: iconn
+    integer                                                        :: condition_id
+    integer                                                        :: sum_conn
+    integer                                                        :: data_counter
+    type(condition_type)                     , pointer             :: cur_cond
+    type(connection_set_type)                , pointer             :: cur_conn_set
+    type (therm_enthalpy_soil_auxvar_type)   , pointer             :: ge_avars(:)
+
+    ge_avars => this%aux_vars_ss
+
+    nauxvar = size(this%aux_vars_bc)
+    if( ndata > nauxvar ) then
+       write(iulog,*) 'ndata > size(this%aux_vars_bc)'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    condition_id = 0
+    sum_conn = 0
+    data_counter = 0
+    cur_cond => this%source_sinks%first
+    do
+       if (.not.associated(cur_cond)) exit
+       condition_id = condition_id + 1
+
+       cur_conn_set => cur_cond%conn_set
+       do iconn = 1, cur_conn_set%num_connections
+
+          sum_conn = sum_conn + 1
+          data_counter = data_counter + 1
+
+          select case(cur_cond%itype)
+          case (COND_HEAT_RATE)
+             ge_avars(sum_conn)%condition_value = data(data_counter)
+             cur_cond%value(iconn)              = data(data_counter)
+
+          case default
+             write(iulog,*) 'Unknown cur_cond%itype = ', cur_cond%itype
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+       enddo
+
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine ThermEnthalpySoilSetFromSOEAuxVarsSS
 
   !------------------------------------------------------------------------
   subroutine ThermEnthalpySoilGetConditionNames(this, cond_type, &
@@ -910,6 +1117,9 @@ contains
              this%aux_vars_bc(sum_conn)%temperature = &
                   this%aux_vars_bc(sum_conn)%condition_value
 
+          case (COND_DIRICHLET_FRM_OTR_GOVEQ)
+             ! Do nothing
+
           case default
              write(string,*) cur_cond%itype
              write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
@@ -1026,6 +1236,52 @@ contains
     endif
 
   end subroutine ThermEnthalpySoilJac
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySoilJacOffDiag(this, X_1, X_2, A, B, &
+       id_of_other_goveq, list_id_of_other_goveq,        &
+       ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the off-diagonal jacobian sub matrix associated with the
+    ! coupling the given governing equation with another governing equation.
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : GE_RE
+    use MultiPhysicsProbConstants, only : GE_THERM_SOIL_EBASED
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type) :: this
+    Vec                                      :: X_1
+    Vec                                      :: X_2
+    Mat                                      :: A
+    Mat                                      :: B
+    PetscInt                                 :: id_of_other_goveq
+    PetscInt                                 :: list_id_of_other_goveq
+    PetscErrorCode                           :: ierr
+    !
+    ! LOCAL VARIABLES
+    character(len=256)                       :: string
+
+    select case(id_of_other_goveq)
+    case (GE_RE)
+       call ThermalEnthalpySoilJacOffDiag_Pressure(this, B, ierr)
+    case default
+       write(string,*) id_of_other_goveq
+       write(iulog,*) 'Unknown id_of_other_goveq = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+    call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+    if ( A /= B) then
+       call MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+       call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+    endif
+
+  end subroutine ThermEnthalpySoilJacOffDiag
 
   !------------------------------------------------------------------------
 
@@ -1215,63 +1471,63 @@ contains
           if ((.not.geq_soil%mesh%is_active(cell_id_up)) .or. &
               (.not.geq_soil%mesh%is_active(cell_id_dn))) cycle
 
-          call RichardsFlux(geq_soil%aux_vars_in(cell_id_up)%pressure, &
-                            geq_soil%aux_vars_in(cell_id_up)%krl,      &
-                            geq_soil%aux_vars_in(cell_id_up)%dkrl_dP,  &
-                            geq_soil%aux_vars_in(cell_id_up)%denl,     &
-                            geq_soil%aux_vars_in(cell_id_up)%ddenl_dP, &
-                            geq_soil%aux_vars_in(cell_id_up)%vis,      &
-                            geq_soil%aux_vars_in(cell_id_up)%dvis_dP,  &
-                            geq_soil%aux_vars_in(cell_id_up)%perm,     &
-                            geq_soil%aux_vars_in(cell_id_dn)%pressure, &
-                            geq_soil%aux_vars_in(cell_id_dn)%krl,      &
-                            geq_soil%aux_vars_in(cell_id_dn)%dkrl_dP,  &
-                            geq_soil%aux_vars_in(cell_id_dn)%denl,     &
-                            geq_soil%aux_vars_in(cell_id_dn)%ddenl_dP, &
-                            geq_soil%aux_vars_in(cell_id_dn)%vis,      &
-                            geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
-                            geq_soil%aux_vars_in(cell_id_dn)%perm,     &
-                            cur_conn_set%area(iconn),                  &
-                            cur_conn_set%dist_up(iconn),               &
-                            cur_conn_set%dist_dn(iconn),               &
-                            cur_conn_set%dist_unitvec(iconn)%arr,      &
-                            compute_deriv,                             &
-                            internal_conn,                             &
-                            cond_type,                                 &
-                            mflux,                                     &
-                            dummy_var1,                                &
-                            dummy_var2                                 &
-                            )
+          call RichardsFlux(                              &
+               geq_soil%aux_vars_in(cell_id_up)%pressure, &
+               geq_soil%aux_vars_in(cell_id_up)%krl,      &
+               geq_soil%aux_vars_in(cell_id_up)%dkrl_dP,  &
+               geq_soil%aux_vars_in(cell_id_up)%denl,     &
+               geq_soil%aux_vars_in(cell_id_up)%ddenl_dP, &
+               geq_soil%aux_vars_in(cell_id_up)%vis,      &
+               geq_soil%aux_vars_in(cell_id_up)%dvis_dP,  &
+               geq_soil%aux_vars_in(cell_id_up)%perm,     &
+               geq_soil%aux_vars_in(cell_id_dn)%pressure, &
+               geq_soil%aux_vars_in(cell_id_dn)%krl,      &
+               geq_soil%aux_vars_in(cell_id_dn)%dkrl_dP,  &
+               geq_soil%aux_vars_in(cell_id_dn)%denl,     &
+               geq_soil%aux_vars_in(cell_id_dn)%ddenl_dP, &
+               geq_soil%aux_vars_in(cell_id_dn)%vis,      &
+               geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
+               geq_soil%aux_vars_in(cell_id_dn)%perm,     &
+               cur_conn_set%area(iconn),                  &
+               cur_conn_set%dist_up(iconn),               &
+               cur_conn_set%dist_dn(iconn),               &
+               cur_conn_set%dist_unitvec(iconn)%arr,      &
+               compute_deriv,                             &
+               internal_conn,                             &
+               cond_type,                                 &
+               mflux,                                     &
+               dummy_var1,                                &
+               dummy_var2                                 &
+               )
 
-          mflux        = 0.d0
           dmflux_dT_up = 0.d0
           dmflux_dT_dn = 0.d0
 
-          call ThermalEnthalpyFlux(                                    &
-               geq_soil%aux_vars_in(cell_id_up)%temperature,           &
-               geq_soil%aux_vars_in(cell_id_up)%hl,                    &
-               geq_soil%aux_vars_in(cell_id_up)%dhl_dT,                &
-               geq_soil%aux_vars_in(cell_id_up)%denl,                  &
-               geq_soil%aux_vars_in(cell_id_up)%ddenl_dT,              &
-               geq_soil%aux_vars_in(cell_id_up)%therm_cond,            &
-               geq_soil%aux_vars_in(cell_id_dn)%temperature,           &
-               geq_soil%aux_vars_in(cell_id_dn)%hl,                    &
-               geq_soil%aux_vars_in(cell_id_dn)%dhl_dT,                &
-               geq_soil%aux_vars_in(cell_id_dn)%denl,                  &
-               geq_soil%aux_vars_in(cell_id_dn)%ddenl_dT,              &
-               geq_soil%aux_vars_in(cell_id_dn)%therm_cond,            &
-               mflux,                                                  &
-               dmflux_dT_up,                                           &
-               dmflux_dT_dn,                                           &
-               cur_conn_set%area(iconn),                               &
-               cur_conn_set%dist_up(iconn),                            &
-               cur_conn_set%dist_dn(iconn),                            &
-               compute_deriv,                                          &
-               internal_conn,                                          &
-               cond_type,                                              &
-               eflux,                                                  &
-               dummy_var1,                                             &
-               dummy_var2                                              &
+          call ThermalEnthalpyFlux(                          &
+               geq_soil%aux_vars_in(cell_id_up)%temperature, &
+               geq_soil%aux_vars_in(cell_id_up)%hl,          &
+               geq_soil%aux_vars_in(cell_id_up)%dhl_dT,      &
+               geq_soil%aux_vars_in(cell_id_up)%denl,        &
+               geq_soil%aux_vars_in(cell_id_up)%ddenl_dT,    &
+               geq_soil%aux_vars_in(cell_id_up)%therm_cond,  &
+               geq_soil%aux_vars_in(cell_id_dn)%temperature, &
+               geq_soil%aux_vars_in(cell_id_dn)%hl,          &
+               geq_soil%aux_vars_in(cell_id_dn)%dhl_dT,      &
+               geq_soil%aux_vars_in(cell_id_dn)%denl,        &
+               geq_soil%aux_vars_in(cell_id_dn)%ddenl_dT,    &
+               geq_soil%aux_vars_in(cell_id_dn)%therm_cond,  &
+               mflux,                                        &
+               dmflux_dT_up,                                 &
+               dmflux_dT_dn,                                 &
+               cur_conn_set%area(iconn),                     &
+               cur_conn_set%dist_up(iconn),                  &
+               cur_conn_set%dist_dn(iconn),                  &
+               compute_deriv,                                &
+               internal_conn,                                &
+               cond_type,                                    &
+               eflux,                                        &
+               dummy_var1,                                   &
+               dummy_var2                                    &
                )
 
           f_p(cell_id_up) = f_p(cell_id_up) - eflux
@@ -1303,7 +1559,35 @@ contains
              internal_conn = PETSC_FALSE
              cond_type     = cur_cond%itype
 
-             mflux        = 0.d0
+             call RichardsFlux(                            &
+                  geq_soil%aux_vars_bc(sum_conn)%pressure, &
+                  geq_soil%aux_vars_bc(sum_conn)%krl,      &
+                  geq_soil%aux_vars_bc(sum_conn)%dkrl_dP,  &
+                  geq_soil%aux_vars_bc(sum_conn)%denl,     &
+                  geq_soil%aux_vars_bc(sum_conn)%ddenl_dP, &
+                  geq_soil%aux_vars_bc(sum_conn)%vis,      &
+                  geq_soil%aux_vars_bc(sum_conn)%dvis_dP,  &
+                  geq_soil%aux_vars_bc(sum_conn)%perm,     &
+                  geq_soil%aux_vars_bc(cell_id )%pressure, &
+                  geq_soil%aux_vars_bc(cell_id )%krl,      &
+                  geq_soil%aux_vars_bc(cell_id )%dkrl_dP,  &
+                  geq_soil%aux_vars_bc(cell_id )%denl,     &
+                  geq_soil%aux_vars_bc(cell_id )%ddenl_dP, &
+                  geq_soil%aux_vars_bc(cell_id )%vis,      &
+                  geq_soil%aux_vars_bc(cell_id )%dvis_dP,  &
+                  geq_soil%aux_vars_bc(cell_id )%perm,     &
+                  cur_conn_set%area(iconn),                &
+                  cur_conn_set%dist_up(iconn),             &
+                  cur_conn_set%dist_dn(iconn),             &
+                  cur_conn_set%dist_unitvec(iconn)%arr,    &
+                  compute_deriv,                           &
+                  internal_conn,                           &
+                  cond_type,                               &
+                  mflux,                                   &
+                  dummy_var1,                              &
+                  dummy_var2                               &
+                  )
+
              dmflux_dT_up = 0.d0
              dmflux_dT_dn = 0.d0
 
@@ -1320,16 +1604,16 @@ contains
                   geq_soil%aux_vars_in(cell_id  )%denl,        &
                   geq_soil%aux_vars_in(cell_id  )%ddenl_dT,    &
                   geq_soil%aux_vars_in(cell_id  )%therm_cond,  &
-                  mflux,                                     &
-                  dmflux_dT_up,                              &
-                  dmflux_dT_dn,                              &
+                  mflux,                                       &
+                  dmflux_dT_up,                                &
+                  dmflux_dT_dn,                                &
                   cur_conn_set%area(iconn),                    &
                   cur_conn_set%dist_up(iconn),                 &
                   cur_conn_set%dist_dn(iconn),                 &
                   compute_deriv,                               &
                   internal_conn,                               &
                   cond_type,                                   &
-                  eflux,                                 &
+                  eflux,                                       &
                   dummy_var1,                                  &
                   dummy_var2                                   &
                   )
@@ -1473,10 +1757,6 @@ contains
                dmflux_dT_dn                                  &
                )
 
-          mflux        = 0.d0
-          dmflux_dT_up = 0.d0
-          dmflux_dT_dn = 0.d0
-
           call ThermalEnthalpyFlux(                          &
                geq_soil%aux_vars_in(cell_id_up)%temperature, &
                geq_soil%aux_vars_in(cell_id_up)%hl,          &
@@ -1550,6 +1830,34 @@ contains
              internal_conn = PETSC_FALSE
              cond_type     = cur_cond%itype
 
+#if 0
+             call RichardsFluxDerivativeWrtTemperature(    &
+                  geq_soil%aux_vars_bc(sum_conn)%pressure, &
+                  geq_soil%aux_vars_bc(sum_conn)%krl,      &
+                  geq_soil%aux_vars_bc(sum_conn)%denl,     &
+                  geq_soil%aux_vars_bc(sum_conn)%ddenl_dT, &
+                  geq_soil%aux_vars_bc(sum_conn)%vis,      &
+                  geq_soil%aux_vars_bc(sum_conn)%dvis_dT,  &
+                  geq_soil%aux_vars_bc(sum_conn)%perm,     &
+                  geq_soil%aux_vars_bc(cell_id)%pressure,  &
+                  geq_soil%aux_vars_bc(cell_id)%krl,       &
+                  geq_soil%aux_vars_bc(cell_id)%denl,      &
+                  geq_soil%aux_vars_bc(cell_id)%ddenl_dT,  &
+                  geq_soil%aux_vars_bc(cell_id)%vis,       &
+                  geq_soil%aux_vars_bc(cell_id)%dvis_dT,   &
+                  geq_soil%aux_vars_bc(cell_id)%perm,      &
+                  cur_conn_set%area(iconn),                &
+                  cur_conn_set%dist_up(iconn),             &
+                  cur_conn_set%dist_dn(iconn),             &
+                  cur_conn_set%dist_unitvec(iconn)%arr,    &
+                  compute_deriv,                           &
+                  internal_conn,                           &
+                  cond_type,                               &
+                  mflux,                                   &
+                  dmflux_dT_up,                            &
+                  dmflux_dT_dn                             &
+                  )
+#endif
              mflux        = 0.d0
              dmflux_dT_up = 0.d0
              dmflux_dT_dn = 0.d0
@@ -1626,6 +1934,213 @@ contains
     enddo
 
   end subroutine ThermalEnthalpySoilDivergenceDeriv
+
+  !------------------------------------------------------------------------
+  subroutine ThermalEnthalpySoilJacOffDiag_Pressure(geq_soil, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of energy residual equation w.r.t to pressure
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_NULL
+    use ThermalEnthalpyMod        , only : ThermalEnthalpyFluxDerivativeWrtPressure
+    use RichardsMod               , only : RichardsFlux
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
+    Mat                                              :: B
+    PetscErrorCode                                   :: ierr
+    !
+    ! !LOCAL VARIABLES
+    type (therm_enthalpy_soil_auxvar_type) , pointer :: aux_vars(:)
+    type(condition_type)                   , pointer :: cur_cond
+    type(connection_set_type)              , pointer :: cur_conn_set
+    PetscInt                                         :: iconn
+    PetscInt                                         :: sum_conn
+    PetscInt                                         :: cell_id_dn
+    PetscInt                                         :: cell_id_up
+    PetscInt                                         :: cell_id
+    PetscInt                                         :: row
+    PetscInt                                         :: col
+    PetscInt                                         :: cond_type
+    PetscReal                                        :: flux
+    PetscReal                                        :: area
+    PetscReal                                        :: Jup
+    PetscReal                                        :: Jdn
+    PetscBool                                        :: compute_deriv
+    PetscBool                                        :: internal_conn
+    PetscReal                                        :: val
+    PetscReal                                        :: mflux
+    PetscReal                                        :: eflux
+    PetscReal                                        :: dmflux_dP_up
+    PetscReal                                        :: dmflux_dP_dn
+    PetscReal                                        :: dmflux_dT_up
+    PetscReal                                        :: dmflux_dT_dn
+    PetscReal                                        :: dtInv
+    PetscReal                                        :: por
+    PetscReal                                        :: denl
+    PetscReal                                        :: satl
+    PetscReal                                        :: ul
+    PetscReal                                        :: dpor_dP
+    PetscReal                                        :: ddenl_dP
+    PetscReal                                        :: dsatl_dP
+    PetscReal                                        :: dul_dP
+    PetscReal                                        :: derivative
+    PetscReal                                        :: den_soil
+    PetscReal                                        :: heat_cap_soil
+    PetscReal                                        :: temperature
+
+    aux_vars => geq_soil%aux_vars_in
+
+    dtInv = 1.d0/geq_soil%dtime
+
+    ! Interior cells
+    do cell_id = 1, geq_soil%mesh%ncells_local
+
+       if (geq_soil%mesh%is_active(cell_id)) then
+
+          por           = aux_vars(cell_id)%por
+          den_soil      = aux_vars(cell_id)%den_soil
+          heat_cap_soil = aux_vars(cell_id)%heat_cap_soil
+
+          denl          = aux_vars(cell_id)%denl
+          satl          = aux_vars(cell_id)%satl
+          ul            = aux_vars(cell_id)%ul
+
+          dpor_dP       = aux_vars(cell_id)%dpor_dP
+          ddenl_dP      = aux_vars(cell_id)%ddenl_dP
+          dsatl_dP      = aux_vars(cell_id)%dsatl_dP
+          dul_dP        = aux_vars(cell_id)%dul_dP
+
+          temperature   = aux_vars(cell_id)%temperature
+
+          derivative =                                 &
+               dpor_dP * denl     * satl     * ul     + &
+               por     * ddenl_dP * satl     * ul     + &
+               por     * denl     * dsatl_dP * ul     + &
+               por     * denl     * satl     * dul_dP + &
+               -dpor_dP * den_soil * heat_cap_soil *(temperature - 273.15d0)
+
+          derivative = derivative * geq_soil%mesh%vol(cell_id) * dtInv
+       else
+          derivative = 1.d0
+       endif
+
+       row = cell_id - 1
+       col = cell_id - 1
+
+       call MatSetValuesLocal(B, 1, row, 1, col, derivative, ADD_VALUES, ierr); CHKERRQ(ierr)
+    enddo
+
+    compute_deriv = PETSC_TRUE
+
+    ! Interior cells
+    cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
+    sum_conn = 0
+    do
+       if (.not.associated(cur_conn_set)) exit
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+
+          cell_id_up = cur_conn_set%id_up(iconn)
+          cell_id_dn = cur_conn_set%id_dn(iconn)
+
+          internal_conn = PETSC_TRUE
+          cond_type     = COND_NULL
+
+          if ((.not.geq_soil%mesh%is_active(cell_id_up)) .or. &
+               (.not.geq_soil%mesh%is_active(cell_id_dn))) cycle
+
+          call RichardsFlux(                              &
+               geq_soil%aux_vars_in(cell_id_up)%pressure, &
+               geq_soil%aux_vars_in(cell_id_up)%krl,      &
+               geq_soil%aux_vars_in(cell_id_up)%dkrl_dP,  &
+               geq_soil%aux_vars_in(cell_id_up)%denl,     &
+               geq_soil%aux_vars_in(cell_id_up)%ddenl_dP, &
+               geq_soil%aux_vars_in(cell_id_up)%vis,      &
+               geq_soil%aux_vars_in(cell_id_up)%dvis_dP,  &
+               geq_soil%aux_vars_in(cell_id_up)%perm,     &
+               geq_soil%aux_vars_in(cell_id_dn)%pressure, &
+               geq_soil%aux_vars_in(cell_id_dn)%krl,      &
+               geq_soil%aux_vars_in(cell_id_dn)%dkrl_dP,  &
+               geq_soil%aux_vars_in(cell_id_dn)%denl,     &
+               geq_soil%aux_vars_in(cell_id_dn)%ddenl_dP, &
+               geq_soil%aux_vars_in(cell_id_dn)%vis,      &
+               geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
+               geq_soil%aux_vars_in(cell_id_dn)%perm,     &
+               cur_conn_set%area(iconn),                  &
+               cur_conn_set%dist_up(iconn),               &
+               cur_conn_set%dist_dn(iconn),               &
+               cur_conn_set%dist_unitvec(iconn)%arr,      &
+               compute_deriv,                             &
+               internal_conn,                             &
+               cond_type,                                 &
+               mflux,                                     &
+               dmflux_dP_up,                              &
+               dmflux_dP_dn                               &
+               )
+
+          dmflux_dP_up = -dmflux_dP_up
+          dmflux_dP_dn = -dmflux_dP_dn
+
+          call ThermalEnthalpyFluxDerivativeWrtPressure(     &
+               geq_soil%aux_vars_in(cell_id_up)%temperature, &
+               geq_soil%aux_vars_in(cell_id_up)%hl,          &
+               geq_soil%aux_vars_in(cell_id_up)%dhl_dP,      &
+               geq_soil%aux_vars_in(cell_id_up)%denl,        &
+               geq_soil%aux_vars_in(cell_id_up)%ddenl_dP,    &
+               geq_soil%aux_vars_in(cell_id_up)%therm_cond,  &
+               geq_soil%aux_vars_in(cell_id_dn)%temperature, &
+               geq_soil%aux_vars_in(cell_id_dn)%hl,          &
+               geq_soil%aux_vars_in(cell_id_dn)%dhl_dP,      &
+               geq_soil%aux_vars_in(cell_id_dn)%denl,        &
+               geq_soil%aux_vars_in(cell_id_dn)%ddenl_dP,    &
+               geq_soil%aux_vars_in(cell_id_dn)%therm_cond,  &
+               mflux,                                        &
+               dmflux_dP_up,                                 &
+               dmflux_dP_dn,                                 &
+               cur_conn_set%area(iconn),                     &
+               cur_conn_set%dist_up(iconn),                  &
+               cur_conn_set%dist_dn(iconn),                  &
+               compute_deriv,                                &
+               internal_conn,                                &
+               cond_type,                                    &
+               flux,                                         &
+               Jup,                                          &
+               Jdn                                           &
+               )
+
+          row = cell_id_up - 1
+          col = cell_id_up - 1
+          val = -Jup
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          row = cell_id_up - 1
+          col = cell_id_dn - 1
+          val = -Jdn
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          row = cell_id_dn - 1
+          col = cell_id_up - 1
+          val = Jup
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          row = cell_id_dn - 1
+          col = cell_id_dn - 1
+          val = Jdn
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+       enddo
+
+       cur_conn_set => cur_conn_set%next
+    enddo
+
+  end subroutine ThermalEnthalpySoilJacOffDiag_Pressure
 
   !------------------------------------------------------------------------
 

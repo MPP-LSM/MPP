@@ -16,6 +16,7 @@ module SystemOfEquationsThermalEnthalpyAuxMod
 #include "finclude/petscsys.h"
 
   public :: SOEThermalEnthalpyAuxSetRData
+  public :: SOEThermalEnthalpyAuxGetRData
   public :: SOEThermalEnthalpyAuxSetBData
 
 contains
@@ -74,6 +75,61 @@ contains
     end select
 
   end subroutine SOEThermalEnthalpyAuxSetRData
+
+  !------------------------------------------------------------------------
+  subroutine SOEThermalEnthalpyAuxGetRData(auxvars, var_type, nauxvar, &
+       auxvar_offset, data_1d)
+    !
+    ! !DESCRIPTION:
+    ! Extracts data from the SoE auxvar
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants, only : VAR_PRESSURE
+    use MultiPhysicsProbConstants, only : VAR_BC_SS_CONDITION
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type (sysofeqns_thermal_enthalpy_auxvar_type), pointer :: auxvars(:)
+    PetscInt, intent(in)                                   :: var_type
+    PetscInt                                               :: nauxvar
+    PetscInt                                               :: auxvar_offset
+    PetscReal                                              :: data_1d(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                                               :: iauxvar
+
+    if (size(data_1d) > nauxvar) then
+       write(iulog,*) 'ERROR: size(data_1d) > nauxvar'
+       write(iulog,*) 'size(data_1d) = ',size(data_1d)
+       write(iulog,*) 'nauxvar       = ', nauxvar
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    select case(var_type)
+    case (VAR_TEMPERATURE)
+       do iauxvar = 1, size(data_1d)
+          data_1d(iauxvar) = auxvars(iauxvar + auxvar_offset)%temperature
+       enddo
+
+    case (VAR_PRESSURE)
+       do iauxvar = 1, size(data_1d)
+          data_1d(iauxvar) = auxvars(iauxvar + auxvar_offset)%pressure
+       enddo
+
+    case (VAR_BC_SS_CONDITION)
+       do iauxvar = 1, size(data_1d)
+          data_1d(iauxvar) = auxvars(iauxvar + auxvar_offset)%condition_value
+       enddo
+
+    case default
+       write(iulog,*) 'ERROR: unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+
+    end select
+
+  end subroutine SOEThermalEnthalpyAuxGetRData
 
   !------------------------------------------------------------------------
   subroutine SOEThermalEnthalpyAuxSetBData(auxvars, var_type, nauxvar, auxvar_offset, data_1d)

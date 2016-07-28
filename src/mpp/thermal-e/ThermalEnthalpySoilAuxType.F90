@@ -36,10 +36,12 @@ module ThermalEnthalpySoilAuxType
      PetscReal                    :: dkrl_dT                  ! [K^{-1}]
 
      PetscReal                    :: dpor_dP                  !
-     PetscReal                    :: ddenl_dP                 !
-     PetscReal                    :: dvis_dP                  !
-     PetscReal                    :: dsatl_dP                 !
-     PetscReal                    :: dkrl_dP                  !
+     PetscReal                    :: dul_dP                   ! [J kmol^{-1} Pa^{-1}]
+     PetscReal                    :: dhl_dP                   ! [J kmol^{-3} Pa^{-1}]
+     PetscReal                    :: ddenl_dP                 ! [kmol m^{-3} Pa^{-1}]
+     PetscReal                    :: dvis_dP                  ! [s]
+     PetscReal                    :: dsatl_dP                 ! [Pa^{-1}]
+     PetscReal                    :: dkrl_dP                  ! [Pa^{-1}]
 
      PetscReal                    :: Kel                      ! Kersten number liquid [-]
      PetscReal                    :: therm_cond_wet           ! wet thermal conductivity [J s^{-1} m^{-3} K^{-1}]
@@ -104,6 +106,8 @@ contains
     this%dsatl_dT                 = 0.d0
     this%dkrl_dT                  = 0.d0
 
+    this%dul_dP                   = 0.d0
+    this%dhl_dP                   = 0.d0
     this%ddenl_dP                 = 0.d0
     this%dvis_dP                  = 0.d0
     this%dsatl_dP                 = 0.d0
@@ -157,6 +161,14 @@ contains
     this%dvis_dT                  = auxvar%dvis_dT
     this%dsatl_dT                 = auxvar%dsatl_dT
     this%dkrl_dT                  = auxvar%dkrl_dT
+
+    this%dul_dP                   = auxvar%dul_dP
+    this%dhl_dP                   = auxvar%dhl_dP
+    this%ddenl_dP                 = auxvar%ddenl_dP
+    this%dvis_dP                  = auxvar%dvis_dP
+    this%dsatl_dP                 = auxvar%dsatl_dP
+    this%dkrl_dP                  = auxvar%dkrl_dP
+    this%dpor_dP                  = auxvar%dpor_dP
 
     this%Kel                      = auxvar%Kel
     this%therm_cond_wet           = auxvar%therm_cond_wet
@@ -281,7 +293,9 @@ contains
     ! Compute internal energy and enthalpy
     call InternalEnergyAndEnthalpy(pressure, this%temperature, &
          this%int_energy_enthalpy_type, this%denl*FMWH2O, &
-         this%ddenl_dT*FMWH2O, this%ul, this%hl, this%dul_dT, this%dhl_dT)
+         this%ddenl_dT*FMWH2O, this%ddenl_dP*FMWH2O, &
+         this%ul, this%hl, this%dul_dT, this%dhl_dT, &
+         this%dul_dP, this%dhl_dP)
 
     this%Kel        = (this%satl + 1.d-6 )**(this%therm_alpha)
     this%therm_cond = this%therm_cond_wet*this%Kel + &

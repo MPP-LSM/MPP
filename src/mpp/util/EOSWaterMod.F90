@@ -587,8 +587,8 @@ contains
   end subroutine Viscosity
 
   !------------------------------------------------------------------------
-  subroutine InternalEnergyAndEnthalpy(P, t_K, itype, den, dden_dT, &
-       U, H, dU_dT, dH_dT)
+  subroutine InternalEnergyAndEnthalpy(P, t_K, itype, den, dden_dT, dden_dP, &
+       U, H, dU_dT, dH_dT, dU_dP, dH_dP)
     !
     ! !DESCRIPTION:
     ! Return internal energy of water
@@ -601,19 +601,22 @@ contains
     PetscInt               :: itype    ! [-]
     PetscReal, intent(in)  :: den      ! [kg m^{-3}]
     PetscReal, intent(in)  :: dden_dT  ! [kg m^{-3} K^{-1}]
+    PetscReal, intent(in)  :: dden_dP  ! [kg m^{-3} Pa^{-1}]
     PetscReal, intent(out) :: U        ! [J kmol^{-1}]
     PetscReal, intent(out) :: H        ! [J kmol^{-1}]
     PetscReal, intent(out) :: dU_dT    ! [J kmol^{-1} K^{-1}]
     PetscReal, intent(out) :: dH_dT    ! [J kmol^{-1} K^{-1}]
+    PetscReal, intent(out) :: dU_dP    ! [J kmol^{-1} Pa^{-1}]
+    PetscReal, intent(out) :: dH_dP    ! [J kmol^{-1} Pa^{-1}]
 
     select case(itype)
     case (INT_ENERGY_ENTHALPY_CONSTANT)
-       call InternalEnergyAndEnthalpyConstant(P, t_K, den, dden_dT, &
-            U, H, dU_dT, dH_dT)
+       call InternalEnergyAndEnthalpyConstant(P, t_K, den, dden_dT, dden_dP, &
+            U, H, dU_dT, dH_dT, dU_dP, dH_dP)
 
     case (INT_ENERGY_ENTHALPY_IFC67)
-       call InternalEnergyAndEnthalpyIFC67(P, t_K, den, dden_dT, &
-            U, H, dU_dT, dH_dT)
+       call InternalEnergyAndEnthalpyIFC67(P, t_K, den, dden_dT, dden_dP, &
+            U, H, dU_dT, dH_dT, dU_dP, dH_dP)
 
     case default
        write(iulog,*)'Density: Unknown denity_itype. '
@@ -623,8 +626,8 @@ contains
   end subroutine InternalEnergyAndEnthalpy
 
   !------------------------------------------------------------------------
-  subroutine InternalEnergyAndEnthalpyConstant(P, t_K, den, dden_dT, &
-       U, H, dU_dT, dH_dT)
+  subroutine InternalEnergyAndEnthalpyConstant(P, t_K, den, dden_dT, dden_dP, &
+       U, H, dU_dT, dH_dT, dU_dP, dH_dP)
     !
     ! !DESCRIPTION:
     ! Return internal energy of water
@@ -632,37 +635,42 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    PetscReal, intent(in)  :: P        ! [Pa]
-    PetscReal, intent(in)  :: T_K      ! [K]
-    PetscReal, intent(in)  :: den      ! [kg m^{-3}]
-    PetscReal, intent(in)  :: dden_dT  ! [kg m^{-3} K^{-1}]
-    PetscReal, intent(out) :: U        ! [J kmol^{-1}]
-    PetscReal, intent(out) :: H        ! [J kmol^{-1}]
-    PetscReal, intent(out) :: dU_dT    ! [J kmol^{-1} K^{-1}]
-    PetscReal, intent(out) :: dH_dT    ! [J kmol^{-1} K^{-1}]
-    !
-    PetscReal, parameter   :: u0 = 4.217 * 1.d3 ! [J kg^{-1} K^{-1}]
+    PetscReal, intent(in)  :: P                      ! [Pa]
+    PetscReal, intent(in)  :: T_K                    ! [K]
+    PetscReal, intent(in)  :: den                    ! [kg m^{-3}]
+    PetscReal, intent(in)  :: dden_dT                ! [kg m^{-3} K^{-1}]
+    PetscReal, intent(in)  :: dden_dP                ! [kg m^{-3} Pa^{-1}]
+    PetscReal, intent(out) :: U                      ! [J kmol^{-1}]
+    PetscReal, intent(out) :: H                      ! [J kmol^{-1}]
+    PetscReal, intent(out) :: dU_dT                  ! [J kmol^{-1} K^{-1}]
+    PetscReal, intent(out) :: dH_dT                  ! [J kmol^{-1} K^{-1}]
+    PetscReal, intent(out) :: dU_dP                  ! [J kmol^{-1} Pa^{-1}]
+    PetscReal, intent(out) :: dH_dP                  ! [J kmol^{-1} Pa^{-1}]
+                                                     !
+    PetscReal, parameter   :: u0 = 4.217 * 1.d3      ! [J kg^{-1} K^{-1}]
     PetscReal              :: T_C
-    PetscReal              :: dh_dP
     PetscBool              :: cal_deriv
     PetscErrorCode         :: ierr
 
-    U     = u0 * (t_K - 273.15d0)         ! [J kg^{-1}]
-    dU_dT = u0                            ! [J kg^{-1} K^{-1}]
+    U     = u0 * (t_K - 273.15d0)                    ! [J kg^{-1}]
+    dU_dT = u0                                       ! [J kg^{-1} K^{-1}]
+    dU_dP = 0.d0                                     ! [J kg^{-1} Pa^{-1}]
 
-    H     = U + P/den                     ! [J kg^{-1}]
-    dH_dT = dU_dT - P/(den**2.d0)*dden_dT ! [J kg^{-1} K^{-1}]
+    H     = U + P/den                                ! [J kg^{-1}]
+    dH_dT = dU_dT - P/(den**2.d0)*dden_dT            ! [J kg^{-1} K^{-1}]
+    dH_dP = dU_dP + 1.d0/den - P/(den**2.d0)*dden_dP ! [J kg^{-1} Pa^{-1}]
 
-    U     = U * FMWH2O                    ! [J kmol^{-1}]
-    H     = H * FMWH2O                    ! [J kmol^{-1}]
-    dU_dT = dU_dT * FMWH2O                ! [J kmol^{-1} K^{-1}]
-    dH_dT = dH_dT * FMWH2O                ! [J kmol^{-1} K^{-1}]
+    U     = U * FMWH2O                               ! [J kmol^{-1}]
+    H     = H * FMWH2O                               ! [J kmol^{-1}]
+    dU_dT = dU_dT * FMWH2O                           ! [J kmol^{-1} K^{-1}]
+    dH_dT = dH_dT * FMWH2O                           ! [J kmol^{-1} K^{-1}]
+    dH_dP = dH_dP * FMWH2O                           ! [J kmol^{-1} Pa^{-1}]
 
   end subroutine InternalEnergyAndEnthalpyConstant
 
   !------------------------------------------------------------------------
-  subroutine InternalEnergyAndEnthalpyIFC67(P, t_K, den, dden_dT, &
-       U, H, dU_dT, dH_dT)
+  subroutine InternalEnergyAndEnthalpyIFC67(P, t_K, den, dden_dT, dden_dP, &
+       U, H, dU_dT, dH_dT, dU_dP, dH_dP)
     !
     ! !DESCRIPTION:
     ! Return internal energy of water
@@ -674,14 +682,16 @@ contains
     PetscReal, intent(in)  :: T_K      ! [K]
     PetscReal, intent(in)  :: den      ! [kg m^{-3}]
     PetscReal, intent(in)  :: dden_dT  ! [kg m^{-3} K^{-1}]
+    PetscReal, intent(in)  :: dden_dP  ! [kg m^{-3} Pa^{-1}]
     PetscReal, intent(out) :: U        ! [J kmol^{-1}]
     PetscReal, intent(out) :: H        ! [J kmol^{-1}]
     PetscReal, intent(out) :: dU_dT    ! [J kmol^{-1} K^{-1}]
     PetscReal, intent(out) :: dH_dT    ! [J kmol^{-1} K^{-1}]
+    PetscReal, intent(out) :: dU_dP    ! [J kmol^{-1} Pa^{-1}]
+    PetscReal, intent(out) :: dH_dP    ! [J kmol^{-1} Pa^{-1}]
     !
     PetscReal, parameter   :: u0 = 4.217 * 1.d3 ! [J kg^{-1} K^{-1}]
     PetscReal              :: T_C
-    PetscReal              :: dh_dP
     PetscBool              :: cal_deriv
     PetscErrorCode         :: ierr
 
@@ -693,6 +703,7 @@ contains
     U = H - P / (den/FMWH2O)
 
     dU_dT = dH_dT + P/((den/FMWH2O)**2.d0)*(dden_dT/FMWH2O)
+    dU_dP = dH_dP - 1.d0/(den/FMWH2O) + P/((den/FMWH2O)**2.d0)*(dden_dP/FMWH2O)
 
   end subroutine InternalEnergyAndEnthalpyIFC67
 

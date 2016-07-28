@@ -63,8 +63,8 @@ module SystemOfEquationsThermalEnthalpyType
      procedure, public :: CreateVectorsForGovEqn => SOEThermalEnthalpyCreateVectorsForGovEqn
      procedure, public :: Residual               => SOEThermalEnthalpyResidual
      procedure, public :: Jacobian               => SOEThermalEnthalpyJacobian
-     procedure, public :: PostSolve => SOEThermalEnthalpyPostSolve
-     procedure, public :: PostStepDT => SOEThermalEnthalpyPostStepDT
+     procedure, public :: PostSolve              => SOEThermalEnthalpyPostSolve
+     procedure, public :: PostStepDT             => SOEThermalEnthalpyPostStepDT
 
   end type sysofeqns_thermal_enthalpy_type
 
@@ -110,10 +110,13 @@ contains
     ! Adds a governing equation to system-of-equations
     !
     ! !USES:
-    use SystemOfEquationsBaseType, only : SOEBaseInit
-    use MultiPhysicsProbConstants, only : GE_THERM_SOIL_EBASED
-    use MultiPhysicsProbConstants, only : MESH_CLM_THERMAL_SOIL_COL
-    use GoverningEquationBaseType, only : goveqn_base_type
+    use SystemOfEquationsBaseType     , only : SOEBaseInit
+    use MultiPhysicsProbConstants     , only : GE_THERM_SOIL_EBASED
+    use MultiPhysicsProbConstants     , only : MESH_CLM_THERMAL_SOIL_COL
+    use MultiPhysicsProbConstants     , only : GE_RE
+    use MultiPhysicsProbConstants     , only : MESH_CLM_SOIL_COL
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
     !
     implicit none
     !
@@ -124,6 +127,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     class (goveqn_thermal_enthalpy_soil_type) , pointer :: goveq_soil
+    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
     class(goveqn_base_type)                   , pointer :: cur_goveqn
     integer                                             :: igoveqn
 
@@ -149,6 +153,21 @@ contains
              this%goveqns => goveq_soil
           else
              cur_goveqn%next => goveq_soil
+          endif
+
+       case (GE_RE)
+
+          allocate(goveq_richards)
+          call goveq_richards%Setup()
+
+          goveq_richards%name        = trim(name)
+          goveq_richards%id_in_list  = this%ngoveqns
+          goveq_richards%mesh_itype  = MESH_CLM_THERMAL_SOIL_COL
+
+          if (this%ngoveqns == 1) then
+             this%goveqns => goveq_richards
+          else
+             cur_goveqn%next => goveq_richards
           endif
 
        case default
@@ -388,6 +407,11 @@ contains
 
              call cur_goveq%UpdateAuxVars()
              call cur_goveq%PreSolve()
+
+          class default
+             write(iulog,*) 'Unknown goveqn_type'
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+
           end select
           cur_goveq => cur_goveq%next
        enddo
@@ -939,6 +963,7 @@ contains
     ! !USES:
     use GoverningEquationBaseType     , only : goveqn_base_type
     use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
     !
     implicit none
     !
@@ -953,6 +978,10 @@ contains
        select type(cur_goveq)
        class is (goveqn_thermal_enthalpy_soil_type)
           call cur_goveq%CreateVectors()
+
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%CreateVectors()
+
        class default
           write(iulog,*) 'Unsupported cur_goveq type'
           call endrun(msg=errMsg(__FILE__, __LINE__))
