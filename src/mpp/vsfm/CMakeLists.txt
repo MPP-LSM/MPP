@@ -4,9 +4,10 @@ set(MPP_VSFM_SOURCES
   PorosityFunctionMod.F90
   RichardsMod.F90
   RichardsODEPressureAuxType.F90
+  RichardsODEPressureAuxMod.F90
   SaturationFunction.F90
   SystemOfEquationsVSFMAuxType.F90
-  SystemOfEquationsVSFMType.F90
+  SystemOfEquationsVSFMType.F90  
   )
 
 #include_directories(${CMAKE_BINARY_DIR}/src/stub_clm)

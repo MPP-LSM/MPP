@@ -46,10 +46,12 @@ module RichardsODEPressureAuxType
      PetscReal :: den             ! [kg m^{-3}]
 
      PetscReal :: dvis_dP         ! [s]
+     PetscReal :: dvis_dT         ! [Pa s K^{-1}]
      PetscReal :: dpor_dP         ! [Pa^{-1}]
      PetscReal :: dkr_dP          ! [Pa^{-1}]
      PetscReal :: dsat_dP         ! [Pa^{-1}]
      PetscReal :: dden_dP         ! [kg m^{-3} Pa^{-1}]
+     PetscReal :: dden_dT         ! [kmol m^{-3} K^{-1}]
 
      type(porosity_params_type)   :: porParams
      type(saturation_params_type) :: satParams
@@ -101,10 +103,13 @@ contains
 
     this%vis                     = 0.d0
     this%dvis_dP                 = 0.d0
+    this%dvis_dT                 = 0.d0
     this%dpor_dP                 = 0.d0
     this%dkr_dP                  = 0.d0
     this%dsat_dP                 = 0.d0
     this%dden_dP                 = 0.d0
+    this%dden_dT                 = 0.d0
+
     this%density_type            = DENSITY_CONSTANT
 
   end subroutine RichODEPressureAuxVarInit
@@ -238,10 +243,6 @@ contains
     !
     ! !ARGUMENTS
     class(rich_ode_pres_auxvar_type)   :: this
-    !
-    ! LOCAL VARIABLES
-    PetscReal :: dden_dT
-    PetscReal :: dvis_dT
 
     ! Compute saturation
     call SatFunc_PressToSat(this%satParams , &
@@ -264,7 +265,7 @@ contains
          this%density_type                          , &
          this%den                                   , &
          this%dden_dP                               , &
-         dden_dT                                      &
+         this%dden_dT                                 &
          )
 
     ! Compute viscosity
@@ -272,7 +273,7 @@ contains
          this%temperature                           , &
          this%vis                                   , &
          this%dvis_dP                               , &
-         dvis_dT                                      &
+         this%dvis_dT                                 &
          )
 
     ! Compute porosity

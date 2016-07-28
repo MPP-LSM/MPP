@@ -9,8 +9,8 @@ module GoveqnRichardsODEPressureType
 
   ! !USES:
   use mpp_varctl                    , only : iulog
-  use mpp_abortutils                    , only : endrun
-  use mpp_shr_log_mod                   , only : errMsg => shr_log_errMsg
+  use mpp_abortutils                , only : endrun
+  use mpp_shr_log_mod               , only : errMsg => shr_log_errMsg
   use GoverningEquationBaseType     , only : goveqn_base_type
   use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
   !
@@ -49,6 +49,7 @@ module GoveqnRichardsODEPressureType
      procedure, public :: JacobianOffDiag           => RichardsODEJacOffDiag
 
      procedure, public :: GetFromSOEAuxVarsIntrn    => RichardsODEPressureGetFromSOEAuxVarsIntrn
+     procedure, public :: SetFromSOEAuxVarsIntrn    => RichardsODEPressureSetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC       => RichardsODEPressureGetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS       => RichardsODEPressureGetFromSOEAuxVarsSS
      procedure, public :: GetDataFromSOEAuxVar      => RichardsODEPressureGetDataFromSOEAuxVar
@@ -198,6 +199,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_DENSITY_TYPE
     use EOSWaterMod               , only : DENSITY_CONSTANT
     use EOSWaterMod               , only : DENSITY_TGDPB01
+    use EOSWaterMod               , only : DENSITY_IFC67
     !
     implicit none
     !
@@ -210,9 +212,10 @@ contains
     PetscInt                                 :: icond
 
     if (density_type /= DENSITY_CONSTANT .and. &
-        density_type /= DENSITY_TGDPB01        &
+        density_type /= DENSITY_TGDPB01  .and. &
+        density_type /= DENSITY_IFC67          &
         ) then
-       write(iulog,*) 'In RichardsODEPressureAuxVarsSetDensityType: unknown value for VAR_DENSITY_TYPE'
+       write(iulog,*) 'Unknown value for VAR_DENSITY_TYPE'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
@@ -497,6 +500,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : GE_RE
+    use MultiPhysicsProbConstants, only : GE_THERM_SOIL_EBASED
     !
     implicit none
     !
@@ -516,6 +520,8 @@ contains
     select case(id_of_other_goveq)
     case (GE_RE)
        call RichardsODEPressureJacOffDiag_BC(this, list_id_of_other_goveq, B, ierr)
+    case (GE_THERM_SOIL_EBASED)
+       call RichardsODEPressureJacOffDiag_Temp(this, B, ierr)
     case default
        write(string,*) id_of_other_goveq
        write(iulog,*) 'Unknown id_of_other_goveq = ' // trim(string)
@@ -580,6 +586,61 @@ contains
 
   end subroutine RichardsODEPressureGetFromSOEAuxVarsIntrn
 
+  !------------------------------------------------------------------------
+  subroutine RichardsODEPressureSetFromSOEAuxVarsIntrn(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Sets values in GE auxiliary variables of internal nodes
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants     , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants     , only : VAR_PRESSURE
+    use MultiPhysicsProbConstants     , only : VAR_FRAC_LIQ_SAT
+    use SystemOfEquationsVSFMAuxType  , only : sysofeqns_vsfm_auxvar_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type), intent(inout)       :: this
+    PetscInt, intent(in) :: var_type
+    PetscInt, intent(in) :: ndata
+    PetscReal, intent(in), pointer :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt                                                      :: iauxvar
+    PetscInt                                                      :: nauxvar
+    type(rich_ode_pres_auxvar_type), dimension(:), pointer        :: ge_avars
+
+    ge_avars => this%aux_vars_in
+
+    nauxvar = size(ge_avars)
+    if( nauxvar /= ndata ) then
+       write(iulog,*) 'size(ge_avars) /= ndata'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    select case (var_type)
+    case (VAR_TEMPERATURE)
+       do iauxvar = 1, nauxvar
+          ge_avars(iauxvar)%temperature = data(iauxvar)
+       enddo
+
+       case (VAR_FRAC_LIQ_SAT)
+          do iauxvar = 1, nauxvar
+             ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
+          enddo
+
+       case (VAR_PRESSURE)
+          do iauxvar = 1, nauxvar
+             ge_avars(iauxvar)%pressure = data(iauxvar)
+          enddo
+
+       case default
+          write(iulog,*) 'Unknown var_type = ', var_type
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+       end select
+
+  end subroutine RichardsODEPressureSetFromSOEAuxVarsIntrn
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureGetFromSOEAuxVarsBC(this, soe_avars)
@@ -1822,6 +1883,156 @@ contains
     enddo
 
   end subroutine RichardsODEPressureJacOffDiag_BC
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODEPressureJacOffDiag_Temp(this, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of residual equation with respect to
+    ! temperature
+    !
+    ! !USES:
+    use RichardsMod               , only : RichardsFluxDerivativeWrtTemperature
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants , only : COND_NULL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) :: this
+    Mat                                      :: B
+    PetscErrorCode                           :: ierr
+    !
+    ! !LOCAL VARIABLES
+    PetscInt                                 :: iconn
+    PetscInt                                 :: sum_conn
+    PetscInt                                 :: cell_id_dn
+    PetscInt                                 :: cell_id_up
+    PetscInt                                 :: cell_id
+    PetscInt                                 :: row
+    PetscInt                                 :: col
+    PetscReal                                :: dummy_var
+    PetscReal                                :: Jup
+    PetscReal                                :: Jdn
+    PetscReal                                :: val
+    PetscBool                                :: compute_deriv
+    PetscBool                                :: internal_conn
+    PetscInt                                 :: cond_type
+    type(condition_type),pointer             :: cur_cond
+    type(connection_set_type), pointer       :: cur_conn_set
+    PetscReal                                :: por
+    PetscReal                                :: den
+    PetscReal                                :: sat
+    PetscReal                                :: dpor_dT
+    PetscReal                                :: dden_dT
+    PetscReal                                :: dsat_dT
+    PetscReal                                :: derivative
+    PetscReal                                :: dtInv
+
+    dtInv = 1.d0 / this%dtime
+
+    ! Interior cells
+    do cell_id = 1, this%mesh%ncells_local
+
+       if (this%mesh%is_active(cell_id) ) then
+          por     = this%aux_vars_in(cell_id)%por
+          den     = this%aux_vars_in(cell_id)%den
+          sat     = this%aux_vars_in(cell_id)%sat
+
+          dpor_dT = 0.d0
+          dden_dT = this%aux_vars_in(cell_id)%dden_dT
+          dsat_dT = 0.d0
+
+          derivative = (dpor_dT*den    *sat     + &
+                        por    *dden_dT*sat     + &
+                        por    *den    *dsat_dT   )*this%mesh%vol(cell_id) * dtInv
+
+       else
+          derivative = 1.d0
+       endif
+
+       row = cell_id - 1
+       col = cell_id - 1
+
+       call MatSetValuesLocal(B, 1, row, 1, col, derivative, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+    enddo
+
+    compute_deriv = PETSC_TRUE
+
+    ! Interior cells
+    cur_conn_set => this%mesh%intrn_conn_set_list%first
+    sum_conn = 0
+    do
+       if (.not.associated(cur_conn_set)) exit
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+
+          cell_id_up = cur_conn_set%id_up(sum_conn)
+          cell_id_dn = cur_conn_set%id_dn(sum_conn)
+
+          internal_conn = PETSC_TRUE
+          cond_type     = COND_NULL
+
+          if ( (.not. this%mesh%is_active(cell_id_up)) .or. &
+               (.not. this%mesh%is_active(cell_id_dn)) ) cycle
+
+          call RichardsFluxDerivativeWrtTemperature(  &
+               this%aux_vars_in(cell_id_up)%pressure, &
+               this%aux_vars_in(cell_id_up)%kr,       &
+               this%aux_vars_in(cell_id_up)%den,      &
+               this%aux_vars_in(cell_id_up)%dden_dT,  &
+               this%aux_vars_in(cell_id_up)%vis,      &
+               this%aux_vars_in(cell_id_up)%dvis_dT,  &
+               this%aux_vars_in(cell_id_up)%perm,     &
+               this%aux_vars_in(cell_id_dn)%pressure, &
+               this%aux_vars_in(cell_id_dn)%kr,       &
+               this%aux_vars_in(cell_id_dn)%den,      &
+               this%aux_vars_in(cell_id_dn)%dden_dT,  &
+               this%aux_vars_in(cell_id_dn)%vis,      &
+               this%aux_vars_in(cell_id_dn)%dvis_dT,  &
+               this%aux_vars_in(cell_id_dn)%perm,     &
+               cur_conn_set%area(iconn),              &
+               cur_conn_set%dist_up(iconn),           &
+               cur_conn_set%dist_dn(iconn),           &
+               cur_conn_set%dist_unitvec(iconn)%arr,  &
+               compute_deriv,                         &
+               internal_conn,                         &
+               cond_type,                             &
+               dummy_var,                             &
+               Jup,                                   &
+               Jdn                                    &
+               )
+
+          row = cell_id_up - 1
+          col = cell_id_up - 1
+          val = -Jup
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          row = cell_id_up - 1
+          col = cell_id_dn - 1
+          val = -Jdn
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          row = cell_id_dn - 1
+          col = cell_id_up - 1
+          val = Jup
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          row = cell_id_dn - 1
+          col = cell_id_dn - 1
+          val = Jdn
+          call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+       enddo
+
+       cur_conn_set => cur_conn_set%next
+    enddo
+
+  end subroutine RichardsODEPressureJacOffDiag_Temp
 
   !------------------------------------------------------------------------
   subroutine RichardsODEComputeLateralFlux(this)

@@ -25,6 +25,7 @@ contains
     ! !DESCRIPTION:
     !
     use MultiPhysicsProbConstants, only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants, only : VAR_PRESSURE
     !
     implicit none
     !
@@ -51,9 +52,13 @@ contains
           auxvars(auxvar_ids(iauxvar))%temperature = data_1d(iauxvar)
        enddo
 
+    case (VAR_PRESSURE)
+       do iauxvar = 1, size(data_1d)
+          auxvars(auxvar_ids(iauxvar))%pressure = data_1d(iauxvar)
+       enddo
 
     case default
-       write(iulog,*) 'In ThermKSPTempSoilAuxVarSetValue: unknown var_type'
+       write(iulog,*) 'Unknown var_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
