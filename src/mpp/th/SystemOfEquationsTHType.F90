@@ -62,6 +62,7 @@ module SystemOfEquationsTHType
      procedure, public :: Jacobian               => SOETHJacobian
 
      procedure, public :: SetDataFromCLM         => SOETHSetDataFromCLM
+     procedure, public :: GetDataForCLM          => SOETHGetDataForCLM
 
      !procedure, public :: SetSolnPrevCLM         => SOETHSetSolnPrevCLM
      !procedure, public :: GetSoln                => SOETHGetSoln
@@ -945,9 +946,6 @@ contains
          X_subvecs, ierr); CHKERRQ(ierr)
     call DMCompositeRestoreAccessArray(this%dm, F, nDM, PETSC_NULL_INTEGER, &
          F_subvecs, ierr); CHKERRQ(ierr)
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'residual_th.bin',FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-    call VecView(F,viewer,ierr);CHKERRQ(ierr)
-    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     
     ! Free memory
     deallocate(dms)
@@ -1095,9 +1093,6 @@ contains
     deallocate(X_subvecs )
     deallocate(is        )
     deallocate(B_submats )
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'jacobian_th.bin',FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-    call MatView(B,viewer,ierr);CHKERRQ(ierr)
-    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
   end subroutine SOETHJacobian
 
@@ -1160,6 +1155,66 @@ contains
          nauxvar, iauxvar_off, data_1d)
 
   end subroutine SOETHSetDataFromCLM
+
+  !------------------------------------------------------------------------
+  subroutine SOETHGetDataForCLM(this, soe_auxvar_type, var_type, &
+       soe_auxvar_id, data_1d)
+    !
+    ! !DESCRIPTION:
+    ! Used by CLM to set values of boundary conditions and source-sink
+    ! terms for the VSFM solver.
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : SOE_RE_ODE
+    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants, only : AUXVAR_BC
+    use MultiPhysicsProbConstants, only : AUXVAR_SS
+    use SystemOfEquationsThermalEnthalpyAuxMod, only : SOEThermalEnthalpyAuxGetRData
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_th_type)          :: this
+    PetscInt, intent(in)                                   :: var_type
+    PetscInt                                               :: soe_auxvar_type
+    PetscInt                                               :: soe_auxvar_id
+    PetscReal                                              :: data_1d(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                                               :: iauxvar
+    PetscInt                                               :: iauxvar_off
+    PetscInt                                               :: nauxvar
+    type (sysofeqns_thermal_enthalpy_auxvar_type), pointer :: auxvars(:)
+
+    select case(soe_auxvar_type)
+    case(AUXVAR_INTERNAL)
+       auxvars      => this%aux_vars_in
+       iauxvar_off  = 0
+       nauxvar      = this%num_auxvars_in
+    case(AUXVAR_BC)
+       auxvars      => this%aux_vars_bc
+       iauxvar_off  = this%soe_auxvars_bc_offset(soe_auxvar_id)
+       nauxvar      = this%soe_auxvars_bc_ncells(soe_auxvar_id)
+    case(AUXVAR_SS)
+       auxvars      => this%aux_vars_ss
+       iauxvar_off  = this%soe_auxvars_ss_offset(soe_auxvar_id)
+       nauxvar      = this%soe_auxvars_ss_ncells(soe_auxvar_id)
+    case default
+       write(iulog,*) 'VSFMSOESetDataFromCLM: Unknown soe_auxvar_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    if (size(data_1d) > nauxvar) then
+       write(iulog,*) 'VSFMSOESetDataFromCLM: size(data_1d) > nauxvar'
+       write(iulog,*) 'size(data_1d) = ',size(data_1d)
+       write(iulog,*) 'nauxvar       = ', nauxvar
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    call SOEThermalEnthalpyAuxGetRData(auxvars, var_type, &
+         nauxvar, iauxvar_off, data_1d)
+
+  end subroutine SOETHGetDataForCLM
 
 #endif
 
