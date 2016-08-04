@@ -1,6 +1,6 @@
 before_script:
   - apt-get update -qq
-  - apt-get install -y cmake gcc libopenmpi-dev openmpi-bin liblapack-dev gfortran mercurial git netcdf-bin libnetcdf-dev
+  - apt-get install -y cmake gcc libopenmpi-dev openmpi-bin liblapack-dev gfortran mercurial git netcdf-bin libnetcdf-dev python-dev
 
 tests:
   script:
@@ -8,5 +8,8 @@ tests:
     - export PETSC_DIR=$PWD/petsc; export PETSC_ARCH=linux-gnu
     - make VERBOSE=1 config
     - make VERBOSE=1 all
-    - make VERBOSE=a test
+    - make VERBOSE=1 install
+    - make VERBOSE=1 test || EXIT_CODE=$?
+    - cat regression_tests/*testlog
+    - exit ${EXIT_CODE}
 

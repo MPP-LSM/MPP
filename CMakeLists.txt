@@ -163,5 +163,11 @@ enable_testing()
 include_directories("${PROJECT_SOURCE_DIR}")
 add_subdirectory(src)
 
+add_test(
+NAME regression_tests
+COMMAND regression_tests.py --backtrace --executable ../local/bin/standalone_mpp
+WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/regression_tests
+)
+
 
 

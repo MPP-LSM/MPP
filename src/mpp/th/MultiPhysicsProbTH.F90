@@ -512,129 +512,123 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    if (dae_eqn) then
-       write(iulog,*)'DAE formulation of Richards equation is not supported'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    else
 
-       ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
+    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
 
-       ! In first pass, set hydraulic properties for soil columns that are
-       ! active in CLM
+    ! In first pass, set hydraulic properties for soil columns that are
+    ! active in CLM
 
-       do c = begc, endc + ncols_ghost
-          do j = 1, nlevgrnd
+    do c = begc, endc + ncols_ghost
+       do j = 1, nlevgrnd
 
-             icell = (c - begc)*nlevgrnd + j
-             if (filter_vsfmc(c) == 1 ) then
-                ! Columns on which hydrology is performed
-                col_id = c
-             else
-                col_id = first_active_hydro_col_id
-             endif
+          icell = (c - begc)*nlevgrnd + j
+          if (filter_vsfmc(c) == 1 ) then
+             ! Columns on which hydrology is performed
+             col_id = c
+          else
+             col_id = first_active_hydro_col_id
+          endif
 
-             ! perm = hydraulic-conductivity * viscosity / ( density * gravity )
-             ![m^2]  [mm/sec]   * [Ns/m^2] /([kg/m^3] * [m/s^2]) * [m/mm]
-             perm  = hksat(col_id,j) * vish2o   /(denh2o   * grav   ) * 0.001d0
+          ! perm = hydraulic-conductivity * viscosity / ( density * gravity )
+          ![m^2]  [mm/sec]   * [Ns/m^2] /([kg/m^3] * [m/s^2]) * [m/mm]
+          perm  = hksat(col_id,j) * vish2o   /(denh2o   * grav   ) * 0.001d0
 
-             ! alpha [1/Pa]; while sucsat [mm of H20]
-             ! [Pa] = [mm of H20] * 0.001 [m/mm] * 1000 [kg/m^3] * 9.81 [m/sec^2]
-             alpha = 1.d0/(sucsat(col_id,j)*grav)
+          ! alpha [1/Pa]; while sucsat [mm of H20]
+          ! [Pa] = [mm of H20] * 0.001 [m/mm] * 1000 [kg/m^3] * 9.81 [m/sec^2]
+          alpha = 1.d0/(sucsat(col_id,j)*grav)
 
-             ! lambda = 1/bsw
-             lambda = 1.d0/bsw(col_id,j)
+          ! lambda = 1/bsw
+          lambda = 1.d0/bsw(col_id,j)
 
-             sat_res = residual_sat(col_id,j)
-             por = watsat(col_id,j)
+          sat_res = residual_sat(col_id,j)
+          por = watsat(col_id,j)
 
-             ode_aux_vars_in(icell)%perm(1:3) = perm
-             ode_aux_vars_in(icell)%por       = por
+          ode_aux_vars_in(icell)%perm(1:3) = perm
+          ode_aux_vars_in(icell)%por       = por
 
-             call PorosityFunctionSetConstantModel(ode_aux_vars_in(icell)%porParams, &
-                  ode_aux_vars_in(icell)%por)
+          call PorosityFunctionSetConstantModel(ode_aux_vars_in(icell)%porParams, &
+               ode_aux_vars_in(icell)%por)
 
-             if (vsfm_satfunc_type == 'brooks_corey') then
-                call SatFunc_Set_BC(ode_aux_vars_in(icell)%satParams,      &
-                                    sat_res,                               &
-                                    alpha,                                 &
-                                    lambda)
-             elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz2') then
-                call SatFunc_Set_SBC_bz2(ode_aux_vars_in(icell)%satParams, &
-                                         sat_res,                          &
-                                         alpha,                            &
-                                         lambda,                           &
-                                         -0.9d0/alpha)
-             elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz3') then
-                call SatFunc_Set_SBC_bz3(ode_aux_vars_in(icell)%satParams, &
-                                         sat_res,                          &
-                                         alpha,                            &
-                                         lambda,                           &
-                                         -0.9d0/alpha)
-             elseif (vsfm_satfunc_type == 'van_genuchten') then
-                call SatFunc_Set_VG(ode_aux_vars_in(icell)%satParams,      &
-                                    sat_res,                               &
-                                    alpha,                                 &
-                                    lambda)
-             else
-                call endrun(msg='ERROR:: Unknown vsfm_satfunc_type = '//vsfm_satfunc_type//&
+          if (vsfm_satfunc_type == 'brooks_corey') then
+             call SatFunc_Set_BC(ode_aux_vars_in(icell)%satParams,      &
+                  sat_res,                               &
+                  alpha,                                 &
+                  lambda)
+          elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz2') then
+             call SatFunc_Set_SBC_bz2(ode_aux_vars_in(icell)%satParams, &
+                  sat_res,                          &
+                  alpha,                            &
+                  lambda,                           &
+                  -0.9d0/alpha)
+          elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz3') then
+             call SatFunc_Set_SBC_bz3(ode_aux_vars_in(icell)%satParams, &
+                  sat_res,                          &
+                  alpha,                            &
+                  lambda,                           &
+                  -0.9d0/alpha)
+          elseif (vsfm_satfunc_type == 'van_genuchten') then
+             call SatFunc_Set_VG(ode_aux_vars_in(icell)%satParams,      &
+                  sat_res,                               &
+                  alpha,                                 &
+                  lambda)
+          else
+             call endrun(msg='ERROR:: Unknown vsfm_satfunc_type = '//vsfm_satfunc_type//&
                   errMsg(__FILE__, __LINE__))
-             endif
+          endif
 
-          enddo
        enddo
+    enddo
 
-       ! Set soil properties for boundary-condition auxvars
-       sum_conn = 0
-       ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
-       cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
+    ! Set soil properties for boundary-condition auxvars
+    sum_conn = 0
+    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
+    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
 
-       do
-          if (.not.associated(cur_cond)) exit
-          cur_conn_set => cur_cond%conn_set
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
 
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%id_dn(iconn)
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
 
-             ode_aux_vars_bc(sum_conn)%perm(:)       = ode_aux_vars_in(ghosted_id)%perm(:)
-             ode_aux_vars_bc(sum_conn)%por           = ode_aux_vars_in(ghosted_id)%por
-             ode_aux_vars_bc(sum_conn)%satParams     = ode_aux_vars_in(ghosted_id)%satParams
-             ode_aux_vars_bc(sum_conn)%porParams     = ode_aux_vars_in(ghosted_id)%porParams
+          ode_aux_vars_bc(sum_conn)%perm(:)       = ode_aux_vars_in(ghosted_id)%perm(:)
+          ode_aux_vars_bc(sum_conn)%por           = ode_aux_vars_in(ghosted_id)%por
+          ode_aux_vars_bc(sum_conn)%satParams     = ode_aux_vars_in(ghosted_id)%satParams
+          ode_aux_vars_bc(sum_conn)%porParams     = ode_aux_vars_in(ghosted_id)%porParams
 
-             ode_aux_vars_bc(sum_conn)%pressure_prev = 3.5355d3
+          ode_aux_vars_bc(sum_conn)%pressure_prev = 3.5355d3
 
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+          call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
 
-          enddo
-          cur_cond => cur_cond%next
        enddo
+       cur_cond => cur_cond%next
+    enddo
 
-       ! Set soil properties for source-sink auxvars
-       sum_conn = 0
+    ! Set soil properties for source-sink auxvars
+    sum_conn = 0
 
-       ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
-       cur_cond        => goveq_richards_ode_pres%source_sinks%first
+    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
+    cur_cond        => goveq_richards_ode_pres%source_sinks%first
 
-       do
-          if (.not.associated(cur_cond)) exit
-          cur_conn_set => cur_cond%conn_set
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
 
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%id_dn(iconn)
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
 
-             ode_aux_vars_ss(sum_conn)%perm(:)       = ode_aux_vars_in(ghosted_id)%perm(:)
-             ode_aux_vars_ss(sum_conn)%por           = ode_aux_vars_in(ghosted_id)%por
-             ode_aux_vars_ss(sum_conn)%satParams     = ode_aux_vars_in(ghosted_id)%satParams
-             ode_aux_vars_ss(sum_conn)%porParams     = ode_aux_vars_in(ghosted_id)%porParams
+          ode_aux_vars_ss(sum_conn)%perm(:)       = ode_aux_vars_in(ghosted_id)%perm(:)
+          ode_aux_vars_ss(sum_conn)%por           = ode_aux_vars_in(ghosted_id)%por
+          ode_aux_vars_ss(sum_conn)%satParams     = ode_aux_vars_in(ghosted_id)%satParams
+          ode_aux_vars_ss(sum_conn)%porParams     = ode_aux_vars_in(ghosted_id)%porParams
 
-             ode_aux_vars_ss(sum_conn)%pressure_prev = 3.5355d3
+          ode_aux_vars_ss(sum_conn)%pressure_prev = 3.5355d3
 
-          enddo
-          cur_cond => cur_cond%next
        enddo
-
-    endif
+       cur_cond => cur_cond%next
+    enddo
 
   end subroutine MPPTHSetSoilsForVSFM
 
