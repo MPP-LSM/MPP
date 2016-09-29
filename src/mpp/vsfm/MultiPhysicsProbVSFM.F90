@@ -50,6 +50,7 @@ module MultiPhysicsProbVSFM
      procedure, public :: AllocateAuxVars              => VSFMMPPAllocateAuxVars
      procedure, public :: SetupProblem                 => VSFMMPPSetupProblem
      procedure, public :: GovEqnUpdateConditionConnSet => VSFMMPPGovEqnUpdateConditionConnSet
+     procedure, public :: GovEqnSetCouplingVars        => VSFMMPPGovEqnSetCouplingVars
 
   end type mpp_vsfm_type
 
@@ -1321,6 +1322,131 @@ contains
     enddo
 
   end subroutine VSFMMPPAllocateAuxVars
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPGovEqnSetCouplingVars(this, igoveqn, nvars, &
+       var_ids, goveqn_ids)
+    !
+    ! !DESCRIPTION:
+    ! In order to couple the given governing equation, add:
+    ! - ids of variables needed, and
+    ! - ids of governing equations from which variables are needed.
+    ! needed for coupling
+    ! 
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)              :: this
+    PetscInt                          :: igoveqn
+    PetscInt                          :: nvars
+    PetscInt, pointer                 :: var_ids(:)
+    PetscInt, pointer                 :: goveqn_ids(:)
+    !
+    class(goveqn_base_type) , pointer :: cur_goveq_1
+    class(goveqn_base_type) , pointer :: cur_goveq_2
+    type(condition_type)    , pointer :: cur_cond_1
+    type(condition_type)    , pointer :: cur_cond_2
+    PetscInt                          :: ii
+    PetscInt                          :: ivar
+    PetscInt                          :: bc_idx_1
+    PetscInt                          :: bc_idx_2
+    PetscInt                          :: bc_offset_1
+    PetscBool                         :: bc_found
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to set coupling vars for governing ' // &
+            'equation that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq_1 => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq_1 => cur_goveq_1%next
+    end do
+
+    call cur_goveq_1%AllocVarsFromOtherGEs(nvars)
+
+    do ivar = 1, nvars
+
+       if (goveqn_ids(ivar) > this%sysofeqns%ngoveqns) then
+          write(iulog,*) 'Attempting to set coupling vars to a governing ' // &
+               'equation that is not in the list'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+       endif
+
+       bc_found    = PETSC_FALSE
+       bc_idx_1    = 1
+       bc_offset_1 = 0
+
+       cur_cond_1 => cur_goveq_1%boundary_conditions%first
+       do
+          if (.not.associated(cur_cond_1)) exit
+
+          ! Is this the appropriate BC?
+          if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ .and. &
+              cur_cond_1%list_id_of_other_goveq == goveqn_ids(ivar) ) then
+             bc_found = PETSC_TRUE
+             exit
+          endif
+
+          bc_idx_1    = bc_idx_1    + 1
+          bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
+
+          cur_cond_1 => cur_cond_1%next
+       enddo
+
+       if (.not.bc_found) then
+          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
+               ', no coupling boundary condition found to copule it with ' // &
+               'equation_number = ', goveqn_ids(ivar)
+       endif
+
+       cur_goveq_2 => this%sysofeqns%goveqns
+       do ii = 1, goveqn_ids(ivar)-1
+          cur_goveq_2 => cur_goveq_2%next
+       enddo
+
+       bc_found    = PETSC_FALSE
+       bc_idx_2    = 1
+
+       cur_cond_2 => cur_goveq_2%boundary_conditions%first
+       do
+          if (.not.associated(cur_cond_2)) exit
+
+          ! Is this the appropriate BC?
+          if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ .and. &
+               cur_cond_2%list_id_of_other_goveq == igoveqn ) then
+             bc_found = PETSC_TRUE
+             exit
+          endif
+
+          bc_idx_2    = bc_idx_2    + 1
+
+          cur_cond_2 => cur_cond_2%next
+       enddo
+
+       if (.not.bc_found) then
+          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
+               ', no coupling boundary condition found to copule it with ' // &
+               'equation_number = ', bc_idx_2
+       endif
+
+       cur_goveq_1%var_ids_needed_from_other_goveqns (ivar) = var_ids(ivar)
+       cur_goveq_1%ids_of_other_goveqns              (ivar) = goveqn_ids(ivar)
+       cur_goveq_1%is_bc_auxvar_type                 (ivar) = PETSC_TRUE
+       cur_goveq_1%bc_auxvar_offset                  (ivar) = bc_offset_1
+       cur_goveq_1%bc_auxvar_ncells                  (ivar) = cur_cond_1%conn_set%num_connections
+       cur_goveq_1%bc_auxvar_idx                     (ivar) = bc_idx_1
+       cur_goveq_1%bc_auxvar_idx_of_other_goveqn     (ivar) = bc_idx_2
+
+    enddo
+
+  end subroutine VSFMMPPGovEqnSetCouplingVars
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetupProblem(this)
