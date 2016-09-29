@@ -751,6 +751,8 @@ contains
     use MultiPhysicsProbConstants, only : MESH_CLM_THERMAL_SOIL_COL
     use MultiPhysicsProbConstants, only : MESH_CLM_SNOW_COL
     use MultiPhysicsProbConstants, only : MESH_CLM_SSW_COL
+    use MultiPhysicsProbConstants, only : MESH_SPAC_ROOT_COL
+    use MultiPhysicsProbConstants, only : MESH_SPAC_XYLEM_COL
     !
     implicit none
     !
@@ -760,7 +762,8 @@ contains
 
     select case(id)
     case (MESH_CLM_SOIL_COL, MESH_CLM_THERMAL_SOIL_COL, &
-          MESH_CLM_SNOW_COL, MESH_CLM_SSW_COL)
+         MESH_CLM_SNOW_COL, MESH_CLM_SSW_COL, MESH_SPAC_ROOT_COL, &
+         MESH_SPAC_XYLEM_COL)
        this%itype = id
 
     case default
