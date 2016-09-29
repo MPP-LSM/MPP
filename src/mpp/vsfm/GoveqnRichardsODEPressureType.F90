@@ -567,6 +567,8 @@ contains
     nauxvar = size(ge_avars)
     if( nauxvar > size(soe_avars) ) then
        write(iulog,*) 'size(ge_avars) > size(soe_avars)'
+       write(iulog,*) 'size(ge_avars)  ',size(ge_avars)
+       write(iulog,*) 'size(soe_avars) ',size(soe_avars)
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
@@ -659,6 +661,8 @@ contains
     use MultiPhysicsProbConstants   , only : COND_SEEPAGE_BC
     use MultiPhysicsProbConstants   , only : VAR_BC_SS_CONDITION
     use SystemOfEquationsVSFMAuxType, only : sysofeqns_vsfm_auxvar_type
+    use MultiPhysicsProbConstants   , only : COND_BC
+    use MultiPhysicsProbConstants   , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     !
     implicit none
     !
@@ -674,9 +678,21 @@ contains
     type(condition_type), pointer :: cur_cond
     type(connection_set_type), pointer :: cur_conn_set
     character(len=256) :: string
+    PetscInt :: num_bc, icond
+    PetscInt, pointer :: ncells_for_bc(:)
 
     ge_avars => this%aux_vars_bc
-    auxVarCt_ge = size(ge_avars)
+
+    call this%GetNumCellsInConditions(COND_BC, &
+         COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
+
+    auxVarCt_ge = 0
+    do icond = 1, num_bc
+       auxVarCt_ge = auxVarCt_ge + ncells_for_bc(icond)
+    enddo
+    if (associated(ncells_for_bc)) deallocate(ncells_for_bc)
+
+    if (auxVarCt_ge == 0) return
 
     auxVarCt_soe = size(soe_avars)
     if( auxVarCt_ge > auxVarCt_soe ) then
