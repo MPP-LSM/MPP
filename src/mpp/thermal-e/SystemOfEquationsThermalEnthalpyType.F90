@@ -105,7 +105,7 @@ contains
   end subroutine SOEThermalEnthalpyInit
 
   !------------------------------------------------------------------------
-  subroutine SOEThermalEnthalpyAddGovEqn(this, geq_type, name)
+  subroutine SOEThermalEnthalpyAddGovEqn(this, geq_type, name, mesh_itype)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation to system-of-equations
@@ -113,7 +113,6 @@ contains
     ! !USES:
     use SystemOfEquationsBaseType     , only : SOEBaseInit
     use MultiPhysicsProbConstants     , only : GE_THERM_SOIL_EBASED
-    use MultiPhysicsProbConstants     , only : MESH_CLM_THERMAL_SOIL_COL
     use MultiPhysicsProbConstants     , only : GE_RE
     use MultiPhysicsProbConstants     , only : MESH_CLM_SOIL_COL
     use GoverningEquationBaseType     , only : goveqn_base_type
@@ -125,6 +124,7 @@ contains
     class(sysofeqns_thermal_enthalpy_type)              :: this
     PetscInt                                            :: geq_type
     character(len=*)                                    :: name
+    PetscInt                                            :: mesh_itype
     !
     ! !LOCAL VARIABLES:
     class (goveqn_thermal_enthalpy_soil_type) , pointer :: goveq_soil
@@ -148,7 +148,7 @@ contains
 
           goveq_soil%name        = trim(name)
           goveq_soil%id_in_list  = this%ngoveqns
-          goveq_soil%mesh_itype  = MESH_CLM_THERMAL_SOIL_COL
+          goveq_soil%mesh_itype  = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_soil
@@ -163,7 +163,7 @@ contains
 
           goveq_richards%name        = trim(name)
           goveq_richards%id_in_list  = this%ngoveqns
-          goveq_richards%mesh_itype  = MESH_CLM_THERMAL_SOIL_COL
+          goveq_richards%mesh_itype  = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_richards

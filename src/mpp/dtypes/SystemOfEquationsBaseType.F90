@@ -759,7 +759,7 @@ contains
   end subroutine SOEBaseGetDataForCLM
 
   !------------------------------------------------------------------------
-  subroutine SOEBaseAddGovEqn(this, geq_type, name)
+  subroutine SOEBaseAddGovEqn(this, geq_type, name, mesh_itype)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation
@@ -770,6 +770,7 @@ contains
     class(sysofeqns_base_type) :: this
     PetscInt                   :: geq_type
     character(len =*)          :: name
+    PetscInt                   :: mesh_itype
 
     write(iulog,*) 'SOEBaseAddGovEqn must be extended'
     call endrun(msg=errMsg(__FILE__, __LINE__))

@@ -43,6 +43,8 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: MESH_CLM_THERMAL_SOIL_COL         = 302
   PetscInt, parameter, public :: MESH_CLM_SNOW_COL                 = 303
   PetscInt, parameter, public :: MESH_CLM_SSW_COL                  = 304
+  PetscInt, parameter, public :: MESH_SPAC_ROOT_COL                = 305
+  PetscInt, parameter, public :: MESH_SPAC_XYLEM_COL               = 306
   PetscInt, parameter, public :: MESH_ALONG_GRAVITY                = 311
   PetscInt, parameter, public :: MESH_AGAINST_GRAVITY              = 312
 
