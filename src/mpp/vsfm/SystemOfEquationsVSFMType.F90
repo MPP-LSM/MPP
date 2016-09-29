@@ -1278,7 +1278,7 @@ contains
   end subroutine VSFMSGetConditionNames
 
   !------------------------------------------------------------------------
-  subroutine VSFMAddGovEqn(this, geq_type, name)
+  subroutine VSFMAddGovEqn(this, geq_type, name, mesh_itype)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation to system-of-equations
@@ -1296,6 +1296,7 @@ contains
     class(sysofeqns_vsfm_type) :: this
     PetscInt                   :: geq_type
     character(len=*)           :: name
+    PetscInt                   :: mesh_itype
     !
     ! !LOCAL VARIABLES:
     class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
@@ -1318,7 +1319,7 @@ contains
 
           goveq_richards%name        = trim(name)
           goveq_richards%id_in_list  = this%ngoveqns
-          goveq_richards%mesh_itype  = MESH_CLM_SOIL_COL
+          goveq_richards%mesh_itype  = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_richards

@@ -1004,7 +1004,7 @@ contains
   end subroutine VSFMMPPSetMeshesOfGoveqns
 
   !------------------------------------------------------------------------
-  subroutine VSFMMPPAddGovEqn(this, geq_type, name)
+  subroutine VSFMMPPAddGovEqn(this, geq_type, name, mesh_itype)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation to the MPP
@@ -1015,8 +1015,9 @@ contains
     class(mpp_vsfm_type) :: this
     PetscInt             :: geq_type
     character(len =*)    :: name
+    PetscInt             :: mesh_itype
 
-    call this%sysofeqns%AddGovEqn(geq_type, name)
+    call this%sysofeqns%AddGovEqn(geq_type, name, mesh_itype)
 
   end subroutine VSFMMPPAddGovEqn
 

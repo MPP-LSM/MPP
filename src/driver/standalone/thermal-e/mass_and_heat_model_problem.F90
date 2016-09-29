@@ -318,12 +318,13 @@ contains
     use MultiPhysicsProbTH , only : th_mpp
     use MultiPhysicsProbConstants       , only : GE_THERM_SOIL_EBASED
     use MultiPhysicsProbConstants       , only : GE_RE
+    use MultiPhysicsProbConstants       , only : MESH_CLM_THERMAL_SOIL_COL
     !
     ! !ARGUMENTS
     implicit none
 
-    call th_mpp%AddGovEqn(GE_RE, 'Mass equation')
-    call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Heat transport based on enthalpy')
+    call th_mpp%AddGovEqn(GE_RE, 'Mass equation',MESH_CLM_THERMAL_SOIL_COL)
+    call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Heat transport based on enthalpy',MESH_CLM_THERMAL_SOIL_COL)
 
     call th_mpp%SetMeshesOfGoveqns()
 

@@ -114,7 +114,7 @@ contains
   end subroutine SOETHInit
 
   !------------------------------------------------------------------------
-  subroutine SOETHAddGovEqn(this, geq_type, name)
+  subroutine SOETHAddGovEqn(this, geq_type, name, mesh_itype)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation to system-of-equations
@@ -135,6 +135,7 @@ contains
     class(sysofeqns_th_type)                            :: this
     PetscInt                                            :: geq_type
     character(len=*)                                    :: name
+    PetscInt                                            :: mesh_itype
     !
     ! !LOCAL VARIABLES:
     class (goveqn_thermal_enthalpy_soil_type) , pointer :: goveq_soil
@@ -158,7 +159,7 @@ contains
 
           goveq_soil%name        = trim(name)
           goveq_soil%id_in_list  = this%ngoveqns
-          goveq_soil%mesh_itype  = MESH_CLM_THERMAL_SOIL_COL
+          goveq_soil%mesh_itype  = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_soil
@@ -173,7 +174,7 @@ contains
 
           goveq_richards%name        = trim(name)
           goveq_richards%id_in_list  = this%ngoveqns
-          goveq_richards%mesh_itype  = MESH_CLM_THERMAL_SOIL_COL
+          goveq_richards%mesh_itype  = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_richards

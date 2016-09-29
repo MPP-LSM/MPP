@@ -317,11 +317,13 @@ subroutine add_goveqns()
   ! !USES:
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use MultiPhysicsProbConstants , only : GE_THERM_SOIL_EBASED
+  use MultiPhysicsProbConstants       , only : MESH_CLM_THERMAL_SOIL_COL
   !
   ! !ARGUMENTS
   implicit none
 
-  call thermal_enthalpy_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Heat transport based on enthalpy ODE')
+  call thermal_enthalpy_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Heat transport based on enthalpy ODE', &
+       MESH_CLM_THERMAL_SOIL_COL)
 
   call thermal_enthalpy_mpp%SetMeshesOfGoveqns()
     

@@ -222,8 +222,9 @@ contains
     class(mpp_thermal_type) :: this
     PetscInt                :: geq_type
     character(len =*)       :: name
+    PetscInt                :: mesh_itype
 
-    call this%sysofeqns%AddGovEqn(geq_type, name)
+    call this%sysofeqns%AddGovEqn(geq_type, name, mesh_itype)
 
   end subroutine ThermalMPPAddGovEqn
 
