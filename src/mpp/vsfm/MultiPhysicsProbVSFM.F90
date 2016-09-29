@@ -1025,12 +1025,13 @@ contains
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPGovEqnAddCondition(this, igoveqn, ss_or_bc_type, name, unit, &
-       cond_type, region_type, id_of_other_goveq)
+       cond_type, region_type, id_of_other_goveq, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds a boundary/source-sink condition to a governing equation
     !
     use GoverningEquationBaseType, only : goveqn_base_type
+    use ConnectionSetType        , only : connection_set_type
     !
     implicit none
     !
@@ -1043,6 +1044,7 @@ contains
     PetscInt                          :: cond_type
     PetscInt                          :: region_type
     PetscInt, optional                :: id_of_other_goveq
+    type(connection_set_type),pointer, optional :: conn_set
     !
     class(goveqn_base_type),pointer   :: cur_goveq
     class(goveqn_base_type),pointer   :: other_goveq
@@ -1060,8 +1062,13 @@ contains
     enddo
 
     if (.not.present(id_of_other_goveq)) then
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type)
+       if (.not.present(conn_set)) then
+          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+               cond_type, region_type)
+       else
+          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+               cond_type, region_type, conn_set=conn_set)
+       endif
     else
 
        other_goveq => this%sysofeqns%goveqns
@@ -1069,8 +1076,14 @@ contains
           other_goveq => other_goveq%next
        enddo
 
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type, id_of_other_goveq, other_goveq%id )
+       if (.not.present(conn_set)) then
+          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+               cond_type, region_type, id_of_other_goveq, other_goveq%id )
+       else
+          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+               cond_type, region_type, id_of_other_goveq=id_of_other_goveq, &
+               itype_of_other_goveq = other_goveq%id, conn_set=conn_set)
+       endif
     endif
 
   end subroutine VSFMMPPGovEqnAddCondition
