@@ -1568,14 +1568,14 @@ contains
                   geq_soil%aux_vars_bc(sum_conn)%vis,      &
                   geq_soil%aux_vars_bc(sum_conn)%dvis_dP,  &
                   geq_soil%aux_vars_bc(sum_conn)%perm,     &
-                  geq_soil%aux_vars_bc(cell_id )%pressure, &
-                  geq_soil%aux_vars_bc(cell_id )%krl,      &
-                  geq_soil%aux_vars_bc(cell_id )%dkrl_dP,  &
-                  geq_soil%aux_vars_bc(cell_id )%denl,     &
-                  geq_soil%aux_vars_bc(cell_id )%ddenl_dP, &
-                  geq_soil%aux_vars_bc(cell_id )%vis,      &
-                  geq_soil%aux_vars_bc(cell_id )%dvis_dP,  &
-                  geq_soil%aux_vars_bc(cell_id )%perm,     &
+                  geq_soil%aux_vars_in(cell_id )%pressure, &
+                  geq_soil%aux_vars_in(cell_id )%krl,      &
+                  geq_soil%aux_vars_in(cell_id )%dkrl_dP,  &
+                  geq_soil%aux_vars_in(cell_id )%denl,     &
+                  geq_soil%aux_vars_in(cell_id )%ddenl_dP, &
+                  geq_soil%aux_vars_in(cell_id )%vis,      &
+                  geq_soil%aux_vars_in(cell_id )%dvis_dP,  &
+                  geq_soil%aux_vars_in(cell_id )%perm,     &
                   cur_conn_set%area(iconn),                &
                   cur_conn_set%dist_up(iconn),             &
                   cur_conn_set%dist_dn(iconn),             &

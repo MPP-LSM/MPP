@@ -244,7 +244,7 @@ contains
     soil_dy     (:) = dy
     soil_dz     (:) = dz
     soil_xc     (:) = dx/2.d0
-    soil_xc     (:) = dy/2.d0
+    soil_yc     (:) = dy/2.d0
 
     do kk = 1,nz
        soil_zc(kk) = dz/2.d0 + dz * (kk - 1)
