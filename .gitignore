@@ -3,3 +3,4 @@ local
 *.testlog
 *.stdout
 *.regression
+*xcode
