@@ -589,6 +589,7 @@ contains
     type(condition_type)    , pointer :: cur_cond_1
     type(condition_type)    , pointer :: cur_cond_2
     PetscInt                          :: ii
+    PetscInt                          :: ieqn
     PetscInt                          :: ivar
     PetscInt                          :: bc_idx_1
     PetscInt                          :: bc_idx_2
@@ -625,10 +626,13 @@ contains
           if (.not.associated(cur_cond_1)) exit
 
           ! Is this the appropriate BC?
-          if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ .and. &
-               cur_cond_1%list_id_of_other_goveq == goveqn_ids(ivar) ) then
-             bc_found = PETSC_TRUE
-             exit
+          if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+             do ieqn = 1, cur_cond_1%num_other_goveqs
+                if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
+                   bc_found = PETSC_TRUE
+                   exit
+                endif
+             enddo
           endif
 
           bc_idx_1    = bc_idx_1    + 1
@@ -656,10 +660,13 @@ contains
           if (.not.associated(cur_cond_2)) exit
 
           ! Is this the appropriate BC?
-          if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ .and. &
-               cur_cond_2%list_id_of_other_goveq == igoveqn ) then
-             bc_found = PETSC_TRUE
-             exit
+          if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+             do ieqn = 1, cur_cond_2%num_other_goveqs
+                if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
+                   bc_found = PETSC_TRUE
+                   exit
+                endif
+             enddo
           endif
 
           bc_idx_2    = bc_idx_2    + 1
@@ -734,6 +741,7 @@ contains
     type(connection_set_type)     , pointer :: cur_conn_set_1
     type(connection_set_type)     , pointer :: cur_conn_set_2
     PetscInt                                :: igoveqn
+    PetscInt                                :: ieqn
     PetscInt                                :: iconn
     PetscInt                                :: ii, jj
     PetscInt                                :: ivar
@@ -773,10 +781,13 @@ contains
              if (.not.associated(cur_cond_1)) exit
 
              ! Is this the appropriate BC?
-             if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ .and. &
-                  cur_cond_1%list_id_of_other_goveq == jj ) then
-                bc_found = PETSC_TRUE
-                exit
+             if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+                do ieqn = 1, cur_cond_1%num_other_goveqs
+                   if (cur_cond_1%list_id_of_other_goveqs(ieqn) == jj ) then
+                      bc_found = PETSC_TRUE
+                      exit
+                   endif
+                enddo
              endif
 
              cur_cond_1 => cur_cond_1%next
@@ -790,10 +801,13 @@ contains
                 if (.not.associated(cur_cond_2)) exit
 
                 ! Is this the appropriate BC?
-                if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ .and. &
-                     cur_cond_2%list_id_of_other_goveq == ii ) then
-                   bc_found = PETSC_TRUE
-                   exit
+                if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+                   do ieqn = 1, cur_cond_2%num_other_goveqs
+                      if (cur_cond_2%list_id_of_other_goveqs(ieqn) == ii ) then
+                         bc_found = PETSC_TRUE
+                         exit
+                      endif
+                   enddo
                 endif
 
                 cur_cond_2 => cur_cond_2%next

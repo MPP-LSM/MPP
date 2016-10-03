@@ -1803,6 +1803,7 @@ contains
     PetscErrorCode                           :: ierr
     !
     ! !LOCAL VARIABLES
+    PetscInt                                 :: ieqn
     PetscInt                                 :: iconn
     PetscInt                                 :: sum_conn
     PetscInt                                 :: cell_id_dn
@@ -1830,82 +1831,85 @@ contains
 
        cur_conn_set => cur_cond%conn_set
 
-       if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ .and. &
-           cur_cond%list_id_of_other_goveq == list_id_of_other_goveq) then
+       if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          do ieqn = 1, cur_cond%num_other_goveqs
+             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
 
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
+                do iconn = 1, cur_conn_set%num_connections
+                   sum_conn = sum_conn + 1
 
-             cell_id = cur_conn_set%id_dn(iconn)
+                   cell_id = cur_conn_set%id_dn(iconn)
 
-             internal_conn = PETSC_FALSE
-             cond_type     = cur_cond%itype
+                   internal_conn = PETSC_FALSE
+                   cond_type     = cur_cond%itype
 
-             if (.not.cur_cond%swap_order) then
-                call RichardsFlux(this%aux_vars_bc(sum_conn)%pressure,   &
-                                  this%aux_vars_bc(sum_conn)%kr,         &
-                                  this%aux_vars_bc(sum_conn)%dkr_dP,     &
-                                  this%aux_vars_bc(sum_conn)%den,        &
-                                  this%aux_vars_bc(sum_conn)%dden_dP,    &
-                                  this%aux_vars_bc(sum_conn)%vis,        &
-                                  this%aux_vars_bc(sum_conn)%dvis_dP,    &
-                                  this%aux_vars_bc(sum_conn)%perm,       &
-                                  this%aux_vars_in(cell_id)%pressure,    &
-                                  this%aux_vars_in(cell_id)%kr,          &
-                                  this%aux_vars_in(cell_id)%dkr_dP,      &
-                                  this%aux_vars_in(cell_id)%den,         &
-                                  this%aux_vars_in(cell_id)%dden_dP,     &
-                                  this%aux_vars_in(cell_id)%vis,         &
-                                  this%aux_vars_in(cell_id)%dvis_dP,     &
-                                  this%aux_vars_in(cell_id)%perm,        &
-                                  cur_conn_set%area(iconn),              &
-                                  cur_conn_set%dist_up(iconn),           &
-                                  cur_conn_set%dist_dn(iconn),           &
-                                  cur_conn_set%dist_unitvec(iconn)%arr,  &
-                                  compute_deriv,                         &
-                                  internal_conn,                         &
-                                  cond_type,                             &
-                                  dummy_var,                             &
-                                  Jup,                                   &
-                                  Jdn                                    &
-                                  )
-                val = -Jup
-             else
-                call RichardsFlux(this%aux_vars_in(cell_id )%pressure,   &
-                                  this%aux_vars_in(cell_id )%kr,         &
-                                  this%aux_vars_in(cell_id )%dkr_dP,     &
-                                  this%aux_vars_in(cell_id )%den,        &
-                                  this%aux_vars_in(cell_id )%dden_dP,    &
-                                  this%aux_vars_in(cell_id )%vis,        &
-                                  this%aux_vars_in(cell_id )%dvis_dP,    &
-                                  this%aux_vars_in(cell_id )%perm,       &
-                                  this%aux_vars_bc(sum_conn)%pressure,   &
-                                  this%aux_vars_bc(sum_conn)%kr,         &
-                                  this%aux_vars_bc(sum_conn)%dkr_dP,     &
-                                  this%aux_vars_bc(sum_conn)%den,        &
-                                  this%aux_vars_bc(sum_conn)%dden_dP,    &
-                                  this%aux_vars_bc(sum_conn)%vis,        &
-                                  this%aux_vars_bc(sum_conn)%dvis_dP,    &
-                                  this%aux_vars_bc(sum_conn)%perm,       &
-                                  cur_conn_set%area(iconn),              &
-                                  cur_conn_set%dist_dn(iconn),           &
-                                  cur_conn_set%dist_up(iconn),           &
-                                  -cur_conn_set%dist_unitvec(iconn)%arr, &
-                                  compute_deriv,                         &
-                                  internal_conn,                         &
-                                  cond_type,                             &
-                                  dummy_var,                             &
-                                  Jup,                                   &
-                                  Jdn                                    &
-                                  )
-                val = Jdn
+                   if (.not.cur_cond%swap_order) then
+                      call RichardsFlux(this%aux_vars_bc(sum_conn)%pressure,   &
+                                        this%aux_vars_bc(sum_conn)%kr,         &
+                                        this%aux_vars_bc(sum_conn)%dkr_dP,     &
+                                        this%aux_vars_bc(sum_conn)%den,        &
+                                        this%aux_vars_bc(sum_conn)%dden_dP,    &
+                                        this%aux_vars_bc(sum_conn)%vis,        &
+                                        this%aux_vars_bc(sum_conn)%dvis_dP,    &
+                                        this%aux_vars_bc(sum_conn)%perm,       &
+                                        this%aux_vars_in(cell_id)%pressure,    &
+                                        this%aux_vars_in(cell_id)%kr,          &
+                                        this%aux_vars_in(cell_id)%dkr_dP,      &
+                                        this%aux_vars_in(cell_id)%den,         &
+                                        this%aux_vars_in(cell_id)%dden_dP,     &
+                                        this%aux_vars_in(cell_id)%vis,         &
+                                        this%aux_vars_in(cell_id)%dvis_dP,     &
+                                        this%aux_vars_in(cell_id)%perm,        &
+                                        cur_conn_set%area(iconn),              &
+                                        cur_conn_set%dist_up(iconn),           &
+                                        cur_conn_set%dist_dn(iconn),           &
+                                        cur_conn_set%dist_unitvec(iconn)%arr,  &
+                                        compute_deriv,                         &
+                                        internal_conn,                         &
+                                        cond_type,                             &
+                                        dummy_var,                             &
+                                        Jup,                                   &
+                                        Jdn                                    &
+                                        )
+                      val = -Jup
+                   else
+                      call RichardsFlux(this%aux_vars_in(cell_id )%pressure,   &
+                                        this%aux_vars_in(cell_id )%kr,         &
+                                        this%aux_vars_in(cell_id )%dkr_dP,     &
+                                        this%aux_vars_in(cell_id )%den,        &
+                                        this%aux_vars_in(cell_id )%dden_dP,    &
+                                        this%aux_vars_in(cell_id )%vis,        &
+                                        this%aux_vars_in(cell_id )%dvis_dP,    &
+                                        this%aux_vars_in(cell_id )%perm,       &
+                                        this%aux_vars_bc(sum_conn)%pressure,   &
+                                        this%aux_vars_bc(sum_conn)%kr,         &
+                                        this%aux_vars_bc(sum_conn)%dkr_dP,     &
+                                        this%aux_vars_bc(sum_conn)%den,        &
+                                        this%aux_vars_bc(sum_conn)%dden_dP,    &
+                                        this%aux_vars_bc(sum_conn)%vis,        &
+                                        this%aux_vars_bc(sum_conn)%dvis_dP,    &
+                                        this%aux_vars_bc(sum_conn)%perm,       &
+                                        cur_conn_set%area(iconn),              &
+                                        cur_conn_set%dist_dn(iconn),           &
+                                        cur_conn_set%dist_up(iconn),           &
+                                        -cur_conn_set%dist_unitvec(iconn)%arr, &
+                                        compute_deriv,                         &
+                                        internal_conn,                         &
+                                        cond_type,                             &
+                                        dummy_var,                             &
+                                        Jup,                                   &
+                                        Jdn                                    &
+                                        )
+                      val = Jdn
+                   endif
+
+                   row = cell_id - 1
+                   col = cur_conn_set%id_up(iconn) - 1
+
+                   call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+                enddo
              endif
-
-             row = cell_id - 1
-             col = cur_conn_set%id_up(iconn) - 1
-
-             call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
-
           enddo
 
        else
