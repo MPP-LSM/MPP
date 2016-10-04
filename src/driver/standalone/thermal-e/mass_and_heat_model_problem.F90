@@ -706,7 +706,7 @@ contains
     call regression%WriteData(name, category, data_subset)
 
     name = 'temperature'
-    category = 'general'
+    category = 'temperature'
     call th_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_TEMPERATURE, -1, data)
     data_subset(:) = data(ncells_local+1:ncells_local*2)
