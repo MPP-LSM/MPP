@@ -573,8 +573,10 @@ contains
   end subroutine GoveqnBaseGetNumConditions
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseAddCondition(this, ss_or_bc_type, name, unit, &
-       cond_type, region_type, id_of_other_goveq, itype_of_other_goveq, conn_set)
+  subroutine GoveqnBaseAddCondition(this, ss_or_bc_type, name, unit,    &
+       cond_type, region_type, id_of_other_goveq, itype_of_other_goveq, &
+       num_other_goveqs, id_of_other_goveqs, itype_of_other_goveqs,     &
+       conn_set)
     !
     ! !DESCRIPTION:
     ! Adds boundary/source-sink condition to governing equation
@@ -592,14 +594,17 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_base_type)       :: this
-    PetscInt                      :: ss_or_bc_type
-    character(len =*)             :: name
-    character(len =*)             :: unit
-    PetscInt                      :: cond_type
-    PetscInt                      :: region_type
-    PetscInt, optional            :: id_of_other_goveq
-    PetscInt, optional            :: itype_of_other_goveq
+    class(goveqn_base_type)                     :: this
+    PetscInt                                    :: ss_or_bc_type
+    character(len =*)                           :: name
+    character(len =*)                           :: unit
+    PetscInt                                    :: cond_type
+    PetscInt                                    :: region_type
+    PetscInt, optional                          :: id_of_other_goveq
+    PetscInt, optional                          :: itype_of_other_goveq
+    PetscInt, optional                          :: num_other_goveqs
+    PetscInt, optional, pointer                 :: id_of_other_goveqs(:)
+    PetscInt, optional, pointer                 :: itype_of_other_goveqs(:)
     type(connection_set_type),pointer, optional :: conn_set
     !
     type(condition_type), pointer :: cond
@@ -626,20 +631,59 @@ contains
     select case (ss_or_bc_type)
     case (COND_BC)
        if (cond_type == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          if (.not.present(id_of_other_goveq)) then
-             write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
-                  ' but id_of_other_goveq is absent'
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          endif
+          if (.not. present(num_other_goveqs)) then
 
-          if (.not.present(itype_of_other_goveq)) then
-             write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
-                  ' but itype_of_other_goveq is absent'
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          endif
+             if (.not.present(id_of_other_goveq) ) then
+                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
+                     ' but id_of_other_goveq is absent'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
 
-          cond%list_id_of_other_goveq = id_of_other_goveq
-          cond%itype_of_other_goveq   = itype_of_other_goveq
+             if (.not.present(itype_of_other_goveq) ) then
+                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
+                     ' but itype_of_other_goveq is absent'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
+
+             cond%num_other_goveqs = 1
+
+             allocate(cond%list_id_of_other_goveqs(cond%num_other_goveqs))
+             allocate(cond%itype_of_other_goveqs  (cond%num_other_goveqs))
+
+             cond%list_id_of_other_goveqs(1) = id_of_other_goveq
+             cond%itype_of_other_goveqs(1)   = itype_of_other_goveq
+          else
+
+             if (.not.present(id_of_other_goveqs) ) then
+                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
+                     ' but id_of_other_goveqs is absent'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             else
+                if (size(id_of_other_goveqs) /= num_other_goveqs) then
+                   write(iulog,*) 'size(id_of_other_goveqs) /= num_other_goveqs'
+                   call endrun(msg=errMsg(__FILE__, __LINE__))
+                endif
+             endif
+
+             if (.not.present(itype_of_other_goveqs) ) then
+                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
+                     ' but itype_of_other_goveqs is absent'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             else
+                if (size(itype_of_other_goveqs) /= num_other_goveqs) then
+                   write(iulog,*) 'size(itype_of_other_goveqs) /= num_other_goveqs'
+                   call endrun(msg=errMsg(__FILE__, __LINE__))
+                endif
+             endif
+
+             cond%num_other_goveqs = num_other_goveqs
+
+             allocate(cond%list_id_of_other_goveqs(cond%num_other_goveqs))
+             allocate(cond%itype_of_other_goveqs  (cond%num_other_goveqs))
+
+             cond%list_id_of_other_goveqs(:) = id_of_other_goveqs(:)
+             cond%itype_of_other_goveqs(:)   = itype_of_other_goveqs(:)
+          endif
        endif
        call ConditionListAddCondition(this%boundary_conditions, cond)
 
