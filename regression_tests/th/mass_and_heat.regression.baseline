@@ -10,7 +10,7 @@ cell   61 =   0.9132497678448E+05
 cell   81 =   0.9132455895902E+05
 
 [temperature]
-category = general
+category = temperature
 min =   0.2782428718278E+03
 max =   0.2831499603294E+03
 mean =   0.2828072363614E+03
