@@ -784,6 +784,8 @@ contains
              enddo
           endif
 
+          if (bc_found) exit
+
           bc_idx_1    = bc_idx_1    + 1
           bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
 
@@ -817,6 +819,8 @@ contains
                 endif
              enddo
           endif
+
+          if (bc_found) exit
 
           bc_idx_2    = bc_idx_2    + 1
 

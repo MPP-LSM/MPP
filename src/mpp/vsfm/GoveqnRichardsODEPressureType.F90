@@ -521,7 +521,7 @@ contains
     case (GE_RE)
        call RichardsODEPressureJacOffDiag_BC(this, list_id_of_other_goveq, B, ierr)
     case (GE_THERM_SOIL_EBASED)
-       call RichardsODEPressureJacOffDiag_Temp(this, B, ierr)
+       call RichardsODEPressureJacOffDiag_Temp(this, list_id_of_other_goveq, B, ierr)
     case default
        write(string,*) id_of_other_goveq
        write(iulog,*) 'Unknown id_of_other_goveq = ' // trim(string)
@@ -1922,7 +1922,7 @@ contains
   end subroutine RichardsODEPressureJacOffDiag_BC
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEPressureJacOffDiag_Temp(this, B, ierr)
+  subroutine RichardsODEPressureJacOffDiag_Temp(this, list_id_of_other_goveq, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of residual equation with respect to
@@ -1939,6 +1939,7 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type) :: this
+    PetscInt                                 :: list_id_of_other_goveq
     Mat                                      :: B
     PetscErrorCode                           :: ierr
     !
@@ -1957,8 +1958,7 @@ contains
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
     PetscInt                                 :: cond_type
-    type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    PetscInt                                 :: ieqn
     PetscReal                                :: por
     PetscReal                                :: den
     PetscReal                                :: sat
@@ -1967,6 +1967,89 @@ contains
     PetscReal                                :: dsat_dT
     PetscReal                                :: derivative
     PetscReal                                :: dtInv
+    PetscBool                                :: coupling_via_BC
+    PetscBool                                :: eqns_are_coupled
+    PetscInt                                 :: ivar
+    type(condition_type),pointer             :: cur_cond
+    type(connection_set_type), pointer       :: cur_conn_set
+
+    coupling_via_BC  = PETSC_FALSE
+    eqns_are_coupled = PETSC_FALSE
+
+    ! Are the two equations coupled?
+    do ivar = 1, this%nvars_needed_from_other_goveqns
+       if (this%ids_of_other_goveqns(ivar) == list_id_of_other_goveq) then
+          eqns_are_coupled = PETSC_TRUE
+          exit
+       endif
+    enddo
+
+    if (.not.eqns_are_coupled) return
+
+    cur_cond => this%boundary_conditions%first
+    do
+       if (.not.associated(cur_cond)) exit
+
+       if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          do ieqn = 1, cur_cond%num_other_goveqs
+             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+
+                coupling_via_BC = PETSC_TRUE
+
+                cur_conn_set => cur_cond%conn_set
+                sum_conn = 0
+
+                do iconn = 1, cur_conn_set%num_connections
+                   sum_conn = sum_conn + 1
+
+                   cell_id = cur_conn_set%id_dn(iconn)
+
+                   internal_conn = PETSC_TRUE
+                   cond_type     = COND_NULL
+
+                   call RichardsFluxDerivativeWrtTemperature( &
+                        this%aux_vars_bc(sum_conn)%pressure,  &
+                        this%aux_vars_bc(sum_conn)%kr,        &
+                        this%aux_vars_bc(sum_conn)%den,       &
+                        this%aux_vars_bc(sum_conn)%dden_dT,   &
+                        this%aux_vars_bc(sum_conn)%vis,       &
+                        this%aux_vars_bc(sum_conn)%dvis_dT,   &
+                        this%aux_vars_bc(sum_conn)%perm,      &
+                        this%aux_vars_in(cell_id)%pressure,   &
+                        this%aux_vars_in(cell_id)%kr,         &
+                        this%aux_vars_in(cell_id)%den,        &
+                        this%aux_vars_in(cell_id)%dden_dT,    &
+                        this%aux_vars_in(cell_id)%vis,        &
+                        this%aux_vars_in(cell_id)%dvis_dT,    &
+                        this%aux_vars_in(cell_id)%perm,       &
+                        cur_conn_set%area(iconn),             &
+                        cur_conn_set%dist_up(iconn),          &
+                        cur_conn_set%dist_dn(iconn),          &
+                        cur_conn_set%dist_unitvec(iconn)%arr, &
+                        compute_deriv,                        &
+                        internal_conn,                        &
+                        cond_type,                            &
+                        dummy_var,                            &
+                        Jup,                                  &
+                        Jdn                                   &
+                        )
+
+                   val = Jup
+                   row = cell_id - 1
+                   col = cur_conn_set%id_up(iconn) - 1
+
+                   call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+                enddo
+
+             endif
+          enddo
+       endif
+       cur_cond => cur_cond%next
+    enddo
+
+    if (coupling_via_BC) return
+
 
     dtInv = 1.d0 / this%dtime
 
