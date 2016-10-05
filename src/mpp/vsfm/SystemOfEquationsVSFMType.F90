@@ -61,8 +61,9 @@ module SystemOfEquationsVSFMType
      procedure, public :: CreateVectorsForGovEqn => VSFMCreateVectorsForGovEqn
   end type sysofeqns_vsfm_type
 
-  public :: VSFMSOESetAuxVars, &
-            VSFMSOEUpdateConnections
+  public :: VSFMSOESetAuxVars,         &
+            VSFMSOEUpdateConnections,  &
+            VSFMSOEUpdateBCConnections
 
   !------------------------------------------------------------------------
 contains
