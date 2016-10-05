@@ -74,6 +74,9 @@ module SystemOfEquationsTHType
 
   end type sysofeqns_th_type
 
+  public :: SOETHSetAuxVars, &
+            SOETHUpdateConnections
+
   !------------------------------------------------------------------------
 contains
 
@@ -364,7 +367,7 @@ contains
           call this%SetPointerToIthGovEqn(row, cur_goveq_1)
           call this%SetPointerToIthGovEqn(col, cur_goveq_2)
           call SOETHGovEqnExchangeAuxVars(cur_goveq_1, cur_goveq_2)
-          call SOEtHGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
+          call SOETHGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
        enddo
     enddo
 
@@ -717,7 +720,7 @@ contains
           else
 
              ! Get the appropriate pointer to the BC from cur_goveq_2
-             bc_idx = 1
+             bc_idx   = 1
              bc_found = PETSC_FALSE
              cur_cond_2 => cur_goveq_2%boundary_conditions%first
              do
@@ -749,14 +752,22 @@ contains
              allocate(ids       (cur_goveq_1%bc_auxvar_ncells(ivar)))
              allocate(var_values(cur_goveq_1%bc_auxvar_ncells(ivar)))
 
-             ! Save the IDs to get the data from
-             do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
-                ids(iauxvar) = cur_conn_set_2%id_dn(iauxvar)
-             enddo
-
              ! Get the data
              select type(cur_goveq_2)
+             class is (goveqn_richards_ode_pressure_type)
+                do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
+                   idx = cur_conn_set_2%id_dn(iauxvar)
+                   call cur_goveq_2%aux_vars_in(idx)%GetValue(var_type, var_value)
+                   var_values(iauxvar) = var_value
+                enddo
+
              class is (goveqn_thermal_enthalpy_soil_type)
+
+                ! Save the IDs to get the data from
+                do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
+                   ids(iauxvar) = cur_conn_set_2%id_dn(iauxvar)
+                enddo
+
                 call ThermalEnthalpySoilAuxVarGetRValues(cur_goveq_2%aux_vars_in, var_type, &
                      size(cur_goveq_2%aux_vars_in), ids, var_values)
                 
@@ -765,14 +776,22 @@ contains
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              end select
 
-             ! Save the IDs to set the data to
-             do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
-                ids(iauxvar) = iauxvar + bc_offset
-             enddo
-
              ! Set the data
              select type(cur_goveq_1)
+             class is (goveqn_richards_ode_pressure_type)
+                do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
+                   idx = iauxvar + bc_offset
+                   var_value = var_values(iauxvar)
+                   call cur_goveq_1%aux_vars_bc(idx)%SetValue(var_type, var_value)
+                enddo
+
              class is (goveqn_thermal_enthalpy_soil_type)
+
+                ! Save the IDs to set the data to
+                do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
+                   ids(iauxvar) = iauxvar + bc_offset
+                enddo
+
                 call ThermalEnthalpySoilAuxVarSetRValues(cur_goveq_1%aux_vars_bc, var_type, &
                      size(cur_goveq_1%aux_vars_bc), ids, var_values)
                 
@@ -915,7 +934,6 @@ contains
        enddo
     enddo
 
-    
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
@@ -1216,6 +1234,289 @@ contains
          nauxvar, iauxvar_off, data_1d)
 
   end subroutine SOETHGetDataForCLM
+
+  !------------------------------------------------------------------------
+  subroutine SOETHUpdateConnections(this, mpp_id)
+    !
+    ! !DESCRIPTION:
+    !
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use SystemOfEquationsVSFMType     , only : VSFMSOEUpdateBCConnections
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_th_type)      :: this
+    PetscInt, intent(in)          :: mpp_id
+    !
+    ! !LOCAL VARIABLES:
+    class(goveqn_base_type), pointer :: cur_goveq_1
+    class(goveqn_base_type), pointer :: cur_goveq_2
+    PetscInt                         :: row, col
+    PetscBool                        :: goveq_1_is_rich
+    PetscBool                        :: goveq_1_is_ther
+    PetscBool                        :: goveq_2_is_rich
+    PetscBool                        :: goveq_2_is_ther
+
+    do row = 1, this%ngoveqns
+       do col = row+1, this%ngoveqns
+          call this%SetPointerToIthGovEqn(row, cur_goveq_1)
+          call this%SetPointerToIthGovEqn(col, cur_goveq_2)
+
+          goveq_1_is_rich = PETSC_FALSE
+          goveq_1_is_ther = PETSC_FALSE
+          goveq_2_is_rich = PETSC_FALSE
+          goveq_2_is_ther = PETSC_FALSE
+
+          select type(cur_goveq_1)
+             class is (goveqn_richards_ode_pressure_type)
+                goveq_1_is_rich = PETSC_TRUE
+             class is (goveqn_thermal_enthalpy_soil_type)
+                goveq_1_is_ther = PETSC_TRUE
+             class default
+                write(iulog,*)'Unknown goveqn class'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+           end select
+
+          select type(cur_goveq_2)
+             class is (goveqn_richards_ode_pressure_type)
+                goveq_2_is_rich = PETSC_TRUE
+             class is (goveqn_thermal_enthalpy_soil_type)
+                goveq_2_is_ther = PETSC_TRUE
+             class default
+                write(iulog,*)'Unknown goveqn class'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+           end select
+
+          if (goveq_1_is_rich .and. goveq_2_is_rich) then
+             call VSFMSOEUpdateBCConnections(cur_goveq_1, cur_goveq_2, mpp_id)
+          else if (goveq_1_is_ther .and. goveq_2_is_ther) then
+             call SOETHUpdateBCConnections(cur_goveq_1, cur_goveq_2, mpp_id)
+          endif
+
+       enddo
+    enddo
+
+  end subroutine SOETHUpdateConnections
+
+  !------------------------------------------------------------------------
+
+  subroutine SOETHUpdateBCConnections(cur_goveq_1, cur_goveq_2, mpp_id)
+    !
+    ! !DESCRIPTION:
+    !
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
+    use ConnectionSetType             , only : connection_set_type
+    use ConditionType                 , only : condition_type
+    use MultiPhysicsProbConstants     , only : MPP_TH_SNES_CLM
+    use ThermalEnthalpySoilAuxType    , only : therm_enthalpy_soil_auxvar_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type),pointer :: cur_goveq_1
+    class(goveqn_base_type),pointer :: cur_goveq_2
+    PetscInt, intent(in)            :: mpp_id
+    !
+    ! !LOCAL VARIABLES:
+    type(connection_set_type), pointer                  :: cur_conn_set_1
+    type(connection_set_type), pointer                  :: cur_conn_set_2
+    type(condition_type),pointer                        :: cur_cond_1
+    type(condition_type),pointer                        :: cur_cond_2
+    type (therm_enthalpy_soil_auxvar_type), pointer           :: aux_vars_bc_1(:)
+    type (therm_enthalpy_soil_auxvar_type), pointer           :: aux_vars_bc_2(:)
+    type (therm_enthalpy_soil_auxvar_type)                    :: tmp_aux_var_bc_1
+    type (therm_enthalpy_soil_auxvar_type)                    :: tmp_aux_var_bc_2
+    PetscInt                                            :: iauxvar
+    PetscInt                                            :: ivar
+    PetscInt                                            :: sum_conn_1
+    PetscInt                                            :: sum_conn_2
+    PetscInt                                            :: bc_idx
+    PetscInt                                            :: bc_auxvar_idx
+    PetscInt                                            :: bc_auxvar_idx_of_other_goveqn
+    PetscInt                                            :: id_dn_1
+    PetscInt                                            :: id_dn_2
+    PetscReal                                           :: x_up, y_up, z_up
+    PetscReal                                           :: x_dn, y_dn, z_dn
+    PetscReal                                           :: x_half, y_half, z_half
+    PetscReal                                           :: dx, dy, dz
+    PetscReal                                           :: dist, dist_up, dist_dn
+    PetscReal                                           :: area_1, area_2
+    PetscBool                                           :: bc_found
+    PetscBool                                           :: bc_type
+
+    PetscReal, dimension(3) :: vec3Swap
+    PetscReal :: valSwap
+
+    select type(cur_goveq_1)
+    class is (goveqn_thermal_enthalpy_soil_type)
+        aux_vars_bc_1 => cur_goveq_1%aux_vars_bc
+    class default
+        write(iulog,*)'VSFMSOEUpdateBCConnections: Unknown class'
+        call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    select type(cur_goveq_2)
+    class is (goveqn_thermal_enthalpy_soil_type)
+        aux_vars_bc_2 => cur_goveq_2%aux_vars_bc
+    class default
+        write(iulog,*)'VSFMSOEUpdateBCConnections: Unknown class'
+        call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    do ivar = 1,cur_goveq_1%nvars_needed_from_other_goveqns
+       if (cur_goveq_1%ids_of_other_goveqns(ivar) == &
+           cur_goveq_2%id_in_list) then
+
+          bc_type                        = cur_goveq_1%is_bc_auxvar_type(ivar)
+          bc_auxvar_idx                  = cur_goveq_1%bc_auxvar_idx(ivar)
+          bc_auxvar_idx_of_other_goveqn  = cur_goveq_1%bc_auxvar_idx_of_other_goveqn(ivar)
+
+          if (bc_type) then
+
+             bc_idx = 1
+             sum_conn_1 = 0
+             bc_found = PETSC_FALSE
+             cur_cond_1 => cur_goveq_1%boundary_conditions%first
+             do
+                if (.not.associated(cur_cond_1)) exit
+                cur_conn_set_1 => cur_cond_1%conn_set
+                if (bc_idx == bc_auxvar_idx) then
+                   bc_found = PETSC_TRUE
+                   exit
+                endif
+
+                bc_idx = bc_idx + 1
+                sum_conn_1 = sum_conn_1 + cur_conn_set_1%num_connections
+                cur_cond_1 => cur_cond_1%next
+             enddo
+
+             if (.not.bc_found) then
+                write(iulog,*) 'VSFMSOEGovEqnExchangeAuxVars: BC not found'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
+
+             bc_idx = 1
+             sum_conn_2 = 0
+             bc_found = PETSC_FALSE
+             cur_cond_2 => cur_goveq_2%boundary_conditions%first
+             do
+                if (.not.associated(cur_cond_2)) exit
+                cur_conn_set_2 => cur_cond_2%conn_set
+                if (bc_idx == bc_auxvar_idx_of_other_goveqn) then
+                   bc_found = PETSC_TRUE
+                   exit
+                endif
+
+                bc_idx = bc_idx + 1
+                sum_conn_2 = sum_conn_2 + cur_conn_set_2%num_connections
+                cur_cond_2 => cur_cond_2%next
+             enddo
+
+             if (.not.bc_found) then
+                write(iulog,*) 'VSFMSOEGovEqnExchangeAuxVars: BC not found'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
+
+             if (cur_conn_set_1%num_connections /= &
+                 cur_conn_set_2%num_connections ) then
+                write(iulog,*) 'VSFMSOEGovEqnExchangeAuxVars: Number of cells in BC of eq-1 and eq-2 are not same.'
+                write(iulog,*) 'Eq-1'
+                write(iulog,*) '   Name      : ',trim(cur_goveq_1%name)
+                write(iulog,*) '   BC name   : ',trim(cur_cond_1%name)
+                write(iulog,*) '   BC ncells : ',cur_conn_set_1%num_connections
+                write(iulog,*) 'Eq-2'
+                write(iulog,*) '   Name      : ',trim(cur_goveq_2%name)
+                write(iulog,*) '   BC name   : ',trim(cur_cond_2%name)
+                write(iulog,*) '   BC ncells : ',cur_conn_set_2%num_connections
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
+
+             if (cur_goveq_2%id_in_list > cur_goveq_1%id_in_list) then
+                cur_cond_2%swap_order = PETSC_TRUE
+             else
+                cur_cond_1%swap_order = PETSC_TRUE
+             endif
+
+             do iauxvar = 1, cur_conn_set_1%num_connections
+
+
+               !
+               ! Eq-1
+               !              unit_vec
+               !            <----------
+               !        "dn"           "up"
+               !    _____________ _____________
+               !   |             |             |
+               !   |             |             |
+               !   |      x      o      x      |
+               !   |             |             |
+               !   |   mesh-eq1  |   mesh-eq2  |
+               !   |_____________|_____________|
+               !
+               ! Eq-2
+               !        "up"           "dn"
+               !            ---------->
+               !              unit_vec
+               !
+
+                id_dn_1 = cur_conn_set_1%id_dn(iauxvar)
+                id_dn_2 = cur_conn_set_2%id_dn(iauxvar)
+
+                x_dn = cur_goveq_1%mesh%x(id_dn_1)
+                y_dn = cur_goveq_1%mesh%y(id_dn_1)
+                z_dn = cur_goveq_1%mesh%z(id_dn_1)
+
+                x_up = cur_goveq_2%mesh%x(id_dn_2)
+                y_up = cur_goveq_2%mesh%y(id_dn_2)
+                z_up = cur_goveq_2%mesh%z(id_dn_2)
+
+                dx = -(x_up - x_dn)
+                dy = -(y_up - y_dn)
+                dz = -(z_up - z_dn)
+
+                dist = (dx**2.d0 + dy**2.d0 + dz**2.d0)**0.5d0
+
+                cur_conn_set_1%dist_unitvec(iauxvar)%arr(1) = dx/dist
+                cur_conn_set_1%dist_unitvec(iauxvar)%arr(2) = dy/dist
+                cur_conn_set_1%dist_unitvec(iauxvar)%arr(3) = dz/dist
+
+                x_half = (x_dn + x_up)/2.d0
+                y_half = (y_dn + y_up)/2.d0
+                z_half = (z_dn + z_up)/2.d0
+
+                cur_conn_set_1%id_up(iauxvar)   = id_dn_2
+
+                ! unit_vector for eq1 = -unit_vector for eq2
+                cur_conn_set_2%dist_unitvec(iauxvar)%arr = &
+                    -cur_conn_set_1%dist_unitvec(iauxvar)%arr
+
+                ! dist_up eq2 = dist_dn eq1
+                ! dist_up eq1 = dist_dn eq2
+                cur_conn_set_2%dist_up(iauxvar) = cur_conn_set_1%dist_dn(iauxvar)
+                cur_conn_set_1%dist_up(iauxvar) = cur_conn_set_2%dist_dn(iauxvar)
+
+                cur_conn_set_2%id_up(iauxvar)   = id_dn_1
+
+                sum_conn_1 = sum_conn_1 + 1
+                sum_conn_2 = sum_conn_2 + 1
+
+                call tmp_aux_var_bc_1%Copy(aux_vars_bc_1(sum_conn_1))
+                call tmp_aux_var_bc_2%Copy(aux_vars_bc_2(sum_conn_2))
+
+                call aux_vars_bc_1(sum_conn_1)%Copy(tmp_aux_var_bc_2)
+                call aux_vars_bc_2(sum_conn_2)%Copy(tmp_aux_var_bc_1)
+
+             enddo
+
+          endif
+       endif
+    enddo
+
+  end subroutine SOETHUpdateBCConnections
 
 #endif
 
