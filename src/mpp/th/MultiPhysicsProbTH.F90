@@ -39,16 +39,17 @@ module MultiPhysicsProbTH
      class(sysofeqns_th_type),pointer :: sysofeqns
      type(sysofeqns_base_pointer_type), pointer     :: sysofeqns_ptr
    contains
-     procedure, public :: Init                        => MPPTHInit
-     procedure, public :: AddGovEqn                   => MPPTHAddGovEqn
-     procedure, public :: GovEqnAddCondition          => MPPTHGovEqnAddCondition
-     procedure, public :: SetMeshesOfGoveqns          => MPPTHSetMeshesOfGoveqns
-     procedure, public :: GovEqnAddCouplingCondition  => MPPTHGovEqnAddCouplingCondition
-     procedure, public :: AllocateAuxVars             => MPPTHAllocateAuxVars
-     procedure, public :: GovEqnSetCouplingVars       => MPPTHGovEqnSetCouplingVars
-     procedure, public :: SetupProblem                => MPPTHSetupProblem
-     procedure, public :: GovEqnUpdateBCConnectionSet => MPPTHGovEqnUpdateBCConnectionSet
-     procedure, public :: SetMPIRank                  => MPPTHSetMPIRank
+     procedure, public :: Init                          => MPPTHInit
+     procedure, public :: AddGovEqn                     => MPPTHAddGovEqn
+     procedure, public :: GovEqnAddCondition            => MPPTHGovEqnAddCondition
+     procedure, public :: GovEqnAddConditionForCoupling => MPPTHGovEqnAddConditionForCoupling
+     procedure, public :: SetMeshesOfGoveqns            => MPPTHSetMeshesOfGoveqns
+     procedure, public :: GovEqnAddCouplingCondition    => MPPTHGovEqnAddCouplingCondition
+     procedure, public :: AllocateAuxVars               => MPPTHAllocateAuxVars
+     procedure, public :: GovEqnSetCouplingVars         => MPPTHGovEqnSetCouplingVars
+     procedure, public :: SetupProblem                  => MPPTHSetupProblem
+     procedure, public :: GovEqnUpdateBCConnectionSet   => MPPTHGovEqnUpdateBCConnectionSet
+     procedure, public :: SetMPIRank                    => MPPTHSetMPIRank
 
   end type mpp_th_type
 
@@ -720,6 +721,75 @@ contains
   end subroutine MPPTHGovEqnAddCondition
 
   !------------------------------------------------------------------------
+  subroutine MPPTHGovEqnAddConditionForCoupling(this, igoveqn, ss_or_bc_type, &
+       name, unit, cond_type, region_type, num_other_goveqns, id_of_other_goveqs, &
+       conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Adds a boundary for coupling with another governing equation
+    !
+    use GoverningEquationBaseType, only : goveqn_base_type
+    use ConnectionSetType        , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mpp_th_type)                          :: this
+    PetscInt                                    :: igoveqn
+    PetscInt                                    :: ss_or_bc_type
+    character(len =*)                           :: name
+    character(len =*)                           :: unit
+    PetscInt                                    :: cond_type
+    PetscInt                                    :: region_type
+    PetscInt                                    :: num_other_goveqns
+    PetscInt, pointer                           :: id_of_other_goveqs(:)
+    type(connection_set_type),pointer, optional :: conn_set
+    !
+    class(goveqn_base_type),pointer             :: cur_goveq
+    class(goveqn_base_type),pointer             :: other_goveq
+    PetscInt                                    :: ii, jj
+    PetscInt, pointer                           :: itype_of_other_goveqs(:)
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    allocate(itype_of_other_goveqs(num_other_goveqns))
+    do jj = 1, num_other_goveqns
+       other_goveq => this%sysofeqns%goveqns
+       do ii = 1,id_of_other_goveqs(jj)-1
+          other_goveq => other_goveq%next
+       enddo
+       itype_of_other_goveqs(jj) = other_goveq%id
+    enddo
+
+    if (.not.present(conn_set)) then
+       call cur_goveq%AddCondition(ss_or_bc_type, name, &
+            unit, cond_type, region_type,               &
+            num_other_goveqs = num_other_goveqns,       &
+            id_of_other_goveqs = id_of_other_goveqs,    &
+            itype_of_other_goveqs = itype_of_other_goveqs )
+    else
+       call cur_goveq%AddCondition(ss_or_bc_type, name,    &
+            unit, cond_type, region_type,                  &
+            num_other_goveqs = num_other_goveqns,          &
+            id_of_other_goveqs = id_of_other_goveqs,       &
+            itype_of_other_goveqs = itype_of_other_goveqs, &
+            conn_set=conn_set)
+    endif
+
+    deallocate(itype_of_other_goveqs)
+
+  end subroutine MPPTHGovEqnAddConditionForCoupling
+
+  !------------------------------------------------------------------------
   subroutine MPPTHSetMeshesOfGoveqns(this)
     !
     ! !DESCRIPTION:
@@ -1074,6 +1144,8 @@ contains
                 enddo
              endif
 
+             if (bc_found) exit
+
              bc_idx_1    = bc_idx_1    + 1
              bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
 
@@ -1107,6 +1179,8 @@ contains
                    endif
                 enddo
              endif
+
+             if (bc_found) exit
 
              bc_idx_2    = bc_idx_2    + 1
 
