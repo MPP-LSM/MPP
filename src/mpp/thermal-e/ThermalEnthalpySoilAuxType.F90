@@ -174,6 +174,8 @@ contains
     this%therm_cond_wet           = auxvar%therm_cond_wet
     this%therm_cond_dry           = auxvar%therm_cond_dry
     this%therm_cond               = auxvar%therm_cond
+    this%por                      = auxvar%por
+    this%perm(:)                  = auxvar%perm(:)
     this%therm_alpha              = auxvar%therm_alpha
 
     this%den_soil                 = auxvar%den_soil
