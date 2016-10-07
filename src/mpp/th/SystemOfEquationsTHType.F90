@@ -930,16 +930,15 @@ contains
           call this%SetPointerToIthGovEqn(row, cur_goveq_1)
           call this%SetPointerToIthGovEqn(col, cur_goveq_2)
           call SOETHGovEqnExchangeAuxVars(cur_goveq_1, cur_goveq_2)
-          call SOEtHGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
+          call SOETHGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
        enddo
     enddo
 
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
-
-       call cur_goveq%UpdateAuxVars()
-
+       call cur_goveq%UpdateAuxVarsBC()
+       call cur_goveq%UpdateAuxVarsSS()
        cur_goveq => cur_goveq%next
     enddo
 
