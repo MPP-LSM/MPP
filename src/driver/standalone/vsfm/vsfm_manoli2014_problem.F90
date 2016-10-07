@@ -68,6 +68,18 @@ module vsfm_manoli2014_problem
   PetscReal, parameter :: vg_m_bot       = 0.33d0        ! [-]
   PetscReal, parameter :: por_bot        = 0.5d0         ! [-]
   
+  PetscReal, parameter :: perm_root       = 6.83d-11      ! [m^2]
+  PetscReal, parameter :: sat_res_root    = 0.06d0        ! [-]
+  PetscReal, parameter :: alpha_root      = 0.00005d0     ! [Pa^{-1}]
+  PetscReal, parameter :: vg_m_root       = 0.33d0        ! [-]
+  PetscReal, parameter :: por_root        = 0.5d0         ! [-]
+
+  PetscReal, parameter :: perm_xylem      = 6.83d-11      ! [m^2]
+  PetscReal, parameter :: sat_res_xylem   = 0.06d0        ! [-]
+  PetscReal, parameter :: alpha_xylem     = 0.00005d0     ! [Pa^{-1}]
+  PetscReal, parameter :: vg_m_xylem      = 0.33d0        ! [-]
+  PetscReal, parameter :: por_xylem       = 0.5d0         ! [-]
+
   PetscReal, parameter :: press_initial  = 3.5355d3      ! [Pa]
 
   public :: run_vsfm_manoli2014_problem
@@ -1133,20 +1145,19 @@ contains
                    aux_vars_in(ghosted_id)%perm(3)              = perm_z_top
                    aux_vars_in(ghosted_id)%por                  = por_top
 
-                   call PorosityFunctionSetConstantModel(    &
+                   call PorosityFunctionSetConstantModel(  &
                         aux_vars_in(ghosted_id)%porParams, &
                         por_top)
 
                    call SatFunc_Set_VG(aux_vars_in(ghosted_id)%satParams,  &
-                        sat_res_top,                        &
-                        alpha_top,                          &
+                        sat_res_top,                                       &
+                        alpha_top,                                         &
                         vg_m_top)
                 end if
 
                 aux_vars_in(ghosted_id)%pressure_prev        = press_initial
              enddo
-          case (MESH_SPAC_ROOT_COL , &
-               MESH_SPAC_XYLEM_COL)
+          case (MESH_SPAC_ROOT_COL)
 
              do ghosted_id = 1,cur_goveq%mesh%ncells_local
                 !                                                [1/s] *[m]*[Ns/m^2]/[kg/m^3]/[m/s^2]
@@ -1155,18 +1166,47 @@ contains
 !                aux_vars_in(ghosted_id)%perm(3)              = cond_plant*dz*8.9d-4/denh2o/9.8068d0
 !                aux_vars_in(ghosted_id)%por                  = por_plant
 
-                aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_top
-                aux_vars_in(ghosted_id)%perm(3)              = perm_z_top
-                aux_vars_in(ghosted_id)%por                  = por_top
+                aux_vars_in(ghosted_id)%perm(1:2)            = perm_root
+                aux_vars_in(ghosted_id)%perm(3)              = perm_root
+                aux_vars_in(ghosted_id)%por                  = por_root
 
-                call PorosityFunctionSetConstantModel(    &
+                call PorosityFunctionSetConstantModel(  &
                      aux_vars_in(ghosted_id)%porParams, &
-                     por_top)
+                     por_root)
 
                 call SatFunc_Set_VG(aux_vars_in(ghosted_id)%satParams,  &
-                     sat_res_top,                        &
-                     alpha_top,                          &
-                     vg_m_top)
+                     sat_res_root,                                      &
+                     alpha_root,                                        &
+                     vg_m_root)
+
+                ! Use Weibull relative perm model
+                !call SatFunc_Set_Weibull_RelPerm(aux_vars_in(ghosted_id)%satParams, &
+                !       weibull_d, weibull_c)
+
+                aux_vars_in(ghosted_id)%pressure_prev        = press_initial
+             enddo
+
+          case (MESH_SPAC_XYLEM_COL)
+
+             do ghosted_id = 1,cur_goveq%mesh%ncells_local
+                !                                                [1/s] *[m]*[Ns/m^2]/[kg/m^3]/[m/s^2]
+!                aux_vars_in(ghosted_id)%perm(1)              = cond_plant*dx*8.9d-4/denh2o/9.8068d0
+!                aux_vars_in(ghosted_id)%perm(2)              = cond_plant*dy*8.9d-4/denh2o/9.8068d0
+!                aux_vars_in(ghosted_id)%perm(3)              = cond_plant*dz*8.9d-4/denh2o/9.8068d0
+!                aux_vars_in(ghosted_id)%por                  = por_plant
+
+                aux_vars_in(ghosted_id)%perm(1:2)            = perm_xylem
+                aux_vars_in(ghosted_id)%perm(3)              = perm_xylem
+                aux_vars_in(ghosted_id)%por                  = por_xylem
+
+                call PorosityFunctionSetConstantModel(  &
+                     aux_vars_in(ghosted_id)%porParams, &
+                     por_xylem)
+
+                call SatFunc_Set_VG(aux_vars_in(ghosted_id)%satParams,  &
+                     sat_res_top,                                       &
+                     alpha_xylem,                                       &
+                     vg_m_xylem)
 
                 ! Use Weibull relative perm model
                 !call SatFunc_Set_Weibull_RelPerm(aux_vars_in(ghosted_id)%satParams, &
