@@ -937,6 +937,7 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
+       call cur_goveq%UpdateAuxVars()
        call cur_goveq%UpdateAuxVarsBC()
        call cur_goveq%UpdateAuxVarsSS()
        cur_goveq => cur_goveq%next
