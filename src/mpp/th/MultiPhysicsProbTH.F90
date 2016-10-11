@@ -723,7 +723,7 @@ contains
   !------------------------------------------------------------------------
   subroutine MPPTHGovEqnAddConditionForCoupling(this, igoveqn, ss_or_bc_type, &
        name, unit, cond_type, region_type, num_other_goveqns, id_of_other_goveqs, &
-       conn_set)
+       icoupling_of_other_goveqns, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds a boundary for coupling with another governing equation
@@ -743,6 +743,7 @@ contains
     PetscInt                                    :: region_type
     PetscInt                                    :: num_other_goveqns
     PetscInt, pointer                           :: id_of_other_goveqs(:)
+    PetscBool, pointer                          :: icoupling_of_other_goveqns(:)
     type(connection_set_type),pointer, optional :: conn_set
     !
     class(goveqn_base_type),pointer             :: cur_goveq
@@ -771,17 +772,19 @@ contains
     enddo
 
     if (.not.present(conn_set)) then
-       call cur_goveq%AddCondition(ss_or_bc_type, name, &
-            unit, cond_type, region_type,               &
-            num_other_goveqs = num_other_goveqns,       &
-            id_of_other_goveqs = id_of_other_goveqs,    &
-            itype_of_other_goveqs = itype_of_other_goveqs )
+       call cur_goveq%AddCondition(ss_or_bc_type, name,              &
+            unit, cond_type, region_type,                            &
+            num_other_goveqs = num_other_goveqns,                    &
+            id_of_other_goveqs = id_of_other_goveqs,                 &
+            itype_of_other_goveqs = itype_of_other_goveqs,           &
+            icoupling_of_other_goveqns = icoupling_of_other_goveqns)
     else
-       call cur_goveq%AddCondition(ss_or_bc_type, name,    &
-            unit, cond_type, region_type,                  &
-            num_other_goveqs = num_other_goveqns,          &
-            id_of_other_goveqs = id_of_other_goveqs,       &
-            itype_of_other_goveqs = itype_of_other_goveqs, &
+       call cur_goveq%AddCondition(ss_or_bc_type, name,              &
+            unit, cond_type, region_type,                            &
+            num_other_goveqs = num_other_goveqns,                    &
+            id_of_other_goveqs = id_of_other_goveqs,                 &
+            itype_of_other_goveqs = itype_of_other_goveqs,           &
+            icoupling_of_other_goveqns = icoupling_of_other_goveqns, &
             conn_set=conn_set)
     endif
 

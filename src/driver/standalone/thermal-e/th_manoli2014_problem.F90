@@ -116,6 +116,7 @@ contains
     nstep                  = 3
     save_initial_soln      = PETSC_FALSE
     save_final_soln        = PETSC_FALSE
+    single_pde_formulation = PETSC_TRUE
     single_pde_formulation = PETSC_FALSE
     output_suffix          = ''
 
@@ -796,6 +797,7 @@ contains
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for heat transport based for Xylem', MESH_SPAC_XYLEM_COL)
     else
        call th_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE for Soil+Root+Xylem', MESH_CLM_SOIL_COL)
+       call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for Soil+Root+Xylem', MESH_CLM_SOIL_COL)
     endif
 
     call th_mpp%SetMeshesOfGoveqns()
@@ -825,6 +827,7 @@ contains
     !
     PetscInt                            :: ieqn, num_ieqn_others
     PetscInt                  , pointer :: ieqn_others(:)
+    PetscBool                 , pointer :: icoupling_others(:)
     PetscInt                            :: kk
     PetscInt                            :: nconn
     PetscInt                            :: ncells_root
@@ -895,15 +898,19 @@ contains
     ! SOIL mass ---> ROOT mass
     !           ---> ROOT temperature
     num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 1
     ieqn_others(1)  = 2
     ieqn_others(2)  = 5
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
 
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
          -1, nconn, id_up, id_dn, &
          dist_up, dist_dn, area, unit_vec, conn_set)
-    write(*,*)'conn_set%num_connections ',conn_set%num_connections
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -913,18 +920,27 @@ contains
          region_type=SOIL_TOP_CELLS,                &
          num_other_goveqns=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
 
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     ! BoundaryCondition:
     ! SOIL temperature ---> ROOT temperature
     !                  ---> ROOT mass
-    num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+    num_ieqn_others = 3
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 4
     ieqn_others(1)  = 5
     ieqn_others(2)  = 2
+    ieqn_others(3)  = 1
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
+    icoupling_others(3) = PETSC_TRUE
 
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
          -1, nconn, id_up, id_dn, &
@@ -938,19 +954,26 @@ contains
          region_type=SOIL_TOP_CELLS,                &
          num_other_goveqns=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
 
     call ConnectionSetDestroy(conn_set)
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     ! BoundaryCondition:
     ! Root mass ---> Soil mass
     !           ---> Soil temperature
     num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 2
     ieqn_others(1)  = 1
     ieqn_others(2)  = 4
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
 
     unit_vec(:,1) = 1.d0
 
@@ -966,18 +989,27 @@ contains
          region_type=SOIL_TOP_CELLS,                &
          num_other_goveqns=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
 
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     ! BoundaryCondition:
     ! Root temperature ---> Soil temperature
     !                  ---> Soil mass
-    num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+    num_ieqn_others = 3
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 5
     ieqn_others(1)  = 4
     ieqn_others(2)  = 1
+    ieqn_others(3)  = 2
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
+    icoupling_others(3) = PETSC_TRUE
 
     unit_vec(:,1) = 1.d0
 
@@ -993,19 +1025,26 @@ contains
          region_type=SOIL_TOP_CELLS,                &
          num_other_goveqns=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
 
     call ConnectionSetDestroy(conn_set)
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     ! BoundaryCondition:
     ! Root mass ---> Xylem mass
     !           ---> Xylem temperature
     num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 2
     ieqn_others(1)  = 3
     ieqn_others(2)  = 6
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
 
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -1014,18 +1053,27 @@ contains
          cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
          num_other_goveqns=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others)
+         id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others)
 
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     ! BoundaryCondition:
     ! Root temperature ---> Xylem temperature
     !                  ---> Xylem mass
-    num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+    num_ieqn_others = 3
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 5
     ieqn_others(1)  = 6
     ieqn_others(2)  = 3
+    ieqn_others(3)  = 2
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
+    icoupling_others(3) = PETSC_TRUE
 
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -1034,18 +1082,25 @@ contains
          cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
          num_other_goveqns=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others)
+         id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others)
 
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     ! BoundaryCondition:
     ! Xylem mass ---> Root mass
     !            ---> Root temperature
     num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 3
     ieqn_others(1)  = 2
     ieqn_others(2)  = 5
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
 
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -1054,18 +1109,27 @@ contains
          cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_BOTTOM_CELLS,             &
          num_other_goveqns=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others)
+         id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others)
 
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     ! BoundaryCondition:
     ! Xylem temperature ---> Root temperature
     !                   ---> Root mass
-    num_ieqn_others = 2
-    allocate(ieqn_others(num_ieqn_others))
+    num_ieqn_others = 3
+
+    allocate(ieqn_others(     num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
     ieqn            = 6
     ieqn_others(1)  = 5
     ieqn_others(2)  = 2
+    ieqn_others(3)  = 3
+    icoupling_others(1) = PETSC_FALSE
+    icoupling_others(2) = PETSC_FALSE
+    icoupling_others(3) = PETSC_TRUE
 
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -1074,9 +1138,11 @@ contains
          cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_BOTTOM_CELLS,             &
          num_other_goveqns=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others)
+         id_of_other_goveqs=ieqn_others,            &
+         icoupling_of_other_goveqns = icoupling_others)
 
-    deallocate(ieqn_others)
+    deallocate(ieqn_others     )
+    deallocate(icoupling_others)
 
     deallocate(soil_dz        )
     deallocate(root_zc        )
@@ -1298,6 +1364,41 @@ contains
        deallocate(var_ids_for_coupling   )
        deallocate(goveqn_ids_for_coupling)
        deallocate (is_bc                 )
+
+    else
+
+       ! mass equation (id=1) needs temperature from energy equation (id=2)
+       ieqn = 1
+       nvars_for_coupling = 1
+       allocate (var_ids_for_coupling    (nvars_for_coupling))
+       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+       allocate (is_bc                   (nvars_for_coupling))
+
+       var_ids_for_coupling    (1) = VAR_TEMPERATURE
+       goveqn_ids_for_coupling (1) = 2
+       is_bc                   (1) = 0
+
+       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
+
+       deallocate(var_ids_for_coupling   )
+       deallocate(goveqn_ids_for_coupling)
+
+       ! energy equation (id=2) needs pressure from energy equation (id=1)
+       ieqn = 2
+       nvars_for_coupling = 1
+       allocate (var_ids_for_coupling    (nvars_for_coupling))
+       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+       var_ids_for_coupling    (1) = VAR_PRESSURE
+       goveqn_ids_for_coupling (1) = 1
+       is_bc                   (1) = 0
+
+       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
+
+       deallocate(var_ids_for_coupling   )
+       deallocate(goveqn_ids_for_coupling)
 
     endif
 
@@ -1826,10 +1927,18 @@ contains
 
     do ii = 1, nDM
        call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
+       if (.not.single_pde_formulation) then
        if (ii < 4) then
           v_p(:) = press_initial
        else
           v_p(:) = 283.15d0
+       endif
+       else
+       if (ii ==1) then
+          v_p(:) = press_initial
+       else
+          v_p(:) = 283.15d0
+       endif
        endif
        call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
     enddo
@@ -1935,6 +2044,16 @@ contains
 
        call DMDACreate1d(PETSC_COMM_SELF,     &
                          DM_BOUNDARY_NONE,    &
+                         mesh_size(1),        &
+                         1,                   &
+                         10,                   &
+                         PETSC_NULL_INTEGER,  &
+                         dm_eneg_s,           &
+                         ierr); CHKERRQ(ierr)
+
+       if (.not.single_pde_formulation) then
+       call DMDACreate1d(PETSC_COMM_SELF,     &
+                         DM_BOUNDARY_NONE,    &
                          mesh_size(2),        &
                          1,                   &
                          10,                   &
@@ -1949,14 +2068,6 @@ contains
                          10,                   &
                          PETSC_NULL_INTEGER,  &
                          dm_mass_x,                &
-                         ierr); CHKERRQ(ierr)
-       call DMDACreate1d(PETSC_COMM_SELF,     &
-                         DM_BOUNDARY_NONE,    &
-                         mesh_size(1),        &
-                         1,                   &
-                         10,                   &
-                         PETSC_NULL_INTEGER,  &
-                         dm_eneg_s,           &
                          ierr); CHKERRQ(ierr)
 
        call DMDACreate1d(PETSC_COMM_SELF,     &
@@ -1976,6 +2087,7 @@ contains
                          PETSC_NULL_INTEGER,  &
                          dm_eneg_x,                &
                          ierr); CHKERRQ(ierr)
+       endif
     case default
           write(iulog,*)'VSFMMPPSetupPetscSNESSetup: Unknown th_mpp%id'
           call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1985,6 +2097,11 @@ contains
     call DMDASetFieldName   (dm_mass_s , 0     , "msoil_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_mass_s , ierr                    ); CHKERRQ(ierr)
 
+    call DMSetOptionsPrefix (dm_eneg_s , "fes_" , ierr           ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_eneg_s , 0     , "esoil_" , ierr ); CHKERRQ(ierr)
+    call DMSetFromOptions   (dm_eneg_s , ierr                    ); CHKERRQ(ierr)
+
+    if (.not.single_pde_formulation) then
     call DMSetOptionsPrefix (dm_mass_r , "fmr_" , ierr           ); CHKERRQ(ierr)
     call DMDASetFieldName   (dm_mass_r , 0     , "mroot_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_mass_r , ierr                    ); CHKERRQ(ierr)
@@ -1993,10 +2110,6 @@ contains
     call DMDASetFieldName   (dm_mass_x , 0     , "mxylem_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_mass_x , ierr                    ); CHKERRQ(ierr)
 
-    call DMSetOptionsPrefix (dm_eneg_s , "fes_" , ierr           ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_eneg_s , 0     , "esoil_" , ierr ); CHKERRQ(ierr)
-    call DMSetFromOptions   (dm_eneg_s , ierr                    ); CHKERRQ(ierr)
-
     call DMSetOptionsPrefix (dm_eneg_r , "fer_" , ierr           ); CHKERRQ(ierr)
     call DMDASetFieldName   (dm_eneg_r , 0     , "eroot_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_eneg_r , ierr                    ); CHKERRQ(ierr)
@@ -2004,24 +2117,31 @@ contains
     call DMSetOptionsPrefix (dm_eneg_x , "fex_" , ierr           ); CHKERRQ(ierr)
     call DMDASetFieldName   (dm_eneg_x , 0     , "exylem_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_eneg_x , ierr                    ); CHKERRQ(ierr)
+    endif
 
     ! Create DMComposite: pressure
     call DMCompositeCreate  (PETSC_COMM_SELF , th_soe%dm , ierr ); CHKERRQ(ierr)
     call DMSetOptionsPrefix (th_soe%dm     , "th_" , ierr ); CHKERRQ(ierr)
 
     call DMCompositeAddDM   (th_soe%dm     , dm_mass_s        , ierr ); CHKERRQ(ierr)
+    if (.not.single_pde_formulation) then
     call DMCompositeAddDM   (th_soe%dm     , dm_mass_r        , ierr ); CHKERRQ(ierr)
     call DMCompositeAddDM   (th_soe%dm     , dm_mass_x        , ierr ); CHKERRQ(ierr)
+    endif
     call DMCompositeAddDM   (th_soe%dm     , dm_eneg_s        , ierr ); CHKERRQ(ierr)
+    if (.not.single_pde_formulation) then
     call DMCompositeAddDM   (th_soe%dm     , dm_eneg_r        , ierr ); CHKERRQ(ierr)
     call DMCompositeAddDM   (th_soe%dm     , dm_eneg_x        , ierr ); CHKERRQ(ierr)
+    endif
 
     call DMDestroy          (dm_mass_s     , ierr               ); CHKERRQ(ierr)
+    call DMDestroy          (dm_eneg_s     , ierr               ); CHKERRQ(ierr)
+    if (.not.single_pde_formulation) then
     call DMDestroy          (dm_mass_r     , ierr               ); CHKERRQ(ierr)
     call DMDestroy          (dm_mass_x     , ierr               ); CHKERRQ(ierr)
-    call DMDestroy          (dm_eneg_s     , ierr               ); CHKERRQ(ierr)
     call DMDestroy          (dm_eneg_r     , ierr               ); CHKERRQ(ierr)
     call DMDestroy          (dm_eneg_x     , ierr               ); CHKERRQ(ierr)
+    endif
 
     call DMSetUp            (th_soe%dm     , ierr               ); CHKERRQ(ierr)
 

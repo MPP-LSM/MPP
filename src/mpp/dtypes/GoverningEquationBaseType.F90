@@ -576,7 +576,7 @@ contains
   subroutine GoveqnBaseAddCondition(this, ss_or_bc_type, name, unit,    &
        cond_type, region_type, id_of_other_goveq, itype_of_other_goveq, &
        num_other_goveqs, id_of_other_goveqs, itype_of_other_goveqs,     &
-       conn_set)
+       icoupling_of_other_goveqns, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds boundary/source-sink condition to governing equation
@@ -605,6 +605,7 @@ contains
     PetscInt, optional                          :: num_other_goveqs
     PetscInt, optional, pointer                 :: id_of_other_goveqs(:)
     PetscInt, optional, pointer                 :: itype_of_other_goveqs(:)
+    PetscBool, optional, pointer                :: icoupling_of_other_goveqns(:)
     type(connection_set_type),pointer, optional :: conn_set
     !
     type(condition_type), pointer :: cond
@@ -647,11 +648,14 @@ contains
 
              cond%num_other_goveqs = 1
 
-             allocate(cond%list_id_of_other_goveqs(cond%num_other_goveqs))
-             allocate(cond%itype_of_other_goveqs  (cond%num_other_goveqs))
+             allocate(cond%list_id_of_other_goveqs(                 cond%num_other_goveqs))
+             allocate(cond%itype_of_other_goveqs(                   cond%num_other_goveqs))
+             allocate(cond%swap_order_of_other_goveqs(              cond%num_other_goveqs))
+             allocate(cond%coupled_via_intauxvar_with_other_goveqns(cond%num_other_goveqs))
 
-             cond%list_id_of_other_goveqs(1) = id_of_other_goveq
-             cond%itype_of_other_goveqs(1)   = itype_of_other_goveq
+             cond%list_id_of_other_goveqs(1)                  = id_of_other_goveq
+             cond%itype_of_other_goveqs(1)                    = itype_of_other_goveq
+             cond%coupled_via_intauxvar_with_other_goveqns(1) = PETSC_FALSE
           else
 
              if (.not.present(id_of_other_goveqs) ) then
@@ -678,11 +682,14 @@ contains
 
              cond%num_other_goveqs = num_other_goveqs
 
-             allocate(cond%list_id_of_other_goveqs(cond%num_other_goveqs))
-             allocate(cond%itype_of_other_goveqs  (cond%num_other_goveqs))
+             allocate(cond%list_id_of_other_goveqs(                 cond%num_other_goveqs))
+             allocate(cond%itype_of_other_goveqs(                   cond%num_other_goveqs))
+             allocate(cond%swap_order_of_other_goveqs(              cond%num_other_goveqs))
+             allocate(cond%coupled_via_intauxvar_with_other_goveqns(cond%num_other_goveqs))
 
-             cond%list_id_of_other_goveqs(:) = id_of_other_goveqs(:)
-             cond%itype_of_other_goveqs(:)   = itype_of_other_goveqs(:)
+             cond%list_id_of_other_goveqs(:)                  = id_of_other_goveqs(:)
+             cond%itype_of_other_goveqs(:)                    = itype_of_other_goveqs(:)
+             cond%coupled_via_intauxvar_with_other_goveqns(:) = icoupling_of_other_goveqns(:)
           endif
        endif
        call ConditionListAddCondition(this%boundary_conditions, cond)
