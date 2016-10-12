@@ -1976,6 +1976,7 @@ contains
     PetscReal                                :: Jdn
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: cur_cond_used
     PetscInt                                 :: cond_type
     PetscReal                                :: val
     PetscReal                                :: mflux
@@ -1991,9 +1992,16 @@ contains
     do
        if (.not.associated(cur_cond)) exit
 
+       cur_cond_used = PETSC_FALSE
+
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+
           do ieqn = 1, cur_cond%num_other_goveqs
+
              if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+
+                cur_cond_used = PETSC_TRUE
+
                 cur_conn_set => cur_cond%conn_set
 
                 do iconn = 1, cur_conn_set%num_connections
@@ -2068,7 +2076,11 @@ contains
                 enddo
              endif
           enddo
+
        endif
+
+       if (.not. cur_cond_used) sum_conn = sum_conn + cur_cond%conn_set%num_connections
+
        cur_cond => cur_cond%next
     enddo
 
@@ -2141,6 +2153,7 @@ contains
     PetscBool                                        :: eqns_are_coupled
     PetscInt                                         :: ivar
     PetscBool                                        :: swap_order
+    PetscBool                                        :: cur_cond_used
 
     coupling_via_BC  = PETSC_FALSE
     eqns_are_coupled = PETSC_FALSE
@@ -2160,9 +2173,16 @@ contains
     do
        if (.not.associated(cur_cond)) exit
 
+       cur_cond_used = PETSC_FALSE
+
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+
+
           do ieqn = 1, cur_cond%num_other_goveqs
+
              if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+
+                cur_cond_used = PETSC_TRUE
 
                 if (.not.(cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn))) coupling_via_BC = PETSC_TRUE
 
@@ -2328,7 +2348,11 @@ contains
 
              endif
           enddo
+
        endif
+
+       if (.not. cur_cond_used) sum_conn = sum_conn + cur_cond%conn_set%num_connections
+
        cur_cond => cur_cond%next
     enddo
 
