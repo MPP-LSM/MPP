@@ -1975,6 +1975,7 @@ contains
 
     coupling_via_BC  = PETSC_FALSE
     eqns_are_coupled = PETSC_FALSE
+    compute_deriv    = PETSC_TRUE
 
     ! Are the two equations coupled?
     do ivar = 1, this%nvars_needed_from_other_goveqns
@@ -2004,37 +2005,73 @@ contains
 
                    cell_id = cur_conn_set%id_dn(iconn)
 
-                   internal_conn = PETSC_TRUE
-                   cond_type     = COND_NULL
+                   internal_conn = PETSC_FALSE
+                   cond_type     = cur_cond%itype
 
-                   call RichardsFluxDerivativeWrtTemperature( &
-                        this%aux_vars_bc(sum_conn)%pressure,  &
-                        this%aux_vars_bc(sum_conn)%kr,        &
-                        this%aux_vars_bc(sum_conn)%den,       &
-                        this%aux_vars_bc(sum_conn)%dden_dT,   &
-                        this%aux_vars_bc(sum_conn)%vis,       &
-                        this%aux_vars_bc(sum_conn)%dvis_dT,   &
-                        this%aux_vars_bc(sum_conn)%perm,      &
-                        this%aux_vars_in(cell_id)%pressure,   &
-                        this%aux_vars_in(cell_id)%kr,         &
-                        this%aux_vars_in(cell_id)%den,        &
-                        this%aux_vars_in(cell_id)%dden_dT,    &
-                        this%aux_vars_in(cell_id)%vis,        &
-                        this%aux_vars_in(cell_id)%dvis_dT,    &
-                        this%aux_vars_in(cell_id)%perm,       &
-                        cur_conn_set%area(iconn),             &
-                        cur_conn_set%dist_up(iconn),          &
-                        cur_conn_set%dist_dn(iconn),          &
-                        cur_conn_set%dist_unitvec(iconn)%arr, &
-                        compute_deriv,                        &
-                        internal_conn,                        &
-                        cond_type,                            &
-                        dummy_var,                            &
-                        Jup,                                  &
-                        Jdn                                   &
-                        )
+                   if (.not.cur_cond%swap_order) then
 
-                   val = Jup
+                      call RichardsFluxDerivativeWrtTemperature( &
+                           this%aux_vars_bc(sum_conn)%pressure,  &
+                           this%aux_vars_bc(sum_conn)%kr,        &
+                           this%aux_vars_bc(sum_conn)%den,       &
+                           this%aux_vars_bc(sum_conn)%dden_dT,   &
+                           this%aux_vars_bc(sum_conn)%vis,       &
+                           this%aux_vars_bc(sum_conn)%dvis_dT,   &
+                           this%aux_vars_bc(sum_conn)%perm,      &
+                           this%aux_vars_in(cell_id)%pressure,   &
+                           this%aux_vars_in(cell_id)%kr,         &
+                           this%aux_vars_in(cell_id)%den,        &
+                           this%aux_vars_in(cell_id)%dden_dT,    &
+                           this%aux_vars_in(cell_id)%vis,        &
+                           this%aux_vars_in(cell_id)%dvis_dT,    &
+                           this%aux_vars_in(cell_id)%perm,       &
+                           cur_conn_set%area(iconn),             &
+                           cur_conn_set%dist_up(iconn),          &
+                           cur_conn_set%dist_dn(iconn),          &
+                           cur_conn_set%dist_unitvec(iconn)%arr, &
+                           compute_deriv,                        &
+                           internal_conn,                        &
+                           cond_type,                            &
+                           dummy_var,                            &
+                           Jup,                                  &
+                           Jdn                                   &
+                           )
+
+                      val = Jup
+
+                   else
+
+                      call RichardsFluxDerivativeWrtTemperature( &
+                           this%aux_vars_in(cell_id)%pressure,   &
+                           this%aux_vars_in(cell_id)%kr,         &
+                           this%aux_vars_in(cell_id)%den,        &
+                           this%aux_vars_in(cell_id)%dden_dT,    &
+                           this%aux_vars_in(cell_id)%vis,        &
+                           this%aux_vars_in(cell_id)%dvis_dT,    &
+                           this%aux_vars_in(cell_id)%perm,       &
+                           this%aux_vars_bc(sum_conn)%pressure,  &
+                           this%aux_vars_bc(sum_conn)%kr,        &
+                           this%aux_vars_bc(sum_conn)%den,       &
+                           this%aux_vars_bc(sum_conn)%dden_dT,   &
+                           this%aux_vars_bc(sum_conn)%vis,       &
+                           this%aux_vars_bc(sum_conn)%dvis_dT,   &
+                           this%aux_vars_bc(sum_conn)%perm,      &
+                           cur_conn_set%area(iconn),             &
+                           cur_conn_set%dist_up(iconn),          &
+                           cur_conn_set%dist_dn(iconn),          &
+                           cur_conn_set%dist_unitvec(iconn)%arr, &
+                           compute_deriv,                        &
+                           internal_conn,                        &
+                           cond_type,                            &
+                           dummy_var,                            &
+                           Jup,                                  &
+                           Jdn                                   &
+                           )
+
+                      val = -Jdn
+
+                   endif
+
                    row = cell_id - 1
                    col = cur_conn_set%id_up(iconn) - 1
 
@@ -2079,8 +2116,6 @@ contains
        call MatSetValuesLocal(B, 1, row, 1, col, derivative, ADD_VALUES, ierr); CHKERRQ(ierr)
 
     enddo
-
-    compute_deriv = PETSC_TRUE
 
     ! Interior cells
     cur_conn_set => this%mesh%intrn_conn_set_list%first

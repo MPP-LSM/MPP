@@ -418,10 +418,6 @@ contains
        dq_dT_up = Dq*(dukvr_dT_up*dphi + ukvr*dphi_dT_up)*area;
        dq_dT_dn = Dq*(dukvr_dT_dn*dphi + ukvr*dphi_dT_dn)*area;
 
-       if (.not.(internal_conn)) then
-          write(*,*)'Verify RichardsFluxDerivativeWrtTemperature'
-          stop
-       endif
        if (.not.(internal_conn) .and. (cond_type == COND_MASS_FLUX)) then
           dflux_dT_up = 0.d0
           dflux_dT_dn = 0.d0
