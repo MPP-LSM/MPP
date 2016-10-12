@@ -575,7 +575,7 @@ contains
     DM, pointer                            :: dms(:)
     Vec, pointer                           :: X_subvecs(:)
     Vec, pointer                           :: F_subvecs(:)
-    PetscInt, parameter                    :: offset = 0
+    PetscInt                               :: offset
     PetscViewer :: viewer
     
     ! Find number of GEs packed within the SoE
@@ -609,6 +609,7 @@ contains
        end select
 
        call cur_goveq%UpdateAuxVarsIntrn()
+       offset = offset + cur_goveq%mesh%ncells_local
 
        cur_goveq => cur_goveq%next
     enddo
