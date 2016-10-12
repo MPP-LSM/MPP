@@ -2169,6 +2169,7 @@ contains
 
     if (.not.eqns_are_coupled) return
  
+    sum_conn = 0
     cur_cond => geq_soil%boundary_conditions%first
     do
        if (.not.associated(cur_cond)) exit
@@ -2176,7 +2177,6 @@ contains
        cur_cond_used = PETSC_FALSE
 
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-
 
           do ieqn = 1, cur_cond%num_other_goveqs
 
@@ -2187,7 +2187,6 @@ contains
                 if (.not.(cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn))) coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
-                sum_conn = 0
 
                 do iconn = 1, cur_conn_set%num_connections
                    sum_conn = sum_conn + 1

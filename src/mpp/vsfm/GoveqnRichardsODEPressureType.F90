@@ -1995,6 +1995,7 @@ contains
 
     if (.not.eqns_are_coupled) return
 
+    sum_conn = 0
     cur_cond => this%boundary_conditions%first
     do
        if (.not.associated(cur_cond)) exit
@@ -2009,7 +2010,6 @@ contains
                 coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
-                sum_conn = 0
 
                 do iconn = 1, cur_conn_set%num_connections
                    sum_conn = sum_conn + 1
