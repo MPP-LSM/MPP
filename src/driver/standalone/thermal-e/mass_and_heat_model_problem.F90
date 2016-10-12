@@ -642,31 +642,101 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use MultiPhysicsProbTH , only : th_mpp
-    use MultiPhysicsProbConstants       , only : AUXVAR_BC, VAR_BC_SS_CONDITION
+    use MultiPhysicsProbTH            , only : th_mpp
+    use MultiPhysicsProbConstants     , only : AUXVAR_BC, VAR_BC_SS_CONDITION
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    use MultiPhysicsProbConstants     , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
     !
     implicit none
     !
-    PetscReal, pointer :: top_bc(:)
-    PetscReal, pointer :: bot_bc(:)
-    PetscInt           :: soe_auxvar_id
+    PetscReal                 , pointer :: top_temp_bc(:)
+    PetscReal                 , pointer :: bot_temp_bc(:)
+    PetscReal                 , pointer :: top_pres_bc(:)
+    PetscReal                 , pointer :: bot_pres_bc(:)
+    PetscInt                            :: soe_auxvar_id
+    PetscInt                            :: iconn
+    PetscInt                            :: sum_conn
+    PetscBool                           :: first_bc
+    type(condition_type)      , pointer :: cur_cond
+    type(connection_set_type) , pointer :: cur_conn_set
+    class(goveqn_base_type)   , pointer :: cur_goveq
+    character(len=256)                  :: string
 
-    allocate(top_bc(1))
-    allocate(bot_bc(1))
+    allocate(top_temp_bc(1))
+    allocate(bot_temp_bc(1))
+    allocate(top_pres_bc(1))
+    allocate(bot_pres_bc(1))
 
-    top_bc(:) = 303.15d0
-    bot_bc(:) = 293.15d0
+    top_temp_bc(:) = 303.15d0
+    bot_temp_bc(:) = 293.15d0
+    top_pres_bc(:) = 091325.d0
+    bot_pres_bc(:) = 091325.d0
 
     soe_auxvar_id = 1
     call th_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
-         VAR_BC_SS_CONDITION, soe_auxvar_id, top_bc)
+         VAR_BC_SS_CONDITION, soe_auxvar_id, top_temp_bc)
 
     soe_auxvar_id = 2
     call th_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
-         VAR_BC_SS_CONDITION, soe_auxvar_id, bot_bc)
+         VAR_BC_SS_CONDITION, soe_auxvar_id, bot_temp_bc)
 
-    deallocate(top_bc)
-    deallocate(bot_bc)
+    cur_goveq => th_mpp%sysofeqns%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       select type(cur_goveq)
+          class is (goveqn_thermal_enthalpy_soil_type)
+             sum_conn = 0
+             first_bc = PETSC_TRUE
+
+          cur_cond => cur_goveq%boundary_conditions%first
+          do
+             if (.not.associated(cur_cond)) exit
+             cur_conn_set => cur_cond%conn_set
+
+             do iconn = 1, cur_conn_set%num_connections
+                sum_conn = sum_conn + 1
+                select case(cur_cond%itype)
+                case (COND_DIRICHLET)
+                   if (first_bc) then
+                      cur_goveq%aux_vars_bc(sum_conn)%pressure = top_pres_bc(iconn)
+                   else
+                      cur_goveq%aux_vars_bc(sum_conn)%pressure = bot_pres_bc(iconn)
+                   endif
+
+                case (COND_DIRICHLET_FRM_OTR_GOVEQ)
+                   ! Do nothing
+
+                case default
+                   write(string,*) cur_cond%itype
+                   write(*,*) 'Unknown cur_cond%itype = ' // trim(string)
+                   stop
+                end select
+
+             enddo
+             first_bc = PETSC_FALSE
+             cur_cond => cur_cond%next
+          enddo
+          class is (goveqn_richards_ode_pressure_type)
+
+          class default
+
+          write(*,*)'Unknown goveqn type'
+          stop
+
+       end select
+       cur_goveq => cur_goveq%next
+    enddo
+
+    deallocate(top_temp_bc)
+    deallocate(bot_temp_bc)
+    deallocate(top_pres_bc)
+    deallocate(bot_pres_bc)
 
   end subroutine set_bondary_conditions
 
