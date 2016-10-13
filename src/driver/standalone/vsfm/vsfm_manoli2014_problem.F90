@@ -506,6 +506,7 @@ contains
     soil_vol(:)  = dx*dy*dz
     root_vol(:)  = dx*dy*dz
     root_area(:) = dx*dy
+    xylem_area(:)= dx*dy
 
     srx_filter (:) = 1
     srx_area   (:) = dx*dy

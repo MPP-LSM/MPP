@@ -1817,6 +1817,7 @@ contains
     PetscReal                                :: val
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: cur_cond_used
     PetscInt                                 :: cond_type
     type(condition_type),pointer             :: cur_cond
     type(connection_set_type), pointer       :: cur_conn_set
@@ -1831,9 +1832,14 @@ contains
 
        cur_conn_set => cur_cond%conn_set
 
+       cur_cond_used = PETSC_FALSE
+
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+
           do ieqn = 1, cur_cond%num_other_goveqs
              if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+
+                cur_cond_used = PETSC_TRUE
 
                 do iconn = 1, cur_conn_set%num_connections
                    sum_conn = sum_conn + 1
@@ -1909,12 +1915,13 @@ contains
                    call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
 
                 enddo
+
              endif
           enddo
 
-       else
-          sum_conn = sum_conn + cur_conn_set%num_connections
        endif
+
+       if (.not. cur_cond_used) sum_conn = sum_conn + cur_cond%conn_set%num_connections
 
        cur_cond => cur_cond%next
     enddo
@@ -1969,6 +1976,7 @@ contains
     PetscReal                                :: dtInv
     PetscBool                                :: coupling_via_BC
     PetscBool                                :: eqns_are_coupled
+    PetscBool                                :: cur_cond_used
     PetscInt                                 :: ivar
     type(condition_type),pointer             :: cur_cond
     type(connection_set_type), pointer       :: cur_conn_set
@@ -1987,18 +1995,21 @@ contains
 
     if (.not.eqns_are_coupled) return
 
+    sum_conn = 0
     cur_cond => this%boundary_conditions%first
     do
        if (.not.associated(cur_cond)) exit
 
+       cur_cond_used = PETSC_FALSE
+
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+
           do ieqn = 1, cur_cond%num_other_goveqs
              if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
 
                 coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
-                sum_conn = 0
 
                 do iconn = 1, cur_conn_set%num_connections
                    sum_conn = sum_conn + 1
@@ -2081,7 +2092,11 @@ contains
 
              endif
           enddo
+
        endif
+
+       if (.not. cur_cond_used) sum_conn = sum_conn + cur_cond%conn_set%num_connections
+
        cur_cond => cur_cond%next
     enddo
 

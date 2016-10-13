@@ -910,7 +910,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     class(goveqn_base_type),pointer :: cur_goveq
-    PetscInt, parameter :: offset = 0
+    PetscInt :: offset
 
     select case (this%itype)
     case(SOE_RE_ODE)
@@ -919,6 +919,7 @@ contains
        call VSFMSOEUpdateAuxVarsODE(this, this%soln_prev)
 
        ! 2) GE ---> GetFromSimAux()
+       offset = 0
        cur_goveq => this%goveqns
        do
           if (.not.associated(cur_goveq)) exit
@@ -932,6 +933,8 @@ contains
              call cur_goveq%UpdateAuxVars()
 
              call cur_goveq%PreSolve()
+
+             offset = offset + cur_goveq%mesh%ncells_local
 
           end select
           cur_goveq => cur_goveq%next
