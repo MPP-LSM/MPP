@@ -38,7 +38,7 @@ contains
     ! Initialization PETSc-based thermal model
     !
     ! !USES:
-    use clm_varctl                , only : use_vsfm
+    use clm_varctl                , only : vsfm_use_dynamic_linesearch
     !
     ! !ARGUMENTS
     implicit none
@@ -59,7 +59,7 @@ contains
     call allocate_auxvars()
 
     ! 6. Setup the MPP
-    call vsfm_mpp%SetupProblem()
+    call vsfm_mpp%SetupProblem(vsfm_use_dynamic_linesearch)
 
     ! 7. Add material properities associated with all governing equations
     call set_material_properties()    
@@ -790,11 +790,12 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants , only : GE_RE
+    use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
     !
     ! !ARGUMENTS
     implicit none
 
-    call vsfm_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE')
+    call vsfm_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE', MESH_CLM_SOIL_COL)
 
     call vsfm_mpp%SetMeshesOfGoveqns()
     
