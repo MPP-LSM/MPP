@@ -213,7 +213,7 @@ contains
     PetscReal, pointer :: vert_conn_dist_up(:) !
     PetscReal, pointer :: vert_conn_dist_dn(:) !
     PetscReal, pointer :: vert_conn_area(:)    !
-    PetscReal, pointer :: vert_conn_type(:)    !
+    PetscInt , pointer :: vert_conn_type(:)    !
 
     PetscErrorCode :: ierr
 
@@ -292,8 +292,9 @@ contains
     vert_nconn = iconn
 
     call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-         vert_nconn,  vert_conn_id_up, vert_conn_id_dn, &
-         vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area)
+         vert_nconn,  vert_conn_id_up, vert_conn_id_dn,          &
+         vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area,  &
+         vert_conn_type)
 
     deallocate(soil_xc)
     deallocate(soil_yc)

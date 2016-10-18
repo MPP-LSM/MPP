@@ -218,7 +218,7 @@ contains
     PetscReal, pointer :: conn_dist_up(:) !
     PetscReal, pointer :: conn_dist_dn(:) !
     PetscReal, pointer :: conn_area(:)    !
-    PetscReal, pointer :: conn_type(:)    !
+    PetscInt , pointer :: conn_type(:)    !
     PetscReal, pointer :: zv_x(:)
     PetscReal, pointer :: zv_y(:)
     PetscReal, pointer :: xv_2d(:,:)
@@ -424,8 +424,8 @@ contains
     nconn = iconn
 
     call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-         nconn,  conn_id_up, conn_id_dn, &
-         conn_dist_up, conn_dist_dn,  conn_area)
+         nconn,  conn_id_up, conn_id_dn,                         &
+         conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
     deallocate(soil_xc)
     deallocate(soil_yc)
