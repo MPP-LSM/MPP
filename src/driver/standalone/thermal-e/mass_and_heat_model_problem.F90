@@ -214,7 +214,7 @@ contains
     PetscReal, pointer :: vert_conn_dist_up(:) !
     PetscReal, pointer :: vert_conn_dist_dn(:) !
     PetscReal, pointer :: vert_conn_area(:)    !
-    PetscReal, pointer :: vert_conn_type(:)    !
+    PetscInt , pointer :: vert_conn_type(:)    !
 
     PetscErrorCode     :: ierr
 
@@ -292,9 +292,10 @@ contains
     end do
     vert_nconn = iconn
 
-    call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-         vert_nconn,  vert_conn_id_up, vert_conn_id_dn,                      &
-         vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area)
+    call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL,  &
+         vert_nconn,  vert_conn_id_up, vert_conn_id_dn,         &
+         vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area, &
+         vert_conn_type)
 
     deallocate(soil_xc)
     deallocate(soil_yc)
@@ -344,6 +345,7 @@ contains
     use MultiPhysicsProbConstants       , only : SOIL_BOTTOM_CELLS
     use MultiPhysicsProbConstants       , only : COND_BC
     use MultiPhysicsProbConstants       , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants       , only : CONN_VERTICAL
     use ConnectionSetType               , only : connection_set_type
     use MeshType                        , only : MeshCreateConnectionSet
     !
@@ -359,6 +361,7 @@ contains
     PetscReal                 , pointer :: dist_up(:)
     PetscReal                 , pointer :: dist_dn(:)
     PetscReal                 , pointer :: area(:)
+    PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
     type(connection_set_type) , pointer :: conn_set
 
@@ -375,6 +378,7 @@ contains
     allocate(dist_up  (nconn   ))
     allocate(dist_dn  (nconn   ))
     allocate(area     (nconn   ))
+    allocate(itype    (nconn   ))
     allocate(unit_vec (nconn,3 ))
 
     dx = x_column/nx
@@ -386,6 +390,7 @@ contains
     dist_up(1)    = 0.d0
     dist_dn(1)    = 0.5d0*dx
     area(1)       = dy*dz
+    itype(1)      = CONN_VERTICAL
     unit_vec(1,1) = 1.d0
     unit_vec(1,2) = 0.d0
     unit_vec(1,3) = 0.d0
@@ -393,7 +398,7 @@ contains
     allocate(conn_set)
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
          -1, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, unit_vec, conn_set)
+         dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
     ieqn = 2
 
@@ -406,6 +411,7 @@ contains
     dist_up(1)    = 0.d0
     dist_dn(1)    = 0.5d0*dx
     area(1)       = dy*dz
+    itype(1)      = CONN_VERTICAL
     unit_vec(1,1) = -1.d0
     unit_vec(1,2) = 0.d0
     unit_vec(1,3) = 0.d0
@@ -413,7 +419,7 @@ contains
     allocate(conn_set)
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
          -1, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, unit_vec, conn_set)
+         dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
     call th_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
          'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
@@ -424,6 +430,7 @@ contains
     deallocate(dist_up )
     deallocate(dist_dn )
     deallocate(area    )
+    deallocate(itype   )
     deallocate(unit_vec)
 
   end subroutine add_conditions_to_goveqns

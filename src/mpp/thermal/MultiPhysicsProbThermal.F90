@@ -211,7 +211,7 @@ contains
   end subroutine MPPThermalSetSoils
 
   !------------------------------------------------------------------------
-  subroutine ThermalMPPAddGovEqn(this, geq_type, name)
+  subroutine ThermalMPPAddGovEqn(this, geq_type, name, mesh_itype)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation to the MPP
@@ -794,6 +794,7 @@ contains
                 enddo
              endif
 
+             if (bc_found) exit
              cur_cond_1 => cur_cond_1%next
           enddo
 
@@ -814,6 +815,7 @@ contains
                    enddo
                 endif
 
+                if (bc_found) exit
                 cur_cond_2 => cur_cond_2%next
              enddo
 
@@ -1000,6 +1002,7 @@ contains
     enddo
 
     bc_found = PETSC_FALSE
+    bc_idx = 0
     cur_cond => cur_goveq%boundary_conditions%first
     do
        if (.not.associated(cur_cond)) exit

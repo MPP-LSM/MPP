@@ -312,28 +312,28 @@ contains
     PetscReal , pointer :: soil_conn_dist_up(:) !
     PetscReal , pointer :: soil_conn_dist_dn(:) !
     PetscReal , pointer :: soil_conn_area(:)    !
-    PetscReal , pointer :: soil_conn_type(:)    !
+    PetscInt  , pointer :: soil_conn_type(:)    !
 
     PetscInt  , pointer :: root_conn_id_up(:)   !
     PetscInt  , pointer :: root_conn_id_dn(:)   !
     PetscReal , pointer :: root_conn_dist_up(:) !
     PetscReal , pointer :: root_conn_dist_dn(:) !
     PetscReal , pointer :: root_conn_area(:)    !
-    PetscReal , pointer :: root_conn_type(:)    !
+    PetscInt  , pointer :: root_conn_type(:)    !
 
     PetscInt  , pointer :: xylem_conn_id_up(:)   !
     PetscInt  , pointer :: xylem_conn_id_dn(:)   !
     PetscReal , pointer :: xylem_conn_dist_up(:) !
     PetscReal , pointer :: xylem_conn_dist_dn(:) !
     PetscReal , pointer :: xylem_conn_area(:)    !
-    PetscReal , pointer :: xylem_conn_type(:)    !
+    PetscInt  , pointer :: xylem_conn_type(:)    !
 
     PetscInt  , pointer :: srx_conn_id_up(:)   !
     PetscInt  , pointer :: srx_conn_id_dn(:)   !
     PetscReal , pointer :: srx_conn_dist_up(:) !
     PetscReal , pointer :: srx_conn_dist_dn(:) !
     PetscReal , pointer :: srx_conn_area(:)    !
-    PetscReal , pointer :: srx_conn_type(:)    !
+    PetscInt  , pointer :: srx_conn_type(:)    !
 
     PetscReal , pointer :: zv_x(:)
     PetscReal , pointer :: zv_y(:)
@@ -553,8 +553,9 @@ contains
        nconn = iconn
 
        call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-            nconn,  soil_conn_id_up, soil_conn_id_dn, &
-            soil_conn_dist_up, soil_conn_dist_dn, soil_conn_area)
+            nconn,  soil_conn_id_up, soil_conn_id_dn,             &
+            soil_conn_dist_up, soil_conn_dist_dn, soil_conn_area, &
+            soil_conn_type)
 
        ! *********** Root mesh *********** 
 
@@ -592,8 +593,9 @@ contains
        nconn = iconn
 
        call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-            nconn,  root_conn_id_up, root_conn_id_dn, &
-            root_conn_dist_up, root_conn_dist_dn, root_conn_area)
+            nconn,  root_conn_id_up, root_conn_id_dn,             &
+            root_conn_dist_up, root_conn_dist_dn, root_conn_area, &
+            root_conn_type)
 
        ! *********** Xylem mesh *********** 
        imesh        = 3
@@ -630,9 +632,10 @@ contains
        end do
        nconn = iconn
 
-       call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-            nconn,  xylem_conn_id_up, xylem_conn_id_dn, &
-            xylem_conn_dist_up, xylem_conn_dist_dn,  xylem_conn_area)
+       call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL,     &
+            nconn,  xylem_conn_id_up, xylem_conn_id_dn,               &
+            xylem_conn_dist_up, xylem_conn_dist_dn,  xylem_conn_area, &
+            xylem_conn_type)
 
     else
 
@@ -710,8 +713,9 @@ contains
        nconn = iconn
 
        call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-            nconn,  srx_conn_id_up, srx_conn_id_dn, &
-            srx_conn_dist_up, srx_conn_dist_dn, srx_conn_area)
+            nconn,  srx_conn_id_up, srx_conn_id_dn,               &
+            srx_conn_dist_up, srx_conn_dist_dn, srx_conn_area,    &
+            srx_conn_type)
     endif
 
     deallocate(soil_xc            )
@@ -818,6 +822,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_DIRICHLET
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
     use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
@@ -842,6 +847,7 @@ contains
     PetscReal                 , pointer :: root_zc(:)           ! z-position of grid cell [m]
     PetscReal                 , pointer :: soil_dz(:)           ! layer thickness of grid cell [m]
     PetscReal                 , pointer :: area(:)
+    PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
     type(connection_set_type) , pointer :: conn_set
 
@@ -879,6 +885,7 @@ contains
     allocate(dist_up  (nconn   ))
     allocate(dist_dn  (nconn   ))
     allocate(area     (nconn   ))
+    allocate(itype    (nconn   ))
     allocate(unit_vec (nconn,3 ))
 
     do kk = 1, nz_root
@@ -890,6 +897,7 @@ contains
        unit_vec(kk,1) = -1.d0
        unit_vec(kk,2) = 0.d0
        unit_vec(kk,3) = 0.d0
+       itype(kk)      = CONN_VERTICAL
     enddo
 
     allocate(conn_set)
@@ -910,7 +918,7 @@ contains
 
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
          -1, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, unit_vec, conn_set)
+         dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -944,7 +952,7 @@ contains
 
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
          -1, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, unit_vec, conn_set)
+         dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -979,7 +987,7 @@ contains
 
     call MeshCreateConnectionSet(th_mpp%meshes(2), &
          -1, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, unit_vec, conn_set)
+         dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -1015,7 +1023,7 @@ contains
 
     call MeshCreateConnectionSet(th_mpp%meshes(2), &
          -1, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, unit_vec, conn_set)
+         dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
          ss_or_bc_type=COND_BC,                     &
@@ -1153,6 +1161,7 @@ contains
     deallocate(dist_up        )
     deallocate(dist_dn        )
     deallocate(area           )
+    deallocate(itype          )
     deallocate(unit_vec       )
 
   end subroutine add_conditions_to_goveqns
