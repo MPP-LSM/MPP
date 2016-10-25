@@ -1,12 +1,14 @@
 set(VSFM_DRIVER_SOURCES
   vsfm_celia1990.F90
   vsfm_vchannel.F90
+  vsfm_vchannel_operator_split.F90
   vsfm_manoli2014.F90
   )
 
 set(VSFM_PROBLEM_SOURCES
   vsfm_celia1990_problem.F90
   vsfm_vchannel_problem.F90
+  vsfm_vchannel_problem_operator_split.F90
   vsfm_manoli2014_problem.F90
   )
 
@@ -31,6 +33,7 @@ set(MPP_LIBRARIES vsfm_problems; ${MPP_LIBRARIES})
 include(add_mpp_executable)
 add_mpp_executable(vsfm_celia1990 vsfm_celia1990.F90)
 add_mpp_executable(vsfm_vchannel vsfm_vchannel.F90)
+add_mpp_executable(vsfm_vchannel_operator_split vsfm_vchannel_operator_split.F90)
 add_mpp_executable(vsfm_manoli2014 vsfm_manoli2014.F90)
 
 if (NOT CMAKE_INSTALL_PREFIX STREQUAL "INSTALL_DISABLED")
@@ -38,6 +41,7 @@ if (NOT CMAKE_INSTALL_PREFIX STREQUAL "INSTALL_DISABLED")
 
   install(TARGETS vsfm_celia1990 DESTINATION bin)
   install(TARGETS vsfm_vchannel DESTINATION bin)
+  install(TARGETS vsfm_vchannel_operator_split DESTINATION bin)
   install(TARGETS vsfm_manoli2014 DESTINATION bin)
 
   file(GLOB HEADERS *.mod)
