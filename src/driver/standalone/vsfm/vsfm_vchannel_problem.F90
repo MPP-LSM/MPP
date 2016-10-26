@@ -1017,7 +1017,7 @@ contains
        do c = 1,nx*ny
           icell = icell + 1
           if (soil_filter_2d(c,jj) == 1) then
-             press_ic(icell) = (18.75d0 -0.5d0*(jj-kk_lower_idx(c)) - 10.d0)*997.18d0*9.8d0 + 101325.d0
+             press_ic(icell) = (18.75d0 -0.5d0*(jj-kk_lower_idx(c)) - 2.d0)*997.18d0*9.8d0 + 101325.d0
           else
              press_ic(icell) = -1.0d10
           endif
