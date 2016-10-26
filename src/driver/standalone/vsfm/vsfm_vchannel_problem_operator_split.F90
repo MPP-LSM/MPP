@@ -1,4 +1,6 @@
-module vsfm_vchannel_problem
+module vsfm_vchannel_problem_operator_split
+
+  use MultiPhysicsProbVSFM, only : mpp_vsfm_type
 
   implicit none
 
@@ -20,15 +22,17 @@ module vsfm_vchannel_problem
   PetscInt, pointer     :: soil_filter_2d(:,:)
   PetscInt, pointer     :: kk_lower_idx(:)
 
-  public :: run_vsfm_vchannel_problem
-  public :: output_regression_vsfm_vchannel_problem
+  public :: run_vsfm_vchannel_problem_operator_split
+  public :: output_regression_vsfm_vchannel_problem_operator_split
+
+  type(mpp_vsfm_type), public, target :: vsfm_mpp_lateral
+  type(mpp_vsfm_type), public, target :: vsfm_mpp_vertical
 
 contains
 
 !------------------------------------------------------------------------
-  subroutine run_vsfm_vchannel_problem()
+  subroutine run_vsfm_vchannel_problem_operator_split()
 
-    use MultiPhysicsProbVSFM , only : vsfm_mpp
     use mpp_varpar           , only : mpp_varpar_init
     !
     implicit none
@@ -82,7 +86,7 @@ contains
     call PetscOptionsGetString(PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
 
     ! Initialize the problem
-    call Init()  
+    call Init()
 
     if (save_initial_soln) then
        if (len(trim(adjustl(output_suffix))) ==  0) then
@@ -92,7 +96,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp_vertical%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -101,8 +105,20 @@ contains
        if (with_seepage_bc) call set_bondary_conditions()
 
        ! Run the model
-       call vsfm_mpp%sysofeqns%StepDT(dtime, istep, &
+       call vsfm_mpp_vertical%sysofeqns%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
+
+       call VecCopy(vsfm_mpp_vertical%sysofeqns%soln, vsfm_mpp_lateral%sysofeqns%soln         , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%sysofeqns%soln, vsfm_mpp_lateral%sysofeqns%soln_prev    , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%sysofeqns%soln, vsfm_mpp_lateral%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+
+       call vsfm_mpp_lateral%sysofeqns%StepDT(dtime, istep, &
+            converged, converged_reason, ierr); CHKERRQ(ierr)
+
+       call VecCopy(vsfm_mpp_lateral%sysofeqns%soln, vsfm_mpp_vertical%sysofeqns%soln         , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%sysofeqns%soln, vsfm_mpp_vertical%sysofeqns%soln_prev    , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%sysofeqns%soln, vsfm_mpp_vertical%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+
     enddo
 
     if (save_final_soln) then
@@ -112,17 +128,16 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp_lateral%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
-  end subroutine run_vsfm_vchannel_problem
+  end subroutine run_vsfm_vchannel_problem_operator_split
 
 
   !------------------------------------------------------------------------
   subroutine Init()
     !
-    use MultiPhysicsProbVSFM , only : vsfm_mpp
     !
     implicit none
     !
@@ -147,7 +162,8 @@ contains
     call allocate_auxvars()
 
     ! 6. Setup the MPP
-    call vsfm_mpp%SetupProblem()
+    call vsfm_mpp_vertical%SetupProblem()
+    call vsfm_mpp_lateral%SetupProblem()
 
     ! 7. Add material properities associated with all governing equations
     call set_material_properties() 
@@ -165,7 +181,6 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants , only : MPP_VSFM_SNES_CLM
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     !
     ! !ARGUMENTS
     implicit none
@@ -180,17 +195,21 @@ contains
     !
     ! Set up the multi-physics problem
     !
-    call vsfm_mpp%Init       ()
-    call vsfm_mpp%SetName    ('Variably-Saturated-Flow-Model For V Channel')
-    call vsfm_mpp%SetID      (MPP_VSFM_SNES_CLM)
-    call vsfm_mpp%SetMPIRank (iam)
+    call vsfm_mpp_vertical%Init       ()
+    call vsfm_mpp_vertical%SetName    ('Variably-Saturated-Flow-Model For V Channel 1D')
+    call vsfm_mpp_vertical%SetID      (MPP_VSFM_SNES_CLM)
+    call vsfm_mpp_vertical%SetMPIRank (iam)
+
+    call vsfm_mpp_lateral%Init       ()
+    call vsfm_mpp_lateral%SetName    ('Variably-Saturated-Flow-Model For V Channel 2D')
+    call vsfm_mpp_lateral%SetID      (MPP_VSFM_SNES_CLM)
+    call vsfm_mpp_lateral%SetMPIRank (iam)
 
   end subroutine initialize_mpp
 
   !------------------------------------------------------------------------
   subroutine add_meshes()
     !
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
@@ -338,28 +357,44 @@ contains
     !
     ! Set up the meshes
     !    
-    call vsfm_mpp%SetNumMeshes(1)
+    call vsfm_mpp_vertical%SetNumMeshes(1)
 
-    call vsfm_mpp%MeshSetName        (imesh, 'Soil mesh')
-    call vsfm_mpp%MeshSetOrientation (imesh, MESH_AGAINST_GRAVITY)
-    call vsfm_mpp%MeshSetID          (imesh, MESH_CLM_SOIL_COL)
-    call vsfm_mpp%MeshSetDimensions  (imesh, ncells_local, ncells_ghost, nlev)
+    call vsfm_mpp_vertical%MeshSetName                (imesh, 'Soil mesh')
+    call vsfm_mpp_vertical%MeshSetOrientation         (imesh, MESH_AGAINST_GRAVITY)
+    call vsfm_mpp_vertical%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
+    call vsfm_mpp_vertical%MeshSetDimensions          (imesh, ncells_local, ncells_ghost, nlev)
 
-    call vsfm_mpp%MeshSetGridCellFilter      (imesh, soil_filter)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
-    call vsfm_mpp%MeshComputeVolume          (imesh)
+    call vsfm_mpp_vertical%MeshSetGridCellFilter      (imesh, soil_filter)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
+    call vsfm_mpp_vertical%MeshComputeVolume          (imesh)
 
-    iconn = 0
+    call vsfm_mpp_lateral%SetNumMeshes(1)
+
+    call vsfm_mpp_lateral%MeshSetName                (imesh, 'Soil mesh')
+    call vsfm_mpp_lateral%MeshSetOrientation         (imesh, MESH_AGAINST_GRAVITY)
+    call vsfm_mpp_lateral%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
+    call vsfm_mpp_lateral%MeshSetDimensions          (imesh, ncells_local, ncells_ghost, nlev)
+
+    call vsfm_mpp_lateral%MeshSetGridCellFilter      (imesh, soil_filter)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
+    call vsfm_mpp_lateral%MeshComputeVolume          (imesh)
 
     !
     ! Vertical connections
     !
+    iconn = 0
     do kk = 1, nz-1
        do ii = 1,nx
           do jj = 1,ny
@@ -384,9 +419,16 @@ contains
        end do
     end do
 
+    nconn = iconn
+
+    call vsfm_mpp_vertical%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+         nconn,  conn_id_up, conn_id_dn,                         &
+         conn_dist_up, conn_dist_dn,  conn_area, conn_type)
+
     !
     ! Horizontal connections
     !
+    iconn = 0
     do ii = 1,nx-1
        do kk = 1, nz
           do jj = 1,ny
@@ -437,7 +479,7 @@ contains
 
     nconn = iconn
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp_lateral%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
@@ -474,7 +516,6 @@ contains
   !------------------------------------------------------------------------
   subroutine add_orthogonal_hex_mesh()
     !
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
@@ -669,22 +710,39 @@ contains
     !
     ! Set up the meshes
     !
-    call vsfm_mpp%SetNumMeshes(1)
+    call vsfm_mpp_vertical%SetNumMeshes(1)
 
-    call vsfm_mpp%MeshSetName        (imesh, 'Soil mesh')
-    call vsfm_mpp%MeshSetOrientation (imesh, MESH_AGAINST_GRAVITY)
-    call vsfm_mpp%MeshSetID          (imesh, MESH_CLM_SOIL_COL)
-    call vsfm_mpp%MeshSetDimensions  (imesh, ncells_local, ncells_ghost, nlev)
+    call vsfm_mpp_vertical%MeshSetName                (imesh, 'Soil mesh')
+    call vsfm_mpp_vertical%MeshSetOrientation         (imesh, MESH_AGAINST_GRAVITY)
+    call vsfm_mpp_vertical%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
+    call vsfm_mpp_vertical%MeshSetDimensions          (imesh, ncells_local, ncells_ghost, nlev)
 
-    call vsfm_mpp%MeshSetGridCellFilter      (imesh, soil_filter)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
-    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
-    call vsfm_mpp%MeshComputeVolume          (imesh)
+    call vsfm_mpp_vertical%MeshSetGridCellFilter      (imesh, soil_filter)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
+    call vsfm_mpp_vertical%MeshComputeVolume          (imesh)
+
+    call vsfm_mpp_lateral%SetNumMeshes(1)
+
+    call vsfm_mpp_lateral%MeshSetName                (imesh, 'Soil mesh')
+    call vsfm_mpp_lateral%MeshSetOrientation         (imesh, MESH_AGAINST_GRAVITY)
+    call vsfm_mpp_lateral%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
+    call vsfm_mpp_lateral%MeshSetDimensions          (imesh, ncells_local, ncells_ghost, nlev)
+
+    call vsfm_mpp_lateral%MeshSetGridCellFilter      (imesh, soil_filter)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
+    call vsfm_mpp_lateral%MeshComputeVolume          (imesh)
 
     !
     ! Vertical connections
@@ -712,7 +770,6 @@ contains
              dist_y = soil_yc(conn_id_up(iconn)) - soil_yc(conn_id_dn(iconn))
              dist_z = soil_zc(conn_id_up(iconn)) - soil_zc(conn_id_dn(iconn))
 
-             !write(*,*)'conn: ',iconn,conn_id_up(iconn),conn_id_dn(iconn),dist_x,dist_y,dist_z
              dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
 
              conn_dist_up(iconn) = 0.5d0*dz !dist
@@ -724,10 +781,16 @@ contains
           end do
        end do
     end do
+    nconn = iconn
+
+    call vsfm_mpp_vertical%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+         nconn,  conn_id_up, conn_id_dn,                         &
+         conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
     !
     ! Horizontal connections
     !
+    iconn = 0
     do ii = 1,nx-1
        do kk = 1, nz_hex
           do jj = 1,ny
@@ -781,7 +844,7 @@ contains
     end do
     nconn = iconn
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp_lateral%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
@@ -823,16 +886,17 @@ contains
     !
     !
     ! !USES:
-    use MultiPhysicsProbVSFM , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : GE_RE
     use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
     !
     ! !ARGUMENTS
     implicit none
 
-    call vsfm_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE', MESH_CLM_SOIL_COL)
+    call vsfm_mpp_vertical%AddGovEqn(GE_RE, 'Richards Equation ODE', MESH_CLM_SOIL_COL)
+    call vsfm_mpp_lateral%AddGovEqn(GE_RE, 'Richards Equation ODE', MESH_CLM_SOIL_COL)
 
-    call vsfm_mpp%SetMeshesOfGoveqns()
+    call vsfm_mpp_vertical%SetMeshesOfGoveqns()
+    call vsfm_mpp_lateral%SetMeshesOfGoveqns()
 
   end subroutine add_goveqns
 
@@ -843,7 +907,6 @@ contains
     !
     !
     ! !USES:
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : SOIL_CELLS
     use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
     use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
@@ -894,12 +957,12 @@ contains
     enddo
 
     ieqn = 1
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+    call vsfm_mpp_vertical%GovEqnAddCondition(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_SEEPAGE_BC, &
          SOIL_TOP_CELLS)
 
     icond = 1
-    call vsfm_mpp%GovEqnUpdateConditionConnSet(ieqn, icond, COND_BC, &
+    call vsfm_mpp_lateral%GovEqnUpdateConditionConnSet(ieqn, icond, COND_BC, &
          nconn,  conn_id_up, conn_id_dn, &
          conn_dist_up, conn_dist_dn,  conn_unitvec, conn_area)
 
@@ -918,14 +981,14 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use MultiPhysicsProbVSFM , only : vsfm_mpp
     !
     implicit none
 
     !
     ! Allocate auxvars
     !
-    call vsfm_mpp%AllocateAuxVars()
+    call vsfm_mpp_vertical%AllocateAuxVars()
+    call vsfm_mpp_lateral%AllocateAuxVars()
 
   end subroutine allocate_auxvars
 
@@ -934,7 +997,6 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoils
     use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT
     use EOSWaterMod               , only : DENSITY_TGDPB01
@@ -982,16 +1044,22 @@ contains
     vsfm_eff_porosity(:,:) = 0.d0
     vsfm_residual_sat(:,:) = 0.2772d0
 
-    call VSFMMPPSetSoils(vsfm_mpp, begc, endc, &
+    call VSFMMPPSetSoils(vsfm_mpp_vertical, begc, endc, &
          ncells_ghost, vsfm_filter, &
          vsfm_watsat, vsfm_hksat, vsfm_bsw, &
          vsfm_sucsat, vsfm_eff_porosity, vsfm_residual_sat, &
          satfunc_type, DENSITY_TGDPB01)
 
-    deallocate(vsfm_watsat)
-    deallocate(vsfm_hksat   )
-    deallocate(vsfm_bsw   )
-    deallocate(vsfm_sucsat)
+    call VSFMMPPSetSoils(vsfm_mpp_lateral, begc, endc, &
+         ncells_ghost, vsfm_filter, &
+         vsfm_watsat, vsfm_hksat, vsfm_bsw, &
+         vsfm_sucsat, vsfm_eff_porosity, vsfm_residual_sat, &
+         satfunc_type, DENSITY_TGDPB01)
+
+    deallocate(vsfm_watsat      )
+    deallocate(vsfm_hksat       )
+    deallocate(vsfm_bsw         )
+    deallocate(vsfm_sucsat      )
     deallocate(vsfm_eff_porosity)
     deallocate(vsfm_filter      )
     deallocate(vsfm_residual_sat)
@@ -1003,7 +1071,6 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     !
     implicit none
     !
@@ -1017,14 +1084,15 @@ contains
        do c = 1,nx*ny
           icell = icell + 1
           if (soil_filter_2d(c,jj) == 1) then
-             press_ic(icell) = (18.75d0 -0.5d0*(jj-kk_lower_idx(c)) - 2.d0)*997.18d0*9.8d0 + 101325.d0
+             press_ic(icell) = (18.75d0 -0.5d0*(jj-kk_lower_idx(c)) - 10.d0)*997.18d0*9.8d0 + 101325.d0
           else
              press_ic(icell) = -1.0d10
           endif
        enddo
     enddo
 
-    call vsfm_mpp%Restart(press_ic)
+    call vsfm_mpp_vertical%Restart(press_ic)
+    call vsfm_mpp_lateral%Restart(press_ic)
 
     deallocate(press_ic)
 
@@ -1035,7 +1103,6 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : AUXVAR_BC, VAR_BC_SS_CONDITION
     !
     implicit none
@@ -1048,7 +1115,7 @@ contains
     top_pressure_bc(:) = 101325.d0
 
     soe_auxvar_id = 1
-    call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call vsfm_mpp_vertical%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, top_pressure_bc)
 
     deallocate(top_pressure_bc)
@@ -1056,9 +1123,8 @@ contains
   end subroutine set_bondary_conditions
 
   !------------------------------------------------------------------------
-  subroutine output_regression_vsfm_vchannel_problem(filename_base, num_cells)
+  subroutine output_regression_vsfm_vchannel_problem_operator_split(filename_base, num_cells)
     !
-    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants , only : VAR_PRESSURE
     use MultiPhysicsProbConstants , only : VAR_LIQ_SAT
@@ -1083,13 +1149,13 @@ contains
 
     name = 'liquid_pressure'
     category = 'pressure'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp_lateral%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, -1, data)
     call regression%WriteData(name, category, data)
 
     name = 'liquid_saturation'
     category = 'general'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp_lateral%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_LIQ_SAT, -1, data)
     call regression%WriteData(name, category, data)
 
@@ -1097,6 +1163,6 @@ contains
     
     deallocate(data)
 
-  end subroutine output_regression_vsfm_vchannel_problem
+  end subroutine output_regression_vsfm_vchannel_problem_operator_split
 
-end module vsfm_vchannel_problem
+end module vsfm_vchannel_problem_operator_split
