@@ -8,15 +8,19 @@ module vsfm_vchannel_problem_operator_split
 
   PetscInt  , parameter :: nx       = 20
   PetscInt  , parameter :: ny       = 10
-  PetscInt  , parameter :: nz       = 30
+  PetscInt              :: nz
+  PetscInt  , parameter :: nz_hex   = 87
   PetscReal , parameter :: dx       = 10.0d0
   PetscReal , parameter :: dy       = 10.0d0
   PetscReal , parameter :: dz       =  0.5d0
   PetscReal , parameter :: slope_x  =  0.1d0
   PetscReal , parameter :: slope_y  =  0.2d0
   PetscBool             :: with_seepage_bc
+  PetscBool             :: orthogonal_hex
   PetscInt              :: ncells_local
   PetscInt              :: ncells_ghost
+  PetscInt, pointer     :: soil_filter_2d(:,:)
+  PetscInt, pointer     :: kk_lower_idx(:)
 
   public :: run_vsfm_vchannel_problem_operator_split
   public :: output_regression_vsfm_vchannel_problem_operator_split
@@ -67,7 +71,9 @@ contains
     save_initial_soln = PETSC_FALSE
     save_final_soln   = PETSC_FALSE
     with_seepage_bc   = PETSC_FALSE
+    orthogonal_hex    = PETSC_FALSE
     output_suffix     = ''
+    nz                = 30
 
     ! Get some command line options
 
@@ -76,6 +82,7 @@ contains
     call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
     call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
     call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-with_seepage_bc',with_seepage_bc,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-orthogonal_hex',orthogonal_hex,flg,ierr)
     call PetscOptionsGetString(PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
 
     ! Initialize the problem
@@ -139,7 +146,11 @@ contains
     call initialize_mpp()
 
     ! 2. Add all meshes needed for the MPP
-    call add_meshes()
+    if (.not.orthogonal_hex) then
+       call add_meshes()
+    else
+       call add_orthogonal_hex_mesh()
+    endif
 
     ! 3. Add all governing equations
     call add_goveqns()
@@ -286,7 +297,8 @@ contains
     allocate (conn_dist_dn ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
     allocate (conn_area    ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
     allocate (conn_type    ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
-
+    allocate(soil_filter_2d(nx*ny,nz_hex))
+    allocate(kk_lower_idx(nx*ny))
 
     soil_filter (:) = 1
     soil_area   (:) = dx*dy
@@ -295,6 +307,8 @@ contains
     soil_dz     (:) = dz
     soil_xc     (:) = dx/2.d0
     soil_xc     (:) = dy/2.d0
+    soil_filter_2d(:,:) = 1
+    kk_lower_idx(:)     = 1
 
     ! Compute elevation at vertices in x-direction
     do ii = 1, nx/2+1
@@ -498,6 +512,371 @@ contains
     deallocate (conn_type    )
 
   end subroutine add_meshes
+
+  !------------------------------------------------------------------------
+  subroutine add_orthogonal_hex_mesh()
+    !
+    use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
+    use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
+    use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
+    use MultiPhysicsProbConstants , only : VAR_XC
+    use MultiPhysicsProbConstants , only : VAR_YC
+    use MultiPhysicsProbConstants , only : VAR_ZC
+    use MultiPhysicsProbConstants , only : VAR_DX
+    use MultiPhysicsProbConstants , only : VAR_DY
+    use MultiPhysicsProbConstants , only : VAR_DZ
+    use MultiPhysicsProbConstants , only : VAR_AREA
+    use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
+    use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
+    use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
+    use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    !
+    implicit none
+    !
+#include "finclude/petscsys.h"
+    !
+    PetscInt           :: imesh, ii, jj, kk
+    PetscInt           :: nlev
+    PetscInt           :: count
+    PetscInt           :: iconn, nconn
+    PetscReal, pointer :: soil_xc(:)           ! x-position of grid cell [m]
+    PetscReal, pointer :: soil_yc(:)           ! y-position of grid cell [m]
+    PetscReal, pointer :: soil_zc(:)           ! z-position of grid cell [m]
+    PetscReal, pointer :: soil_dx(:)           ! layer thickness of grid cell [m]
+    PetscReal, pointer :: soil_dy(:)           ! layer thickness of grid cell [m]
+    PetscReal, pointer :: soil_dz(:)           ! layer thickness of grid cell [m]
+    PetscReal, pointer :: soil_area(:)         ! area of grid cell [m^2]
+    PetscInt , pointer :: soil_filter(:)       !
+
+    PetscInt, pointer  :: conn_id_up(:)   !
+    PetscInt, pointer  :: conn_id_dn(:)   !
+    PetscReal, pointer :: conn_dist_up(:) !
+    PetscReal, pointer :: conn_dist_dn(:) !
+    PetscReal, pointer :: conn_area(:)    !
+    PetscInt , pointer :: conn_type(:)    !
+    PetscReal, pointer :: zv_x(:)
+    PetscReal, pointer :: zv_y(:)
+    PetscReal, pointer :: xv_2d(:,:)
+    PetscReal, pointer :: yv_2d(:,:)
+    PetscReal, pointer :: zv_2d(:,:)
+    PetscReal, pointer :: xc_3d(:,:,:)
+    PetscReal, pointer :: yc_3d(:,:,:)
+    PetscReal, pointer :: zc_3d(:,:,:)
+    PetscInt, pointer  :: id_3d(:,:,:)
+    PetscReal :: dist_x, dist_y, dist_z, dist
+    PetscReal, pointer :: xc_hex_3d(:,:,:)
+    PetscReal, pointer :: yc_hex_3d(:,:,:)
+    PetscReal, pointer :: zc_hex_3d(:,:,:)
+    PetscReal, pointer :: zc_hex(:)
+    PetscInt, pointer  :: id_hex_3d(:,:,:)
+    PetscInt, pointer  :: act_hex_3d(:,:,:)
+    PetscInt :: kk_upper, idx, count_2d
+
+    PetscErrorCode :: ierr
+
+    call mpp_varpar_set_nlevsoi(nz_hex)
+    call mpp_varpar_set_nlevgrnd(nz_hex)
+
+    nz = 30
+
+    allocate(zv_x(nx+1))
+    allocate(zv_y(ny+1))
+
+    allocate(xv_2d(nx+1,ny+1))
+    allocate(yv_2d(nx+1,ny+1))
+    allocate(zv_2d(nx+1,ny+1))
+
+    allocate(xc_3d(nx,ny,nz))
+    allocate(yc_3d(nx,ny,nz))
+    allocate(zc_3d(nx,ny,nz))
+    allocate(id_3d(nx,ny,nz))
+
+    ! Compute elevation at vertices in x-direction
+    do ii = 1, nx/2+1
+       zv_x(ii) = slope_x*dx*(nx/2) - (ii-1)*slope_x*dx
+    enddo
+    do ii = nx/2+2, nx+1
+       zv_x(ii) = (ii-nx/2-1)*slope_x*dx
+    enddo
+
+    ! Compute elevation at vertices in y-direction
+    do jj = 1, ny+1
+       zv_y(jj) = (jj-1)*slope_y*dy
+    enddo
+
+    do jj = 1,ny+1
+       do ii = 1,nx+1
+          zv_2d(ii,jj) = zv_x(ii) + zv_y(jj);
+          xv_2d(ii,jj) = (ii-1)*dx;
+          yv_2d(ii,jj) = (jj-1)*dy;
+       enddo
+    enddo
+
+    do kk = 1,nz
+       do jj = 1,ny
+          do ii = 1,nx
+             xc_3d(ii,jj,kk) = (xv_2d(ii,jj) + xv_2d(ii+1,jj) + xv_2d(ii,jj+1) + xv_2d(ii+1,jj+1))/4.d0
+             yc_3d(ii,jj,kk) = (yv_2d(ii,jj) + yv_2d(ii+1,jj) + yv_2d(ii,jj+1) + yv_2d(ii+1,jj+1))/4.d0
+             zc_3d(ii,jj,kk) = (zv_2d(ii,jj) + zv_2d(ii+1,jj) + zv_2d(ii,jj+1) + zv_2d(ii+1,jj+1))/4.d0 -(dz/2.0d0 + (nz-kk)*dz)
+          enddo
+       enddo
+    enddo
+
+
+       imesh        = 1
+       nlev         = nz_hex
+       ncells_local = nx*ny*nz_hex
+       ncells_ghost = 0
+
+       allocate(soil_xc     (ncells_local))
+       allocate(soil_yc     (ncells_local))
+       allocate(soil_zc     (ncells_local))
+       allocate(soil_dx     (ncells_local))
+       allocate(soil_dy     (ncells_local))
+       allocate(soil_dz     (ncells_local))
+       allocate(soil_area   (ncells_local))
+       allocate(soil_filter (ncells_local))
+
+       soil_filter (:) = 0
+       soil_area   (:) = dx*dy
+       soil_dx     (:) = dx
+       soil_dy     (:) = dy
+       soil_dz     (:) = dz
+       soil_xc     (:) = dx/2.d0
+       soil_yc     (:) = dy/2.d0
+
+       allocate(zc_hex(nz_hex))
+
+       do kk = 1, nz_hex
+          zc_hex(kk) = -13.5d0 + dz/2.d0 + (kk-1)*dz
+       enddo
+
+       allocate(xc_hex_3d(nx,ny,nz_hex))
+       allocate(yc_hex_3d(nx,ny,nz_hex))
+       allocate(zc_hex_3d(nx,ny,nz_hex))
+       allocate(id_hex_3d(nx,ny,nz_hex))
+       allocate(act_hex_3d(nx,ny,nz_hex))
+
+       act_hex_3d(:,:,:) = 0
+       id_hex_3d (:,:,:) = 0
+
+       count_2d = 0
+       allocate(kk_lower_idx(nx*ny))
+       do jj = 1,ny
+          do ii = 1,nx
+             kk_upper = -1
+             do kk = 1,nz_hex
+                xc_hex_3d(ii,jj,kk) = xc_3d(ii,jj,nz)
+                yc_hex_3d(ii,jj,kk) = yc_3d(ii,jj,nz)
+                zc_hex_3d(ii,jj,kk) = zc_hex(kk)
+
+                if (zc_hex(kk) <= zc_3d(ii,jj,nz)) kk_upper = kk
+             enddo
+             count_2d = count_2d + 1
+             kk_lower_idx(count_2d) = kk_upper-30+1
+             do kk = kk_upper-30+1,kk_upper
+                act_hex_3d(ii,jj,kk) = 1
+             enddo
+          enddo
+       enddo
+
+       allocate(soil_filter_2d(nx*ny,nz_hex))
+       soil_filter_2d(:,:) = 0
+
+       idx = 0
+       count = 0
+       do kk = 1,nz_hex
+          count_2d = 0
+          do jj = 1,ny
+             do ii = 1,nx
+                count    = count + 1
+                count_2d = count_2d + 1
+
+                if (act_hex_3d(ii,jj,kk) == 1) then
+                   idx                         = idx + 1
+                   id_hex_3d(ii,jj,kk)         = idx
+                   soil_filter(count)          = 1
+                   soil_filter_2d(count_2d,kk) = 1
+                endif
+
+                soil_xc(count) = xc_hex_3d(ii,jj,kk)
+                soil_yc(count) = yc_hex_3d(ii,jj,kk)
+                soil_zc(count) = zc_hex_3d(ii,jj,kk)
+             enddo
+          enddo
+       enddo
+
+    !
+    ! Set up the meshes
+    !
+    call vsfm_mpp_vertical%SetNumMeshes(1)
+
+    call vsfm_mpp_vertical%MeshSetName                (imesh, 'Soil mesh')
+    call vsfm_mpp_vertical%MeshSetOrientation         (imesh, MESH_AGAINST_GRAVITY)
+    call vsfm_mpp_vertical%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
+    call vsfm_mpp_vertical%MeshSetDimensions          (imesh, ncells_local, ncells_ghost, nlev)
+
+    call vsfm_mpp_vertical%MeshSetGridCellFilter      (imesh, soil_filter)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
+    call vsfm_mpp_vertical%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
+    call vsfm_mpp_vertical%MeshComputeVolume          (imesh)
+
+    call vsfm_mpp_lateral%SetNumMeshes(1)
+
+    call vsfm_mpp_lateral%MeshSetName                (imesh, 'Soil mesh')
+    call vsfm_mpp_lateral%MeshSetOrientation         (imesh, MESH_AGAINST_GRAVITY)
+    call vsfm_mpp_lateral%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
+    call vsfm_mpp_lateral%MeshSetDimensions          (imesh, ncells_local, ncells_ghost, nlev)
+
+    call vsfm_mpp_lateral%MeshSetGridCellFilter      (imesh, soil_filter)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
+    call vsfm_mpp_lateral%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
+    call vsfm_mpp_lateral%MeshComputeVolume          (imesh)
+
+    !
+    ! Vertical connections
+    !
+    nz          = nz_hex
+    allocate (conn_id_up   ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
+    allocate (conn_id_dn   ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
+    allocate (conn_dist_up ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
+    allocate (conn_dist_dn ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
+    allocate (conn_area    ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
+    allocate (conn_type    ((nz-1)*nx*ny + nx*(ny-1)*nz + (nx-1)*ny*nz))
+
+
+    iconn = 0
+    do ii = 1,nx
+       do jj = 1,ny
+          do kk = 1, nz_hex-1
+             if (act_hex_3d(ii,jj,kk) == 0 .or. act_hex_3d(ii,jj,kk+1) == 0 ) cycle
+
+             iconn = iconn + 1
+             conn_id_up(iconn)   = id_hex_3d(ii,jj,kk  )
+             conn_id_dn(iconn)   = id_hex_3d(ii,jj,kk+1)
+
+             dist_x = soil_xc(conn_id_up(iconn)) - soil_xc(conn_id_dn(iconn))
+             dist_y = soil_yc(conn_id_up(iconn)) - soil_yc(conn_id_dn(iconn))
+             dist_z = soil_zc(conn_id_up(iconn)) - soil_zc(conn_id_dn(iconn))
+
+             dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+
+             conn_dist_up(iconn) = 0.5d0*dz !dist
+             conn_dist_dn(iconn) = 0.5d0*dz !dist
+
+             conn_area(iconn)    = soil_area(kk)
+             conn_type(iconn)    = CONN_VERTICAL
+
+          end do
+       end do
+    end do
+    nconn = iconn
+
+    call vsfm_mpp_vertical%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+         nconn,  conn_id_up, conn_id_dn,                         &
+         conn_dist_up, conn_dist_dn,  conn_area, conn_type)
+
+    !
+    ! Horizontal connections
+    !
+    iconn = 0
+    do ii = 1,nx-1
+       do kk = 1, nz_hex
+          do jj = 1,ny
+
+             if (act_hex_3d(ii,jj,kk) == 0 .or. act_hex_3d(ii+1,jj,kk) == 0 ) cycle
+
+             iconn = iconn + 1
+             conn_id_up(iconn)   = id_hex_3d(ii  ,jj,kk)
+             conn_id_dn(iconn)   = id_hex_3d(ii+1,jj,kk)
+
+             dist_x = soil_xc(conn_id_up(iconn)) - soil_xc(conn_id_dn(iconn))
+             dist_y = soil_yc(conn_id_up(iconn)) - soil_yc(conn_id_dn(iconn))
+             dist_z = soil_zc(conn_id_up(iconn)) - soil_zc(conn_id_dn(iconn))
+
+             dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+
+             conn_dist_up(iconn) = 0.5d0*dist
+             conn_dist_dn(iconn) = 0.5d0*dist
+
+             conn_area(iconn)    = dz*dy
+             conn_type(iconn)    = CONN_HORIZONTAL
+
+          end do
+       end do
+    end do
+
+    do jj = 1,ny-1
+       do kk = 1, nz_hex
+          do ii = 1,nx
+
+             if (act_hex_3d(ii,jj,kk) == 0 .or. act_hex_3d(ii,jj+1,kk) == 0 ) cycle
+
+             iconn = iconn + 1
+             conn_id_up(iconn)   = id_hex_3d(ii,jj,kk)
+             conn_id_dn(iconn)   = id_hex_3d(ii,jj+1,kk)
+
+             dist_x = soil_xc(conn_id_up(iconn)) - soil_xc(conn_id_dn(iconn))
+             dist_y = soil_yc(conn_id_up(iconn)) - soil_yc(conn_id_dn(iconn))
+             dist_z = soil_zc(conn_id_up(iconn)) - soil_zc(conn_id_dn(iconn))
+
+             dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+
+             conn_dist_up(iconn) = 0.5d0*dist
+             conn_dist_dn(iconn) = 0.5d0*dist
+
+             conn_area(iconn)    = dz*dx
+             conn_type(iconn)    = CONN_HORIZONTAL
+
+          end do
+       end do
+    end do
+    nconn = iconn
+
+    call vsfm_mpp_lateral%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+         nconn,  conn_id_up, conn_id_dn,                         &
+         conn_dist_up, conn_dist_dn,  conn_area, conn_type)
+
+    deallocate(soil_xc)
+    deallocate(soil_yc)
+    deallocate(soil_zc)
+    deallocate(soil_dx)
+    deallocate(soil_dy)
+    deallocate(soil_dz)
+    deallocate(soil_area)
+    deallocate(soil_filter)
+
+    deallocate(zv_x)
+    deallocate(zv_y)
+
+    deallocate(xv_2d)
+    deallocate(yv_2d)
+    deallocate(zv_2d)
+
+    deallocate(xc_3d)
+    deallocate(yc_3d)
+    deallocate(zc_3d)
+    deallocate(id_3d)
+
+    deallocate (conn_id_up)
+    deallocate (conn_id_dn)
+    deallocate (conn_dist_up)
+    deallocate (conn_dist_dn)
+    deallocate (conn_area    )
+    deallocate (conn_type    )
+
+  end subroutine add_orthogonal_hex_mesh
 
   !------------------------------------------------------------------------
 
@@ -704,7 +1083,11 @@ contains
     do jj = 1,nz
        do c = 1,nx*ny
           icell = icell + 1
-          press_ic(icell) = (18.75d0 -0.5d0*(jj-1) - 2.d0)*997.18d0*9.8d0 + 101325.d0
+          if (soil_filter_2d(c,jj) == 1) then
+             press_ic(icell) = (18.75d0 -0.5d0*(jj-kk_lower_idx(c)) - 10.d0)*997.18d0*9.8d0 + 101325.d0
+          else
+             press_ic(icell) = -1.0d10
+          endif
        enddo
     enddo
 
