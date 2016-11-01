@@ -37,6 +37,7 @@ contains
     use shr_log_mod               , only : errMsg => shr_log_errMsg
     use clm_varctl                , only : lateral_connectivity
     use clm_varctl                , only : vsfm_lateral_model_type
+    use clm_varctl                , only : vsfm_include_seepage_bc
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : VAR_BC_SS_CONDITION
     use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
@@ -144,6 +145,7 @@ contains
     PetscReal, pointer   :: mflx_lateral_col_1d(:)
     PetscReal, pointer   :: lat_mass_exc_col_1d(:)
     PetscReal, pointer   :: seepage_mass_exc_col_1d(:)
+    PetscReal, pointer   :: seepage_press_1d(:)
     !-----------------------------------------------------------------------
 
     associate(& 
@@ -472,6 +474,13 @@ contains
          allocate(vsfm_fliq_col_ghosted_1d( (bounds_proc%endc_all - bounds_proc%begc_all+1)*nlevgrnd))
          allocate(mflx_lateral_col_1d( (bounds_proc%endc - bounds_proc%begc+1)*nlevgrnd))
 
+         soe_auxvar_id = 1;
+         call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL   , &
+                                               VAR_PRESSURE      , &
+                                               soe_auxvar_id     , &
+                                               vsfm_soilp_col_1d   &
+                                               )
+
          call ExchangeColumnLevelGhostData(bounds, nlevgrnd, vsfm_soilp_col_1d, vsfm_soilp_col_ghosted_1d)
          call ExchangeColumnLevelGhostData(bounds, nlevgrnd, vsfm_fliq_col_1d,  vsfm_fliq_col_ghosted_1d )
 
@@ -526,6 +535,28 @@ contains
          deallocate(vsfm_soilp_col_ghosted_1d )
          deallocate(vsfm_fliq_col_ghosted_1d  )
          deallocate(mflx_lateral_col_1d       )
+
+         if (vsfm_include_seepage_bc) then
+            allocate(seepage_press_1d( (bounds_proc%endc - bounds_proc%begc+1)))
+            seepage_press_1d(:) = 101325.d0
+            soe_auxvar_id = 1
+            call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+                 VAR_BC_SS_CONDITION, soe_auxvar_id, seepage_press_1d)
+            deallocate(seepage_press_1d)
+         endif
+
+      else if (vsfm_lateral_model_type == 'three_dimensional') then
+
+         call get_proc_bounds(bounds_proc)
+
+         if (vsfm_include_seepage_bc) then
+            allocate(seepage_press_1d( (bounds_proc%endc - bounds_proc%begc+1)))
+            seepage_press_1d(:) = 101325.d0
+            soe_auxvar_id = 1
+            call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+                 VAR_BC_SS_CONDITION, soe_auxvar_id, seepage_press_1d)
+            deallocate(seepage_press_1d)
+         endif
 
       endif
 
@@ -692,12 +723,14 @@ contains
                allocate(seepage_mass_exc_col_1d( (bounds_proc%endc - bounds_proc%begc+1)         ))
                seepage_mass_exc_col_1d = 0.d0
 
-               soe_auxvar_id = 1;
-               call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_BC              ,  &
-                                                     VAR_BC_MASS_EXCHANGED  ,  &
-                                                     soe_auxvar_id          ,  &
-                                                     seepage_mass_exc_col_1d   &
-                                                     )
+               if (vsfm_include_seepage_bc) then
+                  soe_auxvar_id = 1;
+                  call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_BC              ,  &
+                                                        VAR_BC_MASS_EXCHANGED  ,  &
+                                                        soe_auxvar_id          ,  &
+                                                        seepage_mass_exc_col_1d   &
+                                                        )
+               endif
 
                do fc = 1, num_hydrologyc
                   c = filter_hydrologyc(fc)
@@ -744,12 +777,14 @@ contains
                                                      lat_mass_exc_col_1d          &
                                                      )
 
-               soe_auxvar_id = 1;
-               call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_BC              ,  &
-                                                     VAR_BC_MASS_EXCHANGED  ,  &
-                                                     soe_auxvar_id          ,  &
-                                                     seepage_mass_exc_col_1d   &
-                                                     )
+               if (vsfm_include_seepage_bc) then
+                  soe_auxvar_id = 1;
+                  call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_BC              ,  &
+                                                        VAR_BC_MASS_EXCHANGED  ,  &
+                                                        soe_auxvar_id          ,  &
+                                                        seepage_mass_exc_col_1d   &
+                                                        )
+               endif
 
                total_mass_flux_lateral_col(:)   = 0.d0
                total_mass_flux_lateral          = 0.d0

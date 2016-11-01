@@ -184,7 +184,7 @@ contains
     PetscReal, pointer :: vert_conn_dist_up(:) !
     PetscReal, pointer :: vert_conn_dist_dn(:) !
     PetscReal, pointer :: vert_conn_area(:)    !
-    PetscInt, pointer :: vert_conn_type(:)    !
+    PetscInt , pointer :: vert_conn_type(:)    !
 
     PetscInt, pointer  :: horz_conn_id_up(:)   !
     PetscInt, pointer  :: horz_conn_id_dn(:)   !
@@ -385,7 +385,7 @@ contains
 
        call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
             vert_nconn,  vert_conn_id_up, vert_conn_id_dn, &
-            vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area, vert_conn_type)
+            vert_conn_dist_up, vert_conn_dist_dn, vert_conn_area, vert_conn_type)
 
        call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_LATERAL, &
             horz_nconn,  horz_conn_id_up, horz_conn_id_dn, &
@@ -816,6 +816,7 @@ contains
     !
     ! !USES:
     use clm_varctl                , only : vsfm_lateral_model_type
+    use clm_varctl                , only : vsfm_include_seepage_bc
     use MultiPhysicsProbConstants , only : SOIL_CELLS
     use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
     use MultiPhysicsProbConstants , only : COND_SS
@@ -854,21 +855,25 @@ contains
          'Sublimation_Flux', 'kg/s', COND_MASS_RATE, &
          SOIL_TOP_CELLS)
 
-    if (vsfm_lateral_model_type == 'source_sink') then
+    if (vsfm_lateral_model_type == 'source_sink' ) then
 
        call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
-            'Lateral_Flux', 'kg/s', COND_MASS_RATE, &
+            'Lateral_flux', 'kg/s', COND_MASS_RATE, &
             SOIL_CELLS)
 
-       call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
-            'Seepage_bc', 'kg/s', COND_SEEPAGE_BC, &
-            SOIL_TOP_CELLS)
+       if (vsfm_include_seepage_bc) then
+          call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+               'Seepage_Flux', 'kg/s', COND_SEEPAGE_BC, &
+               SOIL_TOP_CELLS)
+       endif
 
     else if (vsfm_lateral_model_type == 'three_dimensional') then
 
-       call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
-            'Seepage_bc', 'kg/s', COND_SEEPAGE_BC, &
-            SOIL_TOP_CELLS)
+       if (vsfm_include_seepage_bc) then
+          call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+               'Seepage_Flux', 'kg/s', COND_SEEPAGE_BC, &
+               SOIL_TOP_CELLS)
+       endif
 
     endif
 
@@ -1120,23 +1125,32 @@ contains
 
     do nn = 1, num_conds
        select case(trim(cond_names(nn)))
+
        case ("Infiltration_Flux")
-         vsfm_cond_id_for_infil = nn
+          vsfm_cond_id_for_infil        = nn
+
        case ("Evapotranspiration_Flux")
-         vsfm_cond_id_for_et = nn
+          vsfm_cond_id_for_et           = nn
+
        case ("Dew_Flux")
-         vsfm_cond_id_for_dew = nn
+          vsfm_cond_id_for_dew          = nn
+
        case ("Drainage_Flux")
-         vsfm_cond_id_for_drainage = nn
+          vsfm_cond_id_for_drainage     = nn
+
        case ("Snow_Disappearance_Flux")
-         vsfm_cond_id_for_snow = nn
+          vsfm_cond_id_for_snow         = nn
+
        case ("Sublimation_Flux")
-         vsfm_cond_id_for_sublimation = nn
+          vsfm_cond_id_for_sublimation  = nn
+
        case ("Lateral_flux")
-         vsfm_cond_id_for_lateral_flux = nn
+          vsfm_cond_id_for_lateral_flux = nn
+
        case default
-         write(iulog,*)'In init_vsfm_condition_ids: Unknown flux.'
-         call endrun(msg=errMsg(__FILE__, __LINE__))
+          write(iulog,*) trim(cond_names(nn))
+          write(iulog,*)'In init_vsfm_condition_ids: Unknown flux.'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        end select
     enddo
 
@@ -1171,8 +1185,11 @@ contains
     endif
 
     if (vsfm_lateral_model_type == 'source_sink') then
-      write(iulog,*)'In init_vsfm_condition_ids: vsfm_cond_id_for_lateral_flux not defined.'
-      call endrun(msg=errMsg(__FILE__, __LINE__))
+       if (vsfm_cond_id_for_lateral_flux == -1) then
+          write(iulog,*)'In init_vsfm_condition_ids: vsfm_cond_id_for_lateral_flux not defined.'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+       endif
+
     endif
 
     deallocate(cond_names)

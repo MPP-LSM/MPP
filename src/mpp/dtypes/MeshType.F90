@@ -655,7 +655,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine MeshCreateConnectionSet2(this, conn_type, nconn, id_up, id_dn, &
-       dist_up, dist_dn, area, type, unit_vec, conn_set)
+       dist_up, dist_dn, area, itype, unit_vec, conn_set)
     !
     ! !DESCRIPTION:
     ! Creates a connection set based on information passed
@@ -675,7 +675,7 @@ contains
     PetscReal, pointer                :: dist_up(:)
     PetscReal, pointer                :: dist_dn(:)
     PetscReal, pointer                :: area(:)
-    PetscInt, pointer                 :: type(:)
+    PetscInt, pointer                 :: itype(:)
     PetscReal, pointer, optional      :: unit_vec(:,:)
     type(connection_set_type),pointer :: conn_set
     !
@@ -703,7 +703,6 @@ contains
        conn_set%id_up(iconn) = id_up(iconn)
        conn_set%id_dn(iconn) = id_dn(iconn)
        conn_set%area(iconn)  = area(iconn)
-       conn_set%type(iconn)  = type(iconn)
 
        conn_set%dist_up(iconn) = dist_up(iconn)
        conn_set%dist_dn(iconn) = dist_dn(iconn)
@@ -723,6 +722,7 @@ contains
           conn_set%dist_unitvec(iconn)%arr(3) = unit_vec(iconn,3)
        endif
 
+       conn_set%type(iconn) = itype(iconn)
     end do
 
   end subroutine MeshCreateConnectionSet2
@@ -1009,7 +1009,7 @@ contains
   !------------------------------------------------------------------------
 
   subroutine MeshSetConnectionSet(this, conn_type, nconn, id_up, id_dn, &
-       dist_up, dist_dn, area, type)
+       dist_up, dist_dn, area, itype)
     !
     ! !DESCRIPTION:
     ! Creates a connection set based on information passed
@@ -1031,7 +1031,7 @@ contains
     PetscReal, pointer                :: dist_up(:)
     PetscReal, pointer                :: dist_dn(:)
     PetscReal, pointer                :: area(:)
-    PetscInt, pointer                 :: type(:)
+    PetscInt, pointer                 :: itype(:)
     !
     ! !LOCAL VARIABLES:
     type(connection_set_type),pointer :: conn_set
@@ -1042,7 +1042,7 @@ contains
     PetscReal                         :: dist
 
     call MeshCreateConnectionSet(this, conn_type, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, type, conn_set=conn_set)
+         dist_up, dist_dn, area, itype, conn_set=conn_set)
 
     select case(conn_type)
     case (CONN_SET_INTERNAL)
