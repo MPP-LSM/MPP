@@ -11,7 +11,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine MPPVSFMALM_Solve(bounds, num_hydrologyc, filter_hydrologyc, &
-       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, &
+       soilhydrology_vars, soilstate_vars, &
        waterflux_vars, waterstate_vars, temperature_vars)
     !
     ! !DESCRIPTION:
@@ -69,8 +69,6 @@ contains
     type(bounds_type)       , intent(in)    :: bounds               ! bounds
     integer                 , intent(in)    :: num_hydrologyc       ! number of column soil points in column filter
     integer                 , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
-    integer                 , intent(in)    :: num_urbanc           ! number of column urban points in column filter
-    integer                 , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
     type(soilhydrology_type), intent(inout) :: soilhydrology_vars
     type(soilstate_type)    , intent(inout) :: soilstate_vars
     type(waterflux_type)    , intent(inout) :: waterflux_vars
@@ -157,17 +155,15 @@ contains
          qcharge                   =>    soilhydrology_vars%qcharge_col             , & ! Input:  [real(r8) (:)   ]  aquifer recharge rate (mm/s)
          zwt                       =>    soilhydrology_vars%zwt_col                 , & ! Input:  [real(r8) (:)   ]  water table depth (m)
 
-         watsat                    =>    soilstate_vars%watsat_col                  , & ! Input:  [real(r8) (:,:) ]  volumetric soil water at saturation (porosity)
          rootr_col                 =>    soilstate_vars%rootr_col                   , & ! Input:  [real(r8) (:,:) ]  effective fraction of roots in each soil layer
          rootr_pft                 =>    soilstate_vars%rootr_patch                 , & ! Input:  [real(r8) (:,:) ]  effective fraction of roots in each soil layer
          smp_l                     =>    soilstate_vars%smp_l_col                   , & ! Output: [real(r8) (:,:) ]  soil matrix potential [mm]
-         hk_l                      =>    soilstate_vars%hk_l_col                    , & ! Output: [real(r8) (:,:) ]  hydraulic conductivity (mm/s)
 
          h2osoi_ice                =>    waterstate_vars%h2osoi_ice_col             , & ! Input:  [real(r8) (:,:) ]  ice water (kg/m2)
          h2osoi_liq                =>    waterstate_vars%h2osoi_liq_col             , & ! Input:  [real(r8) (:,:) ]  liquid water (kg/m2)
          h2osoi_vol                =>    waterstate_vars%h2osoi_vol_col             , & ! Input:  [real(r8) (:,:) ]  volumetric soil water (0<=h2osoi_vol<=watsat) [m3/m3]
          frac_h2osfc               =>    waterstate_vars%frac_h2osfc_col            , & ! Input:  [real(r8) (:)   ]
-         frac_sno                  =>    waterstate_vars%frac_sno_eff_col           , & ! Input:  [real(r8) (:)   ]  fraction of ground covered by snow (0 to 1)
+
          vsfm_fliq_col_1d          =>    waterstate_vars%vsfm_fliq_col_1d           , & ! Output: [real(r8) (:)   ]  1D fraction of liquid saturation for VSFM [-]
          vsfm_sat_col_1d           =>    waterstate_vars%vsfm_sat_col_1d            , & ! Output: [real(r8) (:)   ]  1D liquid saturation from VSFM [-]
          vsfm_mass_col_1d          =>    waterstate_vars%vsfm_mass_col_1d           , & ! Output: [real(r8) (:)   ]  1D liquid mass per unit area from VSFM [kg H2O/m^2]
@@ -183,7 +179,6 @@ contains
          qflx_dew_grnd             =>    waterflux_vars%qflx_dew_grnd_col           , & ! Input:  [real(r8) (:)   ]  ground surface dew formation (mm H2O /s) [+]
          qflx_sub_snow             =>    waterflux_vars%qflx_sub_snow_col           , & ! Input:  [real(r8) (:)   ]  ground surface dew formation (mm H2O /s) [+]
          qflx_drain                =>    waterflux_vars%qflx_drain_col              , & ! Input:  [real(r8) (:)   ]  sub-surface runoff (mm H2O /s)
-         qflx_drain_perched        =>    waterflux_vars%qflx_drain_perched_col      , & ! Input:  [real(r8) (:)   ]  perched wt sub-surface runoff (mm H2O /s)
          qflx_lateral              =>    waterflux_vars%qflx_lateral_col            , & ! Input:  [real(r8) (:)   ]  lateral flux of water to neighboring column (mm H2O /s)
          qflx_surf                 =>    waterflux_vars%qflx_surf_col               , & ! Input:  [real(r8) (:)   ]  surface runoff (mm H2O /s)
          mflx_infl_col_1d          =>    waterflux_vars%mflx_infl_col_1d            , & ! Input:  [real(r8) (:)   ]  infiltration source in top soil control volume (kg H2O /s)
