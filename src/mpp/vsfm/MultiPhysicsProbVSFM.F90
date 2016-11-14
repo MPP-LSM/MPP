@@ -44,6 +44,7 @@ module MultiPhysicsProbVSFM
      procedure, public :: Restart                      => VSFMMPPRestart
      procedure, public :: UpdateSysOfEqnsAuxVars       => VSFMMPPUpdateSysOfEqnsAuxVars
      procedure, public :: SetMPIRank                   => VSFMMPPSetMPIRank
+     procedure, public :: GetMPIRank                   => VSFMMPPGetMPIRank
      procedure, public :: SetMeshesOfGoveqns           => VSFMMPPSetMeshesOfGoveqns
      procedure, public :: AddGovEqn                    => VSFMMPPAddGovEqn
      procedure, public :: GovEqnAddCondition           => VSFMMPPGovEqnAddCondition
@@ -101,6 +102,25 @@ contains
     endif
 
   end subroutine VSFMMPPSetMPIRank
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPGetMPIRank(this, rank)
+    !
+    ! !DESCRIPTION:
+    ! Returns MPI rank
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)    :: this
+    PetscInt, intent(out)   :: rank
+
+    rank = -1
+    if (associated(this%sysofeqns)) then
+       rank = this%sysofeqns%mpi_rank
+    endif
+
+  end subroutine VSFMMPPGetMPIRank
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetup(this, begg, endg, begc, endc, mpi_rank, &

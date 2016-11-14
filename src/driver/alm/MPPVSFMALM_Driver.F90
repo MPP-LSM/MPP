@@ -17,10 +17,10 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
+    use decompMod                 , only : bounds_type
     use shr_kind_mod              , only : r8 => shr_kind_r8
-    use decompMod                 , only : bounds_type, get_proc_bounds
-    use clm_varcon                , only : denh2o
-    use clm_varpar                , only : nlevsoi, max_patch_per_col, nlevgrnd
+    use mpp_varcon                , only : denh2o
+    use mpp_varpar                , only : nlevsoi, max_patch_per_col, nlevgrnd
     use clm_time_manager          , only : get_step_size, get_nstep
     use abortutils                , only : endrun
     use SoilStateType             , only : soilstate_type
@@ -32,12 +32,12 @@ contains
     use ColumnType                , only : col
     use clm_varcon                , only : watmin
     use LandunitType              , only : lun
-    use landunit_varcon           , only : istsoil, istcrop
-    use clm_varctl                , only : iulog
+    use mpp_varcon                , only : istsoil, istcrop
+    use mpp_varctl                , only : iulog
     use shr_log_mod               , only : errMsg => shr_log_errMsg
-    use clm_varctl                , only : lateral_connectivity
-    use clm_varctl                , only : vsfm_lateral_model_type
-    use clm_varctl                , only : vsfm_include_seepage_bc
+    use mpp_varctl                , only : lateral_connectivity
+    use mpp_varctl                , only : vsfm_lateral_model_type
+    use mpp_varctl                , only : vsfm_include_seepage_bc
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : VAR_BC_SS_CONDITION
     use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
@@ -59,6 +59,8 @@ contains
     use MPPVSFMALM_Initialize     , only : vsfm_cond_id_for_snow
     use MPPVSFMALM_Initialize     , only : vsfm_cond_id_for_sublimation
     use MPPVSFMALM_Initialize     , only : vsfm_cond_id_for_lateral_flux
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
     !
     ! !ARGUMENTS:
     implicit none
@@ -97,7 +99,6 @@ contains
     real(r8)             :: mass_beg_col                (bounds%begc:bounds%endc)            ! Total mass before a VSFM solve
     real(r8)             :: mass_end_col                (bounds%begc:bounds%endc)            ! Total mass after a VSFM solve
     integer              :: ier                                                              ! error status
-    type(bounds_type)    :: bounds_proc                                                      ! bounds
 
     PetscInt             :: jwt                                                              ! index of first unsaturated soil layer
     PetscInt             :: idx                                                              ! 1D index for (c,j)
@@ -463,11 +464,10 @@ contains
 
       if (vsfm_lateral_model_type == 'source_sink') then
 
-         call get_proc_bounds(bounds_proc)
 
-         allocate(vsfm_soilp_col_ghosted_1d((bounds_proc%endc_all - bounds_proc%begc_all+1)*nlevgrnd))
-         allocate(vsfm_fliq_col_ghosted_1d( (bounds_proc%endc_all - bounds_proc%begc_all+1)*nlevgrnd))
-         allocate(mflx_lateral_col_1d( (bounds_proc%endc - bounds_proc%begc+1)*nlevgrnd))
+         allocate(vsfm_soilp_col_ghosted_1d((bounds_proc_endc_all - bounds_proc_begc_all+1)*nlevgrnd))
+         allocate(vsfm_fliq_col_ghosted_1d( (bounds_proc_endc_all - bounds_proc_begc_all+1)*nlevgrnd))
+         allocate(mflx_lateral_col_1d( (bounds_proc_endc - bounds_proc_begc+1)*nlevgrnd))
 
          soe_auxvar_id = 1;
          call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL   , &
@@ -532,7 +532,7 @@ contains
          deallocate(mflx_lateral_col_1d       )
 
          if (vsfm_include_seepage_bc) then
-            allocate(seepage_press_1d( (bounds_proc%endc - bounds_proc%begc+1)))
+            allocate(seepage_press_1d( (bounds_proc_endc - bounds_proc_begc+1)))
             seepage_press_1d(:) = 101325.d0
             soe_auxvar_id = 1
             call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
@@ -542,10 +542,8 @@ contains
 
       else if (vsfm_lateral_model_type == 'three_dimensional') then
 
-         call get_proc_bounds(bounds_proc)
-
          if (vsfm_include_seepage_bc) then
-            allocate(seepage_press_1d( (bounds_proc%endc - bounds_proc%begc+1)))
+            allocate(seepage_press_1d( (bounds_proc_endc - bounds_proc_begc+1)))
             seepage_press_1d(:) = 101325.d0
             soe_auxvar_id = 1
             call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
@@ -713,9 +711,7 @@ contains
                ! Get following fluxes from VSFM:
                ! (i) seepage mass exchanged.
 
-               call get_proc_bounds(bounds_proc)
-
-               allocate(seepage_mass_exc_col_1d( (bounds_proc%endc - bounds_proc%begc+1)         ))
+               allocate(seepage_mass_exc_col_1d( (bounds_proc_endc - bounds_proc_begc+1)         ))
                seepage_mass_exc_col_1d = 0.d0
 
                if (vsfm_include_seepage_bc) then
@@ -757,10 +753,8 @@ contains
                ! (i) lateral mass exchanged, and
                ! (ii) seepage mass exchanged.
 
-               call get_proc_bounds(bounds_proc)
-
-               allocate(lat_mass_exc_col_1d(     (bounds_proc%endc - bounds_proc%begc+1)*nlevgrnd))
-               allocate(seepage_mass_exc_col_1d( (bounds_proc%endc - bounds_proc%begc+1)         ))
+               allocate(lat_mass_exc_col_1d(     (bounds_proc_endc - bounds_proc_begc+1)*nlevgrnd))
+               allocate(seepage_mass_exc_col_1d( (bounds_proc_endc - bounds_proc_begc+1)         ))
 
                lat_mass_exc_col_1d(:) = 0.d0
                seepage_mass_exc_col_1d(:) = 0.d0

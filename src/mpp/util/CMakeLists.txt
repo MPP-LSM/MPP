@@ -3,6 +3,7 @@ set(MPP_UTIL_SOURCES
   EOSWaterMod.F90
   MultiPhysicsProbConstants.F90
   mpp_abortutils.F90
+  mpp_bounds.F90
   mpp_shr_log_mod.F90
   mpp_varcon.F90
   mpp_varctl.F90

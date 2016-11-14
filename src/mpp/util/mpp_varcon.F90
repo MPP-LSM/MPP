@@ -27,16 +27,84 @@ module mpp_varcon
 
   PetscReal :: cnfac       = 0.5d0       ! Crank Nicholson factor between 0 and 1
 
+#endif
+
 
   ! Initialize landunit type constants
 
-  integer, parameter :: istsoil    = 1  !soil         landunit type (natural vegetation)
-  integer, parameter :: istcrop    = 2  !crop         landunit type
-  integer, parameter :: istice     = 3  !land ice     landunit type (glacier)
-  integer, parameter :: istice_mec = 4  !land ice (multiple elevation classes) landunit type
-  integer, parameter :: istdlak    = 5  !deep lake    landunit type (now used for all lakes)
-  integer, parameter :: istwet     = 6  !wetland      landunit type (swamp, marsh, etc.)
+  integer :: istsoil    !soil         landunit type (natural vegetation)
+  integer :: istcrop    !crop         landunit type
+  integer :: istice     !land ice     landunit type (glacier)
+  integer :: istice_mec !land ice     (multiple elevation classes) landunit type
+  integer :: istdlak    !deep lake    landunit type (now used for all lakes)
+  integer :: istwet     !wetland      landunit type (swamp, marsh, etc.)
 
-#endif
+  integer :: max_lunit  !!maximum value that lun%itype can have
+
+  integer, public :: icol_roof
+  integer, public :: icol_sunwall
+  integer, public :: icol_shadewall
+  integer, public :: icol_road_imperv
+  integer, public :: icol_road_perv
+
+  !
+  ! !PUBLIC MEMBER FUNCTIONS:
+  public mpp_varcon_init_landunit
+  public mpp_varcon_init_column
+  !-----------------------------------------------------------------------
+
+contains
+
+  !------------------------------------------------------------------------------
+  subroutine mpp_varcon_init_landunit(istsoil_val, istcrop_val, istice_val, istice_mec_val, &
+      istdlak_val, istwet_val, max_lunit_val)
+    !
+    ! !DESCRIPTION:
+    ! Initialize module variables 
+    !
+    implicit none
+    !
+    ! !ARGUMENTS:
+    integer, intent (in) :: istsoil_val
+    integer, intent (in) :: istcrop_val
+    integer, intent (in) :: istice_val
+    integer, intent (in) :: istice_mec_val
+    integer, intent (in) :: istdlak_val
+    integer, intent (in) :: istwet_val
+    integer, intent (in) :: max_lunit_val
+
+    istsoil    = istsoil_val
+    istcrop    = istcrop_val
+    istice     = istice_val
+    istice_mec = istice_mec_val
+    istdlak    = istdlak_val
+    istwet     = istwet_val
+    max_lunit  = max_lunit_val
+
+  end subroutine mpp_varcon_init_landunit
+
+  !------------------------------------------------------------------------------
+  subroutine mpp_varcon_init_column(icol_roof_val, icol_sunwall_val, icol_shadewall_val, &
+      icol_road_imperv_val, icol_road_perv_val)
+    !
+    ! !DESCRIPTION:
+    ! Initialize module variables 
+    !
+    implicit none
+    !
+    ! !ARGUMENTS:
+    integer, intent (in) :: icol_roof_val
+    integer, intent (in) :: icol_sunwall_val
+    integer, intent (in) :: icol_shadewall_val
+    integer, intent (in) :: icol_road_imperv_val
+    integer, intent (in) :: icol_road_perv_val
+
+    icol_roof        = icol_roof_val
+    icol_sunwall     = icol_sunwall_val
+    icol_shadewall   = icol_shadewall_val
+    icol_road_imperv = icol_road_imperv_val
+    icol_road_perv   = icol_road_perv_val
+
+  end subroutine mpp_varcon_init_column
 
 end module mpp_varcon

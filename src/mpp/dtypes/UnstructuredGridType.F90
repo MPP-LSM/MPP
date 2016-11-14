@@ -84,7 +84,6 @@ contains
     ! - ldecomp_gdc2glo(:) has the local grid cell ids in natural order
     !   after domain decomposition.
     !
-    !use decompMod, only : ldecomp, get_proc_bounds
     ! !ARGUMENTS:
     implicit none
     type(ugrid_type), pointer :: ugrid                 ! unstructured grid object
