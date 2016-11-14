@@ -14,7 +14,7 @@ program main
 
   PETSC_COMM_WORLD = MPI_COMM_WORLD
 
-  call mpp_varpar_init()
+  call mpp_varpar_init(10, 15, 5, 20)
 
   call PetscFinalize(ierr)
 

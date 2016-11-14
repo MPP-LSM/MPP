@@ -32,19 +32,20 @@ module MPPVSFMALM_Initialize
   !------------------------------------------------------------------------
 contains
 
-  subroutine MPPVSFMALM_Init
+  subroutine MPPVSFMALM_Init(iam)
     !
     ! !DESCRIPTION:
     ! Initialization PETSc-based thermal model
     !
     ! !USES:
-    use clm_varctl                , only : vsfm_use_dynamic_linesearch
+    use mpp_varctl                , only : vsfm_use_dynamic_linesearch
     !
-    ! !ARGUMENTS
     implicit none
+    ! !ARGUMENTS
+    integer, intent(in) :: iam
 
     ! 1. Initialize the multi-physics-problem (MPP)
-    call initialize_mpp()
+    call initialize_mpp(iam)
 
     ! 2. Add all meshes needed for the MPP
     call add_meshes()
@@ -73,17 +74,18 @@ contains
   end subroutine MPPVSFMALM_Init
 
   !------------------------------------------------------------------------
-  subroutine initialize_mpp()
+  subroutine initialize_mpp(iam)
     !
     ! !DESCRIPTION:
     ! Initialization VSFM
     !
     ! !USES:
     use MultiPhysicsProbConstants , only : MPP_VSFM_SNES_CLM
-    use spmdMod                   , only : iam
+    !
+    implicit none
     !
     ! !ARGUMENTS
-    implicit none
+    integer, intent(in) :: iam
 
     !
     ! Set up the multi-physics problem
@@ -102,15 +104,12 @@ contains
     ! Add meshes used in the VSFM MPP
     !
     ! !USES:
-    use decompMod                 , only : get_proc_clumps
-    use decompMod                 , only : bounds_type, get_proc_bounds 
-    use landunit_varcon           , only : istcrop, istsoil
-    use column_varcon             , only : icol_road_perv
-    use clm_varpar                , only : nlevgrnd
-    use clm_varctl                , only : lateral_connectivity
-    use spmdMod                   , only : iam
-    use landunit_varcon           , only : max_lunit
-    use clm_varctl                , only : vsfm_lateral_model_type
+    use mpp_varcon                , only : istcrop, istsoil
+    use mpp_varcon                , only : icol_road_perv
+    use mpp_varpar                , only : nlevgrnd
+    use mpp_varctl                , only : lateral_connectivity
+    use mpp_varcon                , only : max_lunit
+    use mpp_varctl                , only : vsfm_lateral_model_type
 
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
@@ -141,14 +140,16 @@ contains
     use MultiPhysicsProbConstants , only : DISCRETIZATION_VERTICAL_ONLY
     use MultiPhysicsProbConstants , only : DISCRETIZATION_VERTICAL_WITH_SS
     use MultiPhysicsProbConstants , only : DISCRETIZATION_THREE_DIM
+    use mpp_bounds                , only : bounds_proc_begg_all, bounds_proc_endg_all
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
+    use mpp_bounds                , only : nclumps
     !
     implicit none
     !
     !
     ! !LOCAL VARIABLES:
     integer            :: c,g,fc,j,l           ! do loop indices
-    integer            :: nclumps              ! number of clumps on this processor
-
     integer            :: imesh
     integer            :: nlev
     integer            :: first_active_soil_col_id
@@ -163,8 +164,7 @@ contains
     integer            :: ieqn_2
     integer            :: icond
     integer            :: ncells_local
-
-    type(bounds_type)  :: bounds_proc
+    integer            :: mpi_rank
 
     real(r8), pointer  :: z(:,:)               ! centroid at "z" level [m]
     real(r8), pointer  :: zi(:,:)              ! interface level below a "z" level (m)
@@ -221,35 +221,31 @@ contains
     zi         =>    col%zi
     dz         =>    col%dz
 
-    call get_proc_bounds(bounds_proc)
-
-    nclumps = get_proc_clumps()
-
     if (nclumps /= 1) then
        call endrun(msg='ERROR VSFM only supported for clumps = 1')
     endif
     
-    allocate(xc_col            (bounds_proc%begc_all:bounds_proc%endc_all                    ))
-    allocate(yc_col            (bounds_proc%begc_all:bounds_proc%endc_all                    ))
-    allocate(zc_col            (bounds_proc%begc_all:bounds_proc%endc_all                    ))
-    allocate(area_col          (bounds_proc%begc_all:bounds_proc%endc_all                    ))
-    allocate(grid_owner        (bounds_proc%begg_all:bounds_proc%endg_all                    ))
+    allocate(xc_col            (bounds_proc_begc_all:bounds_proc_endc_all                    ))
+    allocate(yc_col            (bounds_proc_begc_all:bounds_proc_endc_all                    ))
+    allocate(zc_col            (bounds_proc_begc_all:bounds_proc_endc_all                    ))
+    allocate(area_col          (bounds_proc_begc_all:bounds_proc_endc_all                    ))
+    allocate(grid_owner        (bounds_proc_begg_all:bounds_proc_endg_all                    ))
 
-    allocate (soil_xc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_yc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_zc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_dx           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_dy           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_dz           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_area         ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_filter       ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
+    allocate (soil_xc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_yc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_zc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_dx           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_dy           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_dz           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_area         ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_filter       ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
 
-    allocate (vert_conn_id_up   ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (vert_conn_id_dn   ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (vert_conn_dist_up ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (vert_conn_dist_dn ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (vert_conn_area    ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (vert_conn_type    ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
+    allocate (vert_conn_id_up   ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (vert_conn_id_dn   ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (vert_conn_dist_up ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (vert_conn_dist_dn ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (vert_conn_area    ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (vert_conn_type    ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
 
     xc_col(:)     = 0.d0
     yc_col(:)     = 0.d0
@@ -258,7 +254,7 @@ contains
     grid_owner(:) = 0
 
     first_active_soil_col_id = -1
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        l = col%landunit(c)
 
        if (col%active(c) .and. .not.lun%lakpoi(l) .and. .not.lun%urbpoi(l)) then
@@ -282,13 +278,15 @@ contains
     
     if (lateral_connectivity) then
 
+       call vsfm_mpp%GetMPIRank(mpi_rank)
+
        call update_mesh_information (ncells_ghost, &
             ncols_ghost, xc_col, yc_col, zc_col,   &
-            area_col, grid_owner )
+            area_col, grid_owner, mpi_rank )
 
        call setup_lateral_connections (grid_owner, &
-            bounds_proc%begg_all, bounds_proc%endg_all, &
-            bounds_proc%begc_all, bounds_proc%endc_all, &
+            bounds_proc_begg_all, bounds_proc_endg_all, &
+            bounds_proc_begc_all, bounds_proc_endc_all, &
             zc_col,                                     &
             horz_nconn,                            &
             horz_conn_id_up, horz_conn_id_dn,      &
@@ -299,7 +297,7 @@ contains
 
     ! Save geometric attributes for soil mesh
     icell = 0
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        do j = 1, nlevgrnd
           icell = icell + 1
 
@@ -326,12 +324,12 @@ contains
 
     ! Save information about internal connections for soil mesh
     iconn = 0
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
 
        do j = 1, nlevgrnd-1
 
           iconn = iconn + 1
-          vert_conn_id_up(iconn)   = (c-bounds_proc%begc)*nlevgrnd + j
+          vert_conn_id_up(iconn)   = (c-bounds_proc_begc)*nlevgrnd + j
           vert_conn_id_dn(iconn)   = vert_conn_id_up(iconn) + 1
           vert_conn_dist_up(iconn) = 0.5d0*dz(c,j  ) !zi(c,j)   - z(c,j)
           vert_conn_dist_dn(iconn) = 0.5d0*dz(c,j+1) !z( c,j+1) - zi(c,j)
@@ -352,7 +350,7 @@ contains
     !
     imesh        = 1
     nlev         = nlevgrnd
-    ncells_local = (bounds_proc%endc - bounds_proc%begc + 1)*nlev
+    ncells_local = (bounds_proc_endc - bounds_proc_begc + 1)*nlev
     ncells_ghost = ncols_ghost*nlev
 
     call vsfm_mpp%MeshSetName        (imesh, 'Soil mesh')
@@ -472,22 +470,25 @@ contains
 
   subroutine update_mesh_information (ncells_ghost, ncols_ghost,  &
        xc_col, yc_col, zc_col, area_col, &
-       grid_owner &
+       grid_owner, mpi_rank &
     )
     !
     ! !DESCRIPTION:
     !
     ! !USES:
+    use decompMod                 , only : bounds_type, get_proc_bounds
     use domainMod                 , only : ldomain
     use domainLateralMod          , only : ldomain_lateral
-    use clm_varpar                , only : nlevgrnd
-    use landunit_varcon           , only : istsoil
+    use mpp_varpar                , only : nlevgrnd
+    use mpp_varcon                , only : istsoil
     use initGridCellsMod          , only : initGhostGridCells
     use decompMod                 , only : get_proc_total_ghosts
-    use decompMod                 , only : bounds_type, get_proc_bounds 
-    use spmdMod                   , only : iam
     use UnstructuredGridType      , only : ScatterDataG2L
     use clm_instMod               , only : soilstate_vars
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
+    use mpp_bounds                , only : bounds_proc_begg_all, bounds_proc_endg_all
+    use mpp_bounds                , only : bounds_proc_begg, bounds_proc_endg
     !
     implicit none
     !
@@ -497,9 +498,10 @@ contains
     real(r8), pointer  :: zc_col(:)      ! z-position of grid cell [m]
     real(r8), pointer  :: area_col(:)    ! area of grid cell [m^2]
     integer, pointer   :: grid_owner(:)  ! MPI rank owner of grid cell
-                                         !
-    integer            :: c,g,fc,j,l     ! do loop indices
+    integer, intent(in):: mpi_rank       ! MPI rank
+    !
     type(bounds_type)  :: bounds_proc
+    integer            :: c,g,fc,j,l     ! do loop indices
     integer            :: nblocks
     integer            :: beg_idx
     integer            :: ndata_send     ! number of data sent by local mpi rank
@@ -513,10 +515,9 @@ contains
     integer            :: nCohorts_ghost ! total number of ghost cohorts on the processor
     !----------------------------------------------------------------------
 
-    call get_proc_bounds(bounds_proc)
-
     call initGhostGridCells()
 
+    call get_proc_bounds(bounds_proc)
     call soilstate_vars%InitColdGhost(bounds_proc)
 
     nblocks    = 4
@@ -527,9 +528,9 @@ contains
     allocate(data_recv(ndata_recv))
 
     ! Aggregate the data to send
-    do g = bounds_proc%begg, bounds_proc%endg
+    do g = bounds_proc_begg, bounds_proc_endg
 
-       beg_idx = (g-bounds_proc%begg)*nblocks
+       beg_idx = (g-bounds_proc_begg)*nblocks
 
        if (isnan(ldomain%xCell(g))) then
           call endrun(msg='ERROR initialize3: xCell = NaN')
@@ -550,7 +551,7 @@ contains
        data_send(beg_idx) = ldomain%topo(g)
 
        beg_idx = beg_idx + 1;
-       data_send(beg_idx) = real(iam)
+       data_send(beg_idx) = real(mpi_rank)
 
     enddo
 
@@ -559,17 +560,17 @@ contains
          ndata_send, data_send, ndata_recv, data_recv)
 
     ! Save data for ghost subgrid category
-    do c = bounds_proc%begc_all, bounds_proc%endc_all
+    do c = bounds_proc_begc_all, bounds_proc_endc_all
 
        g       = col%gridcell(c)
-       beg_idx = (g-bounds_proc%begg)*nblocks
+       beg_idx = (g-bounds_proc_begg)*nblocks
 
        beg_idx = beg_idx + 1; xc_col(c) = data_recv(beg_idx)
        beg_idx = beg_idx + 1; yc_col(c) = data_recv(beg_idx)
        beg_idx = beg_idx + 1; zc_col(c) = data_recv(beg_idx)
        beg_idx = beg_idx + 1; grid_owner(g) = data_recv(beg_idx)
 
-       area_col(c) = ldomain_lateral%ugrid%areaGrid_ghosted(g-bounds_proc%begg + 1)
+       area_col(c) = ldomain_lateral%ugrid%areaGrid_ghosted(g-bounds_proc_begg + 1)
 
     enddo
 
@@ -596,9 +597,9 @@ contains
     ! !USES:
     !
     use domainLateralMod          , only : ldomain_lateral
-    use clm_varpar                , only : nlevgrnd
+    use mpp_varpar                , only : nlevgrnd
     use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
-    use landunit_varcon           , only : istsoil
+    use mpp_varcon                , only : istsoil
     !
     implicit none
     !
@@ -815,8 +816,8 @@ contains
     !
     !
     ! !USES:
-    use clm_varctl                , only : vsfm_lateral_model_type
-    use clm_varctl                , only : vsfm_include_seepage_bc
+    use mpp_varctl                , only : vsfm_lateral_model_type
+    use mpp_varctl                , only : vsfm_include_seepage_bc
     use MultiPhysicsProbConstants , only : SOIL_CELLS
     use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
     use MultiPhysicsProbConstants , only : COND_SS
@@ -899,18 +900,18 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use decompMod                 , only : bounds_type
-    use decompMod                 , only : get_proc_bounds 
     use clm_instMod               , only : soilstate_vars
     use clm_instMod               , only : soilhydrology_vars
     use decompMod                 , only : get_proc_total_ghosts
-    use landunit_varcon           , only : istcrop
-    use landunit_varcon           , only : istsoil
-    use column_varcon             , only : icol_road_perv
-    use clm_varpar                , only : nlevgrnd
-    use clm_varctl                , only : vsfm_satfunc_type
+    use mpp_varcon                , only : istcrop
+    use mpp_varcon                , only : istsoil
+    use mpp_varcon                , only : icol_road_perv
+    use mpp_varpar                , only : nlevgrnd
+    use mpp_varctl                , only : vsfm_satfunc_type
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoils
     use EOSWaterMod               , only : DENSITY_TGDPB01
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
     !
     implicit none
     !
@@ -928,8 +929,6 @@ contains
     real(r8), pointer    :: vsfm_residual_sat(:,:)
     integer, pointer     :: vsfm_filter(:)
     !
-    type(bounds_type)    :: bounds_proc
-    !
     integer              :: c,g,fc,j,l            ! do loop indices
     integer              :: ncells_ghost          ! total number of ghost gridcells on the processor
     integer              :: nlunits_ghost         ! total number of ghost landunits on the processor
@@ -945,19 +944,17 @@ contains
     clm_eff_porosity => soilstate_vars%eff_porosity_col ! effective porosity = porosity - vol_ice
     clm_zwt          => soilhydrology_vars%zwt_col      ! water table depth
 
-    call get_proc_bounds(bounds_proc)
-
     call get_proc_total_ghosts(ncells_ghost, nlunits_ghost, &
          ncols_ghost, npfts_ghost, nCohorts_ghost)
 
     ! Allocate memory
-    allocate(vsfm_filter       (bounds_proc%begc_all:bounds_proc%endc_all           ))
-    allocate(vsfm_watsat       (bounds_proc%begc_all:bounds_proc%endc_all, nlevgrnd ))
-    allocate(vsfm_hksat        (bounds_proc%begc_all:bounds_proc%endc_all, nlevgrnd ))
-    allocate(vsfm_bsw          (bounds_proc%begc_all:bounds_proc%endc_all, nlevgrnd ))
-    allocate(vsfm_sucsat       (bounds_proc%begc_all:bounds_proc%endc_all, nlevgrnd ))
-    allocate(vsfm_eff_porosity (bounds_proc%begc_all:bounds_proc%endc_all, nlevgrnd ))
-    allocate(vsfm_residual_sat (bounds_proc%begc_all:bounds_proc%endc_all, nlevgrnd ))
+    allocate(vsfm_filter       (bounds_proc_begc_all:bounds_proc_endc_all           ))
+    allocate(vsfm_watsat       (bounds_proc_begc_all:bounds_proc_endc_all, nlevgrnd ))
+    allocate(vsfm_hksat        (bounds_proc_begc_all:bounds_proc_endc_all, nlevgrnd ))
+    allocate(vsfm_bsw          (bounds_proc_begc_all:bounds_proc_endc_all, nlevgrnd ))
+    allocate(vsfm_sucsat       (bounds_proc_begc_all:bounds_proc_endc_all, nlevgrnd ))
+    allocate(vsfm_eff_porosity (bounds_proc_begc_all:bounds_proc_endc_all, nlevgrnd ))
+    allocate(vsfm_residual_sat (bounds_proc_begc_all:bounds_proc_endc_all, nlevgrnd ))
 
     ! Initialize
     vsfm_filter       (:)   = 0
@@ -968,7 +965,7 @@ contains
     vsfm_residual_sat (:,:) = 0._r8
 
     ! Save data to initialize VSFM
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        l = col%landunit(c)
 
        if (col%active(c) .and. &
@@ -988,7 +985,7 @@ contains
        endif
     enddo
 
-    call VSFMMPPSetSoils(vsfm_mpp, bounds_proc%begc, bounds_proc%endc, &
+    call VSFMMPPSetSoils(vsfm_mpp, bounds_proc_begc, bounds_proc_endc, &
          ncols_ghost, vsfm_filter, &
          vsfm_watsat, vsfm_hksat, vsfm_bsw, vsfm_sucsat, vsfm_eff_porosity, &
          vsfm_residual_sat, vsfm_satfunc_type, DENSITY_TGDPB01)
@@ -1009,26 +1006,24 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use decompMod                 , only : bounds_type
-    use decompMod                 , only : get_proc_bounds 
     use clm_instMod               , only : soilstate_vars
     use clm_instMod               , only : soilhydrology_vars
     use decompMod                 , only : get_proc_total_ghosts
-    use landunit_varcon           , only : istcrop
-    use landunit_varcon           , only : istsoil
-    use column_varcon             , only : icol_road_perv
-    use clm_varpar                , only : nlevgrnd
-    use clm_varctl                , only : vsfm_satfunc_type
+    use mpp_varcon                , only : istcrop
+    use mpp_varcon                , only : istsoil
+    use mpp_varcon                , only : icol_road_perv
+    use mpp_varpar                , only : nlevgrnd
+    use mpp_varctl                , only : vsfm_satfunc_type
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoils
     use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT
     use MultiPhysicsProbConstants , only : PRESSURE_REF
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
     !
     implicit none
     !
     real(r8), pointer    :: clm_zi(:,:)           ! interface level below a "z" level (m)
     real(r8), pointer    :: clm_zwt(:)            ! 
-    !
-    type(bounds_type)    :: bounds_proc
     !
     integer              :: c,g,fc,j,l            ! do loop indices
     integer              :: ncells_ghost          ! total number of ghost gridcells on the processor
@@ -1043,20 +1038,18 @@ contains
     clm_zwt          => soilhydrology_vars%zwt_col      ! water table depth
     clm_zi           => col%zi
 
-    call get_proc_bounds(bounds_proc)
-
     ! Allocate memory
-    allocate(press_ic_1d ((bounds_proc%endc_all - bounds_proc%begc_all + 1)*nlevgrnd))
+    allocate(press_ic_1d ((bounds_proc_endc_all - bounds_proc_begc_all + 1)*nlevgrnd))
 
     ! Initialize
     press_ic_1d(:) = 101325.d0
 
     ! Save data to initialize VSFM
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        l = col%landunit(c)
        
        do j = 1, nlevgrnd
-          icell = (c - bounds_proc%begc)*nlevgrnd + j
+          icell = (c - bounds_proc_begc)*nlevgrnd + j
           if (col%active(c) .and. &
                (lun%itype(l) == istsoil .or. col%itype(c) == icol_road_perv .or. &
                lun%itype(l) == istcrop)) then
@@ -1068,7 +1061,7 @@ contains
        enddo
     enddo
 
-    !call VSFMMPPSetICs(vsfm_mpp, bounds_proc%begc, bounds_proc%endc, &
+    !call VSFMMPPSetICs(vsfm_mpp, bounds_proc_begc, bounds_proc_endc, &
     !zc_col, vsfm_filter, vsfm_zwt)
     call vsfm_mpp%Restart(press_ic_1d)
 
@@ -1083,11 +1076,11 @@ contains
     !DESCRIPTION
     !  Determines the IDs of various source-sink conditions in VSFM
     !
-    use clm_varctl                       , only : vsfm_lateral_model_type
+    use mpp_varctl                       , only : vsfm_lateral_model_type
     use MultiPhysicsProbVSFM             , only : vsfm_mpp
     use MultiPhysicsProbConstants        , only : COND_SS
     use MultiPhysicsProbConstants        , only : COND_NULL
-    use clm_varctl                       , only : iulog
+    use mpp_varctl                       , only : iulog
     use abortutils                       , only : endrun
     use shr_log_mod                      , only : errMsg => shr_log_errMsg
     ! !ARGUMENTS:

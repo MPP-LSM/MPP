@@ -87,8 +87,9 @@ contains
     PetscReal :: dke
     PetscReal :: dksat
 
-    select case(this%itype)
-    case (istsoil, istcrop)
+    !select case(this%itype)
+    !case (istsoil, istcrop)
+    if (this%itype == istsoil .or. this%itype == istcrop) then
        if (this%is_soil_shallow) then
 
           satw = (this%liq_areal_den/denh2o + this%ice_areal_den/denice)/(dz*this%por)
@@ -132,7 +133,7 @@ contains
 
        this%heat_cap_pva = this%heat_cap_pva/dz
 
-    case(istwet)
+    else if (this%itype == istwet) then
 
        if (this%is_soil_shallow) then
           if (this%temperature < tfrz) then
@@ -151,7 +152,7 @@ contains
           this%heat_cap_pva = this%heat_cap_minerals_puv
        endif
 
-    case (istice, istice_mec)
+    else if (this%itype == istice .or. this%itype == istice_mec) then
           if (this%temperature < tfrz) then
              this%therm_cond   = tkice
           else
@@ -163,7 +164,7 @@ contains
           endif
 
           this%heat_cap_pva = this%heat_cap_pva/dz
-    end select
+    end if
        
 
   end subroutine ThermKSPTempSoilAuxVarCompute

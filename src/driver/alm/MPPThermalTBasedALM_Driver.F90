@@ -7,7 +7,6 @@ module MPPThermalTBasedALM_Driver
   ! Performs land model initialization
   !
   use shr_kind_mod     , only : r8 => shr_kind_r8
-  use spmdMod          , only : masterproc, iam
   use shr_log_mod      , only : errMsg => shr_log_errMsg
   use decompMod        , only : bounds_type, get_proc_bounds 
   use abortutils       , only : endrun
@@ -38,10 +37,10 @@ contains
     use TemperatureType           , only : temperature_type
     use clm_varcon                , only : capr
     use clm_time_manager          , only : get_step_size, get_nstep
-    use clm_varpar                , only : nlevsno, nlevgrnd
-    use landunit_varcon           , only : istice, istice_mec, istsoil, istcrop
-    use column_varcon             , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv, icol_road_imperv
-    use landunit_varcon           , only : istwet, istice, istice_mec, istsoil, istcrop
+    use mpp_varpar                , only : nlevsno, nlevgrnd
+    use mpp_varcon                , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv, icol_road_imperv
+    use mpp_varcon                , only : istice, istice_mec, istsoil, istcrop
+    use mpp_varcon                , only : istwet, istice, istice_mec, istsoil, istcrop
     use MultiPhysicsProbThermal   , only : thermal_mpp
     use MultiPhysicsProbConstants , only : VAR_BC_SS_CONDITION
     use MultiPhysicsProbConstants , only : VAR_TEMPERATURE

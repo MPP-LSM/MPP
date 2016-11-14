@@ -7,9 +7,7 @@ module MPPThermalTBasedALM_Initialize
   ! Performs land model initialization
   !
   use shr_kind_mod     , only : r8 => shr_kind_r8
-  use spmdMod          , only : masterproc, iam
   use shr_log_mod      , only : errMsg => shr_log_errMsg
-  use decompMod        , only : bounds_type, get_proc_bounds 
   use abortutils       , only : endrun
   use mpp_varctl       , only : iulog
   ! 
@@ -27,22 +25,23 @@ module MPPThermalTBasedALM_Initialize
   !------------------------------------------------------------------------
 contains
 
-  subroutine MPPThermalTBasedALM_Init()
+  subroutine MPPThermalTBasedALM_Init(iam)
     !
     ! !DESCRIPTION:
     ! Initialization PETSc-based thermal model
     !
     ! !USES:
-    use clm_varctl                , only : use_petsc_thermal_model
+    use mpp_varctl                , only : use_petsc_thermal_model
     use MultiPhysicsProbThermal   , only : thermal_mpp
     !
-    ! !ARGUMENTS
     implicit none
+    ! !ARGUMENTS
+    integer, intent(in) :: iam
 
     if (.not.use_petsc_thermal_model) return
 
     ! 1. Initialize the multi-physics-problem (MPP)
-    call initialize_mpp()
+    call initialize_mpp(iam)
 
     ! 2. Add all meshes needed for the MPP
     call add_meshes()
@@ -65,7 +64,7 @@ contains
   end subroutine MPPThermalTBasedALM_Init
     
   !------------------------------------------------------------------------
-  subroutine initialize_mpp()
+  subroutine initialize_mpp(iam)
     !
     ! !DESCRIPTION:
     ! Initialization PETSc-based thermal model
@@ -73,10 +72,10 @@ contains
     ! !USES:
     use MultiPhysicsProbThermal   , only : thermal_mpp
     use MultiPhysicsProbConstants , only : MPP_THERMAL_TBASED_KSP_CLM
-    use spmdMod                   , only : iam
     !
-    ! !ARGUMENTS
     implicit none
+    ! !ARGUMENTS
+    integer, intent(in) :: iam
 
     !
     ! Set up the multi-physics problem
@@ -95,11 +94,11 @@ contains
     ! Add meshes to the thermal MPP problem
     !
     ! !USES:
-    use spmdMod                   , only : mpicom, npes
     use filterMod                 , only : filter
-    use decompMod                 , only : get_proc_clumps
-    use clm_varpar                , only : nlevgrnd, nlevsno
-    use clm_varctl                , only : finidat
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
+    use mpp_bounds                , only : nclumps
+    use mpp_varpar                , only : nlevgrnd, nlevsno
     use shr_infnan_mod            , only : shr_infnan_isnan
     use abortutils                , only : endrun
     use shr_infnan_mod            , only : isnan => shr_infnan_isnan
@@ -144,10 +143,8 @@ contains
 #include "finclude/petscsys.h"
     !
     ! !LOCAL VARIABLES:
-    integer           :: nclumps                  ! number of clumps on this processor
     integer           :: nc                       ! clump index
     integer           :: c,g,fc,j,l               ! do loop indices
-    type(bounds_type) :: bounds_proc
     real(r8), pointer :: z(:,:)                   ! centroid at "z" level [m]
     real(r8), pointer :: zi(:,:)                  ! interface level below a "z" level (m)
     real(r8), pointer :: dz(:,:)                  ! layer thickness at "z" level (m)
@@ -215,9 +212,6 @@ contains
     zi         =>    col%zi
     dz         =>    col%dz
 
-    call get_proc_bounds(bounds_proc)
-    nclumps = get_proc_clumps()
-
     if (nclumps /= 1) then
        call endrun(msg='ERROR clm_initializeMod: '//&
            'PETSc-based thermal model only supported for clumps = 1')
@@ -227,47 +221,47 @@ contains
 
     ! Allocate memory and setup data structure for VSFM-MPP
 
-    allocate (snow_xc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_yc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_zc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_dx           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_dy           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_dz           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_area         ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_filter       ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevsno      ))
-    allocate (snow_conn_id_up   ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevsno-1)  ))
-    allocate (snow_conn_id_dn   ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevsno-1)  ))
-    allocate (snow_conn_dist_up ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevsno-1)  ))
-    allocate (snow_conn_dist_dn ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevsno-1)  ))
-    allocate (snow_conn_area    ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevsno-1)  ))
-    allocate (snow_conn_type    ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevsno-1)  ))
+    allocate (snow_xc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_yc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_zc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_dx           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_dy           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_dz           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_area         ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_filter       ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevsno      ))
+    allocate (snow_conn_id_up   ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevsno-1)  ))
+    allocate (snow_conn_id_dn   ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevsno-1)  ))
+    allocate (snow_conn_dist_up ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevsno-1)  ))
+    allocate (snow_conn_dist_dn ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevsno-1)  ))
+    allocate (snow_conn_area    ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevsno-1)  ))
+    allocate (snow_conn_type    ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevsno-1)  ))
 
-    allocate (ssw_xc            ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
-    allocate (ssw_yc            ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
-    allocate (ssw_zc            ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
-    allocate (ssw_dx            ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
-    allocate (ssw_dy            ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
-    allocate (ssw_dz            ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
-    allocate (ssw_area          ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
-    allocate (ssw_filter        ((bounds_proc%endc_all-bounds_proc%begc_all+1                )))
+    allocate (ssw_xc            ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
+    allocate (ssw_yc            ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
+    allocate (ssw_zc            ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
+    allocate (ssw_dx            ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
+    allocate (ssw_dy            ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
+    allocate (ssw_dz            ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
+    allocate (ssw_area          ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
+    allocate (ssw_filter        ((bounds_proc_endc_all-bounds_proc_begc_all+1                )))
 
-    allocate (soil_xc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_yc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_zc           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_dx           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_dy           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_dz           ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_area         ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_filter       ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*nlevgrnd     ))
-    allocate (soil_conn_id_up   ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (soil_conn_id_dn   ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (soil_conn_dist_up ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (soil_conn_dist_dn ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (soil_conn_area    ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
-    allocate (soil_conn_type    ((bounds_proc%endc_all-bounds_proc%begc_all+1 )*(nlevgrnd-1) ))
+    allocate (soil_xc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_yc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_zc           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_dx           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_dy           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_dz           ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_area         ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_filter       ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*nlevgrnd     ))
+    allocate (soil_conn_id_up   ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (soil_conn_id_dn   ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (soil_conn_dist_up ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (soil_conn_dist_dn ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (soil_conn_area    ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
+    allocate (soil_conn_type    ((bounds_proc_endc_all-bounds_proc_begc_all+1 )*(nlevgrnd-1) ))
 
     first_active_soil_col_id = -1
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        l = col%landunit(c)
 
        if (col%active(c) .and. .not.lun%lakpoi(l) .and. .not.lun%urbpoi(l)) then
@@ -283,7 +277,7 @@ contains
 
     ! Save geometric attributes for snow mesh
     icell = 0
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        do j = -nlevsno+1, 0
           icell = icell + 1
 
@@ -309,7 +303,7 @@ contains
     ! Save geometric attributes for standing surface water mesh
     icell = 0
     j     = 0
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
 
        icell = icell + 1
 
@@ -333,7 +327,7 @@ contains
 
     ! Save geometric attributes for soil mesh
     icell = 0
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        do j = 1, nlevgrnd
           icell = icell + 1
 
@@ -358,11 +352,11 @@ contains
 
     ! Save information about internal connections for snow mesh
     iconn = 0
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        do j = -nlevsno+1, -1
 
           iconn = iconn + 1
-          snow_conn_id_up(iconn)   = (c-bounds_proc%begc)*nlevsno + j  + nlevsno
+          snow_conn_id_up(iconn)   = (c-bounds_proc_begc)*nlevsno + j  + nlevsno
           snow_conn_id_dn(iconn)   = snow_conn_id_up(iconn) + 1
           snow_conn_dist_up(iconn) = zi(c,j)   - z(c,j)
           snow_conn_dist_dn(iconn) = z( c,j+1) - zi(c,j)
@@ -375,12 +369,12 @@ contains
     
     ! Save information about internal connections for soil mesh
     iconn = 0
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
 
        do j = 1, nlevgrnd-1
 
           iconn = iconn + 1
-          soil_conn_id_up(iconn)   = (c-bounds_proc%begc)*nlevgrnd + j
+          soil_conn_id_up(iconn)   = (c-bounds_proc_begc)*nlevgrnd + j
           soil_conn_id_dn(iconn)   = soil_conn_id_up(iconn) + 1
           soil_conn_dist_up(iconn) = zi(c,j)   - z(c,j)
           soil_conn_dist_dn(iconn) = z( c,j+1) - zi(c,j)
@@ -402,7 +396,7 @@ contains
     !
     imesh        = 1
     nlev         = nlevsno
-    ncells_local = (bounds_proc%endc - bounds_proc%begc + 1)*nlev
+    ncells_local = (bounds_proc_endc - bounds_proc_begc + 1)*nlev
     ncells_ghost = 0
 
     call thermal_mpp%MeshSetName        (imesh, 'CLM snow thermal mesh')
@@ -429,7 +423,7 @@ contains
     !
     imesh        = 2
     nlev         = 1
-    ncells_local = (bounds_proc%endc - bounds_proc%begc + 1)*nlev
+    ncells_local = (bounds_proc_endc - bounds_proc_begc + 1)*nlev
     ncells_ghost = 0    
     call thermal_mpp%MeshSetName(imesh, 'CLM standing water thermal snow mesh')
     call thermal_mpp%MeshSetOrientation (imesh, MESH_ALONG_GRAVITY)
@@ -451,7 +445,7 @@ contains
     !
     imesh        = 3
     nlev         = nlevgrnd
-    ncells_local = (bounds_proc%endc - bounds_proc%begc + 1)*nlev
+    ncells_local = (bounds_proc_endc - bounds_proc_begc + 1)*nlev
     ncells_ghost = 0    
 
     call thermal_mpp%MeshSetName        (imesh, 'CLM soil thermal mesh')
@@ -550,6 +544,8 @@ contains
     !
     !
     ! !USES:
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
     use MultiPhysicsProbThermal   , only : thermal_mpp, MPPThermalSetSoils
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
@@ -567,7 +563,6 @@ contains
     integer           :: c                        ! do loop indices
     integer           :: ieqn, ieqn_1, ieqn_2
     integer           :: icond
-    type(bounds_type) :: bounds_proc
     real(r8), pointer :: z(:,:)                   ! centroid at "z" level [m]
     real(r8), pointer :: zi(:,:)                  ! interface level below a "z" level (m)
     real(r8), pointer :: soil_top_conn_dist_dn(:) !
@@ -575,12 +570,10 @@ contains
     z          =>    col%z
     zi         =>    col%zi
 
-    call get_proc_bounds(bounds_proc)
+    allocate (soil_top_conn_dist_dn(bounds_proc_endc_all-bounds_proc_begc_all+1))
 
-    allocate (soil_top_conn_dist_dn(bounds_proc%endc_all-bounds_proc%begc_all+1))
-
-    do c = bounds_proc%begc, bounds_proc%endc
-       soil_top_conn_dist_dn(c - bounds_proc%begc + 1) = z(c,1) - zi(c,0)
+    do c = bounds_proc_begc, bounds_proc_endc
+       soil_top_conn_dist_dn(c - bounds_proc_begc + 1) = z(c,1) - zi(c,0)
     end do
 
     !
@@ -638,11 +631,11 @@ contains
     ieqn_2 = 3
     icond  = 2
     call thermal_mpp%GovEqnUpdateBCConnectionSet(ieqn_2, icond, VAR_DIST_DN, &
-         bounds_proc%endc - bounds_proc%begc + 1, &
+         bounds_proc_endc - bounds_proc_begc + 1, &
          soil_top_conn_dist_dn)
     icond  = 3
     call thermal_mpp%GovEqnUpdateBCConnectionSet(ieqn_2, icond, VAR_DIST_DN, &
-         bounds_proc%endc - bounds_proc%begc + 1, &
+         bounds_proc_endc - bounds_proc_begc + 1, &
          soil_top_conn_dist_dn)
 
   end subroutine add_conditions_to_goveqns
@@ -746,13 +739,14 @@ contains
     use MultiPhysicsProbThermal   , only : thermal_mpp
     use MultiPhysicsProbThermal   , only : MPPThermalSetSoils
     use clm_varcon                , only : spval
-    use clm_varpar                , only : nlevgrnd, nlevsno
+    use mpp_varpar                , only : nlevgrnd, nlevsno
+    use mpp_bounds                , only : bounds_proc_begc_all, bounds_proc_endc_all
+    use mpp_bounds                , only : bounds_proc_begc, bounds_proc_endc
     !
     ! !ARGUMENTS
     implicit none
     !
     integer           :: c,g,fc,j,l               ! do loop indices
-    type(bounds_type) :: bounds_proc
     integer, pointer  :: thermal_filter(:)
     integer, pointer  :: thermal_lun_type(:)
     real(r8), pointer :: thermal_watsat(:,:)
@@ -769,16 +763,14 @@ contains
     clm_tkmg   =>    soilstate_vars%tkmg_col
     clm_tkdry  =>    soilstate_vars%tkdry_col
 
-    call get_proc_bounds(bounds_proc)
-
     ! Allocate memory and setup data structure for VSFM-MPP
 
-    allocate (thermal_filter   (bounds_proc%begc:bounds_proc%endc_all      ))
-    allocate (thermal_lun_type (bounds_proc%begc:bounds_proc%endc_all      ))
-    allocate (thermal_watsat   (bounds_proc%begc:bounds_proc%endc,nlevgrnd ))
-    allocate (thermal_csol     (bounds_proc%begc:bounds_proc%endc,nlevgrnd ))
-    allocate (thermal_tkmg     (bounds_proc%begc:bounds_proc%endc,nlevgrnd ))
-    allocate (thermal_tkdry    (bounds_proc%begc:bounds_proc%endc,nlevgrnd ))
+    allocate (thermal_filter   (bounds_proc_begc:bounds_proc_endc_all      ))
+    allocate (thermal_lun_type (bounds_proc_begc:bounds_proc_endc_all      ))
+    allocate (thermal_watsat   (bounds_proc_begc:bounds_proc_endc,nlevgrnd ))
+    allocate (thermal_csol     (bounds_proc_begc:bounds_proc_endc,nlevgrnd ))
+    allocate (thermal_tkmg     (bounds_proc_begc:bounds_proc_endc,nlevgrnd ))
+    allocate (thermal_tkdry    (bounds_proc_begc:bounds_proc_endc,nlevgrnd ))
 
     thermal_filter(:)   = 0
     thermal_lun_type(:) = 0
@@ -787,7 +779,7 @@ contains
     thermal_tkmg(:,:)   = 0._r8
     thermal_tkdry(:,:)  = 0._r8
 
-    do c = bounds_proc%begc, bounds_proc%endc
+    do c = bounds_proc_begc, bounds_proc_endc
        l = col%landunit(c)
 
        thermal_lun_type(c)  = lun%itype(l)
@@ -804,8 +796,8 @@ contains
        endif
     enddo
 
-    call MPPThermalSetSoils(thermal_mpp, bounds_proc%begc, &
-                           bounds_proc%endc,               &
+    call MPPThermalSetSoils(thermal_mpp, bounds_proc_begc, &
+                           bounds_proc_endc,               &
                            thermal_filter,                 &
                            thermal_lun_type,               &
                            thermal_watsat,                 &

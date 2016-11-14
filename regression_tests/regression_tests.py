@@ -136,6 +136,7 @@ def setup_log(test_dir):
     logging.info("    {0}".format(test_dir))
 
     tempfile = "{0}/tmp-mpp-test-info.txt".format(test_dir)
+    print("  tempfile : {0}".format(tempfile))
 
     logging.info(SEPERATOR)
     logging.info("MPP repository status ")
@@ -146,10 +147,9 @@ def setup_log(test_dir):
         append_command_to_log(cmd, tempfile)
         cmd = ["git", "diff"]
         append_command_to_log(cmd, tempfile)
+        os.remove(tempfile)
     else:
         logging.info("    unknown")
-
-    os.remove(tempfile)
 
 def verify_executable(executable):
     """Check that the user specified executable exists and has the
