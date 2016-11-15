@@ -13,6 +13,7 @@
   logical          , public :: vsfm_use_dynamic_linesearch = .false.
   logical          , public :: vsfm_include_seepage_bc     = .false.
   logical          , public :: lateral_connectivity        = .false.
+  logical          , public :: restart_vsfm                = .false.
   character(len=32), public :: vsfm_satfunc_type           = 'smooth_brooks_corey_bz3'
   character(len=32), public :: vsfm_lateral_model_type     = 'none'
 
@@ -30,7 +31,7 @@ contains
 
   !------------------------------------------------------------------------------
   subroutine mpp_varctl_init_vsfm(use_vsfm_val, vsfm_use_dynamic_linesearch_val, &
-      vsfm_include_seepage_bc_val, lateral_connectivity_val, &
+      vsfm_include_seepage_bc_val, lateral_connectivity_val, restart_vsfm_val, &
       vsfm_satfunc_type_val, vsfm_lateral_model_type_val)
     !
     ! !DESCRIPTION:
@@ -43,6 +44,7 @@ contains
     logical         , intent (in) :: vsfm_use_dynamic_linesearch_val
     logical         , intent (in) :: vsfm_include_seepage_bc_val
     logical         , intent (in) :: lateral_connectivity_val
+    logical         , intent (in) :: restart_vsfm_val
     character(len=*), intent (in) :: vsfm_satfunc_type_val
     character(len=*), intent (in) :: vsfm_lateral_model_type_val
 
@@ -50,6 +52,7 @@ contains
     vsfm_use_dynamic_linesearch = vsfm_use_dynamic_linesearch_val
     vsfm_include_seepage_bc     = vsfm_include_seepage_bc_val
     lateral_connectivity        = lateral_connectivity_val
+    restart_vsfm                = restart_vsfm_val
     vsfm_satfunc_type           = trim(vsfm_satfunc_type_val)
     vsfm_lateral_model_type     = trim(vsfm_lateral_model_type_val)
 
