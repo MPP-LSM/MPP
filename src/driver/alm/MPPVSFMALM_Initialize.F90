@@ -300,6 +300,7 @@ contains
     do c = bounds_proc_begc, bounds_proc_endc
        do j = 1, nlevgrnd
           icell = icell + 1
+          l = col%landunit(c)
 
           if (col%active(c) .and. &
                (lun%itype(l) == istsoil .or. col%itype(c) == icol_road_perv .or. &
