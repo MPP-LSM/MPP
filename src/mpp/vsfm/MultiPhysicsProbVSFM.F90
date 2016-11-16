@@ -366,7 +366,7 @@ contains
     integer, intent(in)                               :: begc,endc
     integer, intent(in)                               :: ncols_ghost          ! number of ghost/halo columns
     PetscReal, pointer, intent(in)                    :: zc_col(:)
-    integer, intent(in)                               :: filter_vsfmc(:)
+    integer, intent(in), pointer                      :: filter_vsfmc(:)
     PetscReal, intent(in), pointer                    :: watsat(:,:)
     PetscReal, intent(in), pointer                    :: hksat(:,:)
     PetscReal, intent(in), pointer                    :: bsw(:,:)
@@ -473,7 +473,7 @@ contains
     class(mpp_vsfm_type)           :: vsfm_mpp
     integer, intent(in)            :: begc,endc
     integer, intent(in)            :: ncols_ghost
-    integer, intent(in)            :: filter_vsfmc(:) ! column filter for soil points
+    integer, intent(in), pointer   :: filter_vsfmc(:) ! column filter for soil points
     PetscReal, intent(in), pointer :: watsat(:,:)
     PetscReal, intent(in), pointer :: hksat(:,:)
     PetscReal, intent(in), pointer :: bsw(:,:)
@@ -523,7 +523,7 @@ contains
     class(mpp_vsfm_type)                              :: vsfm_mpp
     integer, intent(in)                               :: begc,endc
     integer, intent(in)                               :: ncols_ghost
-    integer, intent(in)                               :: filter_vsfmc(:)
+    integer, intent(in), pointer                      :: filter_vsfmc(:)
     PetscReal, intent(in), pointer                    :: watsat(:,:)
     PetscReal, intent(in), pointer                    :: hksat(:,:)
     PetscReal, intent(in), pointer                    :: bsw(:,:)
@@ -557,7 +557,6 @@ contains
     PetscInt                                          :: first_active_hydro_col_id
     PetscInt                                          :: col_id
     PetscBool                                         :: dae_eqn
-    PetscInt :: ierr
 
     first_active_hydro_col_id = -1
 
