@@ -35,12 +35,12 @@ contains
     ! !USES:
     use WaterstateType            , only : waterstate_type
     use TemperatureType           , only : temperature_type
-    use clm_varcon                , only : capr
     use clm_time_manager          , only : get_step_size, get_nstep
     use mpp_varpar                , only : nlevsno, nlevgrnd
     use mpp_varcon                , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv, icol_road_imperv
     use mpp_varcon                , only : istice, istice_mec, istsoil, istcrop
     use mpp_varcon                , only : istwet, istice, istice_mec, istsoil, istcrop
+    use mpp_varcon                , only : capr
     use MultiPhysicsProbThermal   , only : thermal_mpp
     use MultiPhysicsProbConstants , only : VAR_BC_SS_CONDITION
     use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
