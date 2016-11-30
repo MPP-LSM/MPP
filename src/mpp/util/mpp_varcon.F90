@@ -27,6 +27,8 @@ module mpp_varcon
 
   PetscReal :: cnfac       = 0.5d0       ! Crank Nicholson factor between 0 and 1
 
+  PetscReal :: capr        = 0.34d0      ! Tuning factor to turn first layer T into surface T
+
 #endif
 
 
