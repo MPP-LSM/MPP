@@ -301,7 +301,7 @@ contains
   
   !------------------------------------------------------------------------
   subroutine SOEThermalEnthalpySetBDataFromCLM(this, soe_auxvar_type, var_type, &
-       soe_auxvar_id, data_1d)
+       data_1d)
     !
     ! !DESCRIPTION:
     ! Used by CLM to set values of boundary conditions and source-sink
@@ -320,7 +320,6 @@ contains
     class(sysofeqns_thermal_enthalpy_type) :: this
     PetscInt, intent(in)                   :: var_type
     PetscInt                               :: soe_auxvar_type
-    PetscInt                               :: soe_auxvar_id
     PetscBool, pointer                     :: data_1d(:)
     !
     ! !LOCAL VARIABLES:

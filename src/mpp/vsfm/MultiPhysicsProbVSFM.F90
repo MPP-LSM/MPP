@@ -123,7 +123,7 @@ contains
   end subroutine VSFMMPPGetMPIRank
 
   !------------------------------------------------------------------------
-  subroutine VSFMMPPSetup(this, begg, endg, begc, endc, mpi_rank, &
+  subroutine VSFMMPPSetup(this, begg, begc, endc, mpi_rank, &
        ugrid, grc_landunit_indices, lun_coli, lun_colf,           &
        discretization_type, ncols_ghost, filter_vsfmc,            &
        xc_col, yc_col, zc_col, zi, dz,                            &
@@ -151,7 +151,7 @@ contains
     !
     ! !ARGUMENTS
     class(mpp_vsfm_type)           :: this
-    integer, intent(in)            :: begg,endg
+    integer, intent(in)            :: begg
     integer, intent(in)            :: begc,endc
     PetscInt, intent(in)           :: mpi_rank
     type(ugrid_type), pointer      :: ugrid
