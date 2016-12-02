@@ -116,7 +116,7 @@ contains
   end subroutine Init
 
   !------------------------------------------------------------------------
-  subroutine CreateFromCLMCols(this, begg, endg, begc, endc, &
+  subroutine CreateFromCLMCols(this, begg, begc, endc, &
        ugrid, grc_landunit_indices, lun_coli, lun_colf, &
        discretization_type, ncols_ghost, &
        xc_col, yc_col, zc_col, zi, dz,  &
@@ -143,7 +143,7 @@ contains
     !
     ! !ARGUMENTS
     class(mesh_type)                :: this
-    integer            , intent(in) :: begg,endg
+    integer            , intent(in) :: begg
     integer            , intent(in) :: begc,endc
     type(ugrid_type)   , pointer    :: ugrid
     integer            , intent(in) :: grc_landunit_indices(:,:)
@@ -654,7 +654,7 @@ contains
   end subroutine MeshCreateConnectionSet1
 
   !------------------------------------------------------------------------
-  subroutine MeshCreateConnectionSet2(this, conn_type, nconn, id_up, id_dn, &
+  subroutine MeshCreateConnectionSet2(this, nconn, id_up, id_dn, &
        dist_up, dist_dn, area, itype, unit_vec, conn_set)
     !
     ! !DESCRIPTION:
@@ -668,7 +668,6 @@ contains
     !
     ! !ARGUMENTS
     class(mesh_type)                  :: this
-    PetscInt                          :: conn_type
     PetscInt                          :: nconn
     PetscInt, pointer                 :: id_up(:)
     PetscInt, pointer                 :: id_dn(:)
@@ -1041,7 +1040,7 @@ contains
     PetscReal                         :: dist_z
     PetscReal                         :: dist
 
-    call MeshCreateConnectionSet(this, conn_type, nconn, id_up, id_dn, &
+    call MeshCreateConnectionSet(this, nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, conn_set=conn_set)
 
     select case(conn_type)

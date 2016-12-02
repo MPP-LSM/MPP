@@ -2386,7 +2386,7 @@ contains
                por     * ddenl_dP * satl     * ul     + &
                por     * denl     * dsatl_dP * ul     + &
                por     * denl     * satl     * dul_dP + &
-               -dpor_dP * den_soil * heat_cap_soil *(temperature - 273.15d0)
+               (-dpor_dP * den_soil * heat_cap_soil *(temperature - 273.15d0))
 
           derivative = derivative * geq_soil%mesh%vol(cell_id) * dtInv
        else

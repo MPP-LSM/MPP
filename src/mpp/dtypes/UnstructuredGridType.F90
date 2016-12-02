@@ -358,7 +358,7 @@ contains
              if (real_ptr(idx) <= offset .or. &
                   real_ptr(idx) >  offset + ngrid_local ) then
                 count = count + 1
-                int_array(count) = real_ptr(idx)
+                int_array(count) = int(real_ptr(idx))
              end if
           end if
        enddo

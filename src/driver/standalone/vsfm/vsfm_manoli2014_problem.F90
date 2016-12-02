@@ -909,7 +909,7 @@ contains
     ieqn_other = 2
 
     call MeshCreateConnectionSet(vsfm_mpp%meshes(1), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &
@@ -925,7 +925,7 @@ contains
     unit_vec(:,1) = 1.d0
 
     call MeshCreateConnectionSet(vsfm_mpp%meshes(2), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &

@@ -101,8 +101,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine MPPThermalSetSoils(therm_enth_mpp, begc, endc, filter_thermal, &
-       lun_type, watsat, csol, tkmg, tkdry,                                 &
-       hksat, bsw, sucsat, eff_porosity, residual_sat,                      &
+       watsat, csol, tkdry,                                 &
+       hksat, bsw, sucsat, residual_sat,                      &
        vsfm_satfunc_type, density_type, int_energy_enthalpy_type)
     !
     ! !DESCRIPTION:
@@ -127,15 +127,12 @@ contains
     class(mpp_thermal_type)                             :: therm_enth_mpp
     integer              , intent(in)                   :: begc,endc
     integer, intent(in)                                 :: filter_thermal(:)
-    PetscInt, pointer, intent(in)                       :: lun_type(:)
     PetscReal, pointer, intent(in)                      :: watsat(:,:)
     PetscReal, pointer, intent(in)                      :: csol(:,:)
-    PetscReal, pointer, intent(in)                      :: tkmg(:,:)
     PetscReal, pointer, intent(in)                      :: tkdry(:,:)
     PetscReal, intent(in), pointer                      :: hksat(:,:)
     PetscReal, intent(in), pointer                      :: bsw(:,:)
     PetscReal, intent(in), pointer                      :: sucsat(:,:)
-    PetscReal, intent(in), pointer                      :: eff_porosity(:,:)
     PetscReal, intent(in), pointer                      :: residual_sat(:,:)
     character(len=32), intent(in)                       :: vsfm_satfunc_type
     PetscInt                                            :: density_type

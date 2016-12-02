@@ -102,9 +102,9 @@ contains
   end subroutine MPPTHSetMPIRank
 
   !------------------------------------------------------------------------
-  subroutine MPPTHSetSoils(therm_enth_mpp, begc, endc, filter_thermal, &
-       lun_type, watsat, csol, tkmg, tkdry,                                 &
-       hksat, bsw, sucsat, eff_porosity, residual_sat,                      &
+  subroutine MPPTHSetSoils(therm_enth_mpp, filter_thermal, &
+       watsat, csol, tkdry,                                 &
+       hksat, bsw, sucsat, residual_sat,                      &
        vsfm_satfunc_type, density_type, int_energy_enthalpy_type)
     !
     ! !DESCRIPTION:
@@ -128,17 +128,13 @@ contains
     !
     ! !ARGUMENTS
     class(mpp_th_type)                                              :: therm_enth_mpp
-    integer                                   , intent(in)          :: begc,endc
     integer                                   , intent(in)          :: filter_thermal(:)
-    PetscInt                                  , pointer, intent(in) :: lun_type(:)
     PetscReal                                 , pointer, intent(in) :: watsat(:,:)
     PetscReal                                 , pointer, intent(in) :: csol(:,:)
-    PetscReal                                 , pointer, intent(in) :: tkmg(:,:)
     PetscReal                                 , pointer, intent(in) :: tkdry(:,:)
     PetscReal                                 , intent(in), pointer :: hksat(:,:)
     PetscReal                                 , intent(in), pointer :: bsw(:,:)
     PetscReal                                 , intent(in), pointer :: sucsat(:,:)
-    PetscReal                                 , intent(in), pointer :: eff_porosity(:,:)
     PetscReal                                 , intent(in), pointer :: residual_sat(:,:)
     character(len=32)                         , intent(in)          :: vsfm_satfunc_type
     PetscInt                                                        :: density_type
@@ -172,8 +168,8 @@ contains
 
           call MPPTHSetSoilsForThermalEnthalpy(goveq_soil, begc_goveqn, endc_goveqn, &
                filter_thermal, &
-               lun_type, watsat, csol, tkmg, tkdry,                                 &
-               hksat, bsw, sucsat, eff_porosity, residual_sat,                      &
+               watsat, csol, tkdry,                                 &
+               hksat, bsw, sucsat, residual_sat,                      &
                vsfm_satfunc_type, density_type, int_energy_enthalpy_type)
           begc_goveqn = begc_goveqn + goveq_richards_ode_pres%mesh%ncells_all
 
@@ -185,7 +181,7 @@ contains
 
           call MPPTHSetSoilsForVSFM(goveq_richards_ode_pres, begc_goveqn, endc_goveqn, &
                ncols_ghost, filter_thermal, &
-               watsat, hksat, bsw, sucsat, eff_porosity, residual_sat,                   &
+               watsat, hksat, bsw, sucsat, residual_sat,                   &
                vsfm_satfunc_type, density_type)
           begc_goveqn = begc_goveqn + goveq_richards_ode_pres%mesh%ncells_all
 
@@ -203,8 +199,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine MPPTHSetSoilsForThermalEnthalpy(goveq_soil, begc, endc, filter_thermal, &
-       lun_type, watsat, csol, tkmg, tkdry,                                 &
-       hksat, bsw, sucsat, eff_porosity, residual_sat,                      &
+       watsat, csol, tkdry,                                 &
+       hksat, bsw, sucsat, residual_sat,                      &
        vsfm_satfunc_type, density_type, int_energy_enthalpy_type)
     !
     ! !DESCRIPTION:
@@ -229,15 +225,12 @@ contains
     class (goveqn_thermal_enthalpy_soil_type) , pointer             :: goveq_soil
     integer                                   , intent(in)          :: begc,endc
     integer                                   , intent(in)          :: filter_thermal(:)
-    PetscInt                                  , pointer, intent(in) :: lun_type(:)
     PetscReal                                 , pointer, intent(in) :: watsat(:,:)
     PetscReal                                 , pointer, intent(in) :: csol(:,:)
-    PetscReal                                 , pointer, intent(in) :: tkmg(:,:)
     PetscReal                                 , pointer, intent(in) :: tkdry(:,:)
     PetscReal                                 , intent(in), pointer :: hksat(:,:)
     PetscReal                                 , intent(in), pointer :: bsw(:,:)
     PetscReal                                 , intent(in), pointer :: sucsat(:,:)
-    PetscReal                                 , intent(in), pointer :: eff_porosity(:,:)
     PetscReal                                 , intent(in), pointer :: residual_sat(:,:)
     character(len=32)                         , intent(in)          :: vsfm_satfunc_type
     PetscInt                                                        :: density_type
@@ -431,7 +424,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine MPPTHSetSoilsForVSFM(goveq_richards_ode_pres, begc, endc, ncols_ghost, filter_vsfmc, &
-       watsat, hksat, bsw, sucsat, eff_porosity, residual_sat,                   &
+       watsat, hksat, bsw, sucsat, residual_sat,                   &
        vsfm_satfunc_type, density_type)
     !
     ! !DESCRIPTION:
@@ -463,7 +456,6 @@ contains
     PetscReal, intent(in), pointer                    :: hksat(:,:)
     PetscReal, intent(in), pointer                    :: bsw(:,:)
     PetscReal, intent(in), pointer                    :: sucsat(:,:)
-    PetscReal, intent(in), pointer                    :: eff_porosity(:,:)
     PetscReal, intent(in), pointer                    :: residual_sat(:,:)
     character(len=32), intent(in)                     :: vsfm_satfunc_type
     PetscInt                                          :: density_type

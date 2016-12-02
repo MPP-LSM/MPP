@@ -60,7 +60,7 @@ contains
 
     select case(density_itype)
     case (DENSITY_CONSTANT)
-       call DensityConstant(p, t_K, den, dden_dp, dden_dT)
+       call DensityConstant(den, dden_dp, dden_dT)
     case (DENSITY_TGDPB01)
        call DensityTGDPB01 (p , t_K, den, dden_dp,dden_dT )
     case (DENSITY_IFC67)
@@ -76,7 +76,7 @@ contains
   end subroutine Density
 
   !------------------------------------------------------------------------
-  subroutine DensityConstant(p, t_K, den, dden_dp, dden_dT)
+  subroutine DensityConstant(den, dden_dp, dden_dT)
     !
     ! !DESCRIPTION:
     ! Return constant density of water
@@ -87,8 +87,6 @@ contains
     implicit none
     !
     ! !ARGUMENTS    
-    PetscReal, intent(in)  :: p         ! [Pa]
-    PetscReal, intent(in)  :: t_K       ! [K]
     PetscReal, intent(out) :: den       ! [kmol m^{-3}]
     PetscReal, intent(out) :: dden_dp   ! [kmol m^{-3} Pa^{-1}]
     PetscReal, intent(out) :: dden_dT   ! [kmol m^{-3} K^{-1}]

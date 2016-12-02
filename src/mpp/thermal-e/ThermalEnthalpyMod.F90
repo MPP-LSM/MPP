@@ -127,7 +127,7 @@ contains
 
 
     eflux = mflux * h + &
-         -therm_cond_ave_over_dist*(T_up - T_dn)*area
+         (-therm_cond_ave_over_dist*(T_up - T_dn)*area)
 
     if (compute_deriv) then
 
@@ -145,11 +145,11 @@ contains
 
        deflux_dT_up = dmflux_dT_up * h         + &
                       mflux        * dh_dT_up  + &
-                      -therm_cond_ave_over_dist * area
+                      (-therm_cond_ave_over_dist * area)
 
        deflux_dT_dn = dmflux_dT_dn * h        + &
                       mflux        * dh_dT_dn + &
-                      +therm_cond_ave_over_dist * area
+                      (+therm_cond_ave_over_dist * area)
     endif
 
   end subroutine ThermalEnthalpyFlux
@@ -258,7 +258,7 @@ contains
 
 
     eflux = mflux * h + &
-         -therm_cond_ave_over_dist*(T_up - T_dn)*area
+         (-therm_cond_ave_over_dist*(T_up - T_dn)*area)
 
     if (compute_deriv) then
 

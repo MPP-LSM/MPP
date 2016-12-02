@@ -431,7 +431,7 @@ contains
     call VSFMMPPSetSoils(vsfm_mpp, begc, endc, &
          ncells_ghost, vsfm_filter, &
          vsfm_watsat, vsfm_hksat, vsfm_bsw, &
-         vsfm_sucsat, vsfm_eff_porosity, vsfm_residual_sat, &
+         vsfm_sucsat, vsfm_residual_sat, &
          satfunc_type, DENSITY_TGDPB01)
 
     deallocate(vsfm_watsat)
