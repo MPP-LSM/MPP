@@ -446,8 +446,8 @@ subroutine set_material_properties()
   tkdry(:,:)        = 0.25d0
   
   call MPPThermalSetSoils(thermal_enthalpy_mpp, begc, endc, filter, &
-       lun_type, watsat, csol, tkmg, tkdry,                           &
-       hksat, bsw, sucsat, eff_porosity, residual_sat,                &
+       watsat, csol, tkdry,                           &
+       hksat, bsw, sucsat, residual_sat,                &
        satfunc_type, DENSITY_CONSTANT, INT_ENERGY_ENTHALPY_CONSTANT)
 
   deallocate(watsat       )
