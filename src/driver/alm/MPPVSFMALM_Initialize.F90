@@ -988,7 +988,7 @@ contains
 
     call VSFMMPPSetSoils(vsfm_mpp, bounds_proc_begc, bounds_proc_endc, &
          ncols_ghost, vsfm_filter, &
-         vsfm_watsat, vsfm_hksat, vsfm_bsw, vsfm_sucsat, vsfm_eff_porosity, &
+         vsfm_watsat, vsfm_hksat, vsfm_bsw, vsfm_sucsat, &
          vsfm_residual_sat, vsfm_satfunc_type, DENSITY_TGDPB01)
 
     ! Free up memory
