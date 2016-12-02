@@ -917,7 +917,7 @@ contains
     icoupling_others(2) = PETSC_FALSE
 
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
@@ -951,7 +951,7 @@ contains
     icoupling_others(3) = PETSC_TRUE
 
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
@@ -986,7 +986,7 @@ contains
     unit_vec(:,1) = 1.d0
 
     call MeshCreateConnectionSet(th_mpp%meshes(2), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
@@ -1022,7 +1022,7 @@ contains
     unit_vec(:,1) = 1.d0
 
     call MeshCreateConnectionSet(th_mpp%meshes(2), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
     call th_mpp%GovEqnAddConditionForCoupling(ieqn, &

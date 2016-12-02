@@ -397,7 +397,7 @@ contains
 
     allocate(conn_set)
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
     ieqn = 2
@@ -418,7 +418,7 @@ contains
 
     allocate(conn_set)
     call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         -1, nconn, id_up, id_dn, &
+         nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
     call th_mpp%GovEqnAddCondition(ieqn, COND_BC,   &

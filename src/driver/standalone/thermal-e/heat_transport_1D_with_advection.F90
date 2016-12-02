@@ -389,7 +389,7 @@ subroutine add_conditions_to_goveqns()
 
   allocate(conn_set)
   call MeshCreateConnectionSet(thermal_enthalpy_mpp%meshes(1), &
-       -1, nconn, id_up, id_dn,                                &
+       nconn, id_up, id_dn,                                &
        dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
   ieqn = 1
@@ -409,7 +409,7 @@ subroutine add_conditions_to_goveqns()
 
   allocate(conn_set)
   call MeshCreateConnectionSet(thermal_enthalpy_mpp%meshes(1), &
-       -1, nconn, id_up, id_dn,                                &
+       nconn, id_up, id_dn,                                &
        dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
   call thermal_enthalpy_mpp%GovEqnAddCondition(ieqn, COND_BC,   &

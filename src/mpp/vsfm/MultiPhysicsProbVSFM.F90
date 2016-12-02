@@ -192,7 +192,7 @@ contains
     this%solver_type         = PETSC_SNES
     soe_type                 = SOE_RE_ODE
 
-    call this%meshes(1)%CreateFromCLMCols(begg, endg, begc, endc, &
+    call this%meshes(1)%CreateFromCLMCols(begg, begc, endc, &
          ugrid, grc_landunit_indices, lun_coli, lun_colf,         &
          discretization_type, ncols_ghost,                        &
          xc_col, yc_col, zc_col, zi, dz,                          &
