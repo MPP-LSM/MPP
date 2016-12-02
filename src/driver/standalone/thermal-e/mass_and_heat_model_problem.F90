@@ -563,9 +563,9 @@ contains
     tkmg(:,:)         = 0.5d0
     tkdry(:,:)        = 0.25d0
 
-    call MPPTHSetSoils(th_mpp, begc, endc, filter, &
-         lun_type, watsat, csol, tkmg, tkdry,                           &
-         hksat, bsw, sucsat, eff_porosity, residual_sat,                &
+    call MPPTHSetSoils(th_mpp, filter, &
+         watsat, csol, tkdry,                           &
+         hksat, bsw, sucsat, residual_sat,                &
          satfunc_type, DENSITY_IFC67, INT_ENERGY_ENTHALPY_IFC67)
 
     deallocate(watsat       )
