@@ -1248,7 +1248,7 @@ contains
     allocate(soe%aux_vars_ss           (soe%num_auxvars_ss))
 
     allocate(soe%soe_auxvars_bc_offset (soe%num_auxvars_bc))
-    allocate(soe%soe_auxvars_ss_offset (soe%num_auxvars_bc))
+    allocate(soe%soe_auxvars_ss_offset (soe%num_auxvars_ss))
     allocate(soe%soe_auxvars_bc_ncells (soe%num_auxvars_bc))
     allocate(soe%soe_auxvars_ss_ncells (soe%num_auxvars_ss))
 
@@ -1294,11 +1294,6 @@ contains
 
        allocate(offsets_bc(num_bc))
        allocate(offsets_ss(num_ss))
-
-       allocate(soe%soe_auxvars_bc_offset(num_bc))
-       allocate(soe%soe_auxvars_ss_offset(num_ss))
-       allocate(soe%soe_auxvars_bc_ncells(num_bc))
-       allocate(soe%soe_auxvars_ss_ncells(num_ss))
 
        do icond = 1, num_bc
           count_bc = count_bc + 1
@@ -1347,8 +1342,8 @@ contains
        if (num_bc > 0) deallocate(ncells_for_bc)
        if (num_ss > 0) deallocate(ncells_for_ss)
 
-       deallocate(offsets_bc)
-       deallocate(offsets_ss)
+       if (num_bc > 0) deallocate(offsets_bc)
+       if (num_ss > 0) deallocate(offsets_ss)
 
        cur_goveq => cur_goveq%next
     enddo
