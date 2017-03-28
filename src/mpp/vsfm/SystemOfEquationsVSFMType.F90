@@ -968,9 +968,15 @@ contains
     !
     ! !LOCAL VARIABLES:
     class(goveqn_base_type),pointer :: cur_goveq
+    PetscInt                        :: iauxvar_in_off
+    PetscInt                        :: iauxvar_bc_off
+    PetscInt                        :: num_auxvars_filled
     PetscErrorCode                  :: ierr
 
     call VecCopy(this%soln, this%soln_prev,ierr); CHKERRQ(ierr)
+
+    iauxvar_in_off  = 0
+    iauxvar_bc_off  = 0
 
     select case (this%itype)
     case(SOE_RE_ODE)
@@ -981,8 +987,13 @@ contains
           select type(cur_goveq)
              class is (goveqn_richards_ode_pressure_type)
 
-             call cur_goveq%SetDataInSOEAuxVar(AUXVAR_INTERNAL, this%aux_vars_in)
-             call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC      , this%aux_vars_bc)
+                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_INTERNAL, this%aux_vars_in, &
+                     iauxvar_in_off, num_auxvars_filled)
+                iauxvar_in_off = iauxvar_in_off + num_auxvars_filled
+
+                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC      , this%aux_vars_bc, &
+                     iauxvar_bc_off, num_auxvars_filled)
+                iauxvar_bc_off = iauxvar_bc_off + num_auxvars_filled
 
           end select
           cur_goveq => cur_goveq%next
@@ -1033,10 +1044,12 @@ contains
        auxvars      => this%aux_vars_bc
        iauxvar_off  = this%soe_auxvars_bc_offset(soe_auxvar_id)
        nauxvar      = this%soe_auxvars_bc_ncells(soe_auxvar_id)
+       nauxvar      = min(size(data_1d), this%soe_auxvars_bc_ncells(soe_auxvar_id))
     case(AUXVAR_SS)
        auxvars      => this%aux_vars_ss
        iauxvar_off  = this%soe_auxvars_ss_offset(soe_auxvar_id)
        nauxvar      = this%soe_auxvars_ss_ncells(soe_auxvar_id)
+       nauxvar      = min(size(data_1d), this%soe_auxvars_ss_ncells(soe_auxvar_id))
     case default
        write(iulog,*) 'VSFMSOESetDataFromCLM: Unknown soe_auxvar_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1049,7 +1062,7 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    do iauxvar = 1, size(data_1d)
+    do iauxvar = 1, nauxvar
        call auxvars(iauxvar + iauxvar_off)%SetValue(var_type, data_1d(iauxvar))
     enddo
 
@@ -1185,6 +1198,8 @@ contains
     PetscReal                     :: dt
     !
     class(goveqn_base_type),pointer :: cur_goveq
+    PetscInt                        :: iauxvar_ss_off
+    PetscInt                        :: num_auxvars_filled
 
     ! Set timestep
     call this%SetDtime(dt)
@@ -1192,14 +1207,21 @@ contains
     ! Do any pre-solve operations
     call this%PreSolve()
 
+    iauxvar_ss_off = 0
+
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
        select type(cur_goveq)
           class is (goveqn_richards_ode_pressure_type)
+
              call cur_goveq%ComputeLateralFlux()
-             call cur_goveq%SetDataInSOEAuxVar(AUXVAR_SS, this%aux_vars_ss)
-       end select
+             call cur_goveq%SetDataInSOEAuxVar(AUXVAR_SS, this%aux_vars_ss, &
+                  iauxvar_ss_off, num_auxvars_filled)
+
+             iauxvar_ss_off = iauxvar_ss_off + num_auxvars_filled
+
+          end select
 
        cur_goveq => cur_goveq%next
     enddo
