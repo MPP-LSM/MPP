@@ -895,7 +895,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureSetDataInSOEAuxVar(this, soe_avar_type, soe_avars, &
-       offset)
+       offset, num_avars_set)
     !
     ! !DESCRIPTION:
     ! Copies data GE auxiliary variable into SoE auxiliary variable.
@@ -924,7 +924,8 @@ contains
     class(goveqn_richards_ode_pressure_type)                       :: this
     PetscInt                                                       :: soe_avar_type
     type (sysofeqns_vsfm_auxvar_type), dimension(:), intent(inout) :: soe_avars
-    PetscInt, optional                                             :: offset
+    PetscInt                                                       :: offset
+    PetscInt, intent(out)                                          :: num_avars_set
     !
     ! !LOCAL VARIABLES
     type (rich_ode_pres_auxvar_type), pointer                      :: ge_avars(:)
@@ -946,11 +947,7 @@ contains
     type(condition_type), pointer                                  :: cur_cond
     type(connection_set_type), pointer                             :: cur_conn_set
 
-    if (present(offset)) then
-       iauxvar_off = offset
-    else
-       iauxvar_off = 0
-    endif
+    iauxvar_off = offset
 
     select case(soe_avar_type)
     case (AUXVAR_INTERNAL)
@@ -1010,6 +1007,8 @@ contains
           endif
        enddo
 
+       num_avars_set = size(ge_avars)
+
     case (AUXVAR_SS)
 
        condition_id = 0
@@ -1060,6 +1059,8 @@ contains
           cur_cond => cur_cond%next
        enddo
 
+       num_avars_set = sum_conn
+
     case (AUXVAR_BC)
 
        call this%GetNumCellsInConditions(COND_BC, &
@@ -1088,13 +1089,14 @@ contains
              this%bnd_mass_exc(sum_conn) = this%bnd_mass_exc(sum_conn) + &
                   this%boundary_flux(sum_conn)*this%dtime
 
-             soe_avars(sum_conn)%boundary_mass_exchanged = &
+             soe_avars(sum_conn + iauxvar_off)%boundary_mass_exchanged = &
                   this%bnd_mass_exc(sum_conn)
 
           enddo
           cur_cond => cur_cond%next
        enddo
 
+       num_avars_set = sum_conn
 
     case default
        write(iulog,*) 'RichardsODESetDataInSOEAuxVar: soe_avar_type not supported'
