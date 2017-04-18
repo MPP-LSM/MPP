@@ -17,6 +17,9 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
+#include <petsc/finclude/petsc.h>
+    use petscsnes
+
     use decompMod                 , only : bounds_type
     use shr_kind_mod              , only : r8 => shr_kind_r8
     use mpp_varcon                , only : denh2o
@@ -64,9 +67,6 @@ contains
     !
     ! !ARGUMENTS:
     implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
     !
     type(bounds_type)       , intent(in)    :: bounds               ! bounds
     integer                 , intent(in)    :: num_hydrologyc       ! number of column soil points in column filter

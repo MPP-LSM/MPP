@@ -8,6 +8,17 @@ module SystemOfEquationsBaseType
   ! Base object for a system-of-equations
   !-----------------------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+  use petscvec
+  use petscmat
+  use petscts
+  use petscsnes
+  use petscdm
+  use petscdmda
+  use petscsys
+  use petscksp
+
+
   ! !USES:
   use mpp_abortutils            , only : endrun
   use mpp_varctl                , only : iulog
@@ -18,23 +29,6 @@ module SystemOfEquationsBaseType
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petscksp.h"
-#include "finclude/petscksp.h90"
 
   type, public :: sysofeqns_base_type
      character(len =256)             :: name                         ! name for system-of-equations (SoE)
@@ -64,6 +58,7 @@ module SystemOfEquationsBaseType
      Vec                             :: soln                         ! solution at current iteration + time step
      Vec                             :: soln_prev                    ! solution vector at previous time step
      Vec                             :: soln_prev_clm                ! solution vector at previous CLM time step
+     Vec                             :: res                          ! residual vector
      Vec                             :: rhs                          ! used if SoE is a PETSc TS
      Mat                             :: jac                          ! used if SoE is a PETSc TS/SNES
      Mat                             :: Amat                         ! used if SoE is a PETSc KSP
@@ -124,17 +119,18 @@ contains
     this%use_dynamic_linesearch       = PETSC_FALSE
 
     this%solver_type                  = 0
-    this%dm                           = 0
-    this%ts                           = 0
-    this%snes                         = 0
-    this%ksp                          = 0
+    this%dm                           = PETSC_NULL_DM
+    this%ts                           = PETSC_NULL_TS
+    this%snes                         = PETSC_NULL_SNES
+    this%ksp                          = PETSC_NULL_KSP
 
-    this%soln                         = 0
-    this%soln_prev                    = 0
-    this%soln_prev_clm                = 0
-    this%rhs                          = 0
-    this%jac                          = 0
-    this%Amat                         = 0
+    this%soln                         = PETSC_NULL_VEC
+    this%soln_prev                    = PETSC_NULL_VEC
+    this%soln_prev_clm                = PETSC_NULL_VEC
+    this%res                          = PETSC_NULL_VEC
+    this%rhs                          = PETSC_NULL_VEC
+    this%jac                          = PETSC_NULL_MAT
+    this%Amat                         = PETSC_NULL_MAT
 
     nullify(this%goveqns)
 
@@ -397,8 +393,6 @@ contains
     ! !USES
     !
     implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscsnes.h"
     !
     ! !ARGUMENTS
     class(sysofeqns_base_type) :: soe
@@ -501,7 +495,7 @@ contains
        end select
 
        ! Solve the nonlinear equation
-       call SNESSolve(soe%snes, PETSC_NULL_OBJECT, soe%soln, ierr); CHKERRQ(ierr)
+       call SNESSolve(soe%snes, PETSC_NULL_VEC, soe%soln, ierr); CHKERRQ(ierr)
 
        ! Get reason why SNES iteration stopped
        call SNESGetConvergedReason(soe%snes, snes_reason, ierr); CHKERRQ(ierr)

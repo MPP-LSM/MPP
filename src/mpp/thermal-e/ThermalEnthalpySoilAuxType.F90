@@ -2,6 +2,8 @@ module ThermalEnthalpySoilAuxType
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl          , only : iulog
   use mpp_abortutils      , only : endrun
@@ -12,8 +14,6 @@ module ThermalEnthalpySoilAuxType
   implicit none
   !
   private
-
-#include "finclude/petscsys.h"
 
   type, public :: therm_enthalpy_soil_auxvar_type
 

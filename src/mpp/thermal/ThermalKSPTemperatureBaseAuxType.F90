@@ -2,13 +2,15 @@ module ThermalKSPTemperatureBaseAuxType
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+
   !
   ! !PUBLIC TYPES:
+  use petscsys
+
   implicit none
 
   private
-
-#include "finclude/petscsys.h"
 
   type, public :: therm_ksp_temp_base_auxvar_type
 

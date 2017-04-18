@@ -11,7 +11,7 @@ module RichardsODEPressureAuxMod
   implicit none
   private
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   public :: RichardsODEPressureAuxVarSetRValues
   public :: RichardsODEPressureAuxVarGetRValues

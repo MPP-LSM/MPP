@@ -1,10 +1,11 @@
 program vsfm_celia1990
   !
+#include <petsc/finclude/petsc.h>
+  !
   use vsfm_celia1990_problem      , only : run_vsfm_celia1990_problem
+  use petscsys
   !
   implicit none
-  !
-#include "finclude/petscsys.h"
   !
   PetscErrorCode     :: ierr
   

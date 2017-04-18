@@ -1,10 +1,11 @@
 program th_manoli2014
   !
+#include <petsc/finclude/petsc.h>
+  !
   use th_manoli2014_problem , only : run_th_manoli2014_problem
+  use petscsys
   !
   implicit none
-  !
-#include "finclude/petscsys.h"
   !
   PetscErrorCode     :: ierr
   

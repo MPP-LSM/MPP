@@ -1,6 +1,6 @@
 
 module mesh_info
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
   PetscInt  , parameter :: nx       = 100
   PetscInt  , parameter :: ny       = 1
   PetscReal , parameter :: x_column = 1.d0
@@ -14,27 +14,19 @@ end module mesh_info
 !------------------------------------------------------------------------
 program heat_transport_1D_with_advection
 
+#include <petsc/finclude/petsc.h>
+
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use mpp_varpar                      , only : mpp_varpar_init
   use mesh_info                       , only : nz
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscdm
+  use petscdmda
   !
   implicit none
-  !
-  !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
   !
   !
   PetscBool          :: converged
@@ -42,7 +34,7 @@ program heat_transport_1D_with_advection
   PetscErrorCode     :: ierr
   PetscReal          :: dtime
   PetscInt           :: istep, nstep
-  PetscInt           :: flg
+  PetscBool          :: flg
   PetscBool          :: save_initial_soln, save_final_soln
   character(len=256) :: string
   character(len=256) :: output_suffix
@@ -63,12 +55,12 @@ program heat_transport_1D_with_advection
 
   ! Get some command line options
 
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER,'-nz',nz,flg,ierr)
-  call PetscOptionsGetReal(PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
-  call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
-  call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
+  call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nz',nz,flg,ierr)
+  call PetscOptionsGetReal(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
+  call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
+  call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
+  call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
+  call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
 
   ! Initialize the problem
   call init()
@@ -147,14 +139,15 @@ subroutine initialize_mpp()
   ! !DESCRIPTION:
   ! Initialization VSFM
   !
+#include <petsc/finclude/petsc.h>
+  !
   ! !USES:
   use MultiPhysicsProbConstants , only : MPP_THERMAL_EBASED_SNES_CLM
   use MultiPhysicsProbThermalEnthalpy, only : thermal_enthalpy_mpp
+  use petscsys
   !
   ! !ARGUMENTS
   implicit none
-  !
-#include "finclude/petscsys.h"
   !
   PetscInt       :: iam
   PetscErrorCode :: ierr
@@ -194,7 +187,7 @@ subroutine add_meshes()
   !
   implicit none
   !
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
   !
   PetscReal          :: dx, dy, dz
   PetscInt           :: imesh, kk
@@ -534,16 +527,16 @@ subroutine set_initial_conditions()
   !
   ! !DESCRIPTION:
   !
+#include <petsc/finclude/petsc.h>
+  !
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use mesh_info                       , only : nz, ncells_local, ncells_ghost
   use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL, VAR_PRESSURE
+  use petscsys
+  use petscvec
+  use petscdm
   !
   implicit none
-  !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscviewer.h"
   !
   PetscErrorCode      :: ierr
   PetscInt            :: nDM

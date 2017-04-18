@@ -11,7 +11,7 @@ module SaturationFunction
   implicit none
   private
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
 
   ! Identify saturation function.

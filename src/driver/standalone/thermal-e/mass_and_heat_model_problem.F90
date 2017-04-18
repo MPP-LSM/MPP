@@ -3,7 +3,7 @@ module mass_and_heat_model_problem
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   PetscInt  , parameter :: nx       = 100
   PetscInt  , parameter :: ny       = 1
@@ -22,26 +22,18 @@ contains
 
   subroutine run_mass_and_heat_model_problem
 
+#include <petsc/finclude/petsc.h>
+
     use MultiPhysicsProbTH , only : th_mpp
-    use mpp_varpar                      , only : mpp_varpar_init
+    use mpp_varpar         , only : mpp_varpar_init
+    use petscsys
+    use petscvec
+    use petscmat
+    use petscts
+    use petscdm
+    use petscdmda
     !
     implicit none
-    !
-    !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
     !
     !
     PetscBool          :: converged
@@ -49,7 +41,7 @@ contains
     PetscErrorCode     :: ierr
     PetscReal          :: dtime
     PetscInt           :: istep, nstep
-    PetscInt           :: flg
+    PetscBool          :: flg
     PetscBool          :: save_initial_soln, save_final_soln
     character(len=256) :: string
     character(len=256) :: output_suffix
@@ -65,12 +57,12 @@ contains
 
     ! Get some command line options
 
-    call PetscOptionsGetInt(PETSC_NULL_CHARACTER,'-nz',nz,flg,ierr)
-    call PetscOptionsGetReal(PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
-    call PetscOptionsGetInt(PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
-    call PetscOptionsGetString(PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nz',nz,flg,ierr)
+    call PetscOptionsGetReal(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
 
     ! Initialize the problem
     call init()
@@ -149,14 +141,15 @@ contains
     ! !DESCRIPTION:
     ! Initialization VSFM
     !
+#include <petsc/finclude/petsc.h>
+    !
     ! !USES:
     use MultiPhysicsProbConstants , only : MPP_TH_SNES_CLM
     use MultiPhysicsProbTH        , only : th_mpp
+    use petscsys
     !
     ! !ARGUMENTS
     implicit none
-    !
-#include "finclude/petscsys.h"
     !
     PetscInt       :: iam
     PetscErrorCode :: ierr
@@ -176,6 +169,8 @@ contains
   !------------------------------------------------------------------------
   subroutine add_meshes()
     !
+#include <petsc/finclude/petsc.h>
+    !
     use MultiPhysicsProbTH , only : th_mpp
     use MultiPhysicsProbConstants       , only : MESH_ALONG_GRAVITY
     use MultiPhysicsProbConstants       , only : MESH_AGAINST_GRAVITY
@@ -191,10 +186,9 @@ contains
     use MultiPhysicsProbConstants       , only : CONN_SET_LATERAL
     use MultiPhysicsProbConstants       , only : CONN_VERTICAL
     use mpp_varpar                      , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use petscsys
     !
     implicit none
-    !
-#include "finclude/petscsys.h"
     !
     PetscReal          :: dx, dy, dz
     PetscInt           :: imesh, kk
@@ -587,15 +581,15 @@ contains
     !
     ! !DESCRIPTION:
     !
+#include <petsc/finclude/petsc.h>
+    !
     use MultiPhysicsProbTH , only : th_mpp
     use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL, VAR_PRESSURE
+    use petscsys
+    use petscvec
+    use petscdm
     !
     implicit none
-    !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscviewer.h"
     !
     PetscErrorCode      :: ierr
     PetscInt            :: nDM
@@ -649,6 +643,8 @@ contains
     !
     ! !DESCRIPTION:
     !
+#include <petsc/finclude/petsc.h>
+    !
     use MultiPhysicsProbTH            , only : th_mpp
     use MultiPhysicsProbConstants     , only : AUXVAR_BC, VAR_BC_SS_CONDITION
     use ConditionType                 , only : condition_type
@@ -658,6 +654,7 @@ contains
     use GoverningEquationBaseType     , only : goveqn_base_type
     use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
     use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
+    use petscsys
     !
     implicit none
     !

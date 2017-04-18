@@ -3,6 +3,12 @@ module SystemOfEquationsBasePointerType
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+  use petscvec
+  use petscmat
+  use petscts
+  use petscksp
+
   ! !USES:
   use SystemOfEquationsBaseType    , only : sysofeqns_base_type
   !
@@ -10,15 +16,6 @@ module SystemOfEquationsBasePointerType
   implicit none
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscksp.h"
-#include "finclude/petscksp.h90"
 
   ! PETSc requires the context (ctx) for procedures be declared as a "type"
   ! instead of a "class". Thus, this object is a workaround and subroutines

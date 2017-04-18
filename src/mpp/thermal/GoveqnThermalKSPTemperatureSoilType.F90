@@ -6,6 +6,8 @@ module GoveqnThermalKSPTemperatureSoilType
   ! Govneqn data type allocation
   !-----------------------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                       , only : iulog
   use mpp_abortutils                   , only : endrun
@@ -13,17 +15,13 @@ module GoveqnThermalKSPTemperatureSoilType
   use GoverningEquationBaseType        , only : goveqn_base_type
   use ThermalKSPTemperatureSoilAuxType , only : therm_ksp_temp_soil_auxvar_type
   use SystemOfEquationsThermalAuxType  , only : sysofeqns_thermal_auxvar_type
+  use petscsys
+  use petscvec
+  use petscmat
   !
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscviewer.h"
 
   type, public, extends(goveqn_base_type) :: goveqn_thermal_ksp_temp_soil_type
      type (therm_ksp_temp_soil_auxvar_type), pointer :: aux_vars_in(:)  ! Internal state.

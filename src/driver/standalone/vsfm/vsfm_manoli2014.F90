@@ -1,10 +1,11 @@
 program vsfm_manoli2014
   !
+#include <petsc/finclude/petsc.h>
+  !
   use vsfm_manoli2014_problem      , only : run_vsfm_manoli2014_problem
+  use petscsys
   !
   implicit none
-  !
-#include "finclude/petscsys.h"
   !
   PetscErrorCode     :: ierr
   

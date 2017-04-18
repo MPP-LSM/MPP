@@ -8,6 +8,8 @@ module MultiPhysicsProbThermal
   ! Object for thermal model
   !-----------------------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                         , only : iulog
   use mpp_abortutils                     , only : endrun
@@ -15,24 +17,16 @@ module MultiPhysicsProbThermal
   use MultiPhysicsProbBaseType           , only : multiphysicsprob_base_type
   use SystemOfEquationsThermalType       , only : sysofeqns_thermal_type
   use SystemOfEquationsBasePointerType   , only : sysofeqns_base_pointer_type
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscsnes
+  use petscdm
+  use petscdmda
 
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_thermal_type
      class(sysofeqns_thermal_type),pointer          :: sysofeqns
@@ -896,11 +890,12 @@ contains
        name = 'fgoveq_' // trim(adjustl(name))
        call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
 
+       call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
+       call DMSetUp         (dms(igoveq), ierr); CHKERRQ(ierr)
+
        write(name,*) igoveq
        name = 'goveq_' // trim(adjustl(name))
        call DMDASetFieldName(dms(igoveq), 0, name, ierr); CHKERRQ(ierr)
-
-       call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
 
        cur_goveq => cur_goveq%next
     enddo

@@ -2,7 +2,7 @@ module regression_mod
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   type, public :: regression_type
      character(len=300), private :: filename

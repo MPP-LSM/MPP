@@ -1,10 +1,11 @@
 program vsfm_vchannel_operator_split
   !
+#include <petsc/finclude/petsc.h>
+  !
   use vsfm_vchannel_problem_operator_split, only : run_vsfm_vchannel_problem_operator_split
+  use petscsys
   !
   implicit none
-  !
-#include "finclude/petscsys.h"
   !
   PetscErrorCode     :: ierr
   

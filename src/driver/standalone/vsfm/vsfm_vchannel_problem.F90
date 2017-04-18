@@ -2,7 +2,7 @@ module vsfm_vchannel_problem
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   PetscInt  , parameter :: nx       = 20
   PetscInt  , parameter :: ny       = 10
@@ -28,26 +28,20 @@ contains
 !------------------------------------------------------------------------
   subroutine run_vsfm_vchannel_problem()
 
+#include <petsc/finclude/petsc.h>
+    !
     use MultiPhysicsProbVSFM , only : vsfm_mpp
     use mpp_varpar           , only : mpp_varpar_init
+    use petscsys
+    use petscvec
+    use petscmat
+    use petscts
+    use petscsnes
+    use petscdm
+    use petscdmda
     !
     implicit none
     !
-    !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
     !
     !
     PetscBool          :: converged
@@ -55,7 +49,7 @@ contains
     PetscErrorCode     :: ierr
     PetscReal          :: dtime
     PetscInt           :: istep, nstep
-    PetscInt           :: flg
+    PetscBool          :: flg
     PetscBool          :: save_initial_soln, save_final_soln
     character(len=256) :: string
     character(len=256) :: output_suffix
@@ -73,13 +67,13 @@ contains
 
     ! Get some command line options
 
-    call PetscOptionsGetReal(PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
-    call PetscOptionsGetInt(PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-with_seepage_bc',with_seepage_bc,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-orthogonal_hex',orthogonal_hex,flg,ierr)
-    call PetscOptionsGetString(PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
+    call PetscOptionsGetReal(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-with_seepage_bc',with_seepage_bc,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-orthogonal_hex',orthogonal_hex,flg,ierr)
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
 
     ! Initialize the problem
     call Init()  
@@ -163,14 +157,15 @@ contains
     ! !DESCRIPTION:
     ! Initialization VSFM
     !
+#include <petsc/finclude/petsc.h>
+    !
     ! !USES:
     use MultiPhysicsProbConstants , only : MPP_VSFM_SNES_CLM
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use petscsys
     !
     ! !ARGUMENTS
     implicit none
-    !
-#include "finclude/petscsys.h"
     !
     PetscInt       :: iam
     PetscErrorCode :: ierr
@@ -190,6 +185,8 @@ contains
   !------------------------------------------------------------------------
   subroutine add_meshes()
     !
+#include <petsc/finclude/petsc.h>
+    !
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
@@ -206,10 +203,9 @@ contains
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
     use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use petscsys
     !
     implicit none
-    !
-#include "finclude/petscsys.h"
     !
     PetscInt           :: imesh, ii, jj, kk
     PetscInt           :: nlev
@@ -493,7 +489,7 @@ contains
     !
     implicit none
     !
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
     !
     PetscInt           :: imesh, ii, jj, kk
     PetscInt           :: nlev

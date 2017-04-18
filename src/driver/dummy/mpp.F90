@@ -1,11 +1,13 @@
 program main
 
+#include <petsc/finclude/petsc.h>
+
   use MultiPhysicsProbVSFM , only : vsfm_mpp
   use mpp_varpar           , only : mpp_varpar_init
+  use petscsys
   !
   implicit none
   !
-#include "finclude/petscsys.h"
   !
   PetscInt       :: nlevsoi, nlevgrnd, nlevsno
   PetscErrorCode :: ierr

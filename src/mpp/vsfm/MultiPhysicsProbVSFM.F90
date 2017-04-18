@@ -8,6 +8,8 @@ module MultiPhysicsProbVSFM
   ! Object for variably saturated flow model
   !-----------------------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                         , only : iulog
   use mpp_abortutils                     , only : endrun
@@ -15,24 +17,17 @@ module MultiPhysicsProbVSFM
   use MultiPhysicsProbBaseType           , only : multiphysicsprob_base_type
   use SystemOfEquationsVSFMType          , only : sysofeqns_vsfm_type
   use SystemOfEquationsBasePointerType   , only : sysofeqns_base_pointer_type
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscsnes
+  use petscdm
+  use petscdmda
 
   implicit none
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_vsfm_type
      class(sysofeqns_vsfm_type),pointer          :: sysofeqns
@@ -294,8 +289,9 @@ contains
     end select
 
     call DMSetOptionsPrefix (dm_p , "fp_" , ierr               ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_p , 0     , "pressure_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_p , ierr                       ); CHKERRQ(ierr)
+    call DMSetUp            (dm_p , ierr                       ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_p , 0     , "pressure_" , ierr ); CHKERRQ(ierr)
 
     ! Create DMComposite: pressure
     call DMCompositeCreate  (PETSC_COMM_SELF , vsfm_soe%dm , ierr ); CHKERRQ(ierr)
@@ -312,17 +308,19 @@ contains
     call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln          , ierr); CHKERRQ(ierr)
     call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln_prev     , ierr); CHKERRQ(ierr)
     call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln_prev_clm , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%res           , ierr); CHKERRQ(ierr)
 
     call VecZeroEntries(vsfm_soe%soln         , ierr); CHKERRQ(ierr)
     call VecZeroEntries(vsfm_soe%soln_prev    , ierr); CHKERRQ(ierr)
     call VecZeroEntries(vsfm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%res          , ierr); CHKERRQ(ierr)
 
     ! SNES
     call SNESCreate(PETSC_COMM_SELF, vsfm_soe%snes, ierr); CHKERRQ(ierr)
     call SNESSetTolerances(vsfm_soe%snes, atol, rtol, stol, &
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
-    call SNESSetFunction(vsfm_soe%snes, PETSC_NULL_OBJECT, SOEResidual, &
+    call SNESSetFunction(vsfm_soe%snes, vsfm_soe%res, SOEResidual, &
                          vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
     call SNESSetJacobian(vsfm_soe%snes, vsfm_soe%jac, vsfm_soe%jac,     &
                          SOEJacobian, vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)

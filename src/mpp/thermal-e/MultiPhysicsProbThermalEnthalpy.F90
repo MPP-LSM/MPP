@@ -8,6 +8,8 @@ module MultiPhysicsProbThermalEnthalpy
   ! Object for thermal model
   !-----------------------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                           , only : iulog
   use mpp_abortutils                       , only : endrun
@@ -15,24 +17,16 @@ module MultiPhysicsProbThermalEnthalpy
   use MultiPhysicsProbBaseType             , only : multiphysicsprob_base_type
   use SystemOfEquationsThermalEnthalpyType , only : sysofeqns_thermal_enthalpy_type
   use SystemOfEquationsBasePointerType     , only : sysofeqns_base_pointer_type
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscsnes
+  use petscdm
+  use petscdmda
 
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_thermal_type
      class(sysofeqns_thermal_enthalpy_type),pointer :: sysofeqns
@@ -916,11 +910,12 @@ contains
        name = 'fgoveq_' // trim(adjustl(name))
        call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
 
+       call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
+       call DMSetUp         (dms(igoveq), ierr); CHKERRQ(ierr)
+
        write(name,*) igoveq
        name = 'goveq_' // trim(adjustl(name))
        call DMDASetFieldName(dms(igoveq), 0, name, ierr); CHKERRQ(ierr)
-
-       call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
 
        cur_goveq => cur_goveq%next
     enddo
@@ -958,15 +953,13 @@ contains
     call DMCreateGlobalVector(therm_soe%dm, therm_soe%rhs          , ierr); CHKERRQ(ierr)
     call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln_prev    , ierr); CHKERRQ(ierr)
     call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%dm, therm_soe%res          , ierr); CHKERRQ(ierr)
 
     ! Initialize vectors
     call VecZeroEntries(therm_soe%soln          , ierr); CHKERRQ(ierr)
     call VecZeroEntries(therm_soe%soln_prev     , ierr); CHKERRQ(ierr)
     call VecZeroEntries(therm_soe%soln_prev_clm , ierr); CHKERRQ(ierr)
-
-    call VecZeroEntries(therm_soe%soln         , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%soln_prev    , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%res           , ierr); CHKERRQ(ierr)
 
     ! Create SNES
     call SNESCreate             (PETSC_COMM_SELF , therm_soe%snes, ierr); CHKERRQ(ierr)
@@ -975,7 +968,7 @@ contains
     call SNESSetTolerances(therm_soe%snes, atol, rtol, stol, &
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
-    call SNESSetFunction(therm_soe%snes, PETSC_NULL_OBJECT, SOEResidual, &
+    call SNESSetFunction(therm_soe%snes, therm_soe%res, SOEResidual, &
          thermal_enthalpy_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetJacobian(therm_soe%snes, therm_soe%jac, therm_soe%jac,     &
