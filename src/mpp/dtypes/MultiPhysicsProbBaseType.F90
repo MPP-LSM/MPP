@@ -7,6 +7,12 @@ module MultiPhysicsProbBaseType
   ! !DESCRIPTION:
   ! Base object for multi-physics problem
   !-----------------------------------------------------------------------
+
+#include <petsc/finclude/petsc.h>
+  use petscsys
+
+
+
   ! !USES:
   use MeshType        , only : mesh_type
   use mpp_varctl      , only : iulog
@@ -16,8 +22,6 @@ module MultiPhysicsProbBaseType
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
 
   type, public :: multiphysicsprob_base_type
      character(len =256)      :: name        ! name of the multi-physics problem (MPP)

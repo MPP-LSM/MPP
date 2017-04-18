@@ -7,7 +7,7 @@ module mpp_varcon
   implicit none
   save
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   PetscReal :: grav        = 9.80616d0   ! gravity constant [m/s2]
 

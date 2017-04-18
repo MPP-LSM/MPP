@@ -2,29 +2,25 @@
 module SystemOfEquationsTHType
 
 #ifdef USE_PETSC_LIB
+
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                              , only : iulog
   use mpp_abortutils                          , only : endrun
   use mpp_shr_log_mod                         , only : errMsg => shr_log_errMsg
   use SystemOfEquationsThermalEnthalpyAuxType , only : sysofeqns_thermal_enthalpy_auxvar_type
   use SystemOfEquationsBaseType               , only : sysofeqns_base_type
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscdm
+  use petscdmda
   !
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
 
   type, public, extends(sysofeqns_base_type) :: sysofeqns_th_type
 
@@ -516,12 +512,12 @@ contains
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
 
-       call VecGetArrayF90(var_vec, var_p, ierr); CHKERRQ(ierr)
+       call VecGetArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
 
        call SOEThermalEnthalpyAuxSetRData(therm_soe%aux_vars_in, var_type, &
             nvar, iauxvar_off, var_p)
 
-       call VecRestoreArrayF90(var_vec, var_p, ierr); CHKERRQ(ierr)
+       call VecRestoreArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
 
     case default
        write(iulog,*) 'auxvar_type not supported'

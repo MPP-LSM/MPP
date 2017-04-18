@@ -16,7 +16,7 @@ module MPPVSFMALM_Initialize
   !
   implicit none
   !
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
   !
   ! IDs to indentify the conditions for VSFM
   integer :: vsfm_cond_id_for_infil

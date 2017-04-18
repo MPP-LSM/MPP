@@ -3,7 +3,10 @@ module EOSWaterMod
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
+  use petscsys
   use mpp_varctl                , only : iulog
   use mpp_abortutils            , only : endrun
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
@@ -12,8 +15,6 @@ module EOSWaterMod
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
 
   PetscInt, parameter, public :: DENSITY_CONSTANT         = 1
   PetscInt, parameter, public :: DENSITY_TGDPB01          = 2

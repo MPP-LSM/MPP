@@ -8,6 +8,9 @@ module MeshType
   ! Mesh data type allocation
   ! --------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+  use petscsys
+
   ! !USES:
   use mpp_varctl         , only : iulog
   use mpp_abortutils     , only : endrun
@@ -17,7 +20,6 @@ module MeshType
   ! !PUBLIC TYPES:
   implicit none
   private
-#include "finclude/petscsys.h"
 
   type, public :: mesh_type
      character (len=256) :: name         ! indentifer for the mesh

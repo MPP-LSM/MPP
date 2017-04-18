@@ -7,7 +7,7 @@ module ConnectionSetType
   ! !PUBLIC TYPES:
   implicit none
   private
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   type, public :: connection_set_type
 

@@ -25,6 +25,8 @@ end function remove_filename_extension
 ! ----------------------------------------------------------------------
 program standalone_mpp
   !
+#include <petsc/finclude/petsc.h>
+  !
   use mass_and_heat_model_problem , only : run_mass_and_heat_model_problem
   use mass_and_heat_model_problem , only : output_regression_mass_and_heat_model_problem
   use heat_transport_1D_problem   , only : run_heat_transport_1D_problem
@@ -33,11 +35,9 @@ program standalone_mpp
   use vsfm_celia1990_problem      , only : output_regression_vsfm_celia1990_problem
   use vsfm_vchannel_problem       , only : run_vsfm_vchannel_problem
   use vsfm_vchannel_problem       , only : output_regression_vsfm_vchannel_problem
+  use petscsys
   !
   implicit none
-  !
-  !
-#include "finclude/petscsys.h"
   !
   !
   PetscErrorCode               :: ierr
@@ -49,7 +49,7 @@ program standalone_mpp
   character(len=2560)          :: namelist_buffer
   logical                      :: write_regression_output
   PetscInt                     :: num_cells
-  PetscInt                     :: flg
+  PetscBool                    :: flg
   integer                      :: nml_unit, nml_error
 
   namelist / mpp_driver / problem_type
@@ -64,7 +64,7 @@ program standalone_mpp
   write_regression_output = .false.
   num_cells            = 0
 
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER,'-namelist', &
+  call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-namelist', &
        namelist_filename, flg, ierr)
 
   if (len(trim(adjustl(namelist_filename))) ==  0) then

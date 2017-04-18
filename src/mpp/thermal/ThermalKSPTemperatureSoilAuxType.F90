@@ -2,16 +2,17 @@ module ThermalKSPTemperatureSoilAuxType
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+
   !
   ! !USES:
   use ThermalKSPTemperatureBaseAuxType
+  use petscsys
   !
   ! !PUBLIC TYPES:
   implicit none
 
   private
-
-#include "finclude/petscsys.h"
 
   type, public, extends(therm_ksp_temp_base_auxvar_type)  :: therm_ksp_temp_soil_auxvar_type
 

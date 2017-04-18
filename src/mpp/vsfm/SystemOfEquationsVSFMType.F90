@@ -7,29 +7,25 @@ module SystemOfEquationsVSFMType
   ! !DESCRIPTION:
   ! Object for the Variable Saturate Flow Model (VSFM) system-of-equations
   !
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                     , only : iulog
   use mpp_abortutils                 , only : endrun
   use mpp_shr_log_mod                , only : errMsg => shr_log_errMsg
   use SystemOfEquationsVSFMAuxType   , only : sysofeqns_vsfm_auxvar_type
   use SystemOfEquationsBaseType      , only : sysofeqns_base_type
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscdm
+  use petscdmda
+
   !
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
 
   type, public, extends(sysofeqns_base_type) :: sysofeqns_vsfm_type
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_in(:)            ! Internal state.
@@ -842,12 +838,12 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    call VecGetArrayF90(var_vec, var_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
     do iauxvar = 1, nvar
        call avars(iauxvar + iauxvar_off)%SetValue(var_type, var_p(iauxvar))
     enddo
 
-    call VecRestoreArrayF90(var_vec, var_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
 
   end subroutine VSFMSOESetAuxVars
 

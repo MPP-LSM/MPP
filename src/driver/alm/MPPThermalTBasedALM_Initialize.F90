@@ -140,7 +140,7 @@ contains
     ! !ARGUMENTS
     implicit none
     !
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
     !
     ! !LOCAL VARIABLES:
     integer           :: nc                       ! clump index

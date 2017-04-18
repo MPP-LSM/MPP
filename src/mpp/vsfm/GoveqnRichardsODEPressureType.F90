@@ -7,23 +7,21 @@ module GoveqnRichardsODEPressureType
   ! Govneqn data type allocation
   !-----------------------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                    , only : iulog
   use mpp_abortutils                , only : endrun
   use mpp_shr_log_mod               , only : errMsg => shr_log_errMsg
   use GoverningEquationBaseType     , only : goveqn_base_type
   use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
+  use petscvec
+  use petscmat
+  use petscsys
   !
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscviewer.h"
 
   type, public, extends(goveqn_base_type) :: goveqn_richards_ode_pressure_type
      Vec :: accum_prev

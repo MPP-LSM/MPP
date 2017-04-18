@@ -3,6 +3,8 @@ module SystemOfEquationsThermalEnthalpyAuxMod
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                              , only : iulog
   use mpp_abortutils                          , only : endrun
@@ -12,8 +14,6 @@ module SystemOfEquationsThermalEnthalpyAuxMod
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
 
   public :: SOEThermalEnthalpyAuxSetRData
   public :: SOEThermalEnthalpyAuxGetRData

@@ -2,15 +2,16 @@ module ConditionType
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use ConnectionSetType  , only : connection_set_type
   use mpp_varctl         , only : iulog
+  use petscsys
   !
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
 
   type, public :: condition_type
 

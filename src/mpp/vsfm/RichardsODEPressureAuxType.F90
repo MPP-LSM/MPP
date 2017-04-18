@@ -13,7 +13,7 @@ module RichardsODEPressureAuxType
   implicit none
   private
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   type, public :: rich_ode_pres_auxvar_type
 

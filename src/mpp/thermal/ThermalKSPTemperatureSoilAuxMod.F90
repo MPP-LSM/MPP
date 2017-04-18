@@ -2,17 +2,18 @@ module ThermalKSPTemperatureSoilAuxMod
 
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+
   ! !USES:
   use mpp_varctl                      , only : iulog
   use mpp_abortutils                      , only : endrun
   use mpp_shr_log_mod                     , only : errMsg => shr_log_errMsg
   use ThermalKSPTemperatureSoilAuxType, only : therm_ksp_temp_soil_auxvar_type
+  use petscsys
   !
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
 
   public :: ThermKSPTempSoilAuxVarSetRValues
   public :: ThermKSPTempSoilAuxVarGetRValues

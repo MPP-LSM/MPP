@@ -7,6 +7,10 @@ module GoverningEquationBaseType
   ! Govneqn data type allocation
   !-----------------------------------------------------------------------
 
+#include <petsc/finclude/petsc.h>
+  use petscvec
+  use petscmat
+
   ! !USES:
   use mpp_varctl         , only : iulog
   use mpp_abortutils     , only : endrun
@@ -17,12 +21,6 @@ module GoverningEquationBaseType
   ! !PUBLIC TYPES:
   implicit none
   private
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
 
   type, public :: goveqn_base_type
 

@@ -1,10 +1,11 @@
 program vsfm_vchannel
   !
+#include <petsc/finclude/petsc.h>
+  !
   use vsfm_vchannel_problem      , only : run_vsfm_vchannel_problem
+  use petscsys
   !
   implicit none
-  !
-#include "finclude/petscsys.h"
   !
   PetscErrorCode     :: ierr
   

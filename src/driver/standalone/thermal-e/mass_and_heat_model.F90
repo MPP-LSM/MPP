@@ -1,10 +1,11 @@
 program mass_and_heat_model
   !
+#include <petsc/finclude/petsc.h>
+  !
   use mass_and_heat_model_problem , only : run_mass_and_heat_model_problem
+  use petscsys
   !
   implicit none
-  !
-#include "finclude/petscsys.h"
   !
   PetscErrorCode     :: ierr
   

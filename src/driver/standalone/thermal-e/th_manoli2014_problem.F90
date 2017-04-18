@@ -1,8 +1,15 @@
 module th_manoli2014_problem
 
+#include <petsc/finclude/petsc.h>
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscdm
+  use petscdmda
+
   implicit none
 
-#include "finclude/petscsys.h"
   PetscInt  , parameter :: nx       = 1
   PetscInt  , parameter :: ny       = 1
   PetscReal , parameter :: x_column = 1.d0
@@ -82,30 +89,13 @@ contains
     !
     implicit none
     !
-    !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscts.h"
-#include "finclude/petscts.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscsnes.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
-#include "finclude/petscviewer.h"
-    !
-    !
 
     PetscBool          :: converged
     PetscInt           :: converged_reason
     PetscErrorCode     :: ierr
     PetscReal          :: dtime
     PetscInt           :: istep, nstep
-    PetscInt           :: flg
+    PetscBool          :: flg
     PetscBool          :: save_initial_soln, save_final_soln
     character(len=256) :: string
     character(len=256) :: output_suffix
@@ -120,12 +110,12 @@ contains
     single_pde_formulation = PETSC_FALSE
     output_suffix          = ''
 
-    call PetscOptionsGetReal(PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
-    call PetscOptionsGetInt(PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
-    call PetscOptionsGetBool(PETSC_NULL_CHARACTER,'-single_pde_formulation',single_pde_formulation,flg,ierr)
-    call PetscOptionsGetString(PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
+    call PetscOptionsGetReal(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-single_pde_formulation',single_pde_formulation,flg,ierr)
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
 
     ! Initialize the problem
     call Init()
@@ -213,7 +203,7 @@ contains
     ! !ARGUMENTS
     implicit none
     !
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
     !
     PetscInt       :: iam
     PetscErrorCode :: ierr
@@ -255,7 +245,7 @@ contains
     !
     implicit none
     !
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
     !
     PetscInt            :: imesh, ii, jj, kk
     PetscInt            :: ncells_soil, ncells_root, ncells_xylem
@@ -1905,9 +1895,6 @@ contains
     !
     implicit none
     !
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-    !
     PetscErrorCode                                    :: ierr
 
     !
@@ -1987,13 +1974,6 @@ contains
     use mpp_abortutils                   , only : endrun
     !
     implicit none
-    !
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmda.h90"
     !
     PetscInt, pointer                                 :: mesh_size(:)
     PetscInt :: igoveqn
@@ -2103,29 +2083,35 @@ contains
     end select
 
     call DMSetOptionsPrefix (dm_mass_s , "fms_" , ierr           ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_mass_s , 0     , "msoil_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_mass_s , ierr                    ); CHKERRQ(ierr)
+    call DMSetUp            (dm_mass_s , ierr                    ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_mass_s , 0     , "msoil_" , ierr ); CHKERRQ(ierr)
 
     call DMSetOptionsPrefix (dm_eneg_s , "fes_" , ierr           ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_eneg_s , 0     , "esoil_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_eneg_s , ierr                    ); CHKERRQ(ierr)
+    call DMSetUp            (dm_eneg_s , ierr                    ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_eneg_s , 0     , "esoil_" , ierr ); CHKERRQ(ierr)
 
     if (.not.single_pde_formulation) then
     call DMSetOptionsPrefix (dm_mass_r , "fmr_" , ierr           ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_mass_r , 0     , "mroot_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_mass_r , ierr                    ); CHKERRQ(ierr)
+    call DMSetUp            (dm_mass_r , ierr                    ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_mass_r , 0     , "mroot_" , ierr ); CHKERRQ(ierr)
 
     call DMSetOptionsPrefix (dm_mass_x , "fmx_" , ierr           ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_mass_x , 0     , "mxylem_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_mass_x , ierr                    ); CHKERRQ(ierr)
+    call DMSetUp            (dm_mass_x , ierr                    ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_mass_x , 0     , "mxylem_" , ierr ); CHKERRQ(ierr)
 
     call DMSetOptionsPrefix (dm_eneg_r , "fer_" , ierr           ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_eneg_r , 0     , "eroot_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_eneg_r , ierr                    ); CHKERRQ(ierr)
+    call DMSetUp            (dm_eneg_r , ierr                    ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_eneg_r , 0     , "eroot_" , ierr ); CHKERRQ(ierr)
 
     call DMSetOptionsPrefix (dm_eneg_x , "fex_" , ierr           ); CHKERRQ(ierr)
-    call DMDASetFieldName   (dm_eneg_x , 0     , "exylem_" , ierr ); CHKERRQ(ierr)
     call DMSetFromOptions   (dm_eneg_x , ierr                    ); CHKERRQ(ierr)
+    call DMSetUp            (dm_eneg_x , ierr                    ); CHKERRQ(ierr)
+    call DMDASetFieldName   (dm_eneg_x , 0     , "exylem_" , ierr ); CHKERRQ(ierr)
     endif
 
     ! Create DMComposite: pressure
@@ -2162,17 +2148,19 @@ contains
     call DMCreateGlobalVector(th_soe%dm , th_soe%soln          , ierr); CHKERRQ(ierr)
     call DMCreateGlobalVector(th_soe%dm , th_soe%soln_prev     , ierr); CHKERRQ(ierr)
     call DMCreateGlobalVector(th_soe%dm , th_soe%soln_prev_clm , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(th_soe%dm , th_soe%res           , ierr); CHKERRQ(ierr)
 
     call VecZeroEntries(th_soe%soln         , ierr); CHKERRQ(ierr)
     call VecZeroEntries(th_soe%soln_prev    , ierr); CHKERRQ(ierr)
     call VecZeroEntries(th_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecZeroEntries(th_soe%res          , ierr); CHKERRQ(ierr)
 
     ! SNES
     call SNESCreate(PETSC_COMM_SELF, th_soe%snes, ierr); CHKERRQ(ierr)
     call SNESSetTolerances(th_soe%snes, atol, rtol, stol, &
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
-    call SNESSetFunction(th_soe%snes, PETSC_NULL_OBJECT, SOEResidual, &
+    call SNESSetFunction(th_soe%snes, th_soe%res, SOEResidual, &
                          th_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
     call SNESSetJacobian(th_soe%snes, th_soe%jac, th_soe%jac,     &
                          SOEJacobian, th_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)

@@ -12,7 +12,7 @@ module PorosityFunctionMod
   implicit none
   private
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   PetscInt, parameter, public :: POROSITY_CONSTANT    = 1
   PetscInt, parameter, public :: POROSITY_LINEAR      = 2

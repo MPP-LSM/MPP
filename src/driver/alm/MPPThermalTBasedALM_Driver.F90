@@ -63,7 +63,7 @@ contains
     ! !ARGUMENTS:
     implicit none
 #ifdef USE_PETSC_LIB
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 #endif
     type(bounds_type)      , intent(in)  :: bounds                     
     integer                , intent(in)  :: num_filter                                         ! number of columns in the filter

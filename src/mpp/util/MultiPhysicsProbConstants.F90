@@ -12,7 +12,7 @@ module MultiPhysicsProbConstants
   implicit none
   private
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
 
   PetscInt, parameter, public :: DISCRETIZATION_VERTICAL_ONLY     = 1
   PetscInt, parameter, public :: DISCRETIZATION_HORIZONTAL_ONLY   = 2

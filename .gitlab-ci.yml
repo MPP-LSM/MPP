@@ -6,10 +6,10 @@ tests:
   script:
     - .ci-scripts/install-petsc.sh
     - export PETSC_DIR=$PWD/petsc; export PETSC_ARCH=linux-gnu
-    - make VERBOSE=1 config
-    - make VERBOSE=1 all
-    - make VERBOSE=1 install
-    - make VERBOSE=1 test || EXIT_CODE=$?
+    - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 config
+    - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 all
+    - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 install
+    - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 test || EXIT_CODE=$?
     - cat regression_tests/*testlog
     - exit ${EXIT_CODE}
 

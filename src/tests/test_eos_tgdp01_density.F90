@@ -5,7 +5,7 @@ program test_eos_constant_density
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include <petsc/finclude/petsc.h>
   
   PetscReal            :: den
   PetscReal            :: dden_dp

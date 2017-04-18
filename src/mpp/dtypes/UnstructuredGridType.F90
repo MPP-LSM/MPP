@@ -2,21 +2,19 @@ module UnstructuredGridType
   
 #ifdef USE_PETSC_LIB
 
+#include <petsc/finclude/petsc.h>
+  use petscvec
+  use petscsnes
+  use petscmat
+  use petscdm
+  use petscis
+  use petscsys
+
   !
   ! !PUBLIC TYPES:
   implicit none
   private
   !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"    
   !
 
   type, public :: ugdm_type
@@ -243,7 +241,7 @@ contains
          PETSC_DECIDE,ierr);CHKERRQ(ierr)
     call VecSetFromOptions(conn_info_natural,ierr);CHKERRQ(ierr)
 
-    call VecScatterCreate(conn_info_old,PETSC_NULL_OBJECT,conn_info_natural,is_scatter, &
+    call VecScatterCreate(conn_info_old,PETSC_NULL_VEC,conn_info_natural,is_scatter, &
          vec_scatter,ierr);CHKERRQ(ierr)
     call ISDestroy(is_scatter,ierr);CHKERRQ(ierr)
 
@@ -618,15 +616,6 @@ contains
     !
     implicit none
     !
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
     !
     ! !ARGUMENTS:
     type(ugrid_type), pointer      :: ugrid
