@@ -32,6 +32,7 @@ contains
     !
     ! !DESCRIPTION:
     !
+#include <petsc/finclude/petsc.h>
     ! !USES:
     use WaterstateType            , only : waterstate_type
     use TemperatureType           , only : temperature_type
@@ -59,13 +60,11 @@ contains
     use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants , only : AUXVAR_BC
     use MultiPhysicsProbConstants , only : AUXVAR_SS
+    use petscsys
     !
     ! !ARGUMENTS:
     implicit none
-#ifdef USE_PETSC_LIB
-#include <petsc/finclude/petsc.h>
-#endif
-    type(bounds_type)      , intent(in)  :: bounds                     
+    type(bounds_type)      , intent(in)  :: bounds
     integer                , intent(in)  :: num_filter                                         ! number of columns in the filter
     integer                , intent(in)  :: filter(:)                                          ! column filter
     real(r8)               , intent(in)  :: dtime                                              ! land model time step (sec)
@@ -371,6 +370,7 @@ contains
            VAR_ACTIVE, is_active_1d)
 
       ! Set tuning factor
+      soe_auxvar_id = 1;
       call thermal_mpp%sysofeqns%SetRDataFromCLM(AUXVAR_INTERNAL, &
            VAR_TUNING_FACTOR, soe_auxvar_id, tsurf_tuning_factor_1d)
 
