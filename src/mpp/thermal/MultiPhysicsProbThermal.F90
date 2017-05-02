@@ -111,7 +111,7 @@ contains
     ! !ARGUMENTS
     class(mpp_thermal_type)                             :: therm_mpp
     integer              , intent(in)                   :: begc,endc
-    integer, intent(in)                                 :: filter_thermal(:)
+    integer, pointer, intent(in)                        :: filter_thermal(:)
     PetscInt, pointer, intent(in)                       :: lun_type(:)
     PetscReal, pointer, intent(in)                      :: watsat(:,:)
     PetscReal, pointer, intent(in)                      :: csol(:,:)
