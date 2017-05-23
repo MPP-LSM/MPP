@@ -673,7 +673,7 @@ contains
     do
        if (.not.associated(cur_cond)) exit
        cond_count = cond_count + 1
-       this%soe_auxvars_ss_offset(cond_count) = bc_offsets(cond_count)
+       this%soe_auxvars_ss_offset(cond_count) = ss_offsets(cond_count)
        cur_cond => cur_cond%next
     enddo
 
@@ -763,9 +763,12 @@ contains
           tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
           vol      = geq_soil%mesh%vol(cell_id)
 
+#ifdef MATCH_CLM_FORMULATION
+          b_p(cell_id) = T
+#else
           b_p(cell_id) = heat_cap*vol/(dt*tfactor)*T
-          !b_p(cell_id) = T
-          
+#endif
+
        endif
     enddo
 
@@ -846,17 +849,24 @@ contains
           heat_cap = geq_soil%aux_vars_in(cell_id_up)%heat_cap_pva
           tfactor  = geq_soil%aux_vars_in(cell_id_up)%tuning_factor
           vol      = geq_soil%mesh%vol(cell_id_up)
+#ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
-
-          b_p(cell_id_up) = b_p(cell_id_up) + cnfac*flux*area!*factor
+#else
+          factor = 1.d0
+#endif
+          b_p(cell_id_up) = b_p(cell_id_up) + cnfac*flux*area*factor
 
 
           T        = geq_soil%aux_vars_in(cell_id_dn)%temperature
           heat_cap = geq_soil%aux_vars_in(cell_id_dn)%heat_cap_pva
           tfactor  = geq_soil%aux_vars_in(cell_id_dn)%tuning_factor
           vol      = geq_soil%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
-          b_p(cell_id_dn) = b_p(cell_id_dn) - cnfac*flux*area!*factor
+#else
+          factor = 1.d0
+#endif
+          b_p(cell_id_dn) = b_p(cell_id_dn) - cnfac*flux*area*factor
 
        enddo
 
@@ -924,11 +934,15 @@ contains
                 heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
                 tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
                 vol      = geq_soil%mesh%vol(cell_id)
+#ifdef MATCH_CLM_FORMULATION
                 factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+                factor = 1.d0
+#endif
 
                 b_p(cell_id) = b_p(cell_id) - &
                      geq_soil%aux_vars_bc(sum_conn)%frac* &
-                     cnfac * flux * area !* factor
+                     cnfac * flux * area * factor
 
           case (COND_HEAT_FLUX)             
              area = cur_conn_set%area(iconn)
@@ -937,12 +951,15 @@ contains
              heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
              tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
              vol      = geq_soil%mesh%vol(cell_id)
+#ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
-
+#else
+             factor = 1.d0
+#endif
              b_p(cell_id) = b_p(cell_id) + &
-                  cur_cond%value(iconn)               * &
+                  factor*cur_cond%value(iconn)               * &
                   geq_soil%aux_vars_bc(sum_conn)%frac * &
-                  area !* factor
+                  area
 
           case default
            write(iulog,*)'ThermalKSPTempSoilDivergence: Unknown boundary condition type'
@@ -972,9 +989,13 @@ contains
              heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
              tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
              vol      = geq_soil%mesh%vol(cell_id)
+#ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+             factor = 1.d0
+#endif
 
-             b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)!*factor
+             b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)*factor
           case default
            write(iulog,*)'ThermalKSPTempSoilDivergence: Unknown source-sink condition type'
            call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1077,8 +1098,11 @@ contains
        vol        = this%mesh%vol(cell_id)
 
        if (this%aux_vars_in(cell_id)%is_active) then
+#ifdef MATCH_CLM_FORMULATION
+          value = 1.d0
+#else
           value = heat_cap*vol/(dt*tfactor)
-          !value = 1.d0
+#endif
        else
           value = 1.d0
        endif
@@ -1120,8 +1144,11 @@ contains
           heat_cap = this%aux_vars_in(cell_id_up)%heat_cap_pva
           tfactor  = this%aux_vars_in(cell_id_up)%tuning_factor
           vol      = this%mesh%vol(cell_id_up)
+#ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
+#else
           factor = 1.d0
+#endif
 
           call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_up-1,  value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
           call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1130,8 +1157,11 @@ contains
           heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
           tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
           vol      = this%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
+#else
           factor = 1.d0
+#endif
 
           call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
           call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1,  value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1191,10 +1221,13 @@ contains
              heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
              tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
              vol      = this%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+             factor = 1.d0
+#endif
 
-             value = frac*(1.d0 - cnfac)*therm_cond_aveg/dist*area
-             !value = frac*(1.d0 - cnfac)*therm_cond_aveg/dist*area*factor
+             value = frac*(1.d0 - cnfac)*therm_cond_aveg/dist*area*factor
 
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1, value, &
                   ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1209,10 +1242,13 @@ contains
              heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
              tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
              vol      = this%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+             factor = 1.d0
+#endif
 
-             value = -frac*dhsdT**area
-             !value = -frac*dhsdT**area*factor
+             value = -frac*dhsdT**area*factor
 
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1, value, &
                   ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1332,14 +1368,20 @@ contains
                    heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
                    tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
                    vol      = this%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
                    factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+                   factor = 1.d0
+#endif
 
-                   value = frac*(1.d0 - cnfac)*therm_cond_aveg/dist*area!*factor
+                   value = frac*(1.d0 - cnfac)*therm_cond_aveg/dist*area*factor
 
                    call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value, &
                         ADD_VALUES, ierr); CHKERRQ(ierr)
 
                 enddo
+             else
+                sum_conn = sum_conn + cur_conn_set%num_connections
              endif
           enddo
        else

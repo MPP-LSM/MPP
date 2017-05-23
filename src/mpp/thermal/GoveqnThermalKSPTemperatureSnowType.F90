@@ -688,7 +688,7 @@ contains
     do
        if (.not.associated(cur_cond)) exit
        cond_count = cond_count + 1
-       this%soe_auxvars_ss_offset(cond_count) = bc_offsets(cond_count)
+       this%soe_auxvars_ss_offset(cond_count) = ss_offsets(cond_count)
        cur_cond => cur_cond%next
     enddo
 
@@ -912,7 +912,11 @@ contains
           tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
           vol      = geq_snow%mesh%vol(cell_id)
 
+#ifdef MATCH_CLM_FORMULATION
+          b_p(cell_id) = T
+#else
           b_p(cell_id) = heat_cap*vol/(dt*tfactor)*T
+#endif
        endif
     enddo
 
@@ -946,7 +950,7 @@ contains
     PetscInt                           :: cell_id
     PetscReal                          :: flux
     PetscReal                          :: dt
-    PetscReal                          :: area
+    PetscReal                          :: area, heat_cap, tfactor, vol, factor
     type(condition_type),pointer       :: cur_cond
     type(connection_set_type), pointer :: cur_conn_set
 
@@ -978,8 +982,25 @@ contains
 
           area = cur_conn_set%area(iconn)
 
-          b_p(cell_id_up) = b_p(cell_id_up) + cnfac*flux*area
-          b_p(cell_id_dn) = b_p(cell_id_dn) - cnfac*flux*area
+          heat_cap = geq_snow%aux_vars_in(cell_id_up)%heat_cap_pva
+          tfactor  = geq_snow%aux_vars_in(cell_id_up)%tuning_factor
+          vol      = geq_snow%mesh%vol(cell_id_up)
+#ifdef MATCH_CLM_FORMULATION
+          factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+          factor = 1.d0
+#endif
+          b_p(cell_id_up) = b_p(cell_id_up) + cnfac*flux*area*factor
+
+          heat_cap = geq_snow%aux_vars_in(cell_id_dn)%heat_cap_pva
+          tfactor  = geq_snow%aux_vars_in(cell_id_dn)%tuning_factor
+          vol      = geq_snow%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
+          factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+          factor = 1.d0
+#endif
+          b_p(cell_id_dn) = b_p(cell_id_dn) - cnfac*flux*area*factor
 
        enddo
 
@@ -1015,12 +1036,29 @@ contains
                                )
 
 
-          b_p(cell_id) = b_p(cell_id) - cnfac*flux*area
+                heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
+                tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
+                vol      = geq_snow%mesh%vol(cell_id)
+#ifdef MATCH_CLM_FORMULATION
+                factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+                factor = 1.d0
+#endif
+
+                b_p(cell_id) = b_p(cell_id) - cnfac*flux*area*factor
 
           case (COND_HEAT_FLUX)             
-             area = cur_conn_set%area(iconn)
+             area     = cur_conn_set%area(iconn)
+             heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
+             tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
+             vol      = geq_snow%mesh%vol(cell_id)
+#ifdef MATCH_CLM_FORMULATION
+             factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+             factor = 1.d0
+#endif
 
-             b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)*area
+             b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)*area*factor
 
           case default
            write(iulog,*)'ThermalKSPTempSnowDivergence: Unknown boundary condition type'
@@ -1046,7 +1084,15 @@ contains
 
           select case(cur_cond%itype)
           case(COND_HEAT_RATE)
-             b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)
+             heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
+             tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
+             vol      = geq_snow%mesh%vol(cell_id)
+#ifdef MATCH_CLM_FORMULATION
+             factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+             factor = 1.d0
+#endif
+             b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)*factor
 
           case default
            write(iulog,*)'ThermalKSPTempSnowDivergence: Unknown source-sink condition type'
@@ -1122,7 +1168,7 @@ contains
     PetscReal                                  :: tfactor
     PetscReal                                  :: dhsdT
     PetscReal                                  :: dt
-    PetscReal                                  :: value
+    PetscReal                                  :: value, factor
     type(connection_set_type), pointer         :: cur_conn_set
     type(condition_type),pointer               :: cur_cond
 
@@ -1136,7 +1182,11 @@ contains
        vol        = this%mesh%vol(cell_id)
 
        if (this%aux_vars_in(cell_id)%is_active) then
+#ifdef MATCH_CLM_FORMULATION
+          value = 1.d0
+#else
           value = heat_cap*vol/(dt*tfactor)
+#endif
        else
           value = 1.d0
        endif
@@ -1174,10 +1224,27 @@ contains
 
           value = (1.d0 - cnfac)*therm_cond_aveg/dist*area
 
-          call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_up-1,  value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1,  value, ADD_VALUES, ierr); CHKERRQ(ierr)
+          heat_cap = this%aux_vars_in(cell_id_up)%heat_cap_pva
+          tfactor  = this%aux_vars_in(cell_id_up)%tuning_factor
+          vol      = this%mesh%vol(cell_id_up)
+#ifdef MATCH_CLM_FORMULATION
+          factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+          factor = 1.d0
+#endif
+          call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_up-1,  value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
+          call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
+          tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
+          vol      = this%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
+          factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+          factor = 1.d0
+#endif
+          call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
+          call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1,  value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
 
        enddo
 
@@ -1215,7 +1282,15 @@ contains
              therm_cond_aveg = therm_cond_up*therm_cond_dn*dist/ &
                   (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
-             value = (1.d0 - cnfac)*therm_cond_aveg/dist*area
+             heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
+             tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
+             vol      = this%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
+             factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+             factor = 1.d0
+#endif
+             value = factor*(1.d0 - cnfac)*therm_cond_aveg/dist*area
 
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1, value, &
                   ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1224,8 +1299,16 @@ contains
 
              dhsdT = this%aux_vars_bc(sum_conn)%dhsdT
              area  = cur_conn_set%area(iconn)
+             heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
+             tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
+             vol      = this%mesh%vol(cell_id_dn)
+#ifdef MATCH_CLM_FORMULATION
+             factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+             factor = 1.d0
+#endif
 
-             value = -dhsdT**area
+             value = -dhsdT**area*factor
 
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1, value, &
                   ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1321,7 +1404,12 @@ contains
                    vol      = this%mesh%vol(cell_id_dn)
                    factor =  (dt*tfactor)/(heat_cap*vol)
 
-                   value = (1.d0 - cnfac)*therm_cond_aveg/dist*area!*factor
+#ifdef MATCH_CLM_FORMULATION
+                   factor =  (dt*tfactor)/(heat_cap*vol)
+#else
+                   factor = 1.d0
+#endif
+                   value = (1.d0 - cnfac)*therm_cond_aveg/dist*area*factor
 
                    call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value, &
                         ADD_VALUES, ierr); CHKERRQ(ierr)
