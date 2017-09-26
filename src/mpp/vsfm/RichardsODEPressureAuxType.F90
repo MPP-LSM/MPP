@@ -18,40 +18,41 @@ module RichardsODEPressureAuxType
   type, public :: rich_ode_pres_auxvar_type
 
      ! primary unknown independent variable
-     PetscReal :: pressure        ! [Pa]
+     PetscReal :: pressure               ! [Pa]
 
-     PetscReal :: pressure_prev   ! [Pa]
+     PetscReal :: pressure_prev          ! [Pa]
 
      ! independent variable available from:
      !  - another governing equation, or
      !  - another system-of-equation
-     PetscReal :: temperature     ! [K]
-     PetscReal :: frac_liq_sat    ! [-]
+     PetscReal :: temperature            ! [K]
+     PetscReal :: frac_liq_sat           ! [-]
 
      ! If the auxvar corresponds to boundary condition
      ! or source sink, the value is stored in this
      ! variable
-     PetscReal :: condition_value ! Depends
+     PetscReal :: condition_value        ! Depends
 
      ! parameters
-     PetscReal :: perm(3)         ! [m^2]
-     PetscReal :: por             ! [-]
-     PetscInt  :: density_type    ! [-]
-     PetscReal :: conductance     ! [s^{-1}]
+     PetscReal :: perm(3)                ! [m^2]
+     PetscReal :: por                    ! [-]
+     PetscInt  :: density_type           ! [-]
+     PetscReal :: pot_mass_sink_pressure ! [Pa]
+     PetscReal :: pot_mass_sink_exponent ! [-]
 
      ! derived quantities = f(state_variables, parameters)
-     PetscReal :: vis             ! [Pa s]
-     PetscReal :: kr              ! [-]
-     PetscReal :: sat             ! [-]
-     PetscReal :: den             ! [kg m^{-3}]
+     PetscReal :: vis                    ! [Pa s]
+     PetscReal :: kr                     ! [-]
+     PetscReal :: sat                    ! [-]
+     PetscReal :: den                    ! [kg m^{-3}]
 
-     PetscReal :: dvis_dP         ! [s]
-     PetscReal :: dvis_dT         ! [Pa s K^{-1}]
-     PetscReal :: dpor_dP         ! [Pa^{-1}]
-     PetscReal :: dkr_dP          ! [Pa^{-1}]
-     PetscReal :: dsat_dP         ! [Pa^{-1}]
-     PetscReal :: dden_dP         ! [kg m^{-3} Pa^{-1}]
-     PetscReal :: dden_dT         ! [kmol m^{-3} K^{-1}]
+     PetscReal :: dvis_dP                ! [s]
+     PetscReal :: dvis_dT                ! [Pa s K^{-1}]
+     PetscReal :: dpor_dP                ! [Pa^{-1}]
+     PetscReal :: dkr_dP                 ! [Pa^{-1}]
+     PetscReal :: dsat_dP                ! [Pa^{-1}]
+     PetscReal :: dden_dP                ! [kg m^{-3} Pa^{-1}]
+     PetscReal :: dden_dT                ! [kmol m^{-3} K^{-1}]
 
      type(porosity_params_type)   :: porParams
      type(saturation_params_type) :: satParams
@@ -90,7 +91,8 @@ contains
     this%pressure_prev           = 3.5355d3
     this%perm(:)                 = 0.d0
     this%por                     = 0.d0
-    this%conductance             = 0.d0
+    this%pot_mass_sink_pressure  = 0.d0
+    this%pot_mass_sink_exponent  = 0.d0
 
     this%satParams%sat_func_type = 0
     this%satParams%sat_res       = 0.d0
@@ -133,7 +135,8 @@ contains
     this%pressure_prev           = auxvar%pressure_prev
     this%perm(:)                 = auxvar%perm(:)
     this%por                     = auxvar%por
-    this%conductance             = auxvar%conductance
+    this%pot_mass_sink_pressure  = auxvar%pot_mass_sink_pressure
+    this%pot_mass_sink_exponent  = auxvar%pot_mass_sink_exponent
 
     this%satParams%sat_func_type = auxvar%satParams%sat_func_type
     this%satParams%sat_res       = auxvar%satParams%sat_res

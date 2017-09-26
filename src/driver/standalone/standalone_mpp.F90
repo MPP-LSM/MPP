@@ -35,6 +35,8 @@ program standalone_mpp
   use vsfm_celia1990_problem      , only : output_regression_vsfm_celia1990_problem
   use vsfm_vchannel_problem       , only : run_vsfm_vchannel_problem
   use vsfm_vchannel_problem       , only : output_regression_vsfm_vchannel_problem
+  use vsfm_spac_problem           , only : run_vsfm_spac_problem
+  use vsfm_spac_problem           , only : output_regression_vsfm_spac_problem
   use petscsys
   !
   implicit none
@@ -130,6 +132,13 @@ program standalone_mpp
 
      if (write_regression_output) then
         call output_regression_vsfm_vchannel_problem(filename_base, num_cells)
+     endif
+
+  else if(trim(problem_type) == 'vsfm_spac') then
+     call run_vsfm_spac_problem()
+
+     if (write_regression_output) then
+        call output_regression_vsfm_spac_problem(filename_base, num_cells)
      endif
   else
      write(*,*)"problem_type = '", trim(problem_type), "' is unsupported."

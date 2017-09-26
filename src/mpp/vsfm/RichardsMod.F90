@@ -18,6 +18,7 @@ module RichardsMod
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: RichardsFlux
   public :: RichardsFluxDerivativeWrtTemperature
+  public :: RichardsFluxConductanceModel
 
   !------------------------------------------------------------------------------
 
@@ -434,6 +435,100 @@ contains
 
   end subroutine RichardsFluxDerivativeWrtTemperature
 
+  !------------------------------------------------------------------------------
+  subroutine RichardsFluxConductanceModel( &
+       Pres_up,                            &
+       den_up,                             &
+       dden_dP_up,                         &
+       Pres_dn,                            &
+       den_dn,                             &
+       dden_dP_dn,                         &
+       conductance,                        &
+       kr,                                 &
+       dkr_dP_up,                          &
+       dkr_dP_dn,                          &
+       area,                               &
+       compute_deriv,                      &
+       internal_conn,                      &
+       cond_type,                          &
+       flux,                               &
+       dflux_dP_up,                        &
+       dflux_dP_dn                         &
+       )
+
+    !
+    ! !DESCRIPTION:
+    ! Based on the primary (P) and secondary (kr, den, etc) values of upwind and downwind
+    ! control volumes, this subroutine computes:
+    !  - Two-point flux for Richards equation, and
+    !  - (optinal) Derivative of the flux w.r.t. to upwind and downwind pressure.
+    !
+    ! Negative flux implies flow occurs from upwind to downwind control volume.
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : GRAVITY_CONSTANT, PRESSURE_REF
+    use MultiPhysicsProbConstants, only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
+    use MultiPhysicsProbConstants, only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants, only : FMWH2O
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    PetscReal, intent(in)  :: Pres_up
+    PetscReal, intent(in)  :: den_up
+    PetscReal, intent(in)  :: dden_dP_up
+    PetscReal, intent(in)  :: Pres_dn
+    PetscReal, intent(in)  :: den_dn
+    PetscReal, intent(in)  :: dden_dP_dn
+    PetscReal, intent(in)  :: conductance
+    PetscReal, intent(in)  :: area
+    PetscBool, intent(in)  :: compute_deriv
+    PetscBool, intent(in)  :: internal_conn
+    PetscInt,  intent(in)  :: cond_type
+    PetscReal, intent(out) :: flux
+    PetscReal, intent(out) :: dflux_dP_up
+    PetscReal, intent(out) :: dflux_dP_dn
+    !
+    ! !LOCAL VARIABLES
+    PetscReal :: den_ave
+    PetscReal :: upweight
+    PetscReal :: dphi
+    PetscReal :: kr
+    PetscReal :: dden_ave_dP_up, dden_ave_dP_dn
+    PetscReal :: dkr_dP_up, dkr_dP_dn
+    PetscReal :: dphi_dP_up, dphi_dP_dn
+
+    upweight = 0.5d0
+
+    den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
+    dphi = (Pres_up - Pres_dn)
+
+    flux    = den_ave * kr * conductance * dphi * area
+
+    if (compute_deriv) then
+
+       dden_ave_dP_up       = upweight*dden_dP_up
+       dden_ave_dP_dn       = (1.d0 - upweight)*dden_dP_dn
+
+       dphi_dP_up           =  1.d0
+       dphi_dP_dn           = -1.d0
+
+       if (.not.(internal_conn) .and. (cond_type == COND_MASS_FLUX)) then
+          dflux_dP_up = 0.d0
+          dflux_dP_dn = 0.d0
+       else
+          dflux_dP_up = - dden_ave_dP_up * kr        * conductance * dphi       * area &
+                        - den_ave        * dkr_dP_up * conductance * dphi       * area &
+                        - den_ave        * kr        * conductance * dphi_dP_up * area
+
+          dflux_dP_dn = - dden_ave_dP_dn * kr        * conductance * dphi       * area &
+                        - den_ave        * dkr_dP_dn * conductance * dphi       * area &
+                        - den_ave        * kr        * conductance * dphi_dP_dn * area
+       endif
+
+    endif
+
+  end subroutine RichardsFluxConductanceModel
 #endif
 
 end module RichardsMod

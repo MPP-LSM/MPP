@@ -52,6 +52,13 @@ module MultiPhysicsProbVSFM
 
   type(mpp_vsfm_type), public, target :: vsfm_mpp
   public :: VSFMMPPSetSoils
+  public :: VSFMMPPSetSoilPorosity
+  public :: VSFMMPPSetSoilPermeability
+  public :: VSFMMPPSetSaturationFunction
+  public :: VSFMMPPSetAuxVarConnRealValue
+  public :: VSFMMPPSetAuxVarConnIntValue
+  public :: VSFMMPPSetSourceSinkAuxVarRealValue
+  public :: VSFMMPPSetSaturationFunctionAuxVarConn
 
   !------------------------------------------------------------------------
 contains
@@ -1528,6 +1535,687 @@ contains
     call MMPBaseClean(this)
 
   end subroutine VSFMMPPClean
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetAuxVarConnRealValue(this, igoveqn, auxvar_type, &
+       var_type, var_value)
+    !
+    ! !DESCRIPTION:
+    ! Set real value of conn-auxvars
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type) , intent(inout) :: this
+    PetscInt             , intent(in)    :: igoveqn
+    PetscInt             , intent(in)    :: auxvar_type
+    PetscInt             , intent(in)    :: var_type
+    PetscReal, pointer   , intent(in)    :: var_value(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                             :: ii
+    class(goveqn_base_type) , pointer    :: cur_goveq
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to access governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%SetAuxVarConnRealValue(auxvar_type, var_type, var_value)
+
+       class default
+          write(iulog,*) 'VSFMMPPSetAuxVarConnRealValue only supports ' // &
+               'goveqn_richards_ode_pressure_type'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+  end subroutine VSFMMPPSetAuxVarConnRealValue
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetAuxVarConnIntValue(this, igoveqn, auxvar_type, &
+       var_type, var_value)
+    !
+    ! !DESCRIPTION:
+    ! Set integer value of conn-auxvars
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants     , only : AUXVAR_BC
+    use MultiPhysicsProbConstants     , only : AUXVAR_INTERNAL
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type) , intent(inout) :: this
+    PetscInt             , intent(in)    :: igoveqn
+    PetscInt             , intent(in)    :: auxvar_type
+    PetscInt             , intent(in)    :: var_type
+    PetscInt, pointer    , intent(in)    :: var_value(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                             :: ii
+    class(goveqn_base_type) , pointer    :: cur_goveq
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to access governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%SetAuxVarConnIntValue(auxvar_type, var_type, var_value)
+
+       class default
+          write(iulog,*) 'VSFMMPPSetAuxVarConnRealValue only supports ' // &
+               'goveqn_richards_ode_pressure_type'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+
+  end subroutine VSFMMPPSetAuxVarConnIntValue
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetSoilPermeability(this, igoveqn, perm_x, perm_y, perm_z)
+    !
+    ! !DESCRIPTION:
+    ! Set soil permeability values
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)                      , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: igoveqn
+    PetscReal                                 , pointer, intent(in) :: perm_x(:)
+    PetscReal                                 , pointer, intent(in) :: perm_y(:)
+    PetscReal                                 , pointer, intent(in) :: perm_z(:)
+    !
+    ! !LOCAL VARIABLES:
+    class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
+    class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
+    class(goveqn_base_type)                   , pointer             :: cur_goveq
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
+    PetscInt                                                        :: icell
+    PetscInt                                                        :: ii
+    type(condition_type)                      , pointer             :: cur_cond
+    type(connection_set_type)                 , pointer             :: cur_conn_set
+    PetscInt                                                        :: ghosted_id
+    PetscInt                                                        :: sum_conn
+    PetscInt                                                        :: iconn
+
+    vsfm_soe => vsfm_mpp%sysofeqns
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_ode_pres => cur_goveq
+       class default
+          write(iulog,*)'Only goveqn_richards_ode_pressure_type supported'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+    if (goveq_richards_ode_pres%mesh%ncells_local /= size(perm_x)) then
+       write(iulog,*) 'No. of values for soil permeability is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(perm_x)
+       write(iulog,*) 'No. of grid cells           = ',goveq_richards_ode_pres%mesh%ncells_local
+    endif
+
+    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
+
+    ! Set soil properties for internal auxvars
+    do icell = 1, size(perm_x)
+       ode_aux_vars_in(icell)%perm(1) = perm_x(icell)
+       ode_aux_vars_in(icell)%perm(2) = perm_y(icell)
+       ode_aux_vars_in(icell)%perm(3) = perm_z(icell)
+    enddo
+
+    ! Set soil properties for boundary-condition auxvars
+    sum_conn = 0
+    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
+    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
+
+          ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+    ! Set soil properties for source-sink auxvars
+    sum_conn = 0
+
+    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
+    cur_cond        => goveq_richards_ode_pres%source_sinks%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
+
+          ode_aux_vars_ss(sum_conn)%perm (:) = ode_aux_vars_in(ghosted_id)%perm(:)
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine VSFMMPPSetSoilPermeability
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetSoilPorosity(this, igoveqn, por)
+    !
+    ! !DESCRIPTION:
+    ! Set soil porosity value
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    use PorosityFunctionMod           , only : PorosityFunctionSetConstantModel
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)                      , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: igoveqn
+    PetscReal                                 , pointer, intent(in) :: por(:)
+    !
+    ! !LOCAL VARIABLES:
+    class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
+    class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
+    class(goveqn_base_type)                   , pointer             :: cur_goveq
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
+    PetscInt                                                        :: icell
+    PetscInt                                                        :: ii
+    type(condition_type)                      , pointer             :: cur_cond
+    type(connection_set_type)                 , pointer             :: cur_conn_set
+    PetscInt                                                        :: ghosted_id
+    PetscInt                                                        :: sum_conn
+    PetscInt                                                        :: iconn
+
+    vsfm_soe => vsfm_mpp%sysofeqns
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_ode_pres => cur_goveq
+       class default
+          write(iulog,*)'Only goveqn_richards_ode_pressure_type supported'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+    if (goveq_richards_ode_pres%mesh%ncells_local /= size(por)) then
+       write(iulog,*) 'No. of values for soil porosity is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(por)
+       write(iulog,*) 'No. of grid cells           = ',goveq_richards_ode_pres%mesh%ncells_local
+    endif
+
+    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
+
+    ! Set soil properties for internal auxvars
+    do icell = 1, size(por)
+       ode_aux_vars_in(icell)%por = por(icell)
+       call PorosityFunctionSetConstantModel(ode_aux_vars_in(icell)%porParams, &
+            ode_aux_vars_in(icell)%por)
+    enddo
+
+    ! Set soil properties for boundary-condition auxvars
+    sum_conn = 0
+    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
+    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
+
+          ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
+          ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+    ! Set soil properties for source-sink auxvars
+    sum_conn = 0
+
+    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
+    cur_cond        => goveq_richards_ode_pres%source_sinks%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
+
+          ode_aux_vars_ss(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
+          ode_aux_vars_ss(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine VSFMMPPSetSoilPorosity
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetSaturationFunction(this, igoveqn, vsfm_satfunc_type, &
+       alpha, lambda, sat_res)
+    !
+    ! !DESCRIPTION:
+    ! Set saturation function
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    use SaturationFunction            , only : SatFunc_Set_BC
+    use SaturationFunction            , only : SatFunc_Set_SBC_bz2
+    use SaturationFunction            , only : SatFunc_Set_SBC_bz3
+    use SaturationFunction            , only : SatFunc_Set_VG
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)                      , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: igoveqn
+    character(len=32), intent(in)                                   :: vsfm_satfunc_type
+    PetscReal                                 , pointer, intent(in) :: alpha(:)
+    PetscReal                                 , pointer, intent(in) :: lambda(:)
+    PetscReal                                 , pointer, intent(in) :: sat_res(:)
+    !
+    ! !LOCAL VARIABLES:
+    class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
+    class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
+    class(goveqn_base_type)                   , pointer             :: cur_goveq
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
+    PetscInt                                                        :: icell
+    PetscInt                                                        :: ii
+    type(condition_type)                      , pointer             :: cur_cond
+    type(connection_set_type)                 , pointer             :: cur_conn_set
+    PetscInt                                                        :: ghosted_id
+    PetscInt                                                        :: sum_conn
+    PetscInt                                                        :: iconn
+
+    vsfm_soe => vsfm_mpp%sysofeqns
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_ode_pres => cur_goveq
+       class default
+          write(iulog,*)'Only goveqn_richards_ode_pressure_type supported'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+    if (goveq_richards_ode_pres%mesh%ncells_local /= size(alpha)) then
+       write(iulog,*) 'No. of values for saturation function is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil sat. func. values = ',size(alpha)
+       write(iulog,*) 'No. of grid cells             = ',goveq_richards_ode_pres%mesh%ncells_local
+    endif
+
+    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
+
+    ! Set soil properties for internal auxvars
+
+    if (vsfm_satfunc_type == 'brooks_corey') then
+       do icell = 1, size(alpha)
+          call SatFunc_Set_BC(                   &
+               ode_aux_vars_in(icell)%satParams, &
+               sat_res(icell),                   &
+               alpha(icell),                     &
+               lambda(icell))
+       enddo
+    elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz2') then
+       do icell = 1, size(alpha)
+          call SatFunc_Set_SBC_bz2(              &
+               ode_aux_vars_in(icell)%satParams, &
+               sat_res(icell),                   &
+               alpha(icell),                     &
+               lambda(icell),                    &
+               -0.9d0/alpha(icell))
+       enddo
+    elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz3') then
+       do icell = 1, size(alpha)
+          call SatFunc_Set_SBC_bz3(              &
+               ode_aux_vars_in(icell)%satParams, &
+               sat_res(icell),                   &
+               alpha(icell),                     &
+               lambda(icell),                    &
+               -0.9d0/alpha(icell))
+       enddo
+    elseif (vsfm_satfunc_type == 'van_genuchten') then
+       do icell = 1, size(alpha)
+          call SatFunc_Set_VG(                   &
+               ode_aux_vars_in(icell)%satParams, &
+               sat_res(icell),                   &
+               alpha(icell),                     &
+               lambda(icell))
+       enddo
+    else
+       call endrun(msg='ERROR:: Unknown vsfm_satfunc_type = '//vsfm_satfunc_type//&
+            errMsg(__FILE__, __LINE__))
+    endif
+
+    ! Set soil properties for boundary-condition auxvars
+    sum_conn = 0
+    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
+    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
+
+             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+    ! Set soil properties for source-sink auxvars
+    sum_conn = 0
+
+    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
+    cur_cond        => goveq_richards_ode_pres%source_sinks%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%id_dn(iconn)
+
+          call ode_aux_vars_ss(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine VSFMMPPSetSaturationFunction
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetSourceSinkAuxVarRealValue(this, igoveqn, &
+       var_type, var_value)
+    !
+    ! !DESCRIPTION:
+    ! Set real values for source-sink auxvars
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants     , only : AUXVAR_BC
+    use MultiPhysicsProbConstants     , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants     , only : VAR_POT_MASS_SINK_PRESSURE
+    use MultiPhysicsProbConstants     , only : VAR_POT_MASS_SINK_EXPONENT
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)                      , intent(inout)          :: this
+    PetscInt                                  , intent(in)             :: igoveqn
+    PetscInt                                  , intent(in)             :: var_type
+    PetscReal                                 , pointer   , intent(in) :: var_value(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                                                           :: ii
+    class(goveqn_base_type)                   , pointer                :: cur_goveq
+    class (goveqn_richards_ode_pressure_type) , pointer                :: goveq_richards_ode_pres
+    type (rich_ode_pres_auxvar_type)          , pointer                :: ode_aux_vars_ss(:)
+    type(condition_type)                      , pointer                :: cur_cond
+    type(connection_set_type)                 , pointer                :: cur_conn_set
+    PetscInt                                                           :: sum_conn
+    PetscInt                                                           :: iconn
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to access governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_ode_pres => cur_goveq
+
+       class default
+          write(iulog,*) 'VSFMMPPSetSourceSinkAuxVarRealValue only supports ' // &
+               'goveqn_richards_ode_pressure_type'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+    ! Set soil properties for source-sink auxvars
+    sum_conn = 0
+
+    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
+    cur_cond        => goveq_richards_ode_pres%source_sinks%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+
+          select case(var_type)
+              case (VAR_POT_MASS_SINK_PRESSURE)
+                 ode_aux_vars_ss(sum_conn)%pot_mass_sink_pressure = var_value(sum_conn)
+              case (VAR_POT_MASS_SINK_EXPONENT)
+                 ode_aux_vars_ss(sum_conn)%pot_mass_sink_exponent = var_value(sum_conn)
+              case default
+                 write(iulog,*) 'VSFMMPPSetSourceSinkAuxVarRealValue: Unknown var_type'
+                 call endrun(msg=errMsg(__FILE__,__LINE__))
+              end select
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine VSFMMPPSetSourceSinkAuxVarRealValue
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetSaturationFunctionAuxVarConn(this, igoveqn, &
+       auxvar_conn_type, set_upwind_auxvar, satfunc_itype, campbell_he, campbell_n)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use GoverningEquationBaseType      , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType  , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureConnAuxType , only : rich_ode_pres_conn_auxvar_type
+    use ConditionType                  , only : condition_type
+    use ConnectionSetType              , only : connection_set_type
+    use SaturationFunction             , only : SatFunc_Set_Campbell_RelPerm
+    use SaturationFunction             , only : RELPERM_FUNC_CAMPBELL
+    use MultiPhysicsProbConstants      , only : AUXVAR_CONN_BC
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)                      , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: igoveqn
+    PetscInt                                  , intent(in)          :: auxvar_conn_type
+    PetscBool                                 , intent(in)          :: set_upwind_auxvar
+    PetscInt                                  , pointer, intent(in) :: satfunc_itype(:)
+    PetscReal                                 , pointer, intent(in) :: campbell_he(:)
+    PetscReal                                 , pointer, intent(in) :: campbell_n(:)
+    !
+    ! !LOCAL VARIABLES:
+    class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
+    class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
+    class(goveqn_base_type)                   , pointer             :: cur_goveq
+    type (rich_ode_pres_conn_auxvar_type)     , pointer             :: conn_aux_vars(:)
+    type(condition_type)                      , pointer             :: cur_cond
+    type(connection_set_type)                 , pointer             :: cur_conn_set
+    PetscInt                                                        :: ii
+    PetscInt                                                        :: ghosted_id
+    PetscInt                                                        :: sum_conn
+    PetscInt                                                        :: iconn
+
+    vsfm_soe => vsfm_mpp%sysofeqns
+
+    if (igoveqn > this%sysofeqns%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%sysofeqns%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_ode_pres => cur_goveq
+       class default
+          write(iulog,*)'Only goveqn_richards_ode_pressure_type supported'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+
+    select case(auxvar_conn_type)
+    case(AUXVAR_CONN_BC)
+
+       ! Set soil properties for boundary-condition auxvars
+       sum_conn = 0
+       conn_aux_vars => goveq_richards_ode_pres%aux_vars_conn_bc
+       cur_cond    => goveq_richards_ode_pres%boundary_conditions%first
+
+       do
+          if (.not.associated(cur_cond)) exit
+          cur_conn_set => cur_cond%conn_set
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn   = sum_conn + 1
+             ghosted_id = cur_conn_set%id_dn(iconn)
+
+             if (sum_conn> size(campbell_he)) then
+                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
+
+             select case(satfunc_itype(sum_conn))
+             case (RELPERM_FUNC_CAMPBELL)
+
+                if (set_upwind_auxvar) then
+                   call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
+                        campbell_he(sum_conn), campbell_n(sum_conn))
+                else
+                   call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_dn, &
+                        campbell_he(sum_conn), campbell_n(sum_conn))
+                endif
+
+             case default
+                write(iulog,*)'Only supports RELPERM_FUNC_CAMPBELL type'
+                call endrun(msg=errMsg(__FILE__,__LINE__))
+             end select
+
+          enddo
+          cur_cond => cur_cond%next
+       enddo
+
+    case default
+       write(iulog,*)'Only supports AUXVAR_CONN_BC type'
+       call endrun(msg=errMsg(__FILE__,__LINE__))
+
+    end select
+
+  end subroutine VSFMMPPSetSaturationFunctionAuxVarConn
 
 #endif
 

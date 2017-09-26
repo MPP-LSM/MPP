@@ -73,6 +73,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: COND_DARCY_RATE                   = 508
   PetscInt, parameter, public :: COND_SEEPAGE_BC                   = 509
   PetscInt, parameter, public :: COND_HEAT_RATE                    = 511
+  PetscInt, parameter, public :: COND_DOWNREGULATE_POT_MASS_RATE   = 512
 
   !
   PetscInt, parameter, public :: VAR_XI                            = 601
@@ -111,11 +112,21 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_ZC                            = 633
   PetscInt, parameter, public :: VAR_AREA                          = 634
   PetscInt, parameter, public :: VAR_VOLUME                        = 635
+  PetscInt, parameter, public :: VAR_CONDUCTANCE                   = 636
+  PetscInt, parameter, public :: VAR_FLUX_TYPE                     = 637
+  PetscInt, parameter, public :: VAR_POT_MASS_SINK_PRESSURE        = 638
+  PetscInt, parameter, public :: VAR_POT_MASS_SINK_EXPONENT        = 639
+  PetscInt, parameter, public :: VAR_PRESSURE_UP                   = 640
+  PetscInt, parameter, public :: VAR_PRESSURE_DN                   = 641
+  PetscInt, parameter, public :: VAR_CAMPBELL_HE                   = 642
+  PetscInt, parameter, public :: VAR_CAMPBELL_N                    = 643
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
   PetscInt, parameter, public :: AUXVAR_BC                         = 702
   PetscInt, parameter, public :: AUXVAR_SS                         = 703
+  PetscInt, parameter, public :: AUXVAR_CONN_INTERNAL              = 704
+  PetscInt, parameter, public :: AUXVAR_CONN_BC                    = 705
 
   PetscInt, parameter, public :: PETSC_TS                          = 801
   PetscInt, parameter, public :: PETSC_SNES                        = 802
@@ -125,6 +136,9 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: CONN_HORIZONTAL                   = 902
   PetscInt, parameter, public :: CONN_SET_INTERNAL                 = 903
   PetscInt, parameter, public :: CONN_SET_LATERAL                  = 904
+
+  PetscInt, parameter, public :: DARCY_FLUX_TYPE                   = 1001
+  PetscInt, parameter, public :: CONDUCTANCE_FLUX_TYPE             = 1002
 
   !
   PetscReal, parameter, public :: PRESSURE_REF                     = 101325.d0     ! [Pa]
