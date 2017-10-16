@@ -503,7 +503,7 @@ contains
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
     dphi = (Pres_up - Pres_dn)
 
-    flux    = den_ave * kr * conductance * dphi * area
+    flux    = -den_ave * kr * conductance * dphi * area
 
     if (compute_deriv) then
 
@@ -517,13 +517,13 @@ contains
           dflux_dP_up = 0.d0
           dflux_dP_dn = 0.d0
        else
-          dflux_dP_up = - dden_ave_dP_up * kr        * conductance * dphi       * area &
-                        - den_ave        * dkr_dP_up * conductance * dphi       * area &
-                        - den_ave        * kr        * conductance * dphi_dP_up * area
+          dflux_dP_up = + dden_ave_dP_up * kr        * conductance * dphi       * area &
+                        + den_ave        * dkr_dP_up * conductance * dphi       * area &
+                        + den_ave        * kr        * conductance * dphi_dP_up * area
 
-          dflux_dP_dn = - dden_ave_dP_dn * kr        * conductance * dphi       * area &
-                        - den_ave        * dkr_dP_dn * conductance * dphi       * area &
-                        - den_ave        * kr        * conductance * dphi_dP_dn * area
+          dflux_dP_dn = + dden_ave_dP_dn * kr        * conductance * dphi       * area &
+                        + den_ave        * dkr_dP_dn * conductance * dphi       * area &
+                        + den_ave        * kr        * conductance * dphi_dP_dn * area
        endif
 
     endif

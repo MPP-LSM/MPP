@@ -1180,6 +1180,18 @@ contains
           select case(this%aux_vars_conn_in(sum_conn)%flux_type)
           case (DARCY_FLUX_TYPE)
           case (CONDUCTANCE_FLUX_TYPE)
+
+             ! Set values for 'connection' auxvars
+             ghosted_id = cur_conn_set%id_up(iconn)
+
+             this%aux_vars_conn_in(sum_conn)%pressure_up = &
+                  this%aux_vars_in(ghosted_id)%pressure
+
+             ghosted_id = cur_conn_set%id_dn(iconn)
+
+             this%aux_vars_conn_in(sum_conn)%pressure_dn = &
+                  this%aux_vars_in(ghosted_id)%pressure
+
              call this%aux_vars_conn_in(sum_conn)%AuxVarCompute()
           end select
        end do
@@ -1506,6 +1518,7 @@ contains
                   )
 
           case (CONDUCTANCE_FLUX_TYPE)
+
              call RichardsFluxConductanceModel(                &
                   this%aux_vars_in(cell_id_up)%pressure,       &
                   this%aux_vars_in(cell_id_up)%den,            &
@@ -2062,7 +2075,7 @@ contains
                 factor = 1.d0 + (dP/Pc)**n
                 cell_id = cur_conn_set%id_dn(iconn)
 
-                val = - (cur_cond%value(iconn)/FMWH2O) * ( n * (dP/Pc)**n) / ( dP * ( factor**2.d0))
+                val = (cur_cond%value(iconn)/FMWH2O) * ( n * (dP/Pc)**n) / ( dP * ( factor**2.d0))
 
                 row = cell_id - 1
                 col = cell_id - 1
