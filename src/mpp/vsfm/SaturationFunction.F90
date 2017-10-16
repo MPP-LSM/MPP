@@ -16,12 +16,14 @@ module SaturationFunction
 
   ! Identify saturation function.
   ! These must have unique values (actual values are arbitrary).
-  PetscInt, parameter, public :: SAT_FUNC_VAN_GENUCHTEN         = 1301
-  PetscInt, parameter, public :: SAT_FUNC_BROOKS_COREY          = 1302
-  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY = 1303
-  PetscInt, parameter, public :: RELPERM_FUNC_MUALEM            = 1304
-  PetscInt, parameter, public :: RELPERM_FUNC_WEIBULL           = 1305
-  PetscInt, parameter, public :: RELPERM_FUNC_CAMPBELL          = 1306
+  PetscInt, parameter, public :: SAT_FUNC_VAN_GENUCHTEN             = 1301
+  PetscInt, parameter, public :: SAT_FUNC_BROOKS_COREY              = 1302
+  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY     = 1303
+  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2 = 1304
+  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3 = 1305
+  PetscInt, parameter, public :: RELPERM_FUNC_MUALEM                = 1306
+  PetscInt, parameter, public :: RELPERM_FUNC_WEIBULL               = 1307
+  PetscInt, parameter, public :: RELPERM_FUNC_CAMPBELL              = 1308
 
 
   type, public :: saturation_params_type

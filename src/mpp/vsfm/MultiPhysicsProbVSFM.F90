@@ -1881,6 +1881,10 @@ contains
     use SaturationFunction            , only : SatFunc_Set_SBC_bz2
     use SaturationFunction            , only : SatFunc_Set_SBC_bz3
     use SaturationFunction            , only : SatFunc_Set_VG
+    use SaturationFunction            , only : SAT_FUNC_VAN_GENUCHTEN
+    use SaturationFunction            , only : SAT_FUNC_BROOKS_COREY
+    use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2
+    use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3
     !
     implicit none
     !
@@ -1888,7 +1892,7 @@ contains
     ! !ARGUMENTS
     class(mpp_vsfm_type)                      , intent(inout)       :: this
     PetscInt                                  , intent(in)          :: igoveqn
-    character(len=32), intent(in)                                   :: vsfm_satfunc_type
+    PetscInt                                  , pointer, intent(in) :: vsfm_satfunc_type(:)
     PetscReal                                 , pointer, intent(in) :: alpha(:)
     PetscReal                                 , pointer, intent(in) :: lambda(:)
     PetscReal                                 , pointer, intent(in) :: sat_res(:)
@@ -1939,44 +1943,44 @@ contains
 
     ! Set soil properties for internal auxvars
 
-    if (vsfm_satfunc_type == 'brooks_corey') then
-       do icell = 1, size(alpha)
+    do icell = 1, size(alpha)
+
+       select case (vsfm_satfunc_type(icell))
+       case (SAT_FUNC_BROOKS_COREY)
           call SatFunc_Set_BC(                   &
                ode_aux_vars_in(icell)%satParams, &
                sat_res(icell),                   &
                alpha(icell),                     &
                lambda(icell))
-       enddo
-    elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz2') then
-       do icell = 1, size(alpha)
+
+       case (SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2)
           call SatFunc_Set_SBC_bz2(              &
                ode_aux_vars_in(icell)%satParams, &
                sat_res(icell),                   &
                alpha(icell),                     &
                lambda(icell),                    &
                -0.9d0/alpha(icell))
-       enddo
-    elseif (vsfm_satfunc_type == 'smooth_brooks_corey_bz3') then
-       do icell = 1, size(alpha)
+
+       case (SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3)
           call SatFunc_Set_SBC_bz3(              &
                ode_aux_vars_in(icell)%satParams, &
                sat_res(icell),                   &
                alpha(icell),                     &
                lambda(icell),                    &
                -0.9d0/alpha(icell))
-       enddo
-    elseif (vsfm_satfunc_type == 'van_genuchten') then
-       do icell = 1, size(alpha)
+
+       case (SAT_FUNC_VAN_GENUCHTEN)
           call SatFunc_Set_VG(                   &
                ode_aux_vars_in(icell)%satParams, &
                sat_res(icell),                   &
                alpha(icell),                     &
                lambda(icell))
-       enddo
-    else
-       call endrun(msg='ERROR:: Unknown vsfm_satfunc_type = '//vsfm_satfunc_type//&
-            errMsg(__FILE__, __LINE__))
-    endif
+
+       case default
+          call endrun(msg='ERROR:: Unknown vsfm_satfunc_type ' // &
+               errMsg(__FILE__, __LINE__))
+       end select
+    end do
 
     ! Set soil properties for boundary-condition auxvars
     sum_conn = 0
@@ -2121,6 +2125,7 @@ contains
     use SaturationFunction             , only : SatFunc_Set_Campbell_RelPerm
     use SaturationFunction             , only : RELPERM_FUNC_CAMPBELL
     use MultiPhysicsProbConstants      , only : AUXVAR_CONN_BC
+    use MultiPhysicsProbConstants      , only : AUXVAR_CONN_INTERNAL
     !
     implicit none
     !
@@ -2169,12 +2174,52 @@ contains
 
 
     select case(auxvar_conn_type)
+    case (AUXVAR_CONN_INTERNAL)
+       conn_aux_vars => goveq_richards_ode_pres%aux_vars_conn_in
+       cur_conn_set  => goveq_richards_ode_pres%mesh%intrn_conn_set_list%first
+       sum_conn = 0
+       do
+          if (.not.associated(cur_conn_set)) exit
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+
+             if (sum_conn > size(campbell_he)) then
+                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             end if
+
+             select case(satfunc_itype(sum_conn))
+             case (RELPERM_FUNC_CAMPBELL)
+
+                if (set_upwind_auxvar) then
+                   call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
+                        campbell_he(sum_conn), campbell_n(sum_conn))
+                else
+                   call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_dn, &
+                        campbell_he(sum_conn), campbell_n(sum_conn))
+                endif
+
+             case (0)
+                ! Do nothing
+
+             case default
+                write(iulog,*)'Only supports RELPERM_FUNC_CAMPBELL type'
+                call endrun(msg=errMsg(__FILE__,__LINE__))
+             end select
+
+          end do
+
+          cur_conn_set => cur_conn_set%next
+
+       end do
+
     case(AUXVAR_CONN_BC)
 
        ! Set soil properties for boundary-condition auxvars
        sum_conn = 0
        conn_aux_vars => goveq_richards_ode_pres%aux_vars_conn_bc
-       cur_cond    => goveq_richards_ode_pres%boundary_conditions%first
+       cur_cond      => goveq_richards_ode_pres%boundary_conditions%first
 
        do
           if (.not.associated(cur_cond)) exit

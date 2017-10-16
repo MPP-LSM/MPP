@@ -1,4 +1,4 @@
-module vsfm_spac_problem
+module vsfm_spac_campbell_problem
 
   implicit none
   
@@ -8,20 +8,25 @@ module vsfm_spac_problem
   PetscReal , parameter :: x_column = 1.d0
   PetscReal , parameter :: y_column = 1.d0
   PetscReal , parameter :: z_column = 1.d0
-  PetscInt              :: nz
+  PetscInt              :: nz_xylem
+  PetscInt              :: nz_root
+  PetscInt              :: nz_soil
   PetscInt              :: ncells_local
   PetscInt              :: ncells_ghost
   PetscReal             :: Campbell_n
   PetscReal             :: Campbell_b
   PetscReal             :: Campbell_he
   PetscReal             :: theta_s
+  PetscReal             :: VG_alpha
+  PetscReal             :: VG_n
+  PetscReal , parameter :: PI  = 4 * atan (1.0_8)
 
-  public :: run_vsfm_spac_problem
-  public :: output_regression_vsfm_spac_problem
+  public :: run_vsfm_spac_campbell_problem
+  public :: output_regression_vsfm_spac_campbell_problem
   
 contains
 
-  subroutine run_vsfm_spac_problem()
+  subroutine run_vsfm_spac_campbell_problem()
     !
 #include <petsc/finclude/petsc.h>
     !
@@ -42,6 +47,7 @@ contains
     PetscInt           :: converged_reason
     PetscErrorCode     :: ierr
     PetscReal          :: dtime
+    PetscReal          :: time
     PetscInt           :: istep, nstep
     PetscBool          :: flg
     PetscBool          :: save_initial_soln, save_final_soln
@@ -50,16 +56,17 @@ contains
     PetscViewer        :: viewer
 
     ! Set default settings
-    nz                = 30
+    nz_xylem          = 2
+    nz_root           = 28
+    nz_soil           = 50
     dtime             = 3600.d0
-    nstep             = 1
+    nstep             = 24
     save_initial_soln = PETSC_FALSE
     save_final_soln   = PETSC_FALSE
     output_suffix     = ''
 
     ! Get some command line options
 
-    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nz',nz,flg,ierr)
     call PetscOptionsGetReal(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-dt',dtime,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_initial_soln',save_initial_soln,flg,ierr)
@@ -69,13 +76,20 @@ contains
     ! Initialize the problem
     call Init()  
 
-    call set_bondary_conditions()
-    
-    ! Run the model
-    call vsfm_mpp%sysofeqns%StepDT(dtime, istep, &
-         converged, converged_reason, ierr); CHKERRQ(ierr)
+    time = 0.d0
 
-     end subroutine run_vsfm_spac_problem
+    do istep = 1, nstep
+
+       call set_bondary_conditions(time)
+       time = time + dtime
+
+       ! Run the model
+       call vsfm_mpp%sysofeqns%StepDT(dtime, istep, &
+            converged, converged_reason, ierr); CHKERRQ(ierr)
+
+    end do
+
+  end subroutine run_vsfm_spac_campbell_problem
 
   !------------------------------------------------------------------------
   subroutine Init()
@@ -159,6 +173,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_DY
     use MultiPhysicsProbConstants , only : VAR_DZ
     use MultiPhysicsProbConstants , only : VAR_AREA
+    use MultiPhysicsProbConstants , only : VAR_VOLUME
     use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
     use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
@@ -170,7 +185,7 @@ contains
     !
     PetscReal :: dx, dy, dz
     PetscInt :: imesh, kk
-    PetscInt :: nlev
+    PetscInt :: nlev, nz, nconn
     PetscInt :: iconn, vert_nconn
     PetscReal, pointer :: soil_xc(:)           ! x-position of grid cell [m]
     PetscReal, pointer :: soil_yc(:)           ! y-position of grid cell [m]
@@ -179,6 +194,7 @@ contains
     PetscReal, pointer :: soil_dy(:)           ! layer thickness of grid cell [m]
     PetscReal, pointer :: soil_dz(:)           ! layer thickness of grid cell [m]
     PetscReal, pointer :: soil_area(:)         ! area of grid cell [m^2]
+    PetscReal, pointer :: soil_vol(:)          ! volume of grid cell [m^3]
     PetscInt , pointer :: soil_filter(:)       ! 
 
     PetscInt, pointer  :: vert_conn_id_up(:)   !
@@ -190,26 +206,25 @@ contains
 
     PetscErrorCode :: ierr
 
-    call mpp_varpar_set_nlevsoi(nz)
-    call mpp_varpar_set_nlevgrnd(nz)
-
     dx = x_column/nx
     dy = y_column/ny
-    dz = z_column/nz
+    dz = z_column/nz_soil
 
     imesh        = 1
-    nlev         = nz
-    ncells_local = nx*ny*nz
+    nlev         = nz_xylem + nz_root + nz_soil
+    nz           = nlev
+    ncells_local = nx*ny*nlev
     ncells_ghost = 0
 
-    allocate(soil_xc(nz))
-    allocate(soil_yc(nz))
-    allocate(soil_zc(nz))
-    allocate(soil_dx(nz))
-    allocate(soil_dy(nz))
-    allocate(soil_dz(nz))
-    allocate(soil_area(nz))
-    allocate(soil_filter(nz))
+    allocate(soil_xc     (nz))
+    allocate(soil_yc     (nz))
+    allocate(soil_zc     (nz))
+    allocate(soil_dx     (nz))
+    allocate(soil_dy     (nz))
+    allocate(soil_dz     (nz))
+    allocate(soil_area   (nz))
+    allocate(soil_filter (nz))
+    allocate(soil_vol    (nz))
 
     soil_filter (:) = 1
     soil_area   (:) = 1.d0
@@ -218,10 +233,22 @@ contains
     soil_dz     (:) = 1.d0/50.d0
     soil_xc     (:) = 1.d0/2.d0
     soil_yc     (:) = 1.d0/2.d0
+    soil_vol    (:) = 1.d0/50.d0
 
-    do kk = 1,nz
-       soil_zc(kk) = dz/2.d0 + dz * (kk - 1)
+    soil_zc(1) = 0.d0
+    soil_zc(2) = 0.d0
+    soil_vol(31) = soil_vol(1) / 2.d0
+    
+    do kk = 3,nz_xylem + nz_root
+       soil_zc(kk) = -(dz/2.d0 + dz * (kk - 1))
     enddo
+
+    do kk = nz_xylem + nz_root + 1, nz_xylem + nz_root + nz_soil
+       soil_zc(kk) = -(dz/2.d0 + dz * (kk - nz_xylem - nz_root - 1))
+    end do
+
+    call mpp_varpar_set_nlevsoi(nz)
+    call mpp_varpar_set_nlevgrnd(nz)
 
     !
     ! Set up the meshes
@@ -241,14 +268,17 @@ contains
     call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
     call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
     call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
-    call vsfm_mpp%MeshComputeVolume          (imesh)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_VOLUME , soil_vol)
+    !call vsfm_mpp%MeshComputeVolume          (imesh)
 
-    allocate (vert_conn_id_up   (nz-1))
-    allocate (vert_conn_id_dn   (nz-1))
-    allocate (vert_conn_dist_up (nz-1))
-    allocate (vert_conn_dist_dn (nz-1))
-    allocate (vert_conn_area    (nz-1))
-    allocate (vert_conn_type    (nz-1))
+    nconn = 1 + nz_root * 2 + nz_soil - 1
+
+    allocate (vert_conn_id_up   (nconn))
+    allocate (vert_conn_id_dn   (nconn))
+    allocate (vert_conn_dist_up (nconn))
+    allocate (vert_conn_dist_dn (nconn))
+    allocate (vert_conn_area    (nconn))
+    allocate (vert_conn_type    (nconn))
 
     iconn = 0
     iconn = iconn + 1
@@ -259,7 +289,7 @@ contains
     vert_conn_area(iconn)    = soil_area(1)
     vert_conn_type(iconn)    = CONN_VERTICAL
 
-    do kk = 2, nz-1
+    do kk = 2, nz_xylem + nz_root -1
 
        iconn = iconn + 1
        vert_conn_id_up(iconn)   = 2
@@ -270,6 +300,29 @@ contains
        vert_conn_type(iconn)    = CONN_VERTICAL
 
     end do
+
+    do kk = 2, nz_xylem + nz_root -1
+
+       iconn = iconn + 1
+       vert_conn_id_up(iconn)   = kk + 1
+       vert_conn_id_dn(iconn)   = kk + 1 + nz_xylem + nz_root
+       vert_conn_dist_up(iconn) = 0.5d0*dz
+       vert_conn_dist_dn(iconn) = 0.5d0*dz
+       vert_conn_area(iconn)    = soil_area(kk)
+       vert_conn_type(iconn)    = CONN_VERTICAL
+
+    end do
+
+    do kk = 1, nz_soil - 1
+       iconn = iconn + 1
+       vert_conn_id_up(iconn)   = kk + nz_xylem + nz_root
+       vert_conn_id_dn(iconn)   = kk + nz_xylem + nz_root + 1
+       vert_conn_dist_up(iconn) = 0.5d0*dz
+       vert_conn_dist_dn(iconn) = 0.5d0*dz
+       vert_conn_area(iconn)    = soil_area(kk)
+       vert_conn_type(iconn)    = CONN_VERTICAL
+    end do
+    
     vert_nconn = iconn
 
     call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
@@ -332,76 +385,12 @@ contains
     ! !ARGUMENTS
     implicit none
     !
-    PetscInt                            :: ieqn, ieqn_other
-    PetscInt                            :: kk
-    PetscInt                            :: nconn
-    PetscInt                            :: ncells_root
-    PetscReal                           :: root_len
-    PetscReal                 , pointer :: root_len_den(:)
-    PetscReal                 , pointer :: root_vol(:)
-    PetscReal                 , pointer :: root_surf_area(:)
-    PetscInt                  , pointer :: id_up(:)
-    PetscInt                  , pointer :: id_dn(:)
-    PetscReal                 , pointer :: dist_up(:)
-    PetscReal                 , pointer :: dist_dn(:)
-    PetscReal                 , pointer :: root_zc(:)           ! z-position of grid cell [m]
-    PetscReal                 , pointer :: soil_dz(:)           ! layer thickness of grid cell [m]
-    PetscReal                 , pointer :: area(:)
-    PetscInt                  , pointer :: itype(:)
-    PetscReal                 , pointer :: unit_vec(:,:)
-    type(connection_set_type) , pointer :: conn_set
-
-
-    nconn         = 28
-
-    allocate(id_up    (nconn   ))
-    allocate(id_dn    (nconn   ))
-    allocate(dist_up  (nconn   ))
-    allocate(dist_dn  (nconn   ))
-    allocate(area     (nconn   ))
-    allocate(itype    (nconn   ))
-    allocate(unit_vec (nconn,3 ))
-
-    do kk = 1, nconn
-       id_up(kk)      = 0
-       id_dn(kk)      = kk + 2
-       dist_up(kk)    = 0.d0
-       dist_dn(kk)    = 1.d0
-       area(kk)       = 1.d0
-       unit_vec(kk,1) = -1.d0
-       unit_vec(kk,2) = 0.d0
-       unit_vec(kk,3) = 0.d0
-       itype(kk)      = CONN_VERTICAL
-    enddo
-
-    allocate(conn_set)
+    PetscInt                            :: ieqn
 
     ieqn       = 1
-
-    call MeshCreateConnectionSet(vsfm_mpp%meshes(1), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
-    call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &
-         name='Root BC in soil equation', unit='Pa', cond_type=COND_DIRICHLET, &
-         region_type=SOIL_TOP_CELLS, &
-         conn_set=conn_set)
-
     call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
          'Potential Mass_Flux', 'kg/s', COND_DOWNREGULATE_POT_MASS_RATE, &
          SOIL_BOTTOM_CELLS)
-
-
-    call ConnectionSetDestroy(conn_set)
-
-
-    deallocate(id_up          )
-    deallocate(id_dn          )
-    deallocate(dist_up        )
-    deallocate(dist_dn        )
-    deallocate(area           )
-    deallocate(itype          )
-    deallocate(unit_vec       )
 
   end subroutine add_conditions_to_goveqns
 
@@ -431,6 +420,7 @@ contains
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSourceSinkAuxVarRealValue
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoilPorosity
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunction
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoilPermeability
     use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT
     use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_PRESSURE
     use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_EXPONENT
@@ -451,40 +441,64 @@ contains
     PetscReal , pointer   :: alpha(:)
     PetscReal , pointer   :: lambda(:)
     PetscReal , pointer   :: sat_res(:)
-    PetscInt  , pointer   :: satfunc_type(:)
+    PetscReal , pointer   :: perm(:)
     PetscReal , parameter :: vish2o = 0.001002d0    ! [N s/m^2] @ 20 degC
     PetscReal             :: Ks
     PetscInt              :: begc , endc
     integer   , pointer   :: vsfm_filter(:)
-    PetscReal, pointer    :: ss_auxvar_value(:)
+    PetscInt  , pointer   :: satfunc_type(:)
+    PetscReal , pointer   :: ss_auxvar_value(:)
+    PetscInt              :: nz
     !-----------------------------------------------------------------------
 
-    Ks          = 0.001d0 !
+    Ks          = 0.001d0 ! [kg s m^{-3}]
     theta_s     = 0.46d0  !
     Campbell_b  = 4.58d0  ! [-]
     Campbell_he = -4.2d0  ! [J kg^{-1}]
+
+    VG_n        = 1.35d0  ! [-]
+    VG_alpha    = 0.15d0  ! [kg J^{-1}]
 
     Campbell_n  = 2.d0 + 3.d0/Campbell_b
 
     begc = 1
     endc = 1
 
-    allocate(por(nz))
-    allocate(alpha(nz))
-    allocate(lambda(nz))
-    allocate(sat_res(nz))
-    allocate(satfunc_type(nz))
+    nz = nz_xylem + nz_root + nz_soil
 
-    por     (:) = 0.d0
-    sat_res (:) = 0.d0
-    lambda  (:) = 1.d0/Campbell_b
-    alpha   (:) = 1.d-3/(-Campbell_he)
-    satfunc_type(:) = SAT_FUNC_BROOKS_COREY
-    
+    allocate (por          (nz))
+    allocate (alpha        (nz))
+    allocate (lambda       (nz))
+    allocate (sat_res      (nz))
+    allocate (satfunc_type (nz))
+    allocate (perm         (nz))
+
+    por          (1                      : nz_xylem + nz_root           ) = 0.d0
+    sat_res      (1                      : nz_xylem + nz_root           ) = 0.d0
+    lambda       (1                      : nz_xylem + nz_root           ) = 1.d0/Campbell_b
+    alpha        (1                      : nz_xylem + nz_root           ) = 1.d-3/(-Campbell_he)
+    perm         (1                      : nz_xylem + nz_root           ) = Ks/1.d6*8.904156d-4
+    satfunc_type (1                      : nz_xylem + nz_root           ) = SAT_FUNC_BROOKS_COREY
+
+    por          (nz_xylem + nz_root + 1 : nz_xylem + nz_root + nz_soil ) = theta_s
+    sat_res      (nz_xylem + nz_root + 1 : nz_xylem + nz_root + nz_soil ) = 0.01d0
+    lambda       (nz_xylem + nz_root + 1 : nz_xylem + nz_root + nz_soil ) = 1.d0 - 1.d0/VG_n
+    alpha        (nz_xylem + nz_root + 1 : nz_xylem + nz_root + nz_soil ) = VG_alpha * 1.d-3
+    perm         (nz_xylem + nz_root + 1 : nz_xylem + nz_root + nz_soil ) = Ks/1.d6*8.904156d-4
+    satfunc_type (nz_xylem + nz_root + 1 : nz_xylem + nz_root + nz_soil ) = SAT_FUNC_VAN_GENUCHTEN
+
+        
     call VSFMMPPSetSoilPorosity(vsfm_mpp, 1, por)
 
     call VSFMMPPSetSaturationFunction(vsfm_mpp, 1, satfunc_type, &
-       alpha, lambda, sat_res)
+         alpha, lambda, sat_res)
+
+    call VSFMMPPSetSoilPermeability(vsfm_mpp, 1, perm, perm, perm)
+
+    deallocate(por     )
+    deallocate(sat_res )
+    deallocate(lambda  )
+    deallocate(alpha   )
 
     allocate(ss_auxvar_value(1))
     
@@ -496,11 +510,7 @@ contains
     call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
          VAR_POT_MASS_SINK_PRESSURE, ss_auxvar_value)
 
-    deallocate(ss_auxvar_value )
-    deallocate(por             )
-    deallocate(alpha           )
-    deallocate(sat_res         )
-    deallocate(satfunc_type    )
+    deallocate(ss_auxvar_value)
 
   end subroutine set_material_properties
 
@@ -510,20 +520,30 @@ contains
     ! !DESCRIPTION:
     !
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use petscsys
+    use petscvec
+    use petscmat
+    use petscts
+    use petscsnes
+    use petscdm
+    use petscdmda
     !
     implicit none
     !
     PetscReal :: theta
     PetscReal :: Se
     PetscInt  :: ii
-    PetscReal, pointer :: press_ic(:)
+    PetscReal, pointer :: press_ic(:), v_x(:)
+    Vec :: X
+    PetscViewer :: viewer
+    PetscErrorCode :: ierr
 
-    allocate(press_ic(nz))
+    allocate(press_ic(nz_xylem + nz_root + nz_soil))
 
-    theta = 0.30d0
+    theta = 0.20d0
 
     Se = theta/theta_s
-    do ii = 1, nz
+    do ii = 1, nz_xylem + nz_root + nz_soil
        press_ic(ii) = (Campbell_he * Se**(-Campbell_b))* 1.d3 + 101325.d0
     enddo
 
@@ -534,7 +554,7 @@ contains
   end subroutine set_initial_conditions
 
   !------------------------------------------------------------------------
-  subroutine set_bondary_conditions()
+  subroutine set_bondary_conditions(time)
     !
     ! !DESCRIPTION:
     !
@@ -544,34 +564,28 @@ contains
     !
     implicit none
     !
-    PetscReal, pointer :: pressure_bc(:)
+    PetscReal          :: time
+    !
     PetscReal, pointer :: ss_value   (:)
     PetscInt           :: soe_auxvar_id
-    PetscReal :: theta
-    PetscReal :: Se
-    PetscInt  :: ii
+    PetscReal          :: TimeOfDay
+    PetscReal          :: fi
+    PetscReal          :: ETp
+    PetscReal          :: tp
 
-    allocate(pressure_bc(28))
-
-    theta = 0.30d0
-
-    Se = theta/theta_s
-    do ii = 1, 28
-       pressure_bc(ii) = Campbell_he * Se**(-Campbell_b) * 1.d3 + 101325.d0
-    end do
-
-    soe_auxvar_id = 1
-    call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
-         VAR_BC_SS_CONDITION, soe_auxvar_id, pressure_bc)
-
+    TimeOfDay = mod(time,(3600.d0*24.d0))/3600.d0
+    fi        = 0.9d0
+    ETp       = 5.55555555556d-05
+    
+    tp = fi * ETp * 2.3d0 * (0.05d0 + sin(0.0175d0 * 7.5d0 * TimeOfDay))** 4.d0
+    
     allocate(ss_value(1))
-    ss_value(:) = 7.1875e-10 * 1e3
+    ss_value(:) = -tp 
 
     soe_auxvar_id = 1
     call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_SS,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, ss_value)
 
-    deallocate(pressure_bc)
     deallocate(ss_value   )
 
   end subroutine set_bondary_conditions
@@ -590,6 +604,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_FLUX_TYPE
     use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE
     use MultiPhysicsProbConstants , only : CONDUCTANCE_FLUX_TYPE
+    use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
     use MultiPhysicsProbConstants , only : VAR_CAMPBELL_HE
     use MultiPhysicsProbConstants , only : VAR_CAMPBELL_N
     use SaturationFunction        , only : RELPERM_FUNC_CAMPBELL
@@ -599,14 +614,11 @@ contains
     implicit none
     !
     PetscReal , pointer   :: cond_conn_in(:)
-    PetscReal , pointer   :: cond_conn_bc(:)
     PetscInt  , pointer   :: flux_type_conn_in(:)
-    PetscInt  , pointer   :: flux_type_conn_bc(:)
-    PetscReal , pointer   :: campbell_he_conn_bc(:)
-    PetscReal , pointer   :: campbell_n_conn_bc(:)
-    PetscInt  , pointer   :: satfunc_itype_conn_bc(:)
+    PetscReal , pointer   :: campbell_he_conn_in(:)
+    PetscReal , pointer   :: campbell_n_conn_in(:)
+    PetscInt  , pointer   :: satfunc_itype_conn_in(:)
     PetscInt              :: nconn_in
-    PetscInt              :: nconn_bc
     PetscInt              :: kk
     PetscReal             :: rootDepth
     PetscReal             :: rootMin
@@ -621,26 +633,23 @@ contains
     PetscReal , pointer   :: z_int(:)
     PetscReal , pointer   :: Rr(:)
     PetscReal , pointer   :: bz(:)
-    PetscReal , parameter :: PI  = 4 * atan (1.0_8)
 
 
-    nconn_in = 29
-    nconn_bc = 28
+    nconn_in = nz_xylem - 1 + nz_root * 2 + nz_soil - 1
 
     allocate (cond_conn_in          (nconn_in))
     allocate (flux_type_conn_in     (nconn_in))
-    allocate (cond_conn_bc          (nconn_bc))
-    allocate (flux_type_conn_bc     (nconn_bc))
-    allocate (campbell_he_conn_bc   (nconn_bc))
-    allocate (campbell_n_conn_bc    (nconn_bc))
-    allocate (satfunc_itype_conn_bc (nconn_bc))
+    allocate (campbell_he_conn_in   (nconn_in))
+    allocate (campbell_n_conn_in    (nconn_in))
+    allocate (satfunc_itype_conn_in (nconn_in))
 
-    flux_type_conn_in(:) = CONDUCTANCE_FLUX_TYPE
-    flux_type_conn_bc(:) = CONDUCTANCE_FLUX_TYPE
+    satfunc_itype_conn_in(:) = 0
+
+    flux_type_conn_in(1                             :nz_xylem - 1 + nz_root * 2) = CONDUCTANCE_FLUX_TYPE
+    flux_type_conn_in(nz_xylem - 1 + nz_root * 2 + 1:nconn_in                  ) = DARCY_FLUX_TYPE
     
     call VSFMMPPSetAuxVarConnIntValue( vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, VAR_FLUX_TYPE, flux_type_conn_in)
-    call VSFMMPPSetAuxVarConnIntValue( vsfm_mpp, 1, AUXVAR_CONN_BC      , VAR_FLUX_TYPE, flux_type_conn_bc)
-
+    
     nz_loc = 50
     dz_loc = 1.d0/nz_loc
     allocate(z_int(nz_loc+1))
@@ -654,7 +663,7 @@ contains
     r1          = 0.001d0
 
     !pc          = -1500.d0
-    RL          = 1/(3.d6 * 1.d0)
+    RL          = 1/(3.d6 * 1.d6)
 
     do kk = 1, nz_loc + 1
        z_int(kk) = (kk-1)*dz_loc
@@ -674,37 +683,31 @@ contains
 
 
        if (kk >= 3 .and. kk <= 30) then
-          theta    = 0.30d0
+          theta    = 0.1d0
 
           Se       = theta/theta_s
           psi_soil = Campbell_he * Se**(-Campbell_b)
           K        = Ks !* (Campbell_he / psi_soil)**Campbell_n;
 
-          cond_conn_in          (kk-1) = 1.d-3/Rr(kk)
-          cond_conn_bc          (kk-2) = 1.d-3/(bz(kk)/K)
-          campbell_he_conn_bc   (kk-2) = -campbell_he * 1.d3
-          campbell_n_conn_bc    (kk-2) = campbell_n
-          satfunc_itype_conn_bc (kk-2) = RELPERM_FUNC_CAMPBELL
+          cond_conn_in          (kk-1     ) = 1.d-6/Rr(kk)
+          cond_conn_in          (kk-2 + 29) = 1.d-6/(bz(kk)/K)
+          campbell_he_conn_in   (kk-2 + 29) = -campbell_he * 1.d3
+          campbell_n_conn_in    (kk-2 + 29) = campbell_n
+          satfunc_itype_conn_in (kk-2 + 29) = RELPERM_FUNC_CAMPBELL
 
        endif
     enddo
 
-    call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, VAR_CONDUCTANCE, cond_conn_in        )
-    call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_BC      , VAR_CONDUCTANCE, cond_conn_bc        )
+    call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, VAR_CONDUCTANCE, cond_conn_in)
 
-    call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_BC, PETSC_FALSE, &
-         satfunc_itype_conn_bc, campbell_he_conn_bc, campbell_n_conn_bc)
+    call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, PETSC_FALSE, &
+         satfunc_itype_conn_in, campbell_he_conn_in, campbell_n_conn_in)
         
-    deallocate(cond_conn_in      )
-    deallocate(flux_type_conn_in )
-    deallocate(cond_conn_bc      )
-    deallocate(flux_type_conn_bc )
-
   end subroutine set_conn_flux_type
 
 
   !------------------------------------------------------------------------
-  subroutine output_regression_vsfm_spac_problem(filename_base, num_cells)
+  subroutine output_regression_vsfm_spac_campbell_problem(filename_base, num_cells)
     !
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
@@ -745,6 +748,6 @@ contains
     
     deallocate(data)
 
-  end subroutine output_regression_vsfm_spac_problem
+  end subroutine output_regression_vsfm_spac_campbell_problem
   
-end module vsfm_spac_problem
+end module vsfm_spac_campbell_problem
