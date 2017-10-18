@@ -1634,7 +1634,7 @@ contains
 
           else
 
-             select case(this%aux_vars_conn_in(sum_conn)%flux_type)
+             select case(this%aux_vars_conn_bc(sum_conn)%flux_type)
 
              case (DARCY_FLUX_TYPE)
 
@@ -1755,7 +1755,7 @@ contains
     !
     ! !USES:
     use RichardsMod               , only : RichardsFlux
-    use RichardsMod                 , only : RichardsFluxConductanceModel
+    use RichardsMod               , only : RichardsFluxConductanceModel
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
     use MultiPhysicsProbConstants , only : COND_NULL
@@ -2019,7 +2019,7 @@ contains
                      this%aux_vars_bc(sum_conn )%pressure,        &
                      this%aux_vars_bc(sum_conn )%den,             &
                      this%aux_vars_bc(sum_conn )%dden_dP,         &
-                     this%aux_vars_conn_in(sum_conn)%conductance, &
+                     this%aux_vars_conn_bc(sum_conn)%conductance, &
                      this%aux_vars_conn_bc(sum_conn)%kr,          &
                      this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
                      this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
@@ -2103,11 +2103,12 @@ contains
     !
     ! !USES:
     use RichardsMod               , only : RichardsFlux
+    use RichardsMod               , only : RichardsFluxConductanceModel
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use MultiPhysicsProbConstants   , only : DARCY_FLUX_TYPE
-    use MultiPhysicsProbConstants   , only : CONDUCTANCE_FLUX_TYPE
+    use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
+    use MultiPhysicsProbConstants , only : CONDUCTANCE_FLUX_TYPE
     !
     implicit none
     !
@@ -2165,7 +2166,7 @@ contains
                    cond_type     = cur_cond%itype
 
                    if (.not.cur_cond%swap_order) then
-                      select case(this%aux_vars_conn_in(sum_conn)%flux_type)
+                      select case(this%aux_vars_conn_bc(sum_conn)%flux_type)
 
                       case (DARCY_FLUX_TYPE)
 
@@ -2199,8 +2200,25 @@ contains
                               )
 
                       case (CONDUCTANCE_FLUX_TYPE)
-                         write(iulog,*) 'Add code for CONDUCTANCE_FLUX_TYPE'
-                         call endrun(msg=errMsg(__FILE__,__LINE__))
+                         call RichardsFluxConductanceModel(                &
+                              this%aux_vars_bc(sum_conn )%pressure,        &
+                              this%aux_vars_bc(sum_conn )%den,             &
+                              this%aux_vars_bc(sum_conn )%dden_dP,         &
+                              this%aux_vars_in(cell_id )%pressure,         &
+                              this%aux_vars_in(cell_id  )%den,             &
+                              this%aux_vars_in(cell_id  )%dden_dP,         &
+                              this%aux_vars_conn_bc(sum_conn)%conductance, &
+                              this%aux_vars_conn_bc(sum_conn)%kr,          &
+                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
+                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
+                              cur_conn_set%area(iconn),                    &
+                              compute_deriv,                               &
+                              internal_conn,                               &
+                              cond_type,                                   &
+                              dummy_var,                                   &
+                              Jup,                                         &
+                              Jdn                                          &
+                              )
 
                       case default
                          write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
@@ -2211,7 +2229,7 @@ contains
 
                    else
 
-                      select case(this%aux_vars_conn_in(sum_conn)%flux_type)
+                      select case(this%aux_vars_conn_bc(sum_conn)%flux_type)
 
                       case (DARCY_FLUX_TYPE)
 
@@ -2245,8 +2263,25 @@ contains
                               )
 
                       case (CONDUCTANCE_FLUX_TYPE)
-                         write(iulog,*) 'Add code for CONDUCTANCE_FLUX_TYPE'
-                         call endrun(msg=errMsg(__FILE__,__LINE__))
+                         call RichardsFluxConductanceModel(                &
+                              this%aux_vars_in(cell_id )%pressure,         &
+                              this%aux_vars_in(cell_id  )%den,             &
+                              this%aux_vars_in(cell_id  )%dden_dP,         &
+                              this%aux_vars_bc(sum_conn )%pressure,        &
+                              this%aux_vars_bc(sum_conn )%den,             &
+                              this%aux_vars_bc(sum_conn )%dden_dP,         &
+                              this%aux_vars_conn_bc(sum_conn)%conductance, &
+                              this%aux_vars_conn_bc(sum_conn)%kr,          &
+                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
+                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
+                              cur_conn_set%area(iconn),                    &
+                              compute_deriv,                               &
+                              internal_conn,                               &
+                              cond_type,                                   &
+                              dummy_var,                                   &
+                              Jup,                                         &
+                              Jdn                                          &
+                              )
 
                       case default
                          write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type

@@ -605,6 +605,7 @@ contains
     PetscReal , pointer   :: campbell_he_conn_bc(:)
     PetscReal , pointer   :: campbell_n_conn_bc(:)
     PetscInt  , pointer   :: satfunc_itype_conn_bc(:)
+    PetscBool , pointer   :: upwind_auxvar_conn_bc(:)
     PetscInt              :: nconn_in
     PetscInt              :: nconn_bc
     PetscInt              :: kk
@@ -634,6 +635,7 @@ contains
     allocate (campbell_he_conn_bc   (nconn_bc))
     allocate (campbell_n_conn_bc    (nconn_bc))
     allocate (satfunc_itype_conn_bc (nconn_bc))
+    allocate (upwind_auxvar_conn_bc (nconn_bc))
 
     flux_type_conn_in(:) = CONDUCTANCE_FLUX_TYPE
     flux_type_conn_bc(:) = CONDUCTANCE_FLUX_TYPE
@@ -685,6 +687,7 @@ contains
           campbell_he_conn_bc   (kk-2) = -campbell_he * 1.d3
           campbell_n_conn_bc    (kk-2) = campbell_n
           satfunc_itype_conn_bc (kk-2) = RELPERM_FUNC_CAMPBELL
+          upwind_auxvar_conn_bc (kk-2) = PETSC_FALSE
 
        endif
     enddo
@@ -692,7 +695,7 @@ contains
     call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, VAR_CONDUCTANCE, cond_conn_in        )
     call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_BC      , VAR_CONDUCTANCE, cond_conn_bc        )
 
-    call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_BC, PETSC_FALSE, &
+    call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_BC, upwind_auxvar_conn_bc, &
          satfunc_itype_conn_bc, campbell_he_conn_bc, campbell_n_conn_bc)
         
     deallocate(cond_conn_in      )

@@ -1645,6 +1645,7 @@ contains
     use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
     use ConditionType                 , only : condition_type
     use ConnectionSetType             , only : connection_set_type
+    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     !
     implicit none
     !
@@ -1714,15 +1715,26 @@ contains
 
     do
        if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
+       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          cur_conn_set => cur_cond%conn_set
 
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+             ghosted_id = cur_conn_set%id_dn(iconn)
 
-          ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
+             ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
 
-       enddo
+          enddo
+       else
+          cur_conn_set => cur_cond%conn_set
+
+          ghosted_id = 1
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+             ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
+          enddo
+          
+       endif
        cur_cond => cur_cond%next
     enddo
 
@@ -1761,6 +1773,7 @@ contains
     use ConditionType                 , only : condition_type
     use ConnectionSetType             , only : connection_set_type
     use PorosityFunctionMod           , only : PorosityFunctionSetConstantModel
+    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     !
     implicit none
     !
@@ -1828,16 +1841,30 @@ contains
 
     do
        if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
+       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
 
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          cur_conn_set => cur_cond%conn_set
 
-          ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
-          ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+             ghosted_id = cur_conn_set%id_dn(iconn)
 
-       enddo
+             ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
+             ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
+
+          enddo
+       else
+          cur_conn_set => cur_cond%conn_set
+
+          ghosted_id = 1
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+
+             ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
+             ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
+
+          enddo
+       end if
        cur_cond => cur_cond%next
     enddo
 
@@ -1885,6 +1912,7 @@ contains
     use SaturationFunction            , only : SAT_FUNC_BROOKS_COREY
     use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2
     use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3
+    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     !
     implicit none
     !
@@ -1989,15 +2017,27 @@ contains
 
     do
        if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
+       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          cur_conn_set => cur_cond%conn_set
 
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+             ghosted_id = cur_conn_set%id_dn(iconn)
 
              call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
 
-       enddo
+          enddo
+       else
+          cur_conn_set => cur_cond%conn_set
+
+          ghosted_id = 1
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+
+             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+
+          enddo
+       endif
        cur_cond => cur_cond%next
     enddo
 
@@ -2134,7 +2174,7 @@ contains
     class(mpp_vsfm_type)                      , intent(inout)       :: this
     PetscInt                                  , intent(in)          :: igoveqn
     PetscInt                                  , intent(in)          :: auxvar_conn_type
-    PetscBool                                 , intent(in)          :: set_upwind_auxvar
+    PetscBool                                 , intent(in)          :: set_upwind_auxvar(:)
     PetscInt                                  , pointer, intent(in) :: satfunc_itype(:)
     PetscReal                                 , pointer, intent(in) :: campbell_he(:)
     PetscReal                                 , pointer, intent(in) :: campbell_n(:)
@@ -2192,7 +2232,7 @@ contains
              select case(satfunc_itype(sum_conn))
              case (RELPERM_FUNC_CAMPBELL)
 
-                if (set_upwind_auxvar) then
+                if (set_upwind_auxvar(sum_conn)) then
                    call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
                         campbell_he(sum_conn), campbell_n(sum_conn))
                 else
@@ -2237,13 +2277,16 @@ contains
              select case(satfunc_itype(sum_conn))
              case (RELPERM_FUNC_CAMPBELL)
 
-                if (set_upwind_auxvar) then
+                if (set_upwind_auxvar(sum_conn)) then
                    call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
                         campbell_he(sum_conn), campbell_n(sum_conn))
                 else
                    call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_dn, &
                         campbell_he(sum_conn), campbell_n(sum_conn))
                 endif
+
+             case (0)
+                ! Do nothing
 
              case default
                 write(iulog,*)'Only supports RELPERM_FUNC_CAMPBELL type'
