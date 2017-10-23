@@ -507,6 +507,7 @@ contains
        end select
 
        call cur_goveq%UpdateAuxVarsIntrn()
+       call cur_goveq%UpdateAuxVarsBC()
        offset = offset + cur_goveq%mesh%ncells_local
 
        cur_goveq => cur_goveq%next

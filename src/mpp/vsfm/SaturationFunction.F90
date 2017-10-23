@@ -16,11 +16,14 @@ module SaturationFunction
 
   ! Identify saturation function.
   ! These must have unique values (actual values are arbitrary).
-  PetscInt, parameter, public :: SAT_FUNC_VAN_GENUCHTEN         = 1301
-  PetscInt, parameter, public :: SAT_FUNC_BROOKS_COREY          = 1302
-  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY = 1303
-  PetscInt, parameter, public :: RELPERM_FUNC_MUALEM            = 1304
-  PetscInt, parameter, public :: RELPERM_FUNC_WEIBULL           = 1305
+  PetscInt, parameter, public :: SAT_FUNC_VAN_GENUCHTEN             = 1301
+  PetscInt, parameter, public :: SAT_FUNC_BROOKS_COREY              = 1302
+  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY     = 1303
+  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2 = 1304
+  PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3 = 1305
+  PetscInt, parameter, public :: RELPERM_FUNC_MUALEM                = 1306
+  PetscInt, parameter, public :: RELPERM_FUNC_WEIBULL               = 1307
+  PetscInt, parameter, public :: RELPERM_FUNC_CAMPBELL              = 1308
 
 
   type, public :: saturation_params_type
@@ -32,6 +35,7 @@ module SaturationFunction
      PetscReal :: bc_lambda                       ! Specific to Brooks-Corey functions [1].
      PetscReal :: sbc_pu, sbc_ps, sbc_b2, sbc_b3  ! Specific to smoothed Brooks-Corey function.
      PetscReal :: w_c, w_d                        ! Specific to relative permeability using Weibull parameterization
+     PetscReal :: campbell_he, campbell_n         ! Specific to relative permeability for Campbell parameterization
    contains
      procedure, public :: Copy    => SatFunc_Copy
      procedure, public :: Init    => SatFunc_Init
@@ -46,6 +50,7 @@ module SaturationFunction
        SatFunc_Set_SBC_bz2         , &
        SatFunc_Set_SBC_bz3         , &
        SatFunc_Set_Weibull_RelPerm , &
+       SatFunc_Set_Campbell_RelPerm, &
        
        ! Gateway routines (i.e. , generic functions).
        SatFunc_PressToSat          , &
@@ -96,6 +101,8 @@ contains
     this%sbc_b3            = 0.d0
     this%w_c               = 0.d0
     this%w_d               = 0.d0
+    this%campbell_he       = 0.d0
+    this%campbell_n        = 0.d0
 
   end subroutine SatFunc_Init
 
@@ -479,6 +486,26 @@ contains
 
   end subroutine SatFunc_Set_Weibull_RelPerm
 
+  !------------------------------------------------------------------------
+  subroutine SatFunc_Set_Campbell_RelPerm(satParams, he, n)
+    !
+    ! !DESCRIPTION:
+    ! Sets parameters for Campbell model for relative permeability
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(inout) :: satParams
+    PetscReal                    , intent(in)    :: he
+    PetscReal                    , intent(in)    :: n
+    !
+    ! !LOCAL VARIABLES:
+
+    satParams%relperm_func_type  = RELPERM_FUNC_CAMPBELL
+    satParams%campbell_he        = he
+    satParams%campbell_n         = n
+
+  end subroutine SatFunc_Set_Campbell_RelPerm
 
   !------------------------------------------------------------------------
   subroutine SatFunc_PressToSat(satParams, press, sat, dsat_dP)
@@ -554,6 +581,10 @@ contains
 
     case(RELPERM_FUNC_WEIBULL)
        call SatFunc_PcToRelPerm_Weibull(satParams, pc, kr, dkr_dP)
+
+    case(RELPERM_FUNC_CAMPBELL)
+       call SatFunc_PcToRelPerm_Campbell(satParams, pc, kr, dkr_dP)
+
     case default
        write(iulog,*)'SatFunc_PressToRelPerm: Unknown type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -591,6 +622,30 @@ contains
 
   end subroutine SatFunc_PcToRelPerm_Weibull
 
+  !------------------------------------------------------------------------
+  subroutine SatFunc_PcToRelPerm_Campbell(satParams, pc, kr, dkr_dP)
+    !
+    ! !DESCRIPTION:
+    ! Computes relative permeability and its derivative w.r.t. pressure
+    ! for a Campbell relative permeability model
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(in)  :: satParams
+    PetscReal                    , intent(in)  :: pc
+    PetscReal                    , intent(out) :: kr
+    PetscReal                    , intent(out) :: dkr_dP
+
+    if (pc >= satParams%campbell_he) then
+       kr      = 1.d0
+       dkr_dP  = 0.d0
+    else
+       kr     = (-satParams%campbell_he/pc)**satParams%campbell_n
+       dkr_dP = -satParams%campbell_n * kr/pc
+    endif
+
+  end subroutine SatFunc_PcToRelPerm_Campbell
 
   !------------------------------------------------------------------------
   subroutine SatFunc_SatToPress(satParams, sat, press)

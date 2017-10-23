@@ -5,6 +5,7 @@ set(MPP_VSFM_SOURCES
   RichardsMod.F90
   RichardsODEPressureAuxType.F90
   RichardsODEPressureAuxMod.F90
+  RichardsODEPressureConnAuxType.F90
   SaturationFunction.F90
   SystemOfEquationsVSFMAuxType.F90
   SystemOfEquationsVSFMType.F90  
