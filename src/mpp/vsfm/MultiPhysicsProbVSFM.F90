@@ -35,7 +35,6 @@ module MultiPhysicsProbVSFM
    contains
      procedure, public :: Init                         => VSFMMPPInit
      procedure, public :: Clean                        => VSFMMPPClean
-     procedure, public :: Setup                        => VSFMMPPSetup
      procedure, public :: Restart                      => VSFMMPPRestart
      procedure, public :: UpdateSysOfEqnsAuxVars       => VSFMMPPUpdateSysOfEqnsAuxVars
      procedure, public :: SetMPIRank                   => VSFMMPPSetMPIRank
@@ -123,106 +122,6 @@ contains
     endif
 
   end subroutine VSFMMPPGetMPIRank
-
-  !------------------------------------------------------------------------
-  subroutine VSFMMPPSetup(this, begg, begc, endc, mpi_rank, &
-       ugrid, grc_landunit_indices, lun_coli, lun_colf,           &
-       discretization_type, ncols_ghost, filter_vsfmc,            &
-       xc_col, yc_col, zc_col, zi, dz,                            &
-       area_col, grid_owner, col_itype,                           &
-       watsat, hksat, bsw, sucsat, residual_sat,                  &
-       zwt, vsfm_satfunc_type, density_type)
-    !
-    ! !DESCRIPTION:
-    ! Sets up the Variably Saturated Flow Model (VSFM) - Multi-Phyiscs Problem 
-    ! (MPP):
-    !
-    ! - Creates the mesh,
-    ! - Sets up the system of equation (SoE) in the VSFM-MPP,
-    ! - Sets up the PETSc SNES, and
-    ! - Initializes the VSFM-MPP.
-    !
-    ! !USES
-    use MultiPhysicsProbConstants, only : MESH_CLM_SOIL_COL
-    use MultiPhysicsProbConstants, only : PETSC_SNES
-    use MultiPhysicsProbConstants, only : MPP_VSFM_SNES_CLM
-    use MultiPhysicsProbConstants, only : SOE_RE_ODE
-    use UnstructuredGridType     , only : ugrid_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type)           :: this
-    integer, intent(in)            :: begg
-    integer, intent(in)            :: begc,endc
-    PetscInt, intent(in)           :: mpi_rank
-    type(ugrid_type), pointer      :: ugrid
-    integer, intent(in)            :: grc_landunit_indices(:,:)
-    integer, intent(in)            :: lun_coli(:)
-    integer, intent(in)            :: lun_colf(:)
-    integer, intent(in)            :: discretization_type
-    integer, intent(in)            :: ncols_ghost          ! number of ghost/halo columns
-    PetscInt, pointer, intent(in)  :: filter_vsfmc(:) ! column filter for soil points
-    PetscReal, pointer, intent(in) :: xc_col(:)
-    PetscReal, pointer, intent(in) :: yc_col(:)
-    PetscReal, pointer, intent(in) :: zc_col(:)
-    PetscReal, pointer, intent(in) :: zi(:,:)
-    PetscReal, pointer, intent(in) :: dz(:,:)
-    PetscReal, pointer, intent(in) :: area_col(:)
-    PetscInt, pointer, intent(in)  :: grid_owner(:)
-    PetscInt, pointer, intent(in)  :: col_itype(:)
-    PetscReal, intent(in), pointer :: watsat(:,:)
-    PetscReal, intent(in), pointer :: hksat(:,:)
-    PetscReal, intent(in), pointer :: bsw(:,:)
-    PetscReal, intent(in), pointer :: sucsat(:,:)
-    PetscReal, intent(in), pointer :: residual_sat(:,:)
-    PetscReal, intent(in), pointer :: zwt(:)
-    character(len=32), intent(in)  :: vsfm_satfunc_type
-    PetscInt, intent(in)           :: density_type
-    !
-    ! !LOCAL VARIABLES:
-    PetscInt                       :: soe_type
-
-    ! Initialize
-    call this%Init()
-
-    ! Create all meshes needed by various governing equations
-    this%nmesh = 1
-    allocate(this%meshes(this%nmesh))
-
-    this%id                  = MPP_VSFM_SNES_CLM
-    this%solver_type         = PETSC_SNES
-    soe_type                 = SOE_RE_ODE
-
-    call this%meshes(1)%CreateFromCLMCols(begg, begc, endc, &
-         ugrid, grc_landunit_indices, lun_coli, lun_colf,         &
-         discretization_type, ncols_ghost,                        &
-         xc_col, yc_col, zc_col, zi, dz,                          &
-         area_col, grid_owner, col_itype,                         &
-         filter_vsfmc)
-
-    ! Setup the system-of-equations
-    allocate(this%sysofeqns)
-    call this%sysofeqns%Setup(mpi_rank, discretization_type, this%id, &
-         soe_type, this%meshes, this%nmesh)
-
-    this%sysofeqns%solver_type = this%solver_type
-
-    ! Setup the PETSc
-    select case(this%solver_type)
-    case (PETSC_SNES)
-      call VSFMMPPSetupPetscSNESSetup(this)
-    case default
-       write(iulog,*) 'VSFMMPPSetup: Unknown this%solver_type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    ! Initliaze the VSFM-MPP
-    call VSFMMPPInitialize(this, begc, endc, ncols_ghost, &
-         zc_col, filter_vsfmc, watsat, hksat, bsw, sucsat, &
-         residual_sat, zwt, vsfm_satfunc_type, density_type)
-
-  end subroutine VSFMMPPSetup
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetupPetscSNESSetup(vsfm_mpp)
