@@ -29,6 +29,7 @@ module GoveqnRichardsODEPressureType
 
      PetscReal                             , pointer :: internal_flux(:)          ! mass flux betwenn internal connections [kg/s]
      PetscReal                             , pointer :: boundary_flux(:)          ! mass flux between boundary connections [kg/s]
+     PetscReal                             , pointer :: ss_flux(:)                ! mass flux for source-sink connections [kg/s]
      PetscReal                             , pointer :: lat_mass_exc(:)           ! lateral mass exchanged [kg]
      PetscReal                             , pointer :: bnd_mass_exc(:)           ! mass exchanged through boundary conditions [kg]
 
@@ -68,6 +69,7 @@ module GoveqnRichardsODEPressureType
      procedure, public :: GetNumConditions          => RichardsODEPressureGetNumConditions
      procedure, public :: GetNumCellsInConditions   => RichardsODEPressureGetNumCellsInConditions
      procedure, public :: SetSOEAuxVarOffsets       => RichardsODEPressureSetSOEAuxVarOffsets
+     procedure, public :: GetNumInternalConnections => RichardsODEGetNumInternalConnections
      procedure, public :: CreateVectors             => RichardsODEPressureCreateVectors
 
      procedure, public :: ComputeLateralFlux        => RichardsODEComputeLateralFlux
@@ -190,7 +192,11 @@ contains
        ncond       = ncond + 1
        cur_cond => cur_cond%next
     enddo
-    allocate(this%aux_vars_ss(ncells_cond))
+    allocate(this%aux_vars_ss    (ncells_cond))
+    allocate(this%ss_flux        (ncells_cond))
+
+    this%ss_flux(:) = 0.d0
+
     do icond = 1,ncells_cond
        call this%aux_vars_ss(icond)%Init()
     enddo
@@ -922,6 +928,7 @@ contains
     use MultiPhysicsProbConstants    , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants    , only : AUXVAR_BC
     use MultiPhysicsProbConstants    , only : AUXVAR_SS
+    use MultiPhysicsProbConstants    , only : AUXVAR_CONN_INTERNAL
     use MultiPhysicsProbConstants    , only : VAR_LIQ_SAT
     use MultiPhysicsProbConstants    , only : VAR_MASS
     use MultiPhysicsProbConstants    , only : VAR_SOIL_MATRIX_POT
@@ -932,6 +939,7 @@ contains
     use MultiPhysicsProbConstants    , only : CONN_HORIZONTAL
     use MultiPhysicsProbConstants    , only : COND_BC
     use MultiPhysicsProbConstants    , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants    , only : COND_DOWNREGULATE_POT_MASS_RATE
     use SystemOfEquationsVSFMAuxType , only : sysofeqns_vsfm_auxvar_type
     use ConditionType                , only : condition_type
     use ConnectionSetType            , only : connection_set_type
@@ -1027,6 +1035,31 @@ contains
 
        num_avars_set = size(ge_avars)
 
+    case (AUXVAR_CONN_INTERNAL)
+       ge_avars => this%aux_vars_in
+
+       ! Interior cells
+       cur_conn_set => this%mesh%intrn_conn_set_list%first
+       sum_conn = 0
+       do
+          if (.not.associated(cur_conn_set)) exit
+
+          if ( sum_conn + cur_conn_set%num_connections + iauxvar_off > size(soe_avars)) then
+             write(iulog,*) 'size(soe_avars) is smaller than number of internal connections'
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          endif
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+
+             soe_avars(iconn + iauxvar_off)%mass_flux = this%internal_flux(sum_conn)
+
+          enddo
+          cur_conn_set => cur_conn_set%next
+       enddo
+
+       num_avars_set = sum_conn
+
     case (AUXVAR_SS)
 
        condition_id = 0
@@ -1065,13 +1098,36 @@ contains
                 sum_conn = sum_conn + 1
                 select case(cur_cond%itype)
                 case (COND_MASS_RATE)
-                   soe_avars(iconn + iauxvar_off)%condition_value = cur_cond%value(iconn)
+                   soe_avars(sum_conn + iauxvar_off)%condition_value = cur_cond%value(iconn)
+                   soe_avars(sum_conn + iauxvar_off)%mass_flux       = this%ss_flux(sum_conn)
+
                 case default
                    write(string,*) cur_cond%itype
                    write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
                    call endrun(msg=errMsg(__FILE__, __LINE__))
                 end select
              enddo
+
+          else
+
+             cur_conn_set => cur_cond%conn_set
+             do iconn = 1, cur_conn_set%num_connections
+
+                sum_conn = sum_conn + 1
+                select case(cur_cond%itype)
+                case (COND_MASS_RATE)
+                   soe_avars(sum_conn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+
+                case (COND_DOWNREGULATE_POT_MASS_RATE)
+                   soe_avars(sum_conn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+
+                case default
+                   write(string,*) cur_cond%itype
+                   write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
+                   call endrun(msg=errMsg(__FILE__, __LINE__))
+                end select
+             enddo
+
           endif
 
           cur_cond => cur_cond%next
@@ -1110,6 +1166,7 @@ contains
              soe_avars(sum_conn + iauxvar_off)%boundary_mass_exchanged = &
                   this%bnd_mass_exc(sum_conn)
 
+             soe_avars(sum_conn + iauxvar_off)%mass_flux = this%boundary_flux(sum_conn)
           enddo
           cur_cond => cur_cond%next
        enddo
@@ -1722,6 +1779,8 @@ contains
           case (COND_MASS_RATE)
              ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)/FMWH2O
 
+             this%ss_flux(sum_conn) = cur_cond%value(iconn)
+
           case (COND_DOWNREGULATE_POT_MASS_RATE)
              dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
              Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
@@ -1734,6 +1793,8 @@ contains
              endif
 
              ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)/factor/FMWH2O
+
+             this%ss_flux(sum_conn) = cur_cond%value(iconn)/factor
 
           case default
             write(iulog,*)'RichardsODEPressureDivergence: Unknown cond_type in SS.'
@@ -3137,6 +3198,38 @@ contains
     end select
 
   end subroutine RichardsODESetAuxVarConnIntValue
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODEGetNumInternalConnections(this, nconn_in)
+    !
+    ! !DESCRIPTION:
+    ! Returns the number of internal connection
+    !
+    ! !USES:
+    use ConnectionSetType         , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) :: this
+    PetscInt, intent(out)                    :: nconn_in
+    !
+    !
+    ! !LOCAL VARAIABLES:
+    type(connection_set_type) , pointer      :: cur_conn_set
+
+    ! Interior cells
+    cur_conn_set => this%mesh%intrn_conn_set_list%first
+    nconn_in = 0
+    do
+       if (.not.associated(cur_conn_set)) exit
+
+       nconn_in = nconn_in + cur_conn_set%num_connections
+
+       cur_conn_set => cur_conn_set%next
+    end do
+
+  end subroutine RichardsODEGetNumInternalConnections
 
 #endif
 

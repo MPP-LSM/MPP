@@ -1178,11 +1178,13 @@ contains
     PetscInt                               :: igoveqn
     PetscInt                               :: num_bc
     PetscInt                               :: num_ss
+    PetscInt                               :: nconn_in
     PetscInt                               :: icond
     PetscInt                               :: iauxvar
     PetscInt                               :: iauxvar_beg, iauxvar_end
     PetscInt                               :: iauxvar_beg_bc, iauxvar_end_bc
     PetscInt                               :: iauxvar_beg_ss, iauxvar_end_ss
+    PetscInt                               :: iauxvar_beg_conn_in, iauxvar_end_conn_in
     PetscInt                               :: count_bc, count_ss
     PetscInt                               :: offset_bc, offset_ss
     PetscInt, pointer                      :: ncells_for_bc(:)
@@ -1206,6 +1208,7 @@ contains
     !         and SSs for all governing equations
     !
     igoveqn = 0
+    soe%num_auxvars_conn_in = 0
     cur_goveq => soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
@@ -1217,6 +1220,8 @@ contains
                COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
           call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
                num_ss, ncells_for_ss)
+          call cur_goveq%GetNumInternalConnections(nconn_in)
+          soe%num_auxvars_conn_in = soe%num_auxvars_conn_in + nconn_in
 
        end select
 
@@ -1245,6 +1250,7 @@ contains
     allocate(soe%aux_vars_in           (soe%num_auxvars_in))
     allocate(soe%aux_vars_bc           (soe%num_auxvars_bc))
     allocate(soe%aux_vars_ss           (soe%num_auxvars_ss))
+    allocate(soe%aux_vars_conn_in      (soe%num_auxvars_conn_in))
 
     allocate(soe%soe_auxvars_bc_offset (soe%num_auxvars_bc))
     allocate(soe%soe_auxvars_ss_offset (soe%num_auxvars_ss))
@@ -1261,7 +1267,9 @@ contains
     count_bc       = 0
     count_ss       = 0
     offset_bc      = 0
-    offset_ss      = 0
+    offset_ss      = 0    
+    iauxvar_beg_conn_in    = 0
+    iauxvar_end_conn_in    = 0
 
     !
     ! Pass-2: Set values for auxvars of SoE
@@ -1276,6 +1284,7 @@ contains
                COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
           call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
                num_ss, ncells_for_ss)
+          call cur_goveq%GetNumInternalConnections(nconn_in)
 
        end select
 
@@ -1290,6 +1299,17 @@ contains
           soe%aux_vars_in(iauxvar)%is_in     = PETSC_TRUE
           soe%aux_vars_in(iauxvar)%goveqn_id = igoveqn
        enddo
+
+       iauxvar_beg_conn_in = iauxvar_end_conn_in + 1
+       iauxvar_end_conn_in = iauxvar_end_conn_in + nconn_in
+
+       do iauxvar = iauxvar_beg_conn_in, iauxvar_end_conn_in
+          call soe%aux_vars_conn_in(iauxvar)%Init()
+
+          soe%aux_vars_conn_in(iauxvar)%is_in = PETSC_TRUE
+          soe%aux_vars_conn_in(iauxvar)%goveqn_id = igoveqn
+
+       end do
 
        allocate(offsets_bc(num_bc))
        allocate(offsets_ss(num_ss))
@@ -1346,6 +1366,10 @@ contains
 
        cur_goveq => cur_goveq%next
     enddo
+
+    do iauxvar = 1, soe%num_auxvars_conn_in
+       call soe%aux_vars_conn_in(iauxvar)%Init()
+    end do
 
   end subroutine VSFMMPPAllocateAuxVars
 

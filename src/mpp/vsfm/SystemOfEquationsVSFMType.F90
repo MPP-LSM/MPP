@@ -31,6 +31,9 @@ module SystemOfEquationsVSFMType
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_in(:)            ! Internal state.
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_bc(:)            ! Boundary conditions.
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_ss(:)            ! Source-sink.
+     type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_conn_in(:)       ! Internal connections
+
+     
      PetscInt, pointer                          :: soe_auxvars_bc_offset (:) ! Cummulative sum of number of control volumes associated with each boundary condition.
      PetscInt, pointer                          :: soe_auxvars_ss_offset (:) ! Cummulative sum of number of control volumes associated with each source-sink condition.
      PetscInt, pointer                          :: soe_auxvars_bc_ncells (:) ! Number of control volumes associated with each boundary condition.
@@ -39,6 +42,7 @@ module SystemOfEquationsVSFMType
      PetscInt                                   :: num_auxvars_in_local      ! Number of auxvars associated with internal state.
      PetscInt                                   :: num_auxvars_bc            ! Number of auxvars associated with boundary condition.
      PetscInt                                   :: num_auxvars_ss            ! Number of auxvars associated with source-sink condition.
+     PetscInt                                   :: num_auxvars_conn_in       ! Number of auxvars associated with internal connections
    contains
      procedure, public :: Init                   => VSFMSOEInit
      procedure, public :: Setup                  => VSFMSOESetup
@@ -88,6 +92,7 @@ contains
     nullify(this%aux_vars_in           )
     nullify(this%aux_vars_bc           )
     nullify(this%aux_vars_ss           )
+    nullify(this%aux_vars_conn_in      )
 
     nullify(this%soe_auxvars_bc_offset )
     nullify(this%soe_auxvars_ss_offset )
@@ -184,6 +189,7 @@ contains
     PetscInt                                          :: offset
     PetscInt                                          :: num_bc
     PetscInt                                          :: num_ss
+    PetscInt                                          :: nconn_in
     PetscInt                                          :: total_ncells_for_bc
     PetscInt                                          :: total_ncells_for_ss
     PetscInt, pointer                                 :: ncells_for_bc(:)
@@ -350,6 +356,15 @@ contains
        call vsfm_soe%aux_vars_in(iauxvar)%Init()
        vsfm_soe%aux_vars_in(iauxvar)%is_in      = PETSC_TRUE
        vsfm_soe%aux_vars_in(iauxvar)%goveqn_id  = 1
+    enddo
+
+    call goveq_richards_pres%GetNumInternalConnections(nconn_in)
+
+    allocate(vsfm_soe%aux_vars_conn_in(nconn_in))
+    do iauxvar = 1, nconn_in
+       call vsfm_soe%aux_vars_conn_in(iauxvar)%Init()
+       vsfm_soe%aux_vars_conn_in(iauxvar)%is_in      = PETSC_TRUE
+       vsfm_soe%aux_vars_conn_in(iauxvar)%goveqn_id  = 1
     enddo
 
     call goveq_richards_pres%NumCellsInConditions( &
@@ -955,6 +970,7 @@ contains
     use MultiPhysicsProbConstants     , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants     , only : AUXVAR_BC
     use MultiPhysicsProbConstants     , only : AUXVAR_SS
+    use MultiPhysicsProbConstants     , only : AUXVAR_CONN_INTERNAL
     use GoverningEquationBaseType     , only : goveqn_base_type
     use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
     !
@@ -967,13 +983,17 @@ contains
     class(goveqn_base_type),pointer :: cur_goveq
     PetscInt                        :: iauxvar_in_off
     PetscInt                        :: iauxvar_bc_off
+    PetscInt                        :: iauxvar_ss_off
+    PetscInt                        :: iauxvar_conn_in_off
     PetscInt                        :: num_auxvars_filled
     PetscErrorCode                  :: ierr
 
     call VecCopy(this%soln, this%soln_prev,ierr); CHKERRQ(ierr)
 
-    iauxvar_in_off  = 0
-    iauxvar_bc_off  = 0
+    iauxvar_in_off       = 0
+    iauxvar_bc_off       = 0
+    iauxvar_ss_off       = 0
+    iauxvar_conn_in_off  = 0
 
     select case (this%itype)
     case(SOE_RE_ODE)
@@ -992,7 +1012,16 @@ contains
                      iauxvar_bc_off, num_auxvars_filled)
                 iauxvar_bc_off = iauxvar_bc_off + num_auxvars_filled
 
-          end select
+                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_SS      , this%aux_vars_ss, &
+                     iauxvar_ss_off, num_auxvars_filled)
+                iauxvar_ss_off = iauxvar_ss_off + num_auxvars_filled
+
+                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_CONN_INTERNAL, this%aux_vars_conn_in, &
+                     iauxvar_conn_in_off, num_auxvars_filled)
+                iauxvar_conn_in_off = iauxvar_conn_in_off + num_auxvars_filled
+
+
+             end select
           cur_goveq => cur_goveq%next
        enddo
 
@@ -1131,6 +1160,7 @@ contains
     use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants, only : AUXVAR_BC
     use MultiPhysicsProbConstants, only : AUXVAR_SS
+    use MultiPhysicsProbConstants, only : AUXVAR_CONN_INTERNAL
     !
     implicit none
     !
@@ -1162,6 +1192,10 @@ contains
        auxvars      => this%aux_vars_bc
        iauxvar_off  = this%soe_auxvars_bc_offset(soe_auxvar_id)
        nauxvar      = this%soe_auxvars_bc_ncells(soe_auxvar_id)
+    case(AUXVAR_CONN_INTERNAL)
+       auxvars      => this%aux_vars_conn_in
+       iauxvar_off  = 0
+       nauxvar      = this%num_auxvars_conn_in
     case default
        write(iulog,*) 'VSFMSOEGetDataForCLM: Unknown soe_auxvar_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
