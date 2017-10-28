@@ -60,9 +60,9 @@ module GoveqnThermalEnthalpySoilType
      procedure, public :: UpdateAuxVarsBC         => ThermEnthalpySoilUpdateAuxVarsBC
      procedure, public :: UpdateAuxVarsSS         => ThermEnthalpySoilUpdateAuxVarsSS
 
-     procedure, public :: Residual                => ThermEnthalpySoilRes
-     procedure, public :: Jacobian                => ThermEnthalpySoilJac
-     procedure, public :: JacobianOffDiag         => ThermEnthalpySoilJacOffDiag
+     procedure, public :: ComputeResidual         => ThermEnthalpySoilComputeResidual
+     procedure, public :: ComputeJacobian         => ThermEnthalpySoilComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian  => ThermEnthalpySoilComputeOffDiagJacobian
      procedure, public :: PreSolve                => ThermEnthalpySoilPreSolve
 
      procedure, public :: CreateVectors           => ThermEnthalpySoilCreateVectors
@@ -1173,7 +1173,7 @@ contains
 
   !------------------------------------------------------------------------
 
-  subroutine ThermEnthalpySoilRes(this, X, F, ierr)
+  subroutine ThermEnthalpySoilComputeResidual(this, X, F, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -1202,10 +1202,10 @@ contains
     call VecRestoreArrayF90(this%accum_prev, accum_prev_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(F, F_p, ierr); CHKERRQ(ierr)
 
-  end subroutine ThermEnthalpySoilRes
+  end subroutine ThermEnthalpySoilComputeResidual
 
   !------------------------------------------------------------------------
-  subroutine ThermEnthalpySoilJac(this, X, A, B, ierr)
+  subroutine ThermEnthalpySoilComputeJacobian(this, X, A, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the jacobian matrix for the discretized energy equation
@@ -1233,10 +1233,10 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine ThermEnthalpySoilJac
+  end subroutine ThermEnthalpySoilComputeJacobian
 
   !------------------------------------------------------------------------
-  subroutine ThermEnthalpySoilJacOffDiag(this, X_1, X_2, A, B, &
+  subroutine ThermEnthalpySoilComputeOffDiagJacobian(this, X_1, X_2, A, B, &
        id_of_other_goveq, list_id_of_other_goveq,        &
        ierr)
     !
@@ -1283,7 +1283,7 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine ThermEnthalpySoilJacOffDiag
+  end subroutine ThermEnthalpySoilComputeOffDiagJacobian
 
   !------------------------------------------------------------------------
 

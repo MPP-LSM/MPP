@@ -46,9 +46,9 @@ module GoveqnRichardsODEPressureType
      procedure, public :: AllocateAuxVars           => RichardsODEPressureAllocateAuxVars
      procedure, public :: SetDensityType            => RichardsODEPressureSetDensityType
      procedure, public :: Setup                     => RichardsODESetup
-     procedure, public :: Residual                  => RichardsODERes
-     procedure, public :: Jacobian                  => RichardsODEJac
-     procedure, public :: JacobianOffDiag           => RichardsODEJacOffDiag
+     procedure, public :: ComputeResidual           => RichardsODEComputeResidual
+     procedure, public :: ComputeJacobian           => RichardsODEComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian    => RichardsODEComputeOffDiagJacobian
 
      procedure, public :: GetFromSOEAuxVarsIntrn    => RichardsODEPressureGetFromSOEAuxVarsIntrn
      procedure, public :: SetFromSOEAuxVarsIntrn    => RichardsODEPressureSetFromSOEAuxVarsIntrn
@@ -440,7 +440,7 @@ contains
   end subroutine RichardsODEPressureGetConditionNames
 
   !------------------------------------------------------------------------
-  subroutine RichardsODERes(this, X, F, ierr)
+  subroutine RichardsODEComputeResidual(this, X, F, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the residual equation for the discretized Richards equation
@@ -473,11 +473,11 @@ contains
     call VecRestoreArrayF90(this%accum_prev, accum_prev_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(F, f_p, ierr); CHKERRQ(ierr)
 
-  end subroutine RichardsODERes
+  end subroutine RichardsODEComputeResidual
 
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEJac(this, X, A, B, ierr)
+  subroutine RichardsODEComputeJacobian(this, X, A, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the jacobian matrix for the discretized Richards equation
@@ -505,10 +505,10 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine RichardsODEJac
+  end subroutine RichardsODEComputeJacobian
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEJacOffDiag(this, X_1, X_2, A, B, &
+  subroutine RichardsODEComputeOffDiagJacobian(this, X_1, X_2, A, B, &
        id_of_other_goveq, list_id_of_other_goveq,        &
        ierr)
     !
@@ -553,7 +553,7 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine RichardsODEJacOffDiag
+  end subroutine RichardsODEComputeOffDiagJacobian
 
 
   !------------------------------------------------------------------------

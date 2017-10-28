@@ -630,8 +630,9 @@ contains
 
        call VecZeroEntries(F_subvecs(dm_id), ierr); CHKERRQ(ierr)
 
-       call cur_goveq%Residual(X_subvecs(dm_id), &
-            F_subvecs(dm_id),                    &
+       call cur_goveq%ComputeResidual( &
+            X_subvecs(dm_id),          &
+            F_subvecs(dm_id),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq => cur_goveq%next
@@ -723,9 +724,10 @@ contains
 
        row = row + 1
 
-       call cur_goveq_1%Jacobian(X_subvecs(row), &
-            B_submats(row,row),                  &
-            B_submats(row,row),                  &
+       call cur_goveq_1%ComputeJacobian( &
+            X_subvecs(row),              &
+            B_submats(row,row),          &
+            B_submats(row,row),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq_1 => cur_goveq_1%next

@@ -53,9 +53,9 @@ module GoverningEquationBaseType
      procedure, public :: DeallocVarsFromOtherGEs => GoveqnBaseDeallocVarsFromOtherGEs
      procedure, public :: PrintInfo               => GoveqnBasePrintInfo
      procedure, public :: PreSolve                => GoveqnBasePreSolve
-     procedure, public :: JacobianOffDiag         => GoveqnBaseJacobianOffDiag
-     procedure, public :: Jacobian                => GoveqnBaseJacobian
-     procedure, public :: Residual                => GoveqnBaseResidual
+     procedure, public :: ComputeResidual         => GoveqnBaseComputeResidual
+     procedure, public :: ComputeJacobian         => GoveqnBaseComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian  => GoveqnBaseComputeOffDiagJacobian
      procedure, public :: ComputeRHS              => GoveqnBaseComputeRHS
      procedure, public :: ComputeOperatorsDiag    => GoveqnBaseComputeOperatorsDiag
      procedure, public :: ComputeOperatorsOffDiag => GoveqnBaseComputeOperatorsOffDiag
@@ -192,8 +192,28 @@ contains
 
   end subroutine GoveqnBaseDeallocVarsFromOtherGEs
 
+
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseJacobianOffDiag(this, X_1, X_2, A, B, &
+  subroutine GoveqnBaseComputeResidual(this, X, F, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Dummy subroutine for PETSc SNES Function evaluation
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type) :: this
+    Vec                     :: X
+    Vec                     :: F
+    PetscErrorCode          :: ierr
+
+    write(iulog,*)'GoveqnBaseResidual must be extended by child class.'
+    call endrun(msg=errMsg(__FILE__, __LINE__))
+
+  end subroutine GoveqnBaseComputeResidual
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseComputeOffDiagJacobian(this, X_1, X_2, A, B, &
        id_of_other_goveq, &
        list_id_of_other_goveq, &
        ierr)
@@ -217,26 +237,27 @@ contains
     write(iulog,*)'GoveqnBaseJacobianOffDiag must be extended by child class.'
     call endrun(msg=errMsg(__FILE__, __LINE__))
 
-  end subroutine GoveqnBaseJacobianOffDiag
+  end subroutine GoveqnBaseComputeOffDiagJacobian
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseResidual(this, X, F, ierr)
+  subroutine GoveqnBaseComputeJacobian(this, X, A, B, ierr)
     !
     ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc SNES Function evaluation
+    ! Dummy subroutine for PETSc SNES Jacobian
     !
     implicit none
     !
     ! !ARGUMENTS
     class(goveqn_base_type) :: this
     Vec                     :: X
-    Vec                     :: F
+    Mat                     :: A
+    Mat                     :: B
     PetscErrorCode          :: ierr
 
-    write(iulog,*)'GoveqnBaseResidual must be extended by child class.'
+    write(iulog,*)'GoveqnBaseJacobian must be extended by child class.'
     call endrun(msg=errMsg(__FILE__, __LINE__))
 
-  end subroutine GoveqnBaseResidual
+  end subroutine GoveqnBaseComputeJacobian
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseComputeRHS(this, B, ierr)
@@ -312,26 +333,6 @@ contains
     this%dtime = dtime
 
   end subroutine GoveqnBaseSetDtime
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseJacobian(this, X, A, B, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc SNES Jacobian
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    Vec                     :: X
-    Mat                     :: A
-    Mat                     :: B
-    PetscErrorCode          :: ierr
-
-    write(iulog,*)'GoveqnBaseJacobian must be extended by child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseJacobian
 
   !------------------------------------------------------------------------
   subroutine GoveqnBasePrintInfo(this)

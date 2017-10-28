@@ -962,8 +962,9 @@ contains
 
        call VecZeroEntries(F_subvecs(dm_id), ierr); CHKERRQ(ierr)
 
-       call cur_goveq%Residual(X_subvecs(dm_id), &
-            F_subvecs(dm_id),                    &
+       call cur_goveq%ComputeResidual( &
+            X_subvecs(dm_id),          &
+            F_subvecs(dm_id),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq => cur_goveq%next
@@ -1055,9 +1056,10 @@ contains
 
        row = row + 1
 
-       call cur_goveq_1%Jacobian(X_subvecs(row), &
-            B_submats(row,row),                  &
-            B_submats(row,row),                  &
+       call cur_goveq_1%ComputeJacobian( &
+            X_subvecs(row),              &
+            B_submats(row,row),          &
+            B_submats(row,row),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq_2 => cur_goveq_1%next
@@ -1068,22 +1070,24 @@ contains
           col = col + 1
 
           ! J = dF_1/dx_2
-          call cur_goveq_1%JacobianOffDiag(X_subvecs(row),        &
-                                           X_subvecs(col),        &
-                                           B_submats(row,col),    &
-                                           B_submats(row,col),    &
-                                           cur_goveq_2%id,        &
-                                           cur_goveq_2%id_in_list,&
-                                           ierr); CHKERRQ(ierr)
+          call cur_goveq_1%ComputeOffDiagJacobian( &
+               X_subvecs(row),                     &
+               X_subvecs(col),                     &
+               B_submats(row,col),                 &
+               B_submats(row,col),                 &
+               cur_goveq_2%id,                     &
+               cur_goveq_2%id_in_list,             &
+               ierr); CHKERRQ(ierr)
 
           ! J = dF_2/dx_1
-          call cur_goveq_2%JacobianOffDiag(X_subvecs(col),        &
-                                           X_subvecs(row),        &
-                                           B_submats(col,row),    &
-                                           B_submats(col,row),    &
-                                           cur_goveq_1%id,        &
-                                           cur_goveq_1%id_in_list,&
-                                           ierr); CHKERRQ(ierr)
+          call cur_goveq_2%ComputeOffDiagJacobian( &
+               X_subvecs(col),                     &
+               X_subvecs(row),                     &
+               B_submats(col,row),                 &
+               B_submats(col,row),                 &
+               cur_goveq_1%id,                     &
+               cur_goveq_1%id_in_list,             &
+               ierr); CHKERRQ(ierr)
 
           cur_goveq_2 => cur_goveq_2%next
        enddo
