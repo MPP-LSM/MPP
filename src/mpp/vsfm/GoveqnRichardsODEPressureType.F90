@@ -1098,8 +1098,8 @@ contains
                 sum_conn = sum_conn + 1
                 select case(cur_cond%itype)
                 case (COND_MASS_RATE)
-                   soe_avars(sum_conn + iauxvar_off)%condition_value = cur_cond%value(iconn)
-                   soe_avars(sum_conn + iauxvar_off)%mass_flux       = this%ss_flux(sum_conn)
+                   soe_avars(iauxvar + iauxvar_off)%condition_value = cur_cond%value(iconn)
+                   soe_avars(iauxvar + iauxvar_off)%mass_flux       = this%ss_flux(sum_conn)
 
                 case default
                    write(string,*) cur_cond%itype
@@ -1116,10 +1116,10 @@ contains
                 sum_conn = sum_conn + 1
                 select case(cur_cond%itype)
                 case (COND_MASS_RATE)
-                   soe_avars(sum_conn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+                   soe_avars(iauxvar + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
 
                 case (COND_DOWNREGULATE_POT_MASS_RATE)
-                   soe_avars(sum_conn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+                   soe_avars(iauxvar + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
 
                 case default
                    write(string,*) cur_cond%itype
@@ -1163,10 +1163,10 @@ contains
              this%bnd_mass_exc(sum_conn) = this%bnd_mass_exc(sum_conn) + &
                   this%boundary_flux(sum_conn)*this%dtime
 
-             soe_avars(sum_conn + iauxvar_off)%boundary_mass_exchanged = &
+             soe_avars(iconn + iauxvar_off)%boundary_mass_exchanged = &
                   this%bnd_mass_exc(sum_conn)
 
-             soe_avars(sum_conn + iauxvar_off)%mass_flux = this%boundary_flux(sum_conn)
+             soe_avars(iconn + iauxvar_off)%mass_flux = this%boundary_flux(sum_conn)
           enddo
           cur_cond => cur_cond%next
        enddo
