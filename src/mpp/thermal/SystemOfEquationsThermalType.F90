@@ -142,9 +142,9 @@ contains
           allocate(goveq_snow)
           call goveq_snow%Setup()
 
-          goveq_snow%name        = trim(name)
-          goveq_snow%id_in_list  = this%ngoveqns
-          goveq_snow%mesh_itype  = mesh_itype
+          goveq_snow%name             = trim(name)
+          goveq_snow%rank_in_soe_list = this%ngoveqns
+          goveq_snow%mesh_itype       = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_snow
@@ -157,9 +157,9 @@ contains
           allocate(goveq_sh2o)
           call goveq_sh2o%Setup()
 
-          goveq_sh2o%name        = trim(name)
-          goveq_sh2o%id_in_list  = this%ngoveqns
-          goveq_sh2o%mesh_itype  = mesh_itype
+          goveq_sh2o%name             = trim(name)
+          goveq_sh2o%rank_in_soe_list = this%ngoveqns
+          goveq_sh2o%mesh_itype       = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_sh2o
@@ -172,9 +172,9 @@ contains
           allocate(goveq_soil)
           call goveq_soil%Setup()
 
-          goveq_soil%name        = trim(name)
-          goveq_soil%id_in_list  = this%ngoveqns
-          goveq_soil%mesh_itype  = mesh_itype
+          goveq_soil%name             = trim(name)
+          goveq_soil%rank_in_soe_list = this%ngoveqns
+          goveq_soil%mesh_itype       = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_soil
@@ -784,17 +784,19 @@ contains
 
           col = col + 1
 
-          call cur_goveq_1%ComputeOperatorsOffDiag(B_submats(row,col),    &
-                                                   B_submats(row,col),    &
-                                                   cur_goveq_2%id,        &
-                                                   cur_goveq_2%id_in_list,&
-                                                   ierr); CHKERRQ(ierr)
+          call cur_goveq_1%ComputeOperatorsOffDiag( &
+               B_submats(row,col),                  &
+               B_submats(row,col),                  &
+               cur_goveq_2%id,                      &
+               cur_goveq_2%rank_in_soe_list,        &
+               ierr); CHKERRQ(ierr)
 
-          call cur_goveq_2%ComputeOperatorsOffDiag(B_submats(col,row),    &
-                                                   B_submats(col,row),    &
-                                                   cur_goveq_1%id,        &
-                                                   cur_goveq_1%id_in_list,&
-                                                   ierr); CHKERRQ(ierr)
+          call cur_goveq_2%ComputeOperatorsOffDiag( &
+               B_submats(col,row),                  &
+               B_submats(col,row),                  &
+               cur_goveq_1%id,                      &
+               cur_goveq_1%rank_in_soe_list,        &
+               ierr); CHKERRQ(ierr)
 
           cur_goveq_2 => cur_goveq_2%next
        enddo
@@ -874,7 +876,7 @@ contains
 
        ! Does cur_goveq_1 needs ivar-th variable from cur_goveq_2?
        if (cur_goveq_1%ids_of_other_goveqns(ivar) == &
-            cur_goveq_2%id_in_list) then
+            cur_goveq_2%rank_in_soe_list) then
 
           var_type                      = cur_goveq_1%var_ids_needed_from_other_goveqns(ivar)
           bc_type                       = cur_goveq_1%is_bc_auxvar_type(ivar)

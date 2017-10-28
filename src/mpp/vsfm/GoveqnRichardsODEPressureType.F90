@@ -672,7 +672,7 @@ contains
           if(  &
                soe_avars(iauxvar)%is_bc  &
                .and.  &
-               soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+               soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                .and.  &
                soe_avars(iauxvar)%condition_id == condition_id  &
                ) then
@@ -765,7 +765,7 @@ contains
           if(  &
                soe_avars(iauxvar)%is_ss  &
                .and.  &
-               soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+               soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                .and.  &
                soe_avars(iauxvar)%condition_id == condition_id  &
                ) then
@@ -1015,7 +1015,7 @@ contains
              if(  &
                   soe_avars(iauxvar)%is_ss  &
                   .and.  &
-                  soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+                  soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                   .and.  &
                   soe_avars(iauxvar)%condition_id == condition_id  &
                   ) then

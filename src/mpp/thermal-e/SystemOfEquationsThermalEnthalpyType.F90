@@ -142,14 +142,14 @@ contains
           allocate(goveq_soil)
           call goveq_soil%Setup()
 
-          goveq_soil%name        = trim(name)
-          goveq_soil%id_in_list  = this%ngoveqns
-          goveq_soil%mesh_itype  = mesh_itype
+          goveq_soil%name                 = trim(name)
+          goveq_soil%rank_in_soe_list     = this%ngoveqns
+          goveq_soil%mesh_itype           = mesh_itype
 
-          if (this%ngoveqns == 1) then
-             this%goveqns => goveq_soil
+          if (this%ngoveqns               == 1) then
+             this%goveqns                 => goveq_soil
           else
-             cur_goveqn%next => goveq_soil
+             cur_goveqn%next              => goveq_soil
           endif
 
        case (GE_RE)
@@ -157,9 +157,9 @@ contains
           allocate(goveq_richards)
           call goveq_richards%Setup()
 
-          goveq_richards%name        = trim(name)
-          goveq_richards%id_in_list  = this%ngoveqns
-          goveq_richards%mesh_itype  = mesh_itype
+          goveq_richards%name             = trim(name)
+          goveq_richards%rank_in_soe_list = this%ngoveqns
+          goveq_richards%mesh_itype       = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_richards
@@ -804,7 +804,7 @@ contains
 
        ! Does cur_goveq_1 needs ivar-th variable from cur_goveq_2?
        if (cur_goveq_1%ids_of_other_goveqns(ivar) == &
-            cur_goveq_2%id_in_list) then
+            cur_goveq_2%rank_in_soe_list) then
 
           var_type                      = cur_goveq_1%var_ids_needed_from_other_goveqns(ivar)
           bc_type                       = cur_goveq_1%is_bc_auxvar_type(ivar)

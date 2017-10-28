@@ -26,7 +26,7 @@ module GoverningEquationBaseType
 
      character (len=256)             :: name                                 ! name of governing equation (GE)
      PetscInt                        :: id                                   ! identifier
-     PetscInt                        :: id_in_list                           ! order in the list
+     PetscInt                        :: rank_in_soe_list                     ! rank of governing equation in SoE list
      class(mesh_type),pointer        :: mesh                                 ! pointer to the mesh
      PetscInt                        :: mesh_itype                           ! type of mesh
      type(condition_list_type)       :: boundary_conditions                  ! boundary conditions to the GE
@@ -88,7 +88,7 @@ contains
 
     this%name                            = ""
     this%id                              = -1
-    this%id_in_list                      = -1
+    this%rank_in_soe_list                = -1
     this%dtime                           = 0.d0
     this%nvars_needed_from_other_goveqns = 0
 
