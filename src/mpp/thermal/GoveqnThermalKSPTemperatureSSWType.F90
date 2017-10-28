@@ -74,7 +74,7 @@ contains
     ! !ARGUMENTS
     class(goveqn_thermal_ksp_temp_ssw_type) :: this
 
-    call this%Init()
+    call this%Create()
 
     this%name         = "Standing surface water thermal equation based on temperature"
     this%id           = GE_THERM_SSW_TBASED

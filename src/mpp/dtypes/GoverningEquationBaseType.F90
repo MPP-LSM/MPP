@@ -47,8 +47,8 @@ module GoverningEquationBaseType
 
      class(goveqn_base_type),pointer :: next
    contains
-     procedure, public :: Init                    => GoveqnBaseInit
-     procedure, public :: Clean                   => GoveqnBaseClean
+     procedure, public :: Create                  => GoveqnBaseCreate
+     procedure, public :: Destroy                 => GoveqnBaseDestroy
      procedure, public :: AllocVarsFromOtherGEs   => GoveqnBaseAllocVarsFromOtherGEs
      procedure, public :: DeallocVarsFromOtherGEs => GoveqnBaseDeallocVarsFromOtherGEs
      procedure, public :: PrintInfo               => GoveqnBasePrintInfo
@@ -71,7 +71,7 @@ module GoverningEquationBaseType
 contains
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseInit(this)
+  subroutine GoveqnBaseCreate(this)
     !
     ! !DESCRIPTION:
     ! Initialze a GE object
@@ -104,10 +104,10 @@ contains
     nullify(this%bc_auxvar_ncells                   )
     nullify(this%next                               )
 
-  end subroutine GoveqnBaseInit
+  end subroutine GoveqnBaseCreate
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseClean(this)
+  subroutine GoveqnBaseDestroy(this)
     !
     ! !DESCRIPTION:
     ! Release allocated memory
@@ -123,7 +123,7 @@ contains
     call ConditionListClean(this%boundary_conditions )
     call ConditionListClean(this%source_sinks        )
 
-  end subroutine GoveqnBaseClean
+  end subroutine GoveqnBaseDestroy
 
 
   !------------------------------------------------------------------------

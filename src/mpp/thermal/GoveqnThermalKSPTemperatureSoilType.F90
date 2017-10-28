@@ -73,7 +73,7 @@ contains
     ! !ARGUMENTS
     class(goveqn_thermal_ksp_temp_soil_type) :: this
 
-    call this%Init()
+    call this%Create()
 
     this%name       = "Soil thermal equation based on temperature"
     this%id         = GE_THERM_SOIL_TBASED

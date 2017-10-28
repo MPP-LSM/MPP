@@ -88,7 +88,7 @@ contains
     ! !ARGUMENTS
     class(goveqn_thermal_enthalpy_soil_type) :: this
 
-    call this%Init()
+    call this%Create()
 
     this%name       = "Soil thermal equation based on enthalpy"
     this%id         = GE_THERM_SOIL_EBASED

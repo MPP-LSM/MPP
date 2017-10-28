@@ -97,7 +97,7 @@ contains
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type) :: this
 
-    call this%Init()
+    call this%Create()
 
     this%name         = "Richards Equation ODE"
     this%id           = GE_RE

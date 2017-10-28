@@ -74,7 +74,7 @@ contains
     ! !ARGUMENTS
     class(goveqn_thermal_ksp_temp_snow_type) :: this
 
-    call this%Init()
+    call this%Create()
 
     this%name       = "Snow thermal equation based on temperature"
     this%id         = GE_THERM_SNOW_TBASED
