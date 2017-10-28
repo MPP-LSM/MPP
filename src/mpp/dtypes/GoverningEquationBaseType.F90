@@ -52,10 +52,6 @@ module GoverningEquationBaseType
      procedure, public :: AllocVarsFromOtherGEs   => GoveqnBaseAllocVarsFromOtherGEs
      procedure, public :: DeallocVarsFromOtherGEs => GoveqnBaseDeallocVarsFromOtherGEs
      procedure, public :: PrintInfo               => GoveqnBasePrintInfo
-     !procedure, public :: UpdateAuxVars           => GoveqnBaseUpdateAuxVars
-     procedure, public :: UpdateAuxVarsIntrn      => GoveqnBaseUpdateAuxVarsIntrn
-     procedure, public :: UpdateAuxVarsBC         => GoveqnBaseUpdateAuxVarsBC
-     procedure, public :: UpdateAuxVarsSS         => GoveqnBaseUpdateAuxVarsSS
      procedure, public :: PreSolve                => GoveqnBasePreSolve
      procedure, public :: IFunction               => GoveqnBaseIFunction
      procedure, public :: IJacobian               => GoveqnBaseIJacobian
@@ -436,77 +432,6 @@ contains
     call ConditionListPrintInfo(this%source_sinks)
 
   end subroutine GoveqnBasePrintInfo
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVars(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVars: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVars
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVarsIntrn(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables for internal cells
-    ! associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVarsIntrn: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVarsIntrn
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVarsBC(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables for boundary condition
-    ! associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVarsBC: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVarsBC
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVarsSS(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables for source-sink
-    ! associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVarsSS: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVarsSS
 
   !------------------------------------------------------------------------
   subroutine GoveqnBasePreSolve(this)

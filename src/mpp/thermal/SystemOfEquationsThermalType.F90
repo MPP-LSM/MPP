@@ -661,7 +661,14 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
 
-       call cur_goveq%UpdateAuxVarsIntrn()
+       select type (cur_goveq)
+       class is (goveqn_thermal_ksp_temp_snow_type)
+          call cur_goveq%UpdateAuxVarsIntrn()
+       class is (goveqn_thermal_ksp_temp_ssw_type)
+          call cur_goveq%UpdateAuxVarsIntrn()
+       class is (goveqn_thermal_ksp_temp_soil_type)
+          call cur_goveq%UpdateAuxVarsIntrn()
+       end select
 
        cur_goveq => cur_goveq%next
     enddo
