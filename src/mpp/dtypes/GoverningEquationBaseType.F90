@@ -34,16 +34,16 @@ module GoverningEquationBaseType
 
      PetscReal                       :: dtime                                ! time step [sec]
 
-                                                                             ! Track variables supplied by other governing equations.
-     PetscInt                        :: nvars_needed_from_other_goveqns      !
-     PetscInt, pointer               :: var_ids_needed_from_other_goveqns(:) !
+     ! Track variables supplied by other governing equations.
+     PetscInt                        :: nvars_needed_from_other_goveqns      ! number of variables needed from other governing equations
+     PetscInt, pointer               :: var_ids_needed_from_other_goveqns(:) ! ID of the variable needed from other governing equations
 
      PetscInt, pointer               :: ids_of_other_goveqns(:)              ! index of the other governing equation in the list
-     PetscBool, pointer              :: is_bc_auxvar_type(:)                 !
-     PetscInt, pointer               :: bc_auxvar_offset(:)                  !
-     PetscInt, pointer               :: bc_auxvar_idx(:)                     !
-     PetscInt, pointer               :: bc_auxvar_idx_of_other_goveqn(:)     !
-     PetscInt, pointer               :: bc_auxvar_ncells(:)                  !
+     PetscBool, pointer              :: is_bc_auxvar_type(:)                 ! variable from the other governing equation is for a boundary condition
+     PetscInt, pointer               :: bc_auxvar_offset(:)                  ! the offset in the boundary condition auxvars for a coupling boundary condition
+     PetscInt, pointer               :: bc_auxvar_idx(:)                     ! index of coupling boundary condition within the boundary condition list of this governing equation
+     PetscInt, pointer               :: bc_auxvar_idx_of_other_goveqn(:)     ! index of coupling boundary condition within the boundary condition list of the other governing equation
+     PetscInt, pointer               :: bc_auxvar_ncells(:)                  ! number of connections in each coupling boundary condition
 
      class(goveqn_base_type),pointer :: next
    contains
