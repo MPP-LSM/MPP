@@ -30,6 +30,7 @@ module SystemOfEquationsVSFMAuxType
      PetscReal :: condition_value        ! [depends on the type of condition]
      PetscReal :: lateral_mass_exchanged ! [kg]
      PetscReal :: boundary_mass_exchanged! [kg]
+     PetscReal :: mass_flux              ! [kg/s]
 
      PetscInt  :: goveqn_id              ! [-]
      PetscInt  :: condition_id           ! [-]
@@ -69,6 +70,7 @@ contains
     this%condition_value         = 0.d0
     this%lateral_mass_exchanged  = 0.d0
     this%boundary_mass_exchanged = 0.d0
+    this%mass_flux               = 0.d0
     this%goveqn_id               = 0
     this%condition_id            = 0
 
@@ -142,6 +144,7 @@ contains
     use MultiPhysicsProbConstants, only : VAR_SOIL_MATRIX_POT
     use MultiPhysicsProbConstants, only : VAR_LATERAL_MASS_EXCHANGED
     use MultiPhysicsProbConstants, only : VAR_BC_MASS_EXCHANGED
+    use MultiPhysicsProbConstants, only : VAR_MASS_FLUX
     !
     implicit none
     !
@@ -171,6 +174,8 @@ contains
        variable_value = this%lateral_mass_exchanged
     case (VAR_BC_MASS_EXCHANGED)
        variable_value = this%boundary_mass_exchanged
+    case (VAR_MASS_FLUX)
+       variable_value = this%mass_flux
     case default
        write(iulog,*) 'In VSFMSOEAuxVarGetValue: unknown var_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))

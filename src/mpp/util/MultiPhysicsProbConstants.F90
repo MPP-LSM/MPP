@@ -120,6 +120,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_PRESSURE_DN                   = 641
   PetscInt, parameter, public :: VAR_CAMPBELL_HE                   = 642
   PetscInt, parameter, public :: VAR_CAMPBELL_N                    = 643
+  PetscInt, parameter, public :: VAR_MASS_FLUX                     = 644
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
