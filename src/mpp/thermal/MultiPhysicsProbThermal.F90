@@ -385,26 +385,20 @@ contains
        select type(cur_goveq)
        class is (goveqn_thermal_ksp_temp_snow_type)
           call cur_goveq%AllocateAuxVars()
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
 
        class is (goveqn_thermal_ksp_temp_ssw_type)
           call cur_goveq%AllocateAuxVars()
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
 
        class is (goveqn_thermal_ksp_temp_soil_type)
           call cur_goveq%AllocateAuxVars()
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
 
        end select
+
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_BC, &
+            COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
+
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, -9999, &
+            num_ss, ncells_for_ss)
 
        igoveqn = igoveqn + 1
 
@@ -456,26 +450,11 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
 
-       select type(cur_goveq)
-       class is (goveqn_thermal_ksp_temp_snow_type)
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_BC, &
+            COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
 
-       class is (goveqn_thermal_ksp_temp_ssw_type)
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
-
-       class is (goveqn_thermal_ksp_temp_soil_type)
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
-
-       end select
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, -9999, &
+            num_ss, ncells_for_ss)
 
        igoveqn = igoveqn + 1
 

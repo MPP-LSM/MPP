@@ -47,22 +47,24 @@ module GoverningEquationBaseType
 
      class(goveqn_base_type),pointer :: next
    contains
-     procedure, public :: Create                  => GoveqnBaseCreate
-     procedure, public :: Destroy                 => GoveqnBaseDestroy
-     procedure, public :: AllocVarsFromOtherGEs   => GoveqnBaseAllocVarsFromOtherGEs
-     procedure, public :: DeallocVarsFromOtherGEs => GoveqnBaseDeallocVarsFromOtherGEs
-     procedure, public :: PrintInfo               => GoveqnBasePrintInfo
-     procedure, public :: PreSolve                => GoveqnBasePreSolve
-     procedure, public :: ComputeResidual         => GoveqnBaseComputeResidual
-     procedure, public :: ComputeJacobian         => GoveqnBaseComputeJacobian
-     procedure, public :: ComputeOffDiagJacobian  => GoveqnBaseComputeOffDiagJacobian
-     procedure, public :: ComputeRHS              => GoveqnBaseComputeRHS
-     procedure, public :: ComputeOperatorsDiag    => GoveqnBaseComputeOperatorsDiag
-     procedure, public :: ComputeOperatorsOffDiag => GoveqnBaseComputeOperatorsOffDiag
-     procedure, public :: SetDtime                => GoveqnBaseSetDtime
-     procedure, public :: GetNumConditions        => GoveqnBaseGetNumConditions
-     procedure, public :: AddCondition            => GoveqnBaseAddCondition
-     procedure, public :: UpdateConditionConnSet  => GoveqnBaseUpdateConditionConnSet
+     procedure, public :: Create                         => GoveqnBaseCreate
+     procedure, public :: Destroy                        => GoveqnBaseDestroy
+     procedure, public :: AllocVarsFromOtherGEs          => GoveqnBaseAllocVarsFromOtherGEs
+     procedure, public :: DeallocVarsFromOtherGEs        => GoveqnBaseDeallocVarsFromOtherGEs
+     procedure, public :: PrintInfo                      => GoveqnBasePrintInfo
+     procedure, public :: PreSolve                       => GoveqnBasePreSolve
+     procedure, public :: ComputeResidual                => GoveqnBaseComputeResidual
+     procedure, public :: ComputeJacobian                => GoveqnBaseComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian         => GoveqnBaseComputeOffDiagJacobian
+     procedure, public :: ComputeRHS                     => GoveqnBaseComputeRHS
+     procedure, public :: ComputeOperatorsDiag           => GoveqnBaseComputeOperatorsDiag
+     procedure, public :: ComputeOperatorsOffDiag        => GoveqnBaseComputeOperatorsOffDiag
+     procedure, public :: SetDtime                       => GoveqnBaseSetDtime
+     procedure, public :: GetNConditionsExcptCondItype   => GoveqnBaseGetNConditionsExcptCondItype
+     procedure, public :: GetNCellsInCondsExcptCondItype => GoveqnBaseGetNCellsInCondsExcptCondItype
+     procedure, public :: GetCondNamesExcptCondItype     => GoveqnBaseGetCondNamesExcptCondItype
+     procedure, public :: AddCondition                   => GoveqnBaseAddCondition
+     procedure, public :: UpdateConditionConnSet         => GoveqnBaseUpdateConditionConnSet
   end type goveqn_base_type
   !------------------------------------------------------------------------
 
@@ -378,49 +380,141 @@ contains
   end subroutine GoveqnBasePreSolve
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseGetNumConditions(this, cond_type, &
-              cond_type_to_exclude, num_conds)
+  subroutine GoveqnBaseGetNConditionsExcptCondItype(this, cond_type, &
+              cond_itype_to_exclude, num_conds)
     !
     ! !DESCRIPTION:
     ! Returns the total number of conditions
     !
     ! !USES:
     use ConditionType             , only : condition_type
+    use ConditionType             , only : ConditionList_GetNumConditions_ExceptConditionItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    PetscInt                                 :: cond_type
-    PetscInt                                 :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
+    class(goveqn_base_type)            :: this
+    PetscInt             , intent(in)  :: cond_type
+    PetscInt             , intent(in)  :: cond_itype_to_exclude
+    PetscInt             , intent(out) :: num_conds
+    !
+    ! !LOCAL VARIABLES:
+    character(len=256)                 :: string
 
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       cur_cond => this%boundary_conditions%first
+       call ConditionList_GetNumConditions_ExceptConditionItype( &
+            this%boundary_conditions, cond_itype_to_exclude, num_conds)
+
     case (COND_SS)
-      cur_cond => this%source_sinks%first
+       call ConditionList_GetNumConditions_ExceptConditionItype( &
+            this%source_sinks, cond_itype_to_exclude, num_conds)
+
     case default
        write(string,*) cond_type
        write(iulog,*) 'Unknown cond_type = ' // trim(string)
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-       endif
-       cur_cond => cur_cond%next
-    enddo
+  end subroutine GoveqnBaseGetNConditionsExcptCondItype
 
-  end subroutine GoveqnBaseGetNumConditions
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetNCellsInCondsExcptCondItype(this, cond_type, &
+              cond_itype_to_exclude, num_conds, ncells_for_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of conditions
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : ConditionList_GetNumCellsForConditons_ExceptConditionItype
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)                     :: this
+    PetscInt             , intent(in)           :: cond_type
+    PetscInt             , intent(in)           :: cond_itype_to_exclude
+    PetscInt             , intent(out)          :: num_conds
+    PetscInt             , intent(out), pointer :: ncells_for_conds(:)
+    !
+    ! !LOCAL VARIABLES:
+    character(len=256)                          :: string
+
+    call this%GetNConditionsExcptCondItype( &
+         cond_type, cond_itype_to_exclude, num_conds)
+
+    ! Choose the condition type
+    select case (cond_type)
+    case (COND_BC)
+       call ConditionList_GetNumCellsForConditons_ExceptConditionItype( &
+            this%boundary_conditions, cond_itype_to_exclude, ncells_for_conds)
+
+    case (COND_SS)
+       call ConditionList_GetNumCellsForConditons_ExceptConditionItype( &
+            this%source_sinks, cond_itype_to_exclude, ncells_for_conds)
+
+    case default
+       write(string,*) cond_type
+       write(iulog,*) 'Unknown cond_type = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine GoveqnBaseGetNCellsInCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetCondNamesExcptCondItype(this, cond_type, &
+                cond_itype_to_exclude, num_conds, cond_names)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number and names of conditions (eg. boundary condition
+    ! or source-sink) present.
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : ConditionList_GetConditionNames_ExceptConditionItype
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_NULL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)            :: this
+    PetscInt             , intent(in)  :: cond_type
+    PetscInt             , intent(in)  :: cond_itype_to_exclude
+    PetscInt             , intent(out) :: num_conds
+    character (len=256)  , pointer     :: cond_names(:)
+    type(condition_type) , pointer     :: cur_cond
+    !
+    ! !LOCAL VARIABLES
+    character(len=256)                 :: string
+
+    call this%GetNConditionsExcptCondItype( &
+         cond_type, cond_itype_to_exclude, num_conds)
+
+    ! Choose the condition type
+    select case (cond_type)
+    case (COND_BC)
+       call ConditionList_GetConditionNames_ExceptConditionItype( &
+            this%boundary_conditions, cond_itype_to_exclude, cond_names)
+
+    case (COND_SS)
+       call ConditionList_GetConditionNames_ExceptConditionItype( &
+            this%source_sinks, cond_itype_to_exclude, cond_names)
+
+    case default
+       write(string,*) cond_type
+       write(iulog,*) 'Unknown cond_type = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine GoveqnBaseGetCondNamesExcptCondItype
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseAddCondition(this, ss_or_bc_type, name, unit,    &

@@ -40,8 +40,6 @@ module GoveqnThermalKSPTemperatureSoilType
      procedure, public :: GetFromSOEAuxVarsBC     => ThermKSPTempSoilGetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS     => ThermKSPTempSoilGetFromSOEAuxVarsSS
      procedure, public :: GetDataFromSOEAuxVar    => ThermKSPTempSoilGetDataFromSOEAuxVar
-     procedure, public :: GetConditionNames       => ThermKSPTempSoilGetConditionNames
-     procedure, public :: GetNumCellsInConditions => ThermKSPTempSoilGetNumCellsInConditions
 
      procedure, public :: SetDataInSOEAuxVar      => ThermKSPTempSoilSetDataInSOEAuxVar
      procedure, public :: SetSOEAuxVarOffsets     => ThermKSPTempSoilSetSOEAuxVarOffsets
@@ -407,170 +405,6 @@ contains
   end subroutine ThermKSPTempSoilGetFromSOEAuxVarsSS
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilGetConditionNames(this, cond_type, &
-                cond_type_to_exclude, num_conds, cond_names)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number and names of conditions (eg. boundary condition
-    ! or source-sink) present.
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    use MultiPhysicsProbConstants , only : COND_NULL
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
-    PetscInt, intent(in)                     :: cond_type
-    PetscInt, intent(in)                     :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    character (len=256), pointer             :: cond_names(:)
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Find number of BCs
-    call this%GetNumConditions(cond_type, COND_NULL, num_conds)
-
-    if (num_conds == 0) then
-       nullify(cond_names)
-       return
-    endif
-
-    allocate(cond_names(num_conds))
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-          cond_names(num_conds) = cur_cond%name
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermKSPTempSoilGetConditionNames
-
-  !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilGetNumConditions(this, cond_type, &
-              cond_type_to_exclude, num_conds)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number of conditions
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
-    PetscInt                                 :: cond_type
-    PetscInt                                 :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermKSPTempSoilGetNumConditions
-
-  !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilGetNumCellsInConditions(this, cond_type, &
-                cond_type_to_exclude, num_conds, ncells_for_conds)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number of conditions (eg. boundary condition or
-    ! source-sink) and number of control volumes associated with each condition
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    use MultiPhysicsProbConstants , only : COND_NULL
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
-    PetscInt, intent(in)                     :: cond_type
-    PetscInt, intent(in)                     :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    PetscInt, intent(out), pointer           :: ncells_for_conds(:)
-    !
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Find number of BCs
-    call this%GetNumConditions(cond_type, COND_NULL, num_conds)
-
-    if (num_conds == 0) then
-       nullify(ncells_for_conds)
-       return
-    endif
-
-    allocate(ncells_for_conds(num_conds))
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-          ncells_for_conds(num_conds) = cur_cond%ncells
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermKSPTempSoilGetNumCellsInConditions
-
-  !------------------------------------------------------------------------
   subroutine ThermKSPTempSoilSetDataInSOEAuxVar(this, soe_avar_type, soe_avars, &
        offset)
     !
@@ -645,13 +479,13 @@ contains
     type(condition_type),pointer             :: cur_cond
     PetscInt                                 :: cond_count
 
-    call this%GetNumConditions(COND_BC, -1, cond_count)
+    call this%GetNConditionsExcptCondItype(COND_BC, -1, cond_count)
     if (bc_offset_count > cond_count) then
        write(iulog,*) 'ERROR: bc_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    call this%GetNumConditions(COND_SS, -1, cond_count)
+    call this%GetNConditionsExcptCondItype(COND_SS, -1, cond_count)
     if (ss_offset_count > cond_count) then
        write(iulog,*) 'ERROR: ss_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))

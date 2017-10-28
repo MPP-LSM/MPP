@@ -490,6 +490,7 @@ contains
     use MultiPhysicsProbConstants           , only : COND_BC
     use MultiPhysicsProbConstants           , only : COND_SS
     use MultiPhysicsProbConstants           , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants           , only : COND_NULL
     !
     implicit none
     !
@@ -509,6 +510,7 @@ contains
     PetscInt                               :: iauxvar_beg_ss, iauxvar_end_ss
     PetscInt                               :: count_bc, count_ss
     PetscInt                               :: offset_bc, offset_ss
+    PetscInt                               :: cond_itype_to_exclude
     PetscInt, pointer                      :: ncells_for_bc(:)
     PetscInt, pointer                      :: ncells_for_ss(:)
     PetscInt, pointer                      :: offsets_bc(:)
@@ -537,22 +539,22 @@ contains
        select type(cur_goveq)
        class is (goveqn_thermal_enthalpy_soil_type)
           call cur_goveq%AllocateAuxVars()
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
 
        class is (goveqn_richards_ode_pressure_type)
           call cur_goveq%AllocateAuxVars()
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
 
        class default
           write(iulog,*) 'Unsupported class type'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        end select
+
+       cond_itype_to_exclude = COND_DIRICHLET_FRM_OTR_GOVEQ
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_BC, &
+            cond_itype_to_exclude, num_bc, ncells_for_bc)
+
+       cond_itype_to_exclude = COND_NULL
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, &
+            cond_itype_to_exclude, num_ss, ncells_for_ss)
 
        igoveqn = igoveqn + 1
 
@@ -606,22 +608,22 @@ contains
 
        select type(cur_goveq)
        class is (goveqn_thermal_enthalpy_soil_type)
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
 
        class is (goveqn_richards_ode_pressure_type)
           call cur_goveq%AllocateAuxVars()
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
 
        class default
           write(iulog,*) 'Unsupported class type'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        end select
+
+       cond_itype_to_exclude = COND_DIRICHLET_FRM_OTR_GOVEQ
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_BC, &
+            cond_itype_to_exclude, num_bc, ncells_for_bc)
+
+       cond_itype_to_exclude = COND_NULL
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, &
+            cond_itype_to_exclude, num_ss, ncells_for_ss)
 
        igoveqn = igoveqn + 1
 

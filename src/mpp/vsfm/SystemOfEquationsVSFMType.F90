@@ -1009,17 +1009,17 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
-       select type(cur_goveq)
-          class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%GetConditionNames(cond_type, cond_type_to_exclude, num_conds_tmp, cond_names_tmp)
-          if (num_conds_tmp > 0) then
-             do nn = 1, num_conds_tmp
-                num_conds = num_conds + 1
-                cond_names(num_conds) = cond_names_tmp(nn)
-             enddo
-             deallocate(cond_names_tmp)
-          endif
-       end select
+
+       call cur_goveq%GetCondNamesExcptCondItype( &
+            cond_type, cond_type_to_exclude, num_conds_tmp, cond_names_tmp)
+       if (num_conds_tmp > 0) then
+          do nn = 1, num_conds_tmp
+             num_conds = num_conds + 1
+             cond_names(num_conds) = cond_names_tmp(nn)
+          enddo
+          deallocate(cond_names_tmp)
+       endif
+
        cur_goveq => cur_goveq%next
     enddo
 

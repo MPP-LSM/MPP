@@ -1065,6 +1065,7 @@ contains
     use MultiPhysicsProbConstants           , only : COND_BC
     use MultiPhysicsProbConstants           , only : COND_SS
     use MultiPhysicsProbConstants           , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants           , only : COND_NULL
     !
     implicit none
     !
@@ -1084,6 +1085,7 @@ contains
     PetscInt                               :: iauxvar_beg_bc, iauxvar_end_bc
     PetscInt                               :: iauxvar_beg_ss, iauxvar_end_ss
     PetscInt                               :: iauxvar_beg_conn_in, iauxvar_end_conn_in
+    PetscInt                               :: cond_itype_to_exclude
     PetscInt                               :: count_bc, count_ss
     PetscInt                               :: offset_bc, offset_ss
     PetscInt, pointer                      :: ncells_for_bc(:)
@@ -1115,15 +1117,18 @@ contains
        select type(cur_goveq)
        class is (goveqn_richards_ode_pressure_type)
           call cur_goveq%AllocateAuxVars()
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
           call cur_goveq%GetNumInternalConnections(nconn_in)
-          soe%num_auxvars_conn_in = soe%num_auxvars_conn_in + nconn_in
-
        end select
 
+       cond_itype_to_exclude = COND_DIRICHLET_FRM_OTR_GOVEQ
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_BC, &
+            cond_itype_to_exclude, num_bc, ncells_for_bc)
+
+       cond_itype_to_exclude = COND_NULL
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, &
+            cond_itype_to_exclude, num_ss, ncells_for_ss)
+
+       soe%num_auxvars_conn_in = soe%num_auxvars_conn_in + nconn_in
        igoveqn = igoveqn + 1
 
        soe%num_auxvars_in = soe%num_auxvars_in + &
@@ -1177,12 +1182,16 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
 
+       cond_itype_to_exclude = COND_DIRICHLET_FRM_OTR_GOVEQ
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_BC, &
+            cond_itype_to_exclude, num_bc, ncells_for_bc)
+
+       cond_itype_to_exclude = COND_NULL
+       call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, &
+            cond_itype_to_exclude, num_ss, ncells_for_ss)
+
        select type(cur_goveq)
        class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%GetNumCellsInConditions(COND_BC, &
-               COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
-          call cur_goveq%GetNumCellsInConditions(COND_SS, -9999, &
-               num_ss, ncells_for_ss)
           call cur_goveq%GetNumInternalConnections(nconn_in)
 
        end select
