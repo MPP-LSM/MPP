@@ -53,9 +53,6 @@ module GoverningEquationBaseType
      procedure, public :: DeallocVarsFromOtherGEs => GoveqnBaseDeallocVarsFromOtherGEs
      procedure, public :: PrintInfo               => GoveqnBasePrintInfo
      procedure, public :: PreSolve                => GoveqnBasePreSolve
-     procedure, public :: IFunction               => GoveqnBaseIFunction
-     procedure, public :: IJacobian               => GoveqnBaseIJacobian
-     procedure, public :: IJacobianOffDiag        => GoveqnBaseIJacobianOffDiag
      procedure, public :: JacobianOffDiag         => GoveqnBaseJacobianOffDiag
      procedure, public :: Jacobian                => GoveqnBaseJacobian
      procedure, public :: Residual                => GoveqnBaseResidual
@@ -195,76 +192,6 @@ contains
 
   end subroutine GoveqnBaseDeallocVarsFromOtherGEs
 
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseIFunction(this, U, Udot, F, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc TS IFunction
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    Vec                     :: U
-    Vec                     :: Udot
-    Vec                     :: F
-    PetscErrorCode          :: ierr
-
-    write(iulog,*)'GoveqnBaseIFunction must be extended by child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseIFunction
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseIJacobian(this, U, Udot, shift, A, B, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc TS IJacobian
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    Vec                     :: U
-    Vec                     :: Udot
-    PetscReal               :: shift
-    Mat                     :: A
-    Mat                     :: B
-    PetscErrorCode                :: ierr
-
-    write(iulog,*)'GoveqnBaseJFunction must be extended by child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseIJacobian
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseIJacobianOffDiag(this, U_1, Udot_1, U_2, Udot_2, &
-       shift, A, B, id_of_other_goveq, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc TS IJacobian corresponding to off-diagonal
-    ! matrix coupling between two GEs
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    Vec                     :: U_1
-    Vec                     :: Udot_1
-    Vec                     :: U_2
-    Vec                     :: Udot_2
-    PetscReal               :: shift
-    Mat                     :: A
-    Mat                     :: B
-    PetscInt                :: id_of_other_goveq
-    PetscErrorCode          :: ierr
-
-    write(iulog,*)'GoveqnBaseIJacobianOffDiag must be extended by child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseIJacobianOffDiag
-
   !------------------------------------------------------------------------
   subroutine GoveqnBaseJacobianOffDiag(this, X_1, X_2, A, B, &
        id_of_other_goveq, &
@@ -385,7 +312,6 @@ contains
     this%dtime = dtime
 
   end subroutine GoveqnBaseSetDtime
-
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseJacobian(this, X, A, B, ierr)
