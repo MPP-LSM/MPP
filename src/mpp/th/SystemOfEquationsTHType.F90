@@ -372,7 +372,14 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
 
-       call cur_goveq%UpdateAuxVars()
+       select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%UpdateAuxVars()
+
+       class is (goveqn_thermal_enthalpy_soil_type)
+          call cur_goveq%UpdateAuxVars()
+       end select
+          
        call cur_goveq%PreSolve()
 
        cur_goveq => cur_goveq%next
@@ -933,8 +940,16 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
-       call cur_goveq%UpdateAuxVars()
-       cur_goveq => cur_goveq%next
+       select type(cur_goveq)
+
+       class is (goveqn_thermal_enthalpy_soil_type)
+          call cur_goveq%UpdateAuxVars()
+
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%UpdateAuxVars()
+
+       end select
+          cur_goveq => cur_goveq%next
     enddo
 
     ! Call Residual

@@ -52,7 +52,7 @@ module GoverningEquationBaseType
      procedure, public :: AllocVarsFromOtherGEs   => GoveqnBaseAllocVarsFromOtherGEs
      procedure, public :: DeallocVarsFromOtherGEs => GoveqnBaseDeallocVarsFromOtherGEs
      procedure, public :: PrintInfo               => GoveqnBasePrintInfo
-     procedure, public :: UpdateAuxVars           => GoveqnBaseUpdateAuxVars
+     !procedure, public :: UpdateAuxVars           => GoveqnBaseUpdateAuxVars
      procedure, public :: UpdateAuxVarsIntrn      => GoveqnBaseUpdateAuxVarsIntrn
      procedure, public :: UpdateAuxVarsBC         => GoveqnBaseUpdateAuxVarsBC
      procedure, public :: UpdateAuxVarsSS         => GoveqnBaseUpdateAuxVarsSS

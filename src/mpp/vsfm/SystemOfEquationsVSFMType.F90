@@ -161,13 +161,14 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
        select type(cur_goveq)
-          class is (goveqn_richards_ode_pressure_type)
-             call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
-       end select
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
 
-       call cur_goveq%UpdateAuxVarsIntrn()
-       call cur_goveq%UpdateAuxVarsBC()
-       offset = offset + cur_goveq%mesh%ncells_local
+          call cur_goveq%UpdateAuxVarsIntrn()
+          call cur_goveq%UpdateAuxVarsBC()
+
+          offset = offset + cur_goveq%mesh%ncells_local
+       end select
 
        cur_goveq => cur_goveq%next
     enddo
@@ -185,7 +186,10 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
-       call cur_goveq%UpdateAuxVars()
+       select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%UpdateAuxVars()
+       end select
        cur_goveq => cur_goveq%next
     enddo
 
