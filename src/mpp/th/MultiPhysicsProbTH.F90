@@ -1071,28 +1071,32 @@ contains
     use ConditionType             , only : condition_type
     use GoverningEquationBaseType , only : goveqn_base_type
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use CouplingVariableType      , only : coupling_variable_type
+    use CouplingVariableType      , only : CouplingVariableCreate
+    use CouplingVariableType      , only : CouplingVariableListAddCouplingVar
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_th_type)           :: this
-    PetscInt                          :: igoveqn
-    PetscInt                          :: nvars
-    PetscInt, pointer                 :: var_ids(:)
-    PetscInt, pointer                 :: goveqn_ids(:)
-    PetscInt, pointer                 :: is_bc(:)
+    class(mpp_th_type)                     :: this
+    PetscInt                               :: igoveqn
+    PetscInt                               :: nvars
+    PetscInt                     , pointer :: var_ids(:)
+    PetscInt                     , pointer :: goveqn_ids(:)
+    PetscInt                     , pointer :: is_bc(:)
     !
-    class(goveqn_base_type) , pointer :: cur_goveq_1
-    class(goveqn_base_type) , pointer :: cur_goveq_2
-    type(condition_type)    , pointer :: cur_cond_1
-    type(condition_type)    , pointer :: cur_cond_2
-    PetscInt                          :: ii
-    PetscInt                          :: ieqn
-    PetscInt                          :: ivar
-    PetscInt                          :: bc_idx_1
-    PetscInt                          :: bc_idx_2
-    PetscInt                          :: bc_offset_1
-    PetscBool                         :: bc_found
+    class(goveqn_base_type)      , pointer :: cur_goveq_1
+    class(goveqn_base_type)      , pointer :: cur_goveq_2
+    type(condition_type)         , pointer :: cur_cond_1
+    type(condition_type)         , pointer :: cur_cond_2
+    type(coupling_variable_type) , pointer :: cpl_var
+    PetscInt                               :: ii
+    PetscInt                               :: ieqn
+    PetscInt                               :: ivar
+    PetscInt                               :: bc_idx_1
+    PetscInt                               :: bc_idx_2
+    PetscInt                               :: bc_offset_1
+    PetscBool                              :: bc_found
 
     if (igoveqn > this%sysofeqns%ngoveqns) then
        write(iulog,*) 'Attempting to set coupling vars for governing ' // &
@@ -1104,8 +1108,6 @@ contains
     do ii = 1, igoveqn-1
        cur_goveq_1 => cur_goveq_1%next
     end do
-
-    call cur_goveq_1%AllocVarsFromOtherGEs(nvars)
 
     do ivar = 1, nvars
 
@@ -1183,18 +1185,27 @@ contains
                   'equation_number = ', bc_idx_2
           endif
 
-          cur_goveq_1%var_ids_needed_from_other_goveqns (ivar) = var_ids(ivar)
-          cur_goveq_1%ids_of_other_goveqns              (ivar) = goveqn_ids(ivar)
-          cur_goveq_1%is_bc_auxvar_type                 (ivar) = PETSC_TRUE
-          cur_goveq_1%bc_auxvar_offset                  (ivar) = bc_offset_1
-          cur_goveq_1%bc_auxvar_ncells                  (ivar) = cur_cond_1%conn_set%num_connections
-          cur_goveq_1%bc_auxvar_idx                     (ivar) = bc_idx_1
-          cur_goveq_1%bc_auxvar_idx_of_other_goveqn     (ivar) = bc_idx_2
-       else
+          cpl_var => CouplingVariableCreate()
 
-          cur_goveq_1%var_ids_needed_from_other_goveqns (ivar) = var_ids(ivar)
-          cur_goveq_1%ids_of_other_goveqns              (ivar) = goveqn_ids(ivar)
-          cur_goveq_1%is_bc_auxvar_type                 (ivar) = PETSC_FALSE
+          cpl_var%variable_type                     = var_ids(ivar)
+          cpl_var%num_cells                         = cur_cond_1%conn_set%num_connections
+          cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
+          cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_TRUE
+          cpl_var%offset_of_bc_in_current_goveqn    = bc_offset_1
+          cpl_var%rank_of_bc_in_current_goveqn      = bc_idx_1
+          cpl_var%rank_of_bc_in_coupling_goveqn     = bc_idx_2
+
+          call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
+
+    else
+
+          cpl_var => CouplingVariableCreate()
+
+          cpl_var%variable_type                     = var_ids(ivar)
+          cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
+          cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_FALSE
+
+          call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
 
        endif
 

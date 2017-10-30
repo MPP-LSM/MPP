@@ -2321,6 +2321,7 @@ contains
     use ConnectionSetType         , only : connection_set_type
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : COND_NULL
+    use CouplingVariableType      , only : coupling_variable_type
     !
     implicit none
     !
@@ -2331,6 +2332,7 @@ contains
     PetscErrorCode                           :: ierr
     !
     ! !LOCAL VARIABLES
+    type(coupling_variable_type), pointer    :: cpl_var
     PetscInt                                 :: iconn
     PetscInt                                 :: sum_conn
     PetscInt                                 :: cell_id_dn
@@ -2366,11 +2368,16 @@ contains
     compute_deriv    = PETSC_TRUE
 
     ! Are the two equations coupled?
-    do ivar = 1, this%nvars_needed_from_other_goveqns
-       if (this%ids_of_other_goveqns(ivar) == list_id_of_other_goveq) then
+    cpl_var => this%coupling_vars%first
+    do
+       if (.not.associated(cpl_var)) exit
+       
+       if (cpl_var%rank_of_coupling_goveqn == list_id_of_other_goveq) then
           eqns_are_coupled = PETSC_TRUE
           exit
        endif
+
+       cpl_var => cpl_var%next
     enddo
 
     if (.not.eqns_are_coupled) return
