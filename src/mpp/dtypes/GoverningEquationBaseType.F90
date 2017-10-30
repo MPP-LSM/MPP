@@ -309,7 +309,7 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionList_GetNumConditions_ExceptConditionItype
+    use ConditionType             , only : CondListGetNumCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -327,11 +327,11 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call ConditionList_GetNumConditions_ExceptConditionItype( &
+       call CondListGetNumCondsExcptCondItype( &
             this%boundary_conditions, cond_itype_to_exclude, num_conds)
 
     case (COND_SS)
-       call ConditionList_GetNumConditions_ExceptConditionItype( &
+       call CondListGetNumCondsExcptCondItype( &
             this%source_sinks, cond_itype_to_exclude, num_conds)
 
     case default
@@ -351,7 +351,7 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionList_GetNumCellsForConditons_ExceptConditionItype
+    use ConditionType             , only : CondListGetNumCellsForCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -373,11 +373,11 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call ConditionList_GetNumCellsForConditons_ExceptConditionItype( &
+       call CondListGetNumCellsForCondsExcptCondItype( &
             this%boundary_conditions, cond_itype_to_exclude, ncells_for_conds)
 
     case (COND_SS)
-       call ConditionList_GetNumCellsForConditons_ExceptConditionItype( &
+       call CondListGetNumCellsForCondsExcptCondItype( &
             this%source_sinks, cond_itype_to_exclude, ncells_for_conds)
 
     case default
@@ -398,7 +398,7 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionList_GetConditionNames_ExceptConditionItype
+    use ConditionType             , only : CondListGetCondNamesExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     use MultiPhysicsProbConstants , only : COND_NULL
@@ -422,11 +422,11 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call ConditionList_GetConditionNames_ExceptConditionItype( &
+       call CondListGetCondNamesExcptCondItype( &
             this%boundary_conditions, cond_itype_to_exclude, cond_names)
 
     case (COND_SS)
-       call ConditionList_GetConditionNames_ExceptConditionItype( &
+       call CondListGetCondNamesExcptCondItype( &
             this%source_sinks, cond_itype_to_exclude, cond_names)
 
     case default

@@ -50,9 +50,9 @@ module ConditionType
   public :: ConditionListAddCondition
   public :: ConditionListClean
   public :: ConditionListPrintInfo
-  public :: ConditionList_GetNumConditions_ExceptConditionItype
-  public :: ConditionList_GetNumCellsForConditons_ExceptConditionItype
-  public :: ConditionList_GetConditionNames_ExceptConditionItype
+  public :: CondListGetNumCondsExcptCondItype
+  public :: CondListGetNumCellsForCondsExcptCondItype
+  public :: CondListGetCondNamesExcptCondItype
   !------------------------------------------------------------------------
 
 contains
@@ -186,7 +186,7 @@ contains
 
 
   !------------------------------------------------------------------------
-  subroutine ConditionList_GetNumConditions_ExceptConditionItype( &
+  subroutine CondListGetNumCondsExcptCondItype( &
        list, cond_itype, num_conds)
     !
     ! !DESCRIPTION:
@@ -213,10 +213,10 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ConditionList_GetNumConditions_ExceptConditionItype
+  end subroutine CondListGetNumCondsExcptCondItype
 
   !------------------------------------------------------------------------
-  subroutine ConditionList_GetNumCellsForConditons_ExceptConditionItype( &
+  subroutine CondListGetNumCellsForCondsExcptCondItype( &
        list, cond_itype, num_cells_for_conds)
     !
     ! !DESCRIPTION:
@@ -234,7 +234,7 @@ contains
     PetscInt                                         :: num_conds
     type(condition_type)      , pointer              :: cur_cond
 
-    call ConditionList_GetNumConditions_ExceptConditionItype(list, cond_itype, num_conds)
+    call CondListGetNumCondsExcptCondItype(list, cond_itype, num_conds)
 
     if (num_conds == 0) then
 
@@ -257,10 +257,10 @@ contains
 
     end if
 
-  end subroutine ConditionList_GetNumCellsForConditons_ExceptConditionItype
+  end subroutine CondListGetNumCellsForCondsExcptCondItype
 
   !------------------------------------------------------------------------
-  subroutine ConditionList_GetConditionNames_ExceptConditionItype( &
+  subroutine CondListGetCondNamesExcptCondItype( &
        list, cond_itype, cond_names)
     !
     ! !DESCRIPTION:
@@ -278,7 +278,7 @@ contains
     PetscInt                               :: num_conds
     type(condition_type)     , pointer     :: cur_cond
 
-    call ConditionList_GetNumConditions_ExceptConditionItype( &
+    call CondListGetNumCondsExcptCondItype( &
          list, cond_itype, num_conds)
 
     if (num_conds == 0) then
@@ -302,7 +302,7 @@ contains
 
     end if
 
-  end subroutine ConditionList_GetConditionNames_ExceptConditionItype
+  end subroutine CondListGetCondNamesExcptCondItype
 
   !------------------------------------------------------------------------
   subroutine ConditionListClean(list)
