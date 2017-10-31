@@ -41,7 +41,6 @@ module MultiPhysicsProbVSFM
      procedure, public :: GetMPIRank                   => VSFMMPPGetMPIRank
      procedure, public :: SetMeshesOfGoveqns           => VSFMMPPSetMeshesOfGoveqns
      procedure, public :: AddGovEqn                    => VSFMMPPAddGovEqn
-     procedure, public :: GovEqnAddCondition           => VSFMMPPGovEqnAddCondition
      procedure, public :: AllocateAuxVars              => VSFMMPPAllocateAuxVars
      procedure, public :: SetupProblem                 => VSFMMPPSetupProblem
      procedure, public :: GovEqnUpdateConditionConnSet => VSFMMPPGovEqnUpdateConditionConnSet
@@ -938,72 +937,6 @@ contains
     call this%sysofeqns%AddGovEqn(geq_type, name, mesh_itype)
 
   end subroutine VSFMMPPAddGovEqn
-
-
-  !------------------------------------------------------------------------
-  subroutine VSFMMPPGovEqnAddCondition(this, igoveqn, ss_or_bc_type, name, unit, &
-       cond_type, region_type, id_of_other_goveq, conn_set)
-    !
-    ! !DESCRIPTION:
-    ! Adds a boundary/source-sink condition to a governing equation
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    use ConnectionSetType        , only : connection_set_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type)              :: this
-    PetscInt                          :: igoveqn
-    PetscInt                          :: ss_or_bc_type
-    character(len =*)                 :: name
-    character(len =*)                 :: unit
-    PetscInt                          :: cond_type
-    PetscInt                          :: region_type
-    PetscInt, optional                :: id_of_other_goveq
-    type(connection_set_type),pointer, optional :: conn_set
-    !
-    class(goveqn_base_type),pointer   :: cur_goveq
-    class(goveqn_base_type),pointer   :: other_goveq
-    PetscInt                          :: ii
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to add condition for governing equation ' // &
-            'that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    if (.not.present(id_of_other_goveq)) then
-       if (.not.present(conn_set)) then
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type)
-       else
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type, conn_set=conn_set)
-       endif
-    else
-
-       other_goveq => this%sysofeqns%goveqns
-       do ii = 1,id_of_other_goveq-1
-          other_goveq => other_goveq%next
-       enddo
-
-       if (.not.present(conn_set)) then
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type, id_of_other_goveq, other_goveq%id )
-       else
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type, id_of_other_goveq=id_of_other_goveq, &
-               itype_of_other_goveq = other_goveq%id, conn_set=conn_set)
-       endif
-    endif
-
-  end subroutine VSFMMPPGovEqnAddCondition
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPGovEqnUpdateConditionConnSet(this, igoveqn, icond, &

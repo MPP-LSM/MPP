@@ -34,7 +34,6 @@ module MultiPhysicsProbThermal
    contains
      procedure, public :: Init                        => ThermalMPPInit
      procedure, public :: AddGovEqn                   => ThermalMPPAddGovEqn
-     procedure, public :: GovEqnAddCondition          => ThermalMPPGovEqnAddCondition
      procedure, public :: SetMeshesOfGoveqns          => ThermalMPPSetMeshesOfGoveqns
      procedure, public :: GovEqnAddCouplingCondition  => ThermalMPPGovEqnAddCouplingCondition
      procedure, public :: AllocateAuxVars             => ThermalMPPAllocateAuxVars
@@ -223,58 +222,6 @@ contains
   end subroutine ThermalMPPAddGovEqn
 
   !------------------------------------------------------------------------
-  subroutine ThermalMPPGovEqnAddCondition(this, igoveqn, ss_or_bc_type, name, unit, &
-       cond_type, region_type, id_of_other_goveq)
-    !
-    ! !DESCRIPTION:
-    ! Adds a boundary/source-sink condition to a governing equation
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type) :: this
-    PetscInt                          :: igoveqn
-    PetscInt                          :: ss_or_bc_type
-    character(len =*)                 :: name
-    character(len =*)                 :: unit
-    PetscInt                          :: cond_type
-    PetscInt                          :: region_type
-    PetscInt, optional                :: id_of_other_goveq
-    !
-    class(goveqn_base_type),pointer   :: cur_goveq
-    class(goveqn_base_type),pointer   :: other_goveq
-    PetscInt                          :: ii
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to add condition for governing equation ' // &
-            'that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    if (.not.present(id_of_other_goveq)) then
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type)
-    else
-
-       other_goveq => this%sysofeqns%goveqns
-       do ii = 1,id_of_other_goveq-1
-          other_goveq => other_goveq%next
-       enddo
-
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type, id_of_other_goveq, other_goveq%id )
-    endif
-
-  end subroutine ThermalMPPGovEqnAddCondition
-
-  !------------------------------------------------------------------------
   subroutine ThermalMPPSetMeshesOfGoveqns(this)
     !
     ! !DESCRIPTION:
@@ -298,9 +245,6 @@ contains
     ! !DESCRIPTION:
     ! Adds a boundary condition to couple ieqn_1 and ieqn_2
     !
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    !
     implicit none
     !
     ! !ARGUMENTS
@@ -310,17 +254,26 @@ contains
     PetscInt                :: iregion_1
     PetscInt                :: iregion_2
     !
-    character(len=256)        :: name
+    character(len=256)      :: name
+    PetscInt                :: num_other_goveqs
+    PetscInt, pointer       :: id_of_other_goveqs(:)
+
+    num_other_goveqs = 1
+    allocate(id_of_other_goveqs(num_other_goveqs))
 
     write(name,*) ieqn_2
     name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
-    call this%GovEqnAddCondition(ieqn_1, COND_BC, &
-         name, '[K]', COND_DIRICHLET_FRM_OTR_GOVEQ, iregion_1, ieqn_2)
+    id_of_other_goveqs(1) = ieqn_2
+    call this%sysofeqns%AddCouplingBCsInGovEqn(ieqn_1, &
+         name, '[K]', iregion_1, num_other_goveqs, id_of_other_goveqs)
 
     write(name,*) ieqn_1
     name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
-    call this%GovEqnAddCondition(ieqn_2, COND_BC, &
-         name, '[K]', COND_DIRICHLET_FRM_OTR_GOVEQ, iregion_2, ieqn_1)
+    id_of_other_goveqs(1) = ieqn_1
+    call this%sysofeqns%AddCouplingBCsInGovEqn(ieqn_2,  &
+         name, '[K]', iregion_2, num_other_goveqs, id_of_other_goveqs)
+
+    deallocate(id_of_other_goveqs)
 
   end subroutine ThermalMPPGovEqnAddCouplingCondition
 

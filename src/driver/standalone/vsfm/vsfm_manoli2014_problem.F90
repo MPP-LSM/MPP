@@ -830,7 +830,9 @@ contains
     ! !ARGUMENTS
     implicit none
     !
-    PetscInt                            :: ieqn, ieqn_other
+    PetscInt                            :: ieqn
+    PetscInt                            :: num_other_goveqns
+    PetscInt                  , pointer :: ieqn_others(:)
     PetscInt                            :: kk
     PetscInt                            :: nconn
     PetscInt                            :: ncells_root
@@ -900,22 +902,28 @@ contains
 
     allocate(conn_set)
 
-    ieqn       = 1
-    ieqn_other = 2
+    num_other_goveqns = 1 
+    allocate(ieqn_others(num_other_goveqns))
+
+    ieqn           = 1
+    ieqn_others(1) = 2
 
     call MeshCreateConnectionSet(vsfm_mpp%meshes(1), &
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &
-         name='Root BC in soil equation', unit='Pa', cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ, &
-         region_type=SOIL_TOP_CELLS, id_of_other_goveq=ieqn_other, &
-         conn_set=conn_set)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Root BC in soil equation',   &
+         unit               = 'Pa',                         &
+         region_type        = SOIL_TOP_CELLS,               &
+         num_other_goveqs   = num_other_goveqns,            &
+         id_of_other_goveqs = ieqn_others,                  &
+         conn_set           = conn_set)
 
     call ConnectionSetDestroy(conn_set)
 
-    ieqn       = 2
-    ieqn_other = 1
+    ieqn           = 2
+    ieqn_others(1) = 1
 
     unit_vec(:,1) = 1.d0
 
@@ -923,26 +931,35 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &
-         name='Soil BC in root equation', unit='Pa', cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ, &
-         region_type=SOIL_TOP_CELLS, id_of_other_goveq=ieqn_other, &
-         conn_set=conn_set)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Soil BC in root equation', &
+         unit               = 'Pa', &
+         region_type        = SOIL_TOP_CELLS, &
+         num_other_goveqs   = num_other_goveqns, &
+         id_of_other_goveqs = ieqn_others, &
+         conn_set           = conn_set)
 
     call ConnectionSetDestroy(conn_set)
     
-    ieqn       = 2
-    ieqn_other = 3
+    ieqn           = 2
+    ieqn_others(1) = 3
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &
-         name='Xylem BC in root equation', unit='Pa', cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ, &
-         region_type=SOIL_TOP_CELLS, id_of_other_goveq=ieqn_other)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Xylem BC in root equation', &
+         unit               = 'Pa', &
+         region_type        = SOIL_TOP_CELLS, &
+         num_other_goveqs   = num_other_goveqns, &
+         id_of_other_goveqs = ieqn_others)
 
-    ieqn       = 3
-    ieqn_other = 2
+    ieqn           = 3
+    ieqn_others(1) = 2
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &
-         name='Root BC in xylem equation', unit='Pa', cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ, &
-         region_type=SOIL_BOTTOM_CELLS, id_of_other_goveq=ieqn_other)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Root BC in xylem equation', &
+         unit               = 'Pa', &
+         region_type        = SOIL_BOTTOM_CELLS, &
+         num_other_goveqs   = num_other_goveqns, &
+         id_of_other_goveqs = ieqn_others)
 
     deallocate(soil_dz        )
     deallocate(root_zc        )
@@ -953,8 +970,9 @@ contains
     deallocate(dist_up        )
     deallocate(dist_dn        )
     deallocate(area           )
-    deallocate(itype          )
+    deallocate(itype          )    
     deallocate(unit_vec       )
+    deallocate(ieqn_others    )
 
   end subroutine add_conditions_to_goveqns
 

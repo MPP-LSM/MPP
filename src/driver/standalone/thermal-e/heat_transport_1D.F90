@@ -348,11 +348,11 @@ subroutine add_conditions_to_goveqns()
 
   ieqn = 1
 
-  call thermal_enthalpy_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+  call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at top', 'K', COND_DIRICHLET, &
        SOIL_TOP_CELLS)
 
-  call thermal_enthalpy_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+  call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
        SOIL_BOTTOM_CELLS)
 

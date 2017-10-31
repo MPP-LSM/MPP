@@ -382,12 +382,12 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call vsfm_mpp%GovEqnAddCondition(ieqn, ss_or_bc_type=COND_BC,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, ss_or_bc_type=COND_BC,   &
          name='Root BC in soil equation', unit='Pa', cond_type=COND_DIRICHLET, &
          region_type=SOIL_TOP_CELLS, &
          conn_set=conn_set)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Potential Mass_Flux', 'kg/s', COND_DOWNREGULATE_POT_MASS_RATE, &
          SOIL_BOTTOM_CELLS)
 

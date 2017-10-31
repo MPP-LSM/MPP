@@ -15,7 +15,6 @@ module MultiPhysicsProbTH
   use mpp_abortutils                       , only : endrun
   use mpp_shr_log_mod                      , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbBaseType             , only : multiphysicsprob_base_type
-!  use SystemOfEquationsThermalEnthalpyType , only : sysofeqns_thermal_enthalpy_type
   use SystemOfEquationsTHType              , only : sysofeqns_th_type
   use SystemOfEquationsBasePointerType     , only : sysofeqns_base_pointer_type
   use petscsys
@@ -35,10 +34,7 @@ module MultiPhysicsProbTH
    contains
      procedure, public :: Init                          => MPPTHInit
      procedure, public :: AddGovEqn                     => MPPTHAddGovEqn
-     procedure, public :: GovEqnAddCondition            => MPPTHGovEqnAddCondition
-     procedure, public :: GovEqnAddConditionForCoupling => MPPTHGovEqnAddConditionForCoupling
      procedure, public :: SetMeshesOfGoveqns            => MPPTHSetMeshesOfGoveqns
-     procedure, public :: GovEqnAddCouplingCondition    => MPPTHGovEqnAddCouplingCondition
      procedure, public :: AllocateAuxVars               => MPPTHAllocateAuxVars
      procedure, public :: GovEqnSetCouplingVars         => MPPTHGovEqnSetCouplingVars
      procedure, public :: SetupProblem                  => MPPTHSetupProblem
@@ -638,147 +634,6 @@ contains
   end subroutine MPPTHAddGovEqn
 
   !------------------------------------------------------------------------
-  subroutine MPPTHGovEqnAddCondition(this, igoveqn, ss_or_bc_type, &
-       name, unit, cond_type, region_type, id_of_other_goveq, conn_set)
-    !
-    ! !DESCRIPTION:
-    ! Adds a boundary/source-sink condition to a governing equation
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    use ConnectionSetType        , only : connection_set_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type)                     :: this
-    PetscInt                                    :: igoveqn
-    PetscInt                                    :: ss_or_bc_type
-    character(len =*)                           :: name
-    character(len =*)                           :: unit
-    PetscInt                                    :: cond_type
-    PetscInt                                    :: region_type
-    PetscInt, optional                          :: id_of_other_goveq
-    type(connection_set_type),pointer, optional :: conn_set
-    !
-    class(goveqn_base_type),pointer             :: cur_goveq
-    class(goveqn_base_type),pointer             :: other_goveq
-    PetscInt                                    :: ii
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to add condition for governing equation ' // &
-            'that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    if (.not.present(id_of_other_goveq)) then
-       if (.not.present(conn_set)) then
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type)
-       else
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type, conn_set=conn_set)
-       endif
-    else
-
-       other_goveq => this%sysofeqns%goveqns
-       do ii = 1,id_of_other_goveq-1
-          other_goveq => other_goveq%next
-       enddo
-
-       if (.not.present(conn_set)) then
-          call cur_goveq%AddCondition(ss_or_bc_type, name, &
-               unit, cond_type, region_type,               &
-               id_of_other_goveq = id_of_other_goveq,      &
-               itype_of_other_goveq = other_goveq%id )
-       else
-          call cur_goveq%AddCondition(ss_or_bc_type, name, &
-               unit, cond_type, region_type,               &
-               id_of_other_goveq = id_of_other_goveq,      &
-               itype_of_other_goveq = other_goveq%id,      &
-               conn_set=conn_set)
-       endif
-    endif
-
-  end subroutine MPPTHGovEqnAddCondition
-
-  !------------------------------------------------------------------------
-  subroutine MPPTHGovEqnAddConditionForCoupling(this, igoveqn, ss_or_bc_type, &
-       name, unit, cond_type, region_type, num_other_goveqns, id_of_other_goveqs, &
-       icoupling_of_other_goveqns, conn_set)
-    !
-    ! !DESCRIPTION:
-    ! Adds a boundary for coupling with another governing equation
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    use ConnectionSetType        , only : connection_set_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type)                          :: this
-    PetscInt                                    :: igoveqn
-    PetscInt                                    :: ss_or_bc_type
-    character(len =*)                           :: name
-    character(len =*)                           :: unit
-    PetscInt                                    :: cond_type
-    PetscInt                                    :: region_type
-    PetscInt                                    :: num_other_goveqns
-    PetscInt, pointer                           :: id_of_other_goveqs(:)
-    PetscBool, pointer                          :: icoupling_of_other_goveqns(:)
-    type(connection_set_type),pointer, optional :: conn_set
-    !
-    class(goveqn_base_type),pointer             :: cur_goveq
-    class(goveqn_base_type),pointer             :: other_goveq
-    PetscInt                                    :: ii, jj
-    PetscInt, pointer                           :: itype_of_other_goveqs(:)
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to add condition for governing equation ' // &
-            'that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    allocate(itype_of_other_goveqs(num_other_goveqns))
-    do jj = 1, num_other_goveqns
-       other_goveq => this%sysofeqns%goveqns
-       do ii = 1,id_of_other_goveqs(jj)-1
-          other_goveq => other_goveq%next
-       enddo
-       itype_of_other_goveqs(jj) = other_goveq%id
-    enddo
-
-    if (.not.present(conn_set)) then
-       call cur_goveq%AddCondition(ss_or_bc_type, name,              &
-            unit, cond_type, region_type,                            &
-            num_other_goveqs = num_other_goveqns,                    &
-            id_of_other_goveqs = id_of_other_goveqs,                 &
-            itype_of_other_goveqs = itype_of_other_goveqs,           &
-            icoupling_of_other_goveqns = icoupling_of_other_goveqns)
-    else
-       call cur_goveq%AddCondition(ss_or_bc_type, name,              &
-            unit, cond_type, region_type,                            &
-            num_other_goveqs = num_other_goveqns,                    &
-            id_of_other_goveqs = id_of_other_goveqs,                 &
-            itype_of_other_goveqs = itype_of_other_goveqs,           &
-            icoupling_of_other_goveqns = icoupling_of_other_goveqns, &
-            conn_set=conn_set)
-    endif
-
-    deallocate(itype_of_other_goveqs)
-
-  end subroutine MPPTHGovEqnAddConditionForCoupling
-
-  !------------------------------------------------------------------------
   subroutine MPPTHSetMeshesOfGoveqns(this)
     !
     ! !DESCRIPTION:
@@ -794,39 +649,6 @@ contains
     call this%sysofeqns%SetMeshesOfGoveqns(this%meshes, this%nmesh)
 
   end subroutine MPPTHSetMeshesOfGoveqns
-
-  !------------------------------------------------------------------------
-  subroutine MPPTHGovEqnAddCouplingCondition(this, ieqn_1, ieqn_2, &
-       iregion_1, iregion_2)
-    !
-    ! !DESCRIPTION:
-    ! Adds a boundary condition to couple ieqn_1 and ieqn_2
-    !
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type) :: this
-    PetscInt                :: ieqn_1
-    PetscInt                :: ieqn_2
-    PetscInt                :: iregion_1
-    PetscInt                :: iregion_2
-    !
-    character(len=256)        :: name
-
-    write(name,*) ieqn_2
-    name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
-    call this%GovEqnAddCondition(ieqn_1, COND_BC, &
-         name, '[K]', COND_DIRICHLET_FRM_OTR_GOVEQ, iregion_1, ieqn_2)
-
-    write(name,*) ieqn_1
-    name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
-    call this%GovEqnAddCondition(ieqn_2, COND_BC, &
-         name, '[K]', COND_DIRICHLET_FRM_OTR_GOVEQ, iregion_2, ieqn_1)
-
-  end subroutine MPPTHGovEqnAddCouplingCondition
 
   !------------------------------------------------------------------------
   subroutine MPPTHAllocateAuxVars(this)
@@ -846,26 +668,26 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_th_type)                :: this
+    class(mpp_th_type)                   :: this
     !
-    class(sysofeqns_base_type), pointer    :: soe_base
-    class(sysofeqns_th_type), pointer :: soe
-    class(goveqn_base_type), pointer       :: cur_goveq
-    PetscInt                               :: igoveqn
-    PetscInt                               :: num_bc
-    PetscInt                               :: num_ss
-    PetscInt                               :: icond
-    PetscInt                               :: iauxvar
-    PetscInt                               :: iauxvar_beg, iauxvar_end
-    PetscInt                               :: iauxvar_beg_bc, iauxvar_end_bc
-    PetscInt                               :: iauxvar_beg_ss, iauxvar_end_ss
-    PetscInt                               :: count_bc, count_ss
-    PetscInt                               :: offset_bc, offset_ss
-    PetscInt                               :: cond_itype_to_exclude
-    PetscInt, pointer                      :: ncells_for_bc(:)
-    PetscInt, pointer                      :: ncells_for_ss(:)
-    PetscInt, pointer                      :: offsets_bc(:)
-    PetscInt, pointer                      :: offsets_ss(:)
+    class(sysofeqns_base_type) , pointer :: soe_base
+    class(sysofeqns_th_type)   , pointer :: soe
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscInt                             :: igoveqn
+    PetscInt                             :: num_bc
+    PetscInt                             :: num_ss
+    PetscInt                             :: icond
+    PetscInt                             :: iauxvar
+    PetscInt                             :: iauxvar_beg, iauxvar_end
+    PetscInt                             :: iauxvar_beg_bc, iauxvar_end_bc
+    PetscInt                             :: iauxvar_beg_ss, iauxvar_end_ss
+    PetscInt                             :: count_bc, count_ss
+    PetscInt                             :: offset_bc, offset_ss
+    PetscInt                             :: cond_itype_to_exclude
+    PetscInt                   , pointer :: ncells_for_bc(:)
+    PetscInt                   , pointer :: ncells_for_ss(:)
+    PetscInt                   , pointer :: offsets_bc(:)
+    PetscInt                   , pointer :: offsets_ss(:)
 
     soe_base => this%sysofeqns
 

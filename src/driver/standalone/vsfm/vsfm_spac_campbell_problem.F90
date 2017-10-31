@@ -766,13 +766,13 @@ contains
     PetscReal                 , pointer :: area(:)
     PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
-
-    PetscInt                            :: ieqn_other
+    PetscInt                            :: num_other_goveqs
+    PetscInt                  , pointer :: ieqn_others(:)
 
     type(connection_set_type) , pointer :: conn_set
 
     ieqn       = 1
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Potential Mass_Flux', 'kg/s', COND_DOWNREGULATE_POT_MASS_RATE, &
          SOIL_BOTTOM_CELLS)
 
@@ -799,11 +799,14 @@ contains
     enddo
     
     allocate(conn_set)
+    
+    num_other_goveqs = 1 
+    allocate(ieqn_others(num_other_goveqs))
 
     ! BoundaryCondition:
     ! Xylem mass ---> Root mass
-    ieqn       = 1
-    ieqn_other = 2
+    ieqn           = 1
+    ieqn_others(1) = 2
 
     do kk = 1, nz_root
        id_up(kk)      = 0
@@ -814,20 +817,19 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn                 , &
-         ss_or_bc_type     = COND_BC                      , &
-         name              = 'Root BC in xylem equation'  , &
-         unit              = 'Pa'                         , &
-         cond_type         = COND_DIRICHLET_FRM_OTR_GOVEQ , &
-         region_type       = SOIL_TOP_CELLS               , &
-         id_of_other_goveq = ieqn_other                   , &
-         conn_set          = conn_set)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Root BC in xylem equation'  , &
+         unit               = 'Pa'                         , &
+         region_type        = SOIL_TOP_CELLS               , &
+         num_other_goveqs   = num_other_goveqs             , &
+         id_of_other_goveqs = ieqn_others                  , &
+         conn_set           = conn_set)
 
     ! BoundaryCondition:
     ! Root mass ---> Xylem mass
     !           ---> Soil mass
-    ieqn       = 2
-    ieqn_other = 1
+    ieqn           = 2
+    ieqn_others(1) = 1
     
     do kk = 1, nz_root
        id_up(kk)      = 0
@@ -838,35 +840,33 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn                 , &
-         ss_or_bc_type     = COND_BC                      , &
-         name              = 'Xylem BC in root equation'  , &
-         unit              = 'Pa'                         , &
-         cond_type         = COND_DIRICHLET_FRM_OTR_GOVEQ , &
-         region_type       = SOIL_TOP_CELLS               , &
-         id_of_other_goveq = ieqn_other                   , &
-         conn_set          = conn_set)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Xylem BC in root equation'  , &
+         unit               = 'Pa'                         , &
+         region_type        = SOIL_TOP_CELLS               , &
+         num_other_goveqs   = num_other_goveqs             , &
+         id_of_other_goveqs = ieqn_others                  , &
+         conn_set           = conn_set)
 
-    ieqn_other = 3
+    ieqn_others(1) = 3
     
     call MeshCreateConnectionSet(vsfm_mpp%meshes(2), &
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn                 , &
-         ss_or_bc_type     = COND_BC                      , &
-         name              = 'Soil BC in root equation'   , &
-         unit              = 'Pa'                         , &
-         cond_type         = COND_DIRICHLET_FRM_OTR_GOVEQ , &
-         region_type       = SOIL_TOP_CELLS               , &
-         id_of_other_goveq = ieqn_other                   , &
-         conn_set          = conn_set)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Soil BC in root equation'   , &
+         unit               = 'Pa'                         , &
+         region_type        = SOIL_TOP_CELLS               , &
+         num_other_goveqs   = num_other_goveqs             , &
+         id_of_other_goveqs = ieqn_others                  , &
+         conn_set           = conn_set)
 
     ! BoundaryCondition:
     ! Soil mass ---> Root mass
 
-    ieqn       = 3
-    ieqn_other = 2
+    ieqn           = 3
+    ieqn_others(1) = 2
     
     do kk = 1, nz_root
        id_up(kk)      = 0
@@ -877,14 +877,13 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn                 , &
-         ss_or_bc_type     = COND_BC                      , &
-         name              = 'Root BC in soil equation'   , &
-         unit              = 'Pa'                         , &
-         cond_type         = COND_DIRICHLET_FRM_OTR_GOVEQ , &
-         region_type       = SOIL_TOP_CELLS               , &
-         id_of_other_goveq = ieqn_other                   , &
-         conn_set          = conn_set)
+    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+         name               = 'Root BC in soil equation'   , &
+         unit               = 'Pa'                         , &
+         region_type        = SOIL_TOP_CELLS               , &
+         num_other_goveqs   = num_other_goveqs             , &
+         id_of_other_goveqs = ieqn_others                  , &
+         conn_set           = conn_set)
 
 
     call ConnectionSetDestroy(conn_set)
@@ -895,7 +894,8 @@ contains
     deallocate(dist_dn  )
     deallocate(area     )
     deallocate(itype    )
-    deallocate(unit_vec )    
+    deallocate(unit_vec )
+    deallocate(ieqn_others)
 
   end subroutine add_conditions_to_goveqns
 

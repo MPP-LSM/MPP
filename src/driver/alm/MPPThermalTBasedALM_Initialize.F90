@@ -580,23 +580,23 @@ contains
     ! Add BC/SS
     !
     ieqn = 1
-    call thermal_mpp%GovEqnAddCondition(ieqn, COND_BC,           &
+    call thermal_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,           &
          'Heat_flux_BC_at_top_of_snow', 'W/m^2', COND_HEAT_FLUX, &
          SNOW_TOP_CELLS)
-    call thermal_mpp%GovEqnAddCondition(ieqn, COND_SS,           &
+    call thermal_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,           &
          'Absorbed_solar_radiation', 'W/m^2', COND_HEAT_RATE, &
          ALL_CELLS)
 
     ieqn = 2
-    call thermal_mpp%GovEqnAddCondition(ieqn, COND_BC,           &
+    call thermal_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,           &
          'Heat_flux_BC_at_top_of_standing_surface_water', 'W/m^2', COND_HEAT_FLUX, &
          SSW_TOP_CELLS)
 
     ieqn = 3
-    call thermal_mpp%GovEqnAddCondition(ieqn, COND_BC,           &
+    call thermal_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,           &
          'Heat_flux_BC_at_top_of_soil', 'W/m^2', COND_HEAT_FLUX, &
          SOIL_TOP_CELLS)
-    call thermal_mpp%GovEqnAddCondition(ieqn, COND_SS,           &
+    call thermal_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,           &
          'Absorbed_solar_radiation', 'W/m^2', COND_HEAT_RATE, &
          ALL_CELLS)
 

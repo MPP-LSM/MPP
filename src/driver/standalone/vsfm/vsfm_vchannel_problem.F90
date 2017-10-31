@@ -890,7 +890,7 @@ contains
     enddo
 
     ieqn = 1
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_SEEPAGE_BC, &
          SOIL_TOP_CELLS)
 

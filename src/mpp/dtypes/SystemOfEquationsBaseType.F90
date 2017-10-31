@@ -64,26 +64,28 @@ module SystemOfEquationsBaseType
      Mat                             :: Amat                         ! used if SoE is a PETSc KSP
 
    contains
-     procedure, public :: Init                  => SOEBaseInit
-     procedure, public :: Clean                 => SOEBaseClean
-     procedure, public :: IFunction             => SOEBaseIFunction
-     procedure, public :: IJacobian             => SOEBaseIJacobian
-     procedure, public :: Residual              => SOEBaseResidual
-     procedure, public :: Jacobian              => SOEBaseJacobian
-     procedure, public :: ComputeRHS            => SOEComputeRHS
-     procedure, public :: ComputeOperators      => SOEComputeOperators
-     procedure, public :: StepDT                => SOEBaseStepDT
-     procedure, public :: PreSolve              => SOEBasePreSolve
-     procedure, public :: PostSolve             => SOEBasePostSolve
-     procedure, public :: PreStepDT             => SOEBasePreStepDT
-     procedure, public :: PostStepDT            => SOEBasePostStepDT
-     procedure, public :: PrintInfo             => SOEBasePrintInfo
-     procedure, public :: SetPointerToIthGovEqn => SOEBaseSetPointerToIthGovEqn
-     procedure, public :: SetDtime              => SOEBaseSetDtime
-     procedure, public :: SetDataFromCLM        => SOEBaseSetDataFromCLM
-     procedure, public :: GetDataForCLM         => SOEBaseGetDataForCLM
-     procedure, public :: AddGovEqn             => SOEBaseAddGovEqn
-     procedure, public :: SetMeshesOfGoveqns    => SOESetMeshesOfGoveqns
+     procedure, public :: Init                   => SOEBaseInit
+     procedure, public :: Clean                  => SOEBaseClean
+     procedure, public :: IFunction              => SOEBaseIFunction
+     procedure, public :: IJacobian              => SOEBaseIJacobian
+     procedure, public :: Residual               => SOEBaseResidual
+     procedure, public :: Jacobian               => SOEBaseJacobian
+     procedure, public :: ComputeRHS             => SOEComputeRHS
+     procedure, public :: ComputeOperators       => SOEComputeOperators
+     procedure, public :: StepDT                 => SOEBaseStepDT
+     procedure, public :: PreSolve               => SOEBasePreSolve
+     procedure, public :: PostSolve              => SOEBasePostSolve
+     procedure, public :: PreStepDT              => SOEBasePreStepDT
+     procedure, public :: PostStepDT             => SOEBasePostStepDT
+     procedure, public :: PrintInfo              => SOEBasePrintInfo
+     procedure, public :: SetPointerToIthGovEqn  => SOEBaseSetPointerToIthGovEqn
+     procedure, public :: SetDtime               => SOEBaseSetDtime
+     procedure, public :: SetDataFromCLM         => SOEBaseSetDataFromCLM
+     procedure, public :: GetDataForCLM          => SOEBaseGetDataForCLM
+     procedure, public :: AddGovEqn              => SOEBaseAddGovEqn
+     procedure, public :: SetMeshesOfGoveqns     => SOESetMeshesOfGoveqns
+     procedure, public :: AddCouplingBCsInGovEqn => SOEBaseAddCouplingBCsInGovEqn
+     procedure, public :: AddConditionInGovEqn   => SOEBaseAddConditionInGovEqn
   end type sysofeqns_base_type
 
   public :: SOEBaseInit
@@ -736,7 +738,7 @@ contains
   end subroutine SOESetMeshesOfGoveqns
 
   !------------------------------------------------------------------------
-  subroutine SOEBaseSetPointerToIthGovEqn(this, goveqn_id, goveqn_ptr)
+  subroutine SOEBaseSetPointerToIthGovEqn(this, igoveqn, goveqn_ptr)
     !
     ! !DESCRIPTION:
     ! Returns pointer to the i-th governing equation present with SoE
@@ -748,13 +750,19 @@ contains
     !
     ! !ARGUMENTS
     class(sysofeqns_base_type)      :: this
-    PetscInt                        :: goveqn_id
+    PetscInt                        :: igoveqn
     class(goveqn_base_type),pointer :: goveqn_ptr
     !
     ! !LOCAL VARIABLES
     class(goveqn_base_type),pointer :: cur_goveq
     PetscInt                        :: sum_goveqn
     PetscBool                       :: found
+
+    if (igoveqn > this%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
 
     sum_goveqn = 0
     found      = PETSC_FALSE
@@ -763,7 +771,7 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
        sum_goveqn = sum_goveqn + 1
-       if (sum_goveqn == goveqn_id) then
+       if (sum_goveqn == igoveqn) then
           found = PETSC_TRUE
           goveqn_ptr => cur_goveq
           exit
@@ -872,6 +880,123 @@ contains
     call endrun(msg=errMsg(__FILE__, __LINE__))
 
   end subroutine SOEBaseAddGovEqn
+
+  !------------------------------------------------------------------------
+  subroutine SOEBaseAddCouplingBCsInGovEqn(this, igoveq, name, unit, &
+       region_type, num_other_goveqs, id_of_other_goveqs, &
+       icoupling_of_other_goveqns, conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Adds coupling boundary conditions to igoveq governing equation
+    !
+    use MultiPhysicsProbConstants, only : COND_BC
+    use GoverningEquationBaseType, only : goveqn_base_type
+    use ConnectionSetType        , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_base_type)                      :: this
+    PetscInt                  , intent(in)          :: igoveq
+    character(len =*)         , intent(in)          :: name
+    character(len =*)         , intent(in)          :: unit
+    PetscInt                  , intent(in)          :: region_type
+    PetscInt                  , intent(in)          :: num_other_goveqs
+    PetscInt                  , pointer, intent(in) :: id_of_other_goveqs(:)
+    PetscBool                 , pointer, optional   :: icoupling_of_other_goveqns(:)
+    type(connection_set_type) , pointer, optional   :: conn_set
+    !
+    ! !LOCAL VARIABLES
+    class(goveqn_base_type)   , pointer             :: cur_goveq
+    class(goveqn_base_type)   , pointer             :: other_goveq
+    PetscInt                                        :: cond_type
+    PetscInt                                        :: ss_or_bc_type
+    PetscInt                                        :: jj
+    PetscInt                  , pointer             :: itype_of_other_goveqs(:)
+
+    if (igoveq > this%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    call this%SetPointerToIthGovEqn(igoveq, cur_goveq)
+
+    allocate(itype_of_other_goveqs(num_other_goveqs))
+    do jj = 1, num_other_goveqs
+       call this%SetPointerToIthGovEqn(id_of_other_goveqs(jj), other_goveq)
+       itype_of_other_goveqs(jj) = other_goveq%id
+    enddo
+
+    if (.not.present(conn_set)) then
+       if (.not.present(icoupling_of_other_goveqns)) then
+          call cur_goveq%AddCouplingBC(                               &
+               name, unit, region_type, num_other_goveqs,             &
+               id_of_other_goveqs, itype_of_other_goveqs )
+       else
+          call cur_goveq%AddCouplingBC(                               &
+               name, unit, region_type, num_other_goveqs,             &
+               id_of_other_goveqs, itype_of_other_goveqs,             &
+               icoupling_of_other_goveqns=icoupling_of_other_goveqns)
+       end if
+    else
+       if (.not.present(icoupling_of_other_goveqns)) then
+          call cur_goveq%AddCouplingBC(                               &
+               name, unit, region_type,                               &
+               num_other_goveqs, id_of_other_goveqs,                  &
+               itype_of_other_goveqs,                                 &
+               conn_set=conn_set)
+       else
+          call cur_goveq%AddCouplingBC(                               &
+               name, unit, region_type,                               &
+               num_other_goveqs, id_of_other_goveqs,                  &
+               itype_of_other_goveqs,                                 &
+               icoupling_of_other_goveqns=icoupling_of_other_goveqns, &
+               conn_set=conn_set)
+       end if
+    endif
+
+    deallocate(itype_of_other_goveqs)
+
+  end subroutine SOEBaseAddCouplingBCsInGovEqn
+
+  !------------------------------------------------------------------------
+  subroutine SOEBaseAddConditionInGovEqn(this, igoveqn, ss_or_bc_type, name, unit, &
+       cond_type, region_type, conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Adds a boundary/source-sink condition to a governing equation
+    !
+    use GoverningEquationBaseType, only : goveqn_base_type
+    use ConnectionSetType        , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_base_type)                  :: this
+    PetscInt                                    :: igoveqn
+    PetscInt                                    :: ss_or_bc_type
+    character(len =*)                           :: name
+    character(len =*)                           :: unit
+    PetscInt                                    :: cond_type
+    PetscInt                                    :: region_type
+    type(connection_set_type),pointer, optional :: conn_set
+    !
+    class(goveqn_base_type),pointer             :: cur_goveq
+    class(goveqn_base_type),pointer             :: other_goveq
+    PetscInt                                    :: ii
+
+    call this%SetPointerToIthGovEqn(igoveqn, cur_goveq)
+
+    if (.not.present(conn_set)) then
+       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+            cond_type, region_type)
+    else
+       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+            cond_type, region_type, conn_set=conn_set)
+    endif
+
+  end subroutine SOEBaseAddConditionInGovEqn
 
   !------------------------------------------------------------------------
   subroutine SOEBaseClean(this)

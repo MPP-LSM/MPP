@@ -833,38 +833,38 @@ contains
 
     ieqn = 1
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Infiltration_Flux', 'kg/s', COND_MASS_RATE, &
          SOIL_TOP_CELLS)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Evapotranspiration_Flux', 'kg/s', COND_MASS_RATE, &
          SOIL_CELLS)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Dew_Flux', 'kg/s', COND_MASS_RATE, &
          SOIL_TOP_CELLS)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Drainage_Flux', 'kg/s', COND_MASS_RATE, &
          SOIL_CELLS)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Snow_Disappearance_Flux', 'kg/s', COND_MASS_RATE, &
          SOIL_TOP_CELLS)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Sublimation_Flux', 'kg/s', COND_MASS_RATE, &
          SOIL_TOP_CELLS)
 
     if (vsfm_lateral_model_type == 'source_sink' ) then
 
-       call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+       call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
             'Lateral_flux', 'kg/s', COND_MASS_RATE, &
             SOIL_CELLS)
 
        if (vsfm_include_seepage_bc) then
-          call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+          call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
                'Seepage_Flux', 'kg/s', COND_SEEPAGE_BC, &
                SOIL_TOP_CELLS)
        endif
@@ -872,7 +872,7 @@ contains
     else if (vsfm_lateral_model_type == 'three_dimensional') then
 
        if (vsfm_include_seepage_bc) then
-          call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+          call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
                'Seepage_Flux', 'kg/s', COND_SEEPAGE_BC, &
                SOIL_TOP_CELLS)
        endif

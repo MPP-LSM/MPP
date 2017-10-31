@@ -396,7 +396,7 @@ contains
 
     ieqn = 2
 
-    call th_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+    call th_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant temperature condition at top', 'K', COND_DIRICHLET, &
          SOIL_TOP_CELLS, conn_set=conn_set)
 
@@ -415,7 +415,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call th_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+    call th_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
          SOIL_BOTTOM_CELLS, conn_set=conn_set)
 

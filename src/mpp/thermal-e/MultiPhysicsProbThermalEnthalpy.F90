@@ -34,9 +34,7 @@ module MultiPhysicsProbThermalEnthalpy
    contains
      procedure, public :: Init                        => ThermalEnthalpyMPPInit
      procedure, public :: AddGovEqn                   => ThermalEnthalpyMPPAddGovEqn
-     procedure, public :: GovEqnAddCondition          => ThermalEnthalpyMPPGovEqnAddCondition
      procedure, public :: SetMeshesOfGoveqns          => ThermalEnthalpyMPPSetMeshesOfGoveqns
-     procedure, public :: GovEqnAddCouplingCondition  => ThermalEnthalpyMPPGovEqnAddCouplingCondition
      procedure, public :: AllocateAuxVars             => ThermalEnthalpyMPPAllocateAuxVars
      procedure, public :: GovEqnSetCouplingVars       => ThermalEnthalpyMPPGovEqnSetCouplingVars
      procedure, public :: SetupProblem                => ThermalEnthalpyMPPSetupProblem
@@ -359,75 +357,6 @@ contains
   end subroutine ThermalEnthalpyMPPAddGovEqn
 
   !------------------------------------------------------------------------
-  subroutine ThermalEnthalpyMPPGovEqnAddCondition(this, igoveqn, ss_or_bc_type, &
-       name, unit, cond_type, region_type, id_of_other_goveq, conn_set)
-    !
-    ! !DESCRIPTION:
-    ! Adds a boundary/source-sink condition to a governing equation
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    use ConnectionSetType        , only : connection_set_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type)                     :: this
-    PetscInt                                    :: igoveqn
-    PetscInt                                    :: ss_or_bc_type
-    character(len =*)                           :: name
-    character(len =*)                           :: unit
-    PetscInt                                    :: cond_type
-    PetscInt                                    :: region_type
-    PetscInt, optional                          :: id_of_other_goveq
-    type(connection_set_type),pointer, optional :: conn_set
-    !
-    class(goveqn_base_type),pointer             :: cur_goveq
-    class(goveqn_base_type),pointer             :: other_goveq
-    PetscInt                                    :: ii
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to add condition for governing equation ' // &
-            'that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    if (.not.present(id_of_other_goveq)) then
-       if (.not.present(conn_set)) then
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type)
-       else
-          call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-               cond_type, region_type, conn_set=conn_set)
-       endif
-    else
-
-       other_goveq => this%sysofeqns%goveqns
-       do ii = 1,id_of_other_goveq-1
-          other_goveq => other_goveq%next
-       enddo
-
-       if (.not.present(conn_set)) then
-          call cur_goveq%AddCondition(ss_or_bc_type, name, &
-               unit, cond_type, region_type,               &
-               id_of_other_goveq = id_of_other_goveq,      &
-               itype_of_other_goveq = other_goveq%id )
-       else
-          call cur_goveq%AddCondition(ss_or_bc_type, name, &
-               unit, cond_type, region_type,               &
-               id_of_other_goveq = id_of_other_goveq,      &
-               itype_of_other_goveq = other_goveq%id,      &
-               conn_set=conn_set)
-       endif
-    endif
-
-  end subroutine ThermalEnthalpyMPPGovEqnAddCondition
-
-  !------------------------------------------------------------------------
   subroutine ThermalEnthalpyMPPSetMeshesOfGoveqns(this)
     !
     ! !DESCRIPTION:
@@ -443,39 +372,6 @@ contains
     call this%sysofeqns%SetMeshesOfGoveqns(this%meshes, this%nmesh)
 
   end subroutine ThermalEnthalpyMPPSetMeshesOfGoveqns
-
-  !------------------------------------------------------------------------
-  subroutine ThermalEnthalpyMPPGovEqnAddCouplingCondition(this, ieqn_1, ieqn_2, &
-       iregion_1, iregion_2)
-    !
-    ! !DESCRIPTION:
-    ! Adds a boundary condition to couple ieqn_1 and ieqn_2
-    !
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type) :: this
-    PetscInt                :: ieqn_1
-    PetscInt                :: ieqn_2
-    PetscInt                :: iregion_1
-    PetscInt                :: iregion_2
-    !
-    character(len=256)        :: name
-
-    write(name,*) ieqn_2
-    name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
-    call this%GovEqnAddCondition(ieqn_1, COND_BC, &
-         name, '[K]', COND_DIRICHLET_FRM_OTR_GOVEQ, iregion_1, ieqn_2)
-
-    write(name,*) ieqn_1
-    name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
-    call this%GovEqnAddCondition(ieqn_2, COND_BC, &
-         name, '[K]', COND_DIRICHLET_FRM_OTR_GOVEQ, iregion_2, ieqn_1)
-
-  end subroutine ThermalEnthalpyMPPGovEqnAddCouplingCondition
 
   !------------------------------------------------------------------------
   subroutine ThermalEnthalpyMPPAllocateAuxVars(this)
