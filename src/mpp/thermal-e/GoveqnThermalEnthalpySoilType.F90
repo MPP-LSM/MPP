@@ -43,8 +43,6 @@ module GoveqnThermalEnthalpySoilType
      procedure, public :: GetFromSOEAuxVarsBC     => ThermEnthalpySoilGetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS     => ThermEnthalpySoilGetFromSOEAuxVarsSS
      procedure, public :: GetDataFromSOEAuxVar    => ThermEnthalpySoilGetDataFromSOEAuxVar
-     procedure, public :: GetConditionNames       => ThermEnthalpySoilGetConditionNames
-     procedure, public :: GetNumCellsInConditions => ThermEnthalpySoilGetNumCellsInConditions
 
      procedure, public :: SetFromSOEAuxVarsIntrn  => ThermEnthalpySoilSetFromSOEAuxVarsIntrn
      procedure, public :: SetFromSOEAuxVarsBC     => ThermEnthalpySoilSetFromSOEAuxVarsBC
@@ -60,9 +58,9 @@ module GoveqnThermalEnthalpySoilType
      procedure, public :: UpdateAuxVarsBC         => ThermEnthalpySoilUpdateAuxVarsBC
      procedure, public :: UpdateAuxVarsSS         => ThermEnthalpySoilUpdateAuxVarsSS
 
-     procedure, public :: Residual                => ThermEnthalpySoilRes
-     procedure, public :: Jacobian                => ThermEnthalpySoilJac
-     procedure, public :: JacobianOffDiag         => ThermEnthalpySoilJacOffDiag
+     procedure, public :: ComputeResidual         => ThermEnthalpySoilComputeResidual
+     procedure, public :: ComputeJacobian         => ThermEnthalpySoilComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian  => ThermEnthalpySoilComputeOffDiagJacobian
      procedure, public :: PreSolve                => ThermEnthalpySoilPreSolve
 
      procedure, public :: CreateVectors           => ThermEnthalpySoilCreateVectors
@@ -88,7 +86,7 @@ contains
     ! !ARGUMENTS
     class(goveqn_thermal_enthalpy_soil_type) :: this
 
-    call this%Init()
+    call this%Create()
 
     this%name       = "Soil thermal equation based on enthalpy"
     this%id         = GE_THERM_SOIL_EBASED
@@ -354,7 +352,7 @@ contains
           if(  &
                soe_avars(iauxvar)%is_bc  &
                .and.  &
-               soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+               soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                .and.  &
                soe_avars(iauxvar)%condition_id == condition_id  &
                ) then
@@ -534,7 +532,7 @@ contains
           if(  &
                soe_avars(iauxvar)%is_ss  &
                .and.  &
-               soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+               soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                .and.  &
                soe_avars(iauxvar)%condition_id == condition_id  &
                ) then
@@ -639,170 +637,6 @@ contains
   end subroutine ThermEnthalpySoilSetFromSOEAuxVarsSS
 
   !------------------------------------------------------------------------
-  subroutine ThermEnthalpySoilGetConditionNames(this, cond_type, &
-                cond_type_to_exclude, num_conds, cond_names)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number and names of conditions (eg. boundary condition
-    ! or source-sink) present.
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    use MultiPhysicsProbConstants , only : COND_NULL
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_enthalpy_soil_type) :: this
-    PetscInt, intent(in)                     :: cond_type
-    PetscInt, intent(in)                     :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    character (len=256), pointer             :: cond_names(:)
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Find number of BCs
-    call this%GetNumConditions(cond_type, COND_NULL, num_conds)
-
-    if (num_conds == 0) then
-       nullify(cond_names)
-       return
-    endif
-
-    allocate(cond_names(num_conds))
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-          cond_names(num_conds) = cur_cond%name
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermEnthalpySoilGetConditionNames
-
-  !------------------------------------------------------------------------
-  subroutine ThermEnthalpySoilGetNumConditions(this, cond_type, &
-              cond_type_to_exclude, num_conds)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number of conditions
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_enthalpy_soil_type) :: this
-    PetscInt                                 :: cond_type
-    PetscInt                                 :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermEnthalpySoilGetNumConditions
-
-  !------------------------------------------------------------------------
-  subroutine ThermEnthalpySoilGetNumCellsInConditions(this, cond_type, &
-                cond_type_to_exclude, num_conds, ncells_for_conds)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number of conditions (eg. boundary condition or
-    ! source-sink) and number of control volumes associated with each condition
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    use MultiPhysicsProbConstants , only : COND_NULL
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_enthalpy_soil_type) :: this
-    PetscInt, intent(in)                     :: cond_type
-    PetscInt, intent(in)                     :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    PetscInt, intent(out), pointer           :: ncells_for_conds(:)
-    !
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Find number of BCs
-    call this%GetNumConditions(cond_type, COND_NULL, num_conds)
-
-    if (num_conds == 0) then
-       nullify(ncells_for_conds)
-       return
-    endif
-
-    allocate(ncells_for_conds(num_conds))
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-          ncells_for_conds(num_conds) = cur_cond%ncells
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermEnthalpySoilGetNumCellsInConditions
-
-  !------------------------------------------------------------------------
   subroutine ThermEnthalpySoilSetDataInSOEAuxVar(this, soe_avar_type, soe_avars, &
        offset)
     !
@@ -863,6 +697,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_NULL
     !
     implicit none
     !
@@ -876,14 +711,21 @@ contains
     ! !LOCAL VARIABLES
     type(condition_type),pointer             :: cur_cond
     PetscInt                                 :: cond_count
+    PetscInt                                 :: cond_itype_to_exclude
 
-    call this%GetNumConditions(COND_BC, -1, cond_count)
+    cond_itype_to_exclude = COND_NULL
+    call this%GetNConditionsExcptCondItype(COND_BC, &
+         cond_itype_to_exclude, cond_count)
+
     if (bc_offset_count > cond_count) then
        write(iulog,*) 'ERROR: bc_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    call this%GetNumConditions(COND_SS, -1, cond_count)
+    cond_itype_to_exclude = COND_NULL
+    call this%GetNConditionsExcptCondItype(COND_SS, &
+         cond_itype_to_exclude, cond_count)
+
     if (ss_offset_count > cond_count) then
        write(iulog,*) 'ERROR: ss_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1173,7 +1015,7 @@ contains
 
   !------------------------------------------------------------------------
 
-  subroutine ThermEnthalpySoilRes(this, X, F, ierr)
+  subroutine ThermEnthalpySoilComputeResidual(this, X, F, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -1202,10 +1044,10 @@ contains
     call VecRestoreArrayF90(this%accum_prev, accum_prev_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(F, F_p, ierr); CHKERRQ(ierr)
 
-  end subroutine ThermEnthalpySoilRes
+  end subroutine ThermEnthalpySoilComputeResidual
 
   !------------------------------------------------------------------------
-  subroutine ThermEnthalpySoilJac(this, X, A, B, ierr)
+  subroutine ThermEnthalpySoilComputeJacobian(this, X, A, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the jacobian matrix for the discretized energy equation
@@ -1233,10 +1075,10 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine ThermEnthalpySoilJac
+  end subroutine ThermEnthalpySoilComputeJacobian
 
   !------------------------------------------------------------------------
-  subroutine ThermEnthalpySoilJacOffDiag(this, X_1, X_2, A, B, &
+  subroutine ThermEnthalpySoilComputeOffDiagJacobian(this, X_1, X_2, A, B, &
        id_of_other_goveq, list_id_of_other_goveq,        &
        ierr)
     !
@@ -1283,7 +1125,7 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine ThermEnthalpySoilJacOffDiag
+  end subroutine ThermEnthalpySoilComputeOffDiagJacobian
 
   !------------------------------------------------------------------------
 
@@ -2099,6 +1941,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
     use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    use CouplingVariableType      , only : coupling_variable_type
     !
     implicit none
     !
@@ -2112,6 +1955,7 @@ contains
     type (therm_enthalpy_soil_auxvar_type) , pointer :: aux_vars(:)
     type(condition_type)                   , pointer :: cur_cond
     type(connection_set_type)              , pointer :: cur_conn_set
+    type(coupling_variable_type)           , pointer :: cpl_var
     PetscInt                                         :: iconn
     PetscInt                                         :: ieqn
     PetscInt                                         :: sum_conn
@@ -2158,11 +2002,15 @@ contains
     compute_deriv    = PETSC_TRUE
 
     ! Are the two equations coupled?
-    do ivar = 1, geq_soil%nvars_needed_from_other_goveqns
-       if (geq_soil%ids_of_other_goveqns(ivar) == list_id_of_other_goveq) then
+    cpl_var => geq_soil%coupling_vars%first
+    do
+       if (.not.associated(cpl_var)) exit
+       
+       if (cpl_var%rank_of_coupling_goveqn == list_id_of_other_goveq) then          
           eqns_are_coupled = PETSC_TRUE
           exit
        endif
+       cpl_var => cpl_var%next
     enddo
 
     if (.not.eqns_are_coupled) return

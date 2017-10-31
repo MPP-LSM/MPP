@@ -50,6 +50,9 @@ module ConditionType
   public :: ConditionListAddCondition
   public :: ConditionListClean
   public :: ConditionListPrintInfo
+  public :: CondListGetNumCondsExcptCondItype
+  public :: CondListGetNumCellsForCondsExcptCondItype
+  public :: CondListGetCondNamesExcptCondItype
   !------------------------------------------------------------------------
 
 contains
@@ -181,6 +184,125 @@ contains
 
   end subroutine ConditionListAddCondition
 
+
+  !------------------------------------------------------------------------
+  subroutine CondListGetNumCondsExcptCondItype( &
+       list, cond_itype, num_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of conditions excluding conditions of
+    ! itype = cond_type_to_exclude
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(condition_list_type) , intent(in)  :: list
+    PetscInt                  , intent(in)  :: cond_itype
+    PetscInt                  , intent(out) :: num_conds
+    !
+    ! !LOCAL VARIABLES:
+    type(condition_type), pointer            :: cur_cond
+
+    num_conds = 0
+    cur_cond => list%first
+    do
+       if (.not.associated(cur_cond)) exit
+       if (cur_cond%itype /= cond_itype) then
+          num_conds = num_conds + 1
+       endif
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine CondListGetNumCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine CondListGetNumCellsForCondsExcptCondItype( &
+       list, cond_itype, num_cells_for_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of cells associated with all conditions excluding
+    ! conditions of itype = cond_type_to_exclude
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(condition_list_type) , intent(in)           :: list
+    PetscInt                  , intent(in)           :: cond_itype
+    PetscInt                  , intent(out), pointer :: num_cells_for_conds(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                                         :: num_conds
+    type(condition_type)      , pointer              :: cur_cond
+
+    call CondListGetNumCondsExcptCondItype(list, cond_itype, num_conds)
+
+    if (num_conds == 0) then
+
+       nullify(num_cells_for_conds)
+
+    else
+
+       allocate(num_cells_for_conds(num_conds))
+
+       num_conds = 0
+       cur_cond => list%first
+       do
+          if (.not.associated(cur_cond)) exit
+          if (cur_cond%itype /= cond_itype) then
+             num_conds = num_conds + 1
+             num_cells_for_conds(num_conds) = cur_cond%ncells
+          endif
+          cur_cond => cur_cond%next
+       enddo
+
+    end if
+
+  end subroutine CondListGetNumCellsForCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine CondListGetCondNamesExcptCondItype( &
+       list, cond_itype, cond_names)
+    !
+    ! !DESCRIPTION:
+    ! Returns the name of all conditions except condition of
+    ! itype = cond_type_to_exclude
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(condition_list_type) , intent(in) :: list
+    PetscInt                  , intent(in) :: cond_itype
+    character (len=256)       , pointer    :: cond_names(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                               :: num_conds
+    type(condition_type)     , pointer     :: cur_cond
+
+    call CondListGetNumCondsExcptCondItype( &
+         list, cond_itype, num_conds)
+
+    if (num_conds == 0) then
+
+       nullify(cond_names)
+
+    else
+
+       allocate(cond_names(num_conds))
+
+       num_conds = 0
+       cur_cond => list%first
+       do
+          if (.not.associated(cur_cond)) exit
+          if (cur_cond%itype /= cond_itype) then
+             num_conds = num_conds + 1
+             cond_names(num_conds) = trim(cur_cond%name)
+          endif
+          cur_cond => cur_cond%next
+       enddo
+
+    end if
+
+  end subroutine CondListGetCondNamesExcptCondItype
 
   !------------------------------------------------------------------------
   subroutine ConditionListClean(list)

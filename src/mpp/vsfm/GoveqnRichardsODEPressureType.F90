@@ -46,9 +46,9 @@ module GoveqnRichardsODEPressureType
      procedure, public :: AllocateAuxVars           => RichardsODEPressureAllocateAuxVars
      procedure, public :: SetDensityType            => RichardsODEPressureSetDensityType
      procedure, public :: Setup                     => RichardsODESetup
-     procedure, public :: Residual                  => RichardsODERes
-     procedure, public :: Jacobian                  => RichardsODEJac
-     procedure, public :: JacobianOffDiag           => RichardsODEJacOffDiag
+     procedure, public :: ComputeResidual           => RichardsODEComputeResidual
+     procedure, public :: ComputeJacobian           => RichardsODEComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian    => RichardsODEComputeOffDiagJacobian
 
      procedure, public :: GetFromSOEAuxVarsIntrn    => RichardsODEPressureGetFromSOEAuxVarsIntrn
      procedure, public :: SetFromSOEAuxVarsIntrn    => RichardsODEPressureSetFromSOEAuxVarsIntrn
@@ -65,9 +65,6 @@ module GoveqnRichardsODEPressureType
      procedure, public :: PreStepDT                 => RichardsODEPressurePreStepDT
      procedure, public :: NumConditions             => RichardsODEPressureNumConditions
      procedure, public :: NumCellsInConditions      => RichardsODEPressureNumCellsInConditions
-     procedure, public :: GetConditionNames         => RichardsODEPressureGetConditionNames
-     procedure, public :: GetNumConditions          => RichardsODEPressureGetNumConditions
-     procedure, public :: GetNumCellsInConditions   => RichardsODEPressureGetNumCellsInConditions
      procedure, public :: SetSOEAuxVarOffsets       => RichardsODEPressureSetSOEAuxVarOffsets
      procedure, public :: GetNumInternalConnections => RichardsODEGetNumInternalConnections
      procedure, public :: CreateVectors             => RichardsODEPressureCreateVectors
@@ -97,7 +94,7 @@ contains
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type) :: this
 
-    call this%Init()
+    call this%Create()
 
     this%name         = "Richards Equation ODE"
     this%id           = GE_RE
@@ -377,70 +374,7 @@ contains
   end subroutine RichardsODEPressureNumCellsInConditions
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEPressureGetConditionNames(this, cond_type, &
-                cond_type_to_exclude, num_conds, cond_names)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number and names of conditions (eg. boundary condition
-    ! or source-sink) present.
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    use MultiPhysicsProbConstants , only : COND_NULL
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_richards_ode_pressure_type) :: this
-    PetscInt, intent(in)                     :: cond_type
-    PetscInt, intent(in)                     :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    character (len=256), pointer             :: cond_names(:)
-    !
-    type(condition_type),pointer             :: cur_cond
-    PetscInt                                 :: ncells_cond
-    PetscInt                                 :: icond
-    PetscInt                                 :: kk
-    character(len=256)                       :: string
-
-    ! Find number of BCs
-    call this%NumConditions(cond_type, COND_NULL, num_conds)
-
-    if (num_conds == 0) then
-       nullify(cond_names)
-       return
-    endif
-
-    allocate(cond_names(num_conds))
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-          cond_names(num_conds) = cur_cond%name
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine RichardsODEPressureGetConditionNames
-
-  !------------------------------------------------------------------------
-  subroutine RichardsODERes(this, X, F, ierr)
+  subroutine RichardsODEComputeResidual(this, X, F, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the residual equation for the discretized Richards equation
@@ -473,11 +407,11 @@ contains
     call VecRestoreArrayF90(this%accum_prev, accum_prev_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(F, f_p, ierr); CHKERRQ(ierr)
 
-  end subroutine RichardsODERes
+  end subroutine RichardsODEComputeResidual
 
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEJac(this, X, A, B, ierr)
+  subroutine RichardsODEComputeJacobian(this, X, A, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the jacobian matrix for the discretized Richards equation
@@ -505,10 +439,10 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine RichardsODEJac
+  end subroutine RichardsODEComputeJacobian
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEJacOffDiag(this, X_1, X_2, A, B, &
+  subroutine RichardsODEComputeOffDiagJacobian(this, X_1, X_2, A, B, &
        id_of_other_goveq, list_id_of_other_goveq,        &
        ierr)
     !
@@ -553,7 +487,7 @@ contains
        call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     endif
 
-  end subroutine RichardsODEJacOffDiag
+  end subroutine RichardsODEComputeOffDiagJacobian
 
 
   !------------------------------------------------------------------------
@@ -702,12 +636,14 @@ contains
     character(len=256)                                                  :: string
     PetscInt                                                            :: num_bc
     PetscInt                                                            :: icond
+    PetscInt                                                            :: cond_itype_to_exclude
     PetscInt                                 , pointer                  :: ncells_for_bc(:)
 
     ge_avars => this%aux_vars_bc
 
-    call this%GetNumCellsInConditions(COND_BC, &
-         COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
+    cond_itype_to_exclude = COND_DIRICHLET_FRM_OTR_GOVEQ
+    call this%GetNCellsInCondsExcptCondItype(COND_BC, &
+         cond_itype_to_exclude, num_bc, ncells_for_bc)
 
     auxVarCt_ge = 0
     do icond = 1, num_bc
@@ -736,7 +672,7 @@ contains
           if(  &
                soe_avars(iauxvar)%is_bc  &
                .and.  &
-               soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+               soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                .and.  &
                soe_avars(iauxvar)%condition_id == condition_id  &
                ) then
@@ -829,7 +765,7 @@ contains
           if(  &
                soe_avars(iauxvar)%is_ss  &
                .and.  &
-               soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+               soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                .and.  &
                soe_avars(iauxvar)%condition_id == condition_id  &
                ) then
@@ -968,6 +904,7 @@ contains
     PetscInt                                                       :: cell_id_up
     PetscInt                                                       :: cell_id_dn
     PetscInt                                                       :: num_bc, icond
+    PetscInt                                                       :: cond_itype_to_exclude
     PetscInt, pointer                                              :: ncells_for_bc(:)
     character(len=256)                                             :: string
     type(condition_type), pointer                                  :: cur_cond
@@ -1078,7 +1015,7 @@ contains
              if(  &
                   soe_avars(iauxvar)%is_ss  &
                   .and.  &
-                  soe_avars(iauxvar)%goveqn_id == this%id_in_list  &
+                  soe_avars(iauxvar)%goveqn_id == this%rank_in_soe_list  &
                   .and.  &
                   soe_avars(iauxvar)%condition_id == condition_id  &
                   ) then
@@ -1137,8 +1074,9 @@ contains
 
     case (AUXVAR_BC)
 
-       call this%GetNumCellsInConditions(COND_BC, &
-            COND_DIRICHLET_FRM_OTR_GOVEQ, num_bc, ncells_for_bc)
+       cond_itype_to_exclude = COND_DIRICHLET_FRM_OTR_GOVEQ
+       call this%GetNCellsInCondsExcptCondItype(COND_BC, &
+            cond_itype_to_exclude, num_bc, ncells_for_bc)
 
        auxVarCt_ge = 0
        do icond = 1, num_bc
@@ -2383,6 +2321,7 @@ contains
     use ConnectionSetType         , only : connection_set_type
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : COND_NULL
+    use CouplingVariableType      , only : coupling_variable_type
     !
     implicit none
     !
@@ -2393,6 +2332,7 @@ contains
     PetscErrorCode                           :: ierr
     !
     ! !LOCAL VARIABLES
+    type(coupling_variable_type), pointer    :: cpl_var
     PetscInt                                 :: iconn
     PetscInt                                 :: sum_conn
     PetscInt                                 :: cell_id_dn
@@ -2428,11 +2368,16 @@ contains
     compute_deriv    = PETSC_TRUE
 
     ! Are the two equations coupled?
-    do ivar = 1, this%nvars_needed_from_other_goveqns
-       if (this%ids_of_other_goveqns(ivar) == list_id_of_other_goveq) then
+    cpl_var => this%coupling_vars%first
+    do
+       if (.not.associated(cpl_var)) exit
+       
+       if (cpl_var%rank_of_coupling_goveqn == list_id_of_other_goveq) then
           eqns_are_coupled = PETSC_TRUE
           exit
        endif
+
+       cpl_var => cpl_var%next
     enddo
 
     if (.not.eqns_are_coupled) return
@@ -2835,112 +2780,6 @@ contains
   end subroutine RichardsODEPressurePreStepDT
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEPressureGetNumConditions(this, cond_type, &
-              cond_type_to_exclude, num_conds)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number of conditions
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_richards_ode_pressure_type) :: this
-    PetscInt                                 :: cond_type
-    PetscInt                                 :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    !
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'ERROR: Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine RichardsODEPressureGetNumConditions
-
-  !------------------------------------------------------------------------
-  subroutine RichardsODEPressureGetNumCellsInConditions(this, cond_type, &
-                cond_type_to_exclude, num_conds, ncells_for_conds)
-    !
-    ! !DESCRIPTION:
-    ! Returns the total number of conditions (eg. boundary condition or
-    ! source-sink) and number of control volumes associated with each condition
-    !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_SS
-    use MultiPhysicsProbConstants , only : COND_NULL
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_richards_ode_pressure_type) :: this
-    PetscInt, intent(in)                     :: cond_type
-    PetscInt, intent(in)                     :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    PetscInt, intent(out), pointer           :: ncells_for_conds(:)
-    !
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
-
-    ! Find number of BCs
-    call this%GetNumConditions(cond_type, COND_NULL, num_conds)
-
-    if (num_conds == 0) then
-       nullify(ncells_for_conds)
-       return
-    endif
-
-    allocate(ncells_for_conds(num_conds))
-
-    ! Choose the condition type
-    select case (cond_type)
-    case (COND_BC)
-       cur_cond => this%boundary_conditions%first
-    case (COND_SS)
-      cur_cond => this%source_sinks%first
-    case default
-       write(string,*) cond_type
-       write(iulog,*) 'ERROR: Unknown cond_type = ' // trim(string)
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-          ncells_for_conds(num_conds) = cur_cond%ncells
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine RichardsODEPressureGetNumCellsInConditions
-
-  !------------------------------------------------------------------------
   subroutine RichardsODEPressureSetSOEAuxVarOffsets(this, &
        bc_offset_count, bc_offsets, &
        ss_offset_count, ss_offsets)
@@ -2954,6 +2793,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_NULL
     !
     implicit none
     !
@@ -2967,14 +2807,21 @@ contains
     ! !LOCAL VARIABLES
     type(condition_type),pointer             :: cur_cond
     PetscInt                                 :: cond_count
+    PetscInt                                 :: cond_itype_to_exclude
 
-    call this%GetNumConditions(COND_BC, -1, cond_count)
+    cond_itype_to_exclude = COND_NULL
+    call this%GetNConditionsExcptCondItype(COND_BC, &
+         cond_itype_to_exclude, cond_count)
+
     if (bc_offset_count > cond_count) then
        write(iulog,*) 'ERROR: bc_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    call this%GetNumConditions(COND_SS, -1, cond_count)
+    cond_itype_to_exclude = COND_NULL
+    call this%GetNConditionsExcptCondItype(COND_SS, &
+         cond_itype_to_exclude, cond_count)
+
     if (ss_offset_count > cond_count) then
        write(iulog,*) 'ERROR: ss_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))

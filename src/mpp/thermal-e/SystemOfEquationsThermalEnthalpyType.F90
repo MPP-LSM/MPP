@@ -142,14 +142,14 @@ contains
           allocate(goveq_soil)
           call goveq_soil%Setup()
 
-          goveq_soil%name        = trim(name)
-          goveq_soil%id_in_list  = this%ngoveqns
-          goveq_soil%mesh_itype  = mesh_itype
+          goveq_soil%name                 = trim(name)
+          goveq_soil%rank_in_soe_list     = this%ngoveqns
+          goveq_soil%mesh_itype           = mesh_itype
 
-          if (this%ngoveqns == 1) then
-             this%goveqns => goveq_soil
+          if (this%ngoveqns               == 1) then
+             this%goveqns                 => goveq_soil
           else
-             cur_goveqn%next => goveq_soil
+             cur_goveqn%next              => goveq_soil
           endif
 
        case (GE_RE)
@@ -157,9 +157,9 @@ contains
           allocate(goveq_richards)
           call goveq_richards%Setup()
 
-          goveq_richards%name        = trim(name)
-          goveq_richards%id_in_list  = this%ngoveqns
-          goveq_richards%mesh_itype  = mesh_itype
+          goveq_richards%name             = trim(name)
+          goveq_richards%rank_in_soe_list = this%ngoveqns
+          goveq_richards%mesh_itype       = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_richards
@@ -599,12 +599,13 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
        select type(cur_goveq)
-          class is (goveqn_thermal_enthalpy_soil_type)
-             call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
-       end select
+       class is (goveqn_thermal_enthalpy_soil_type)
+          call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
 
-       call cur_goveq%UpdateAuxVarsIntrn()
-       offset = offset + cur_goveq%mesh%ncells_local
+          call cur_goveq%UpdateAuxVarsIntrn()
+          offset = offset + cur_goveq%mesh%ncells_local
+
+       end select
 
        cur_goveq => cur_goveq%next
     enddo
@@ -612,7 +613,10 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
-       call cur_goveq%UpdateAuxVars()
+       select type(cur_goveq)
+       class is (goveqn_thermal_enthalpy_soil_type)
+          call cur_goveq%UpdateAuxVars()
+       end select
        cur_goveq => cur_goveq%next
     enddo
 
@@ -626,8 +630,9 @@ contains
 
        call VecZeroEntries(F_subvecs(dm_id), ierr); CHKERRQ(ierr)
 
-       call cur_goveq%Residual(X_subvecs(dm_id), &
-            F_subvecs(dm_id),                    &
+       call cur_goveq%ComputeResidual( &
+            X_subvecs(dm_id),          &
+            F_subvecs(dm_id),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq => cur_goveq%next
@@ -719,9 +724,10 @@ contains
 
        row = row + 1
 
-       call cur_goveq_1%Jacobian(X_subvecs(row), &
-            B_submats(row,row),                  &
-            B_submats(row,row),                  &
+       call cur_goveq_1%ComputeJacobian( &
+            X_subvecs(row),              &
+            B_submats(row,row),          &
+            B_submats(row,row),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq_1 => cur_goveq_1%next
@@ -772,40 +778,43 @@ contains
     use SystemOfEquationsThermalEnthalpyAuxMod , only : SOEThermalEnthalpyAuxSetRData
     use ThermalEnthalpySoilAuxMod              , only : ThermalEnthalpySoilAuxVarSetRValues
     use ThermalEnthalpySoilAuxMod              , only : ThermalEnthalpySoilAuxVarGetRValues
+    use CouplingVariableType                   , only : coupling_variable_type
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_base_type)   , pointer :: cur_goveq_1
-    class(goveqn_base_type)   , pointer :: cur_goveq_2
+    class(goveqn_base_type)       , pointer :: cur_goveq_1
+    class(goveqn_base_type)       , pointer :: cur_goveq_2
     !
-    type(connection_set_type) , pointer :: cur_conn_set_2
-    type(condition_type)      , pointer :: cur_cond_2
-    PetscInt                            :: idx
-    PetscInt, pointer                   :: ids(:)
-    PetscInt                            :: iauxvar
-    PetscInt                            :: ivar
-    PetscInt                            :: var_type
-    PetscInt                            :: bc_idx
-    PetscInt                            :: bc_offset
-    PetscInt                            :: bc_auxvar_idx_of_other_goveqn
-    PetscReal                           :: var_value
-    PetscReal, pointer                  :: var_values(:)
-    PetscBool                           :: bc_found
-    PetscBool                           :: bc_type
+    type(connection_set_type)     , pointer :: cur_conn_set_2
+    type(condition_type)          , pointer :: cur_cond_2
+    type (coupling_variable_type) , pointer :: cpl_var_1
+    PetscInt                                :: idx
+    PetscInt                      , pointer :: ids(:)
+    PetscInt                                :: iauxvar
+    PetscInt                                :: var_type
+    PetscInt                                :: bc_idx
+    PetscInt                                :: bc_offset
+    PetscInt                                :: bc_rank_in_cpl_eqn
+    PetscReal                               :: var_value
+    PetscReal                     , pointer :: var_values(:)
+    PetscBool                               :: bc_found
+    PetscBool                               :: is_bc
 
-    do ivar = 1,cur_goveq_1%nvars_needed_from_other_goveqns
+    cpl_var_1 => cur_goveq_1%coupling_vars%first
+    do
+       if (.not.associated(cpl_var_1)) exit
 
        ! Does cur_goveq_1 needs ivar-th variable from cur_goveq_2?
-       if (cur_goveq_1%ids_of_other_goveqns(ivar) == &
-            cur_goveq_2%id_in_list) then
+       if (cpl_var_1%rank_of_coupling_goveqn == &
+            cur_goveq_2%rank_in_soe_list) then
 
-          var_type                      = cur_goveq_1%var_ids_needed_from_other_goveqns(ivar)
-          bc_type                       = cur_goveq_1%is_bc_auxvar_type(ivar)
-          bc_offset                     = cur_goveq_1%bc_auxvar_offset(ivar)
-          bc_auxvar_idx_of_other_goveqn = cur_goveq_1%bc_auxvar_idx_of_other_goveqn(ivar)
+          var_type                      = cpl_var_1%variable_type
+          is_bc                       = cpl_var_1%variable_is_bc_in_coupling_goveqn
+          bc_offset                     = cpl_var_1%offset_of_bc_in_current_goveqn
+          bc_rank_in_cpl_eqn = cpl_var_1%rank_of_bc_in_coupling_goveqn
 
-          if (.not.bc_type) then
+          if (.not.is_bc) then
              
              write(iulog,*) 'SOEThermalEnthalpyGovEqnExchangeAuxVars: Extend code to ' // &
                   'exchange non-boundary condition data'
@@ -821,7 +830,7 @@ contains
                 cur_conn_set_2 => cur_cond_2%conn_set
                 
                 ! Is this the appropriate BC?
-                if (bc_idx == bc_auxvar_idx_of_other_goveqn) then
+                if (bc_idx == bc_rank_in_cpl_eqn) then
                    bc_found = PETSC_TRUE
                    exit
                 endif
@@ -836,17 +845,17 @@ contains
              endif
 
              if (cur_conn_set_2%num_connections /= &
-                  cur_goveq_1%bc_auxvar_ncells(ivar) ) then
+                 cpl_var_1%num_cells ) then
                 write(iulog,*) 'conn_set_2%num_connections        = ', cur_conn_set_2%num_connections
-                write(iulog,*) 'cur_goveq_1%bc_auxvar_ncells(ivar)= ', cur_goveq_1%bc_auxvar_ncells(ivar)
+                write(iulog,*) 'cpl_var_1%num_cells               = ', cpl_var_1%num_cells
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              endif
 
-             allocate(ids       (cur_goveq_1%bc_auxvar_ncells(ivar)))
-             allocate(var_values(cur_goveq_1%bc_auxvar_ncells(ivar)))
+             allocate(ids       (cpl_var_1%num_cells))
+             allocate(var_values(cpl_var_1%num_cells))
 
              ! Save the IDs to get the data from
-             do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
+             do iauxvar = 1, cpl_var_1%num_cells
                 ids(iauxvar) = cur_conn_set_2%id_dn(iauxvar)
              enddo
 
@@ -862,7 +871,7 @@ contains
              end select
 
              ! Save the IDs to set the data to
-             do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
+             do iauxvar = 1, cpl_var_1%num_cells
                 ids(iauxvar) = iauxvar + bc_offset
              enddo
 
@@ -883,6 +892,9 @@ contains
           endif
 
        endif
+
+       cpl_var_1 => cpl_var_1%next
+        
     enddo
 
   end subroutine SOEThermalEnthalpyGovEqnExchangeAuxVars

@@ -17,6 +17,7 @@ module GoverningEquationBaseType
   use mpp_shr_log_mod    , only : errMsg => shr_log_errMsg
   use MeshType           , only : mesh_type
   use ConditionType      , only : condition_list_type
+  use CouplingVariableType, only : coupling_variable_list_type
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -26,7 +27,7 @@ module GoverningEquationBaseType
 
      character (len=256)             :: name                                 ! name of governing equation (GE)
      PetscInt                        :: id                                   ! identifier
-     PetscInt                        :: id_in_list                           ! order in the list
+     PetscInt                        :: rank_in_soe_list                     ! rank of governing equation in SoE list
      class(mesh_type),pointer        :: mesh                                 ! pointer to the mesh
      PetscInt                        :: mesh_itype                           ! type of mesh
      type(condition_list_type)       :: boundary_conditions                  ! boundary conditions to the GE
@@ -35,41 +36,28 @@ module GoverningEquationBaseType
      PetscReal                       :: dtime                                ! time step [sec]
 
      ! Track variables supplied by other governing equations.
-     PetscInt                        :: nvars_needed_from_other_goveqns      ! number of variables needed from other governing equations
-     PetscInt, pointer               :: var_ids_needed_from_other_goveqns(:) ! ID of the variable needed from other governing equations
+     type(coupling_variable_list_type) :: coupling_vars
 
-     PetscInt, pointer               :: ids_of_other_goveqns(:)              ! index of the other governing equation in the list
-     PetscBool, pointer              :: is_bc_auxvar_type(:)                 ! variable from the other governing equation is for a boundary condition
-     PetscInt, pointer               :: bc_auxvar_offset(:)                  ! the offset in the boundary condition auxvars for a coupling boundary condition
-     PetscInt, pointer               :: bc_auxvar_idx(:)                     ! index of coupling boundary condition within the boundary condition list of this governing equation
-     PetscInt, pointer               :: bc_auxvar_idx_of_other_goveqn(:)     ! index of coupling boundary condition within the boundary condition list of the other governing equation
-     PetscInt, pointer               :: bc_auxvar_ncells(:)                  ! number of connections in each coupling boundary condition
-
-     class(goveqn_base_type),pointer :: next
+     class(goveqn_base_type), pointer :: next
    contains
-     procedure, public :: Init                    => GoveqnBaseInit
-     procedure, public :: Clean                   => GoveqnBaseClean
-     procedure, public :: AllocVarsFromOtherGEs   => GoveqnBaseAllocVarsFromOtherGEs
-     procedure, public :: DeallocVarsFromOtherGEs => GoveqnBaseDeallocVarsFromOtherGEs
-     procedure, public :: PrintInfo               => GoveqnBasePrintInfo
-     procedure, public :: UpdateAuxVars           => GoveqnBaseUpdateAuxVars
-     procedure, public :: UpdateAuxVarsIntrn      => GoveqnBaseUpdateAuxVarsIntrn
-     procedure, public :: UpdateAuxVarsBC         => GoveqnBaseUpdateAuxVarsBC
-     procedure, public :: UpdateAuxVarsSS         => GoveqnBaseUpdateAuxVarsSS
-     procedure, public :: PreSolve                => GoveqnBasePreSolve
-     procedure, public :: IFunction               => GoveqnBaseIFunction
-     procedure, public :: IJacobian               => GoveqnBaseIJacobian
-     procedure, public :: IJacobianOffDiag        => GoveqnBaseIJacobianOffDiag
-     procedure, public :: JacobianOffDiag         => GoveqnBaseJacobianOffDiag
-     procedure, public :: Jacobian                => GoveqnBaseJacobian
-     procedure, public :: Residual                => GoveqnBaseResidual
-     procedure, public :: ComputeRHS              => GoveqnBaseComputeRHS
-     procedure, public :: ComputeOperatorsDiag    => GoveqnBaseComputeOperatorsDiag
-     procedure, public :: ComputeOperatorsOffDiag => GoveqnBaseComputeOperatorsOffDiag
-     procedure, public :: SetDtime                => GoveqnBaseSetDtime
-     procedure, public :: GetNumConditions        => GoveqnBaseGetNumConditions
-     procedure, public :: AddCondition            => GoveqnBaseAddCondition
-     procedure, public :: UpdateConditionConnSet  => GoveqnBaseUpdateConditionConnSet
+     procedure, public :: Create                         => GoveqnBaseCreate
+     procedure, public :: Destroy                        => GoveqnBaseDestroy
+     procedure, public :: PrintInfo                      => GoveqnBasePrintInfo
+     procedure, public :: PreSolve                       => GoveqnBasePreSolve
+     procedure, public :: ComputeResidual                => GoveqnBaseComputeResidual
+     procedure, public :: ComputeJacobian                => GoveqnBaseComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian         => GoveqnBaseComputeOffDiagJacobian
+     procedure, public :: ComputeRHS                     => GoveqnBaseComputeRHS
+     procedure, public :: ComputeOperatorsDiag           => GoveqnBaseComputeOperatorsDiag
+     procedure, public :: ComputeOperatorsOffDiag        => GoveqnBaseComputeOperatorsOffDiag
+     procedure, public :: SetDtime                       => GoveqnBaseSetDtime
+     procedure, public :: GetNConditionsExcptCondItype   => GoveqnBaseGetNConditionsExcptCondItype
+     procedure, public :: GetNCellsInCondsExcptCondItype => GoveqnBaseGetNCellsInCondsExcptCondItype
+     procedure, public :: GetCondNamesExcptCondItype     => GoveqnBaseGetCondNamesExcptCondItype
+     procedure, public :: AddCondition                   => GoveqnBaseAddCondition
+     procedure, public :: AddCouplingBC                  => GoveqnBaseAddCouplingBC
+     procedure, public :: UpdateConditionConnSet         => GoveqnBaseUpdateConditionConnSet
+     procedure, public :: GetMeshIType                   => GoveqnBaseGetMeshIType
   end type goveqn_base_type
   !------------------------------------------------------------------------
 
@@ -78,13 +66,14 @@ module GoverningEquationBaseType
 contains
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseInit(this)
+  subroutine GoveqnBaseCreate(this)
     !
     ! !DESCRIPTION:
     ! Initialze a GE object
     !
     ! !USES:
-    use ConditionType ,only : ConditionListInit
+    use ConditionType        , only : ConditionListInit
+    use CouplingVariableType , only : CouplingVariableListCreate
     !
     implicit none
     !
@@ -93,184 +82,61 @@ contains
 
     this%name                            = ""
     this%id                              = -1
-    this%id_in_list                      = -1
+    this%rank_in_soe_list                = -1
     this%dtime                           = 0.d0
-    this%nvars_needed_from_other_goveqns = 0
-
 
     nullify(this%mesh)
     call ConditionListInit(this%boundary_conditions )
     call ConditionListInit(this%source_sinks        )
 
-    nullify(this%var_ids_needed_from_other_goveqns  )
-    nullify(this%ids_of_other_goveqns               )
-    nullify(this%is_bc_auxvar_type                  )
-    nullify(this%bc_auxvar_offset                   )
-    nullify(this%bc_auxvar_idx                      )
-    nullify(this%bc_auxvar_idx_of_other_goveqn      )
-    nullify(this%bc_auxvar_ncells                   )
+    call CouplingVariableListCreate(this%coupling_vars)
+
     nullify(this%next                               )
 
-  end subroutine GoveqnBaseInit
+  end subroutine GoveqnBaseCreate
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseClean(this)
+  subroutine GoveqnBaseDestroy(this)
     !
     ! !DESCRIPTION:
     ! Release allocated memory
     !
     ! !USES:
-    use ConditionType ,only : ConditionListClean
+    use ConditionType        , only : ConditionListClean
+    use CouplingVariableType , only : CouplingVariableListDestroy
     !
     implicit none
     !
     ! !ARGUMENTS
     class(goveqn_base_type) :: this
 
-    call ConditionListClean(this%boundary_conditions )
-    call ConditionListClean(this%source_sinks        )
+    call ConditionListClean          (this%boundary_conditions )
+    call ConditionListClean          (this%source_sinks        )
+    call CouplingVariableListDestroy (this%coupling_vars       )
 
-  end subroutine GoveqnBaseClean
-
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseAllocVarsFromOtherGEs(this, nvars)
-    !
-    ! !DESCRIPTION:
-    ! Allocate memory for tracking variables provided by other governing equations
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type), intent(inout):: this
-    PetscInt, intent(in):: nvars
-
-    if (this%nvars_needed_from_other_goveqns /= 0 ) then
-       write(iulog,*) 'GoveqnBaseAllocVarsFromOtherGEs: Bad initialization'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    this%nvars_needed_from_other_goveqns = nvars
-
-    allocate(this%var_ids_needed_from_other_goveqns(nvars)); this%var_ids_needed_from_other_goveqns(:) = 0
-    allocate(this%ids_of_other_goveqns             (nvars)); this%ids_of_other_goveqns             (:) = 0
-    allocate(this%is_bc_auxvar_type                (nvars)); this%is_bc_auxvar_type                (:) = PETSC_FALSE
-    allocate(this%bc_auxvar_offset                 (nvars)); this%bc_auxvar_offset                 (:) = 0
-    allocate(this%bc_auxvar_idx                    (nvars)); this%bc_auxvar_idx                    (:) = 0
-    allocate(this%bc_auxvar_idx_of_other_goveqn    (nvars)); this%bc_auxvar_idx_of_other_goveqn    (:) = 0
-    allocate(this%bc_auxvar_ncells                 (nvars)); this%bc_auxvar_ncells                 (:) = 0
-
-  end subroutine GoveqnBaseAllocVarsFromOtherGEs
-
+  end subroutine GoveqnBaseDestroy
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseDeallocVarsFromOtherGEs(this)
+  subroutine GoveqnBaseComputeResidual(this, X, F, ierr)
     !
     ! !DESCRIPTION:
-    ! Release allocated memory
-    !
-    implicit none
-
-    ! !ARGUMENTS
-    class(goveqn_base_type), intent(inout):: this
-
-    if (this%nvars_needed_from_other_goveqns <= 0 ) then
-       write(iulog,*) 'GoveqnBaseAllocVarsFromOtherGEs: Not allocated'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    this%nvars_needed_from_other_goveqns = 0
-
-    if (associated(this%var_ids_needed_from_other_goveqns)) deallocate(this%var_ids_needed_from_other_goveqns )
-    if (associated(this%ids_of_other_goveqns             )) deallocate(this%ids_of_other_goveqns              )
-    if (associated(this%is_bc_auxvar_type                )) deallocate(this%is_bc_auxvar_type                 )
-    if (associated(this%bc_auxvar_offset                 )) deallocate(this%bc_auxvar_offset                  )
-    if (associated(this%bc_auxvar_idx                    )) deallocate(this%bc_auxvar_idx                     )
-    if (associated(this%bc_auxvar_idx_of_other_goveqn    )) nullify(this%bc_auxvar_idx_of_other_goveqn        )
-    if (associated(this%bc_auxvar_ncells                 )) nullify(this%bc_auxvar_ncells                     )
-
-    nullify(this%var_ids_needed_from_other_goveqns )
-    nullify(this%ids_of_other_goveqns              )
-    nullify(this%is_bc_auxvar_type                 )
-    nullify(this%bc_auxvar_offset                  )
-    nullify(this%bc_auxvar_idx                     )
-    nullify(this%bc_auxvar_idx_of_other_goveqn     )
-    nullify(this%bc_auxvar_ncells                  )
-
-  end subroutine GoveqnBaseDeallocVarsFromOtherGEs
-
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseIFunction(this, U, Udot, F, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc TS IFunction
+    ! Dummy subroutine for PETSc SNES Function evaluation
     !
     implicit none
     !
     ! !ARGUMENTS
     class(goveqn_base_type) :: this
-    Vec                     :: U
-    Vec                     :: Udot
+    Vec                     :: X
     Vec                     :: F
     PetscErrorCode          :: ierr
 
-    write(iulog,*)'GoveqnBaseIFunction must be extended by child class.'
+    write(iulog,*)'GoveqnBaseResidual must be extended by child class.'
     call endrun(msg=errMsg(__FILE__, __LINE__))
 
-  end subroutine GoveqnBaseIFunction
+  end subroutine GoveqnBaseComputeResidual
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseIJacobian(this, U, Udot, shift, A, B, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc TS IJacobian
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    Vec                     :: U
-    Vec                     :: Udot
-    PetscReal               :: shift
-    Mat                     :: A
-    Mat                     :: B
-    PetscErrorCode                :: ierr
-
-    write(iulog,*)'GoveqnBaseJFunction must be extended by child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseIJacobian
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseIJacobianOffDiag(this, U_1, Udot_1, U_2, Udot_2, &
-       shift, A, B, id_of_other_goveq, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc TS IJacobian corresponding to off-diagonal
-    ! matrix coupling between two GEs
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    Vec                     :: U_1
-    Vec                     :: Udot_1
-    Vec                     :: U_2
-    Vec                     :: Udot_2
-    PetscReal               :: shift
-    Mat                     :: A
-    Mat                     :: B
-    PetscInt                :: id_of_other_goveq
-    PetscErrorCode          :: ierr
-
-    write(iulog,*)'GoveqnBaseIJacobianOffDiag must be extended by child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseIJacobianOffDiag
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseJacobianOffDiag(this, X_1, X_2, A, B, &
+  subroutine GoveqnBaseComputeOffDiagJacobian(this, X_1, X_2, A, B, &
        id_of_other_goveq, &
        list_id_of_other_goveq, &
        ierr)
@@ -294,26 +160,27 @@ contains
     write(iulog,*)'GoveqnBaseJacobianOffDiag must be extended by child class.'
     call endrun(msg=errMsg(__FILE__, __LINE__))
 
-  end subroutine GoveqnBaseJacobianOffDiag
+  end subroutine GoveqnBaseComputeOffDiagJacobian
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseResidual(this, X, F, ierr)
+  subroutine GoveqnBaseComputeJacobian(this, X, A, B, ierr)
     !
     ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc SNES Function evaluation
+    ! Dummy subroutine for PETSc SNES Jacobian
     !
     implicit none
     !
     ! !ARGUMENTS
     class(goveqn_base_type) :: this
     Vec                     :: X
-    Vec                     :: F
+    Mat                     :: A
+    Mat                     :: B
     PetscErrorCode          :: ierr
 
-    write(iulog,*)'GoveqnBaseResidual must be extended by child class.'
+    write(iulog,*)'GoveqnBaseJacobian must be extended by child class.'
     call endrun(msg=errMsg(__FILE__, __LINE__))
 
-  end subroutine GoveqnBaseResidual
+  end subroutine GoveqnBaseComputeJacobian
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseComputeRHS(this, B, ierr)
@@ -390,34 +257,14 @@ contains
 
   end subroutine GoveqnBaseSetDtime
 
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseJacobian(this, X, A, B, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine for PETSc SNES Jacobian
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    Vec                     :: X
-    Mat                     :: A
-    Mat                     :: B
-    PetscErrorCode          :: ierr
-
-    write(iulog,*)'GoveqnBaseJacobian must be extended by child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseJacobian
-
   !------------------------------------------------------------------------
   subroutine GoveqnBasePrintInfo(this)
     !
     ! !DESCRIPTION:
     !
     ! !USES:
-    use ConditionType, only : ConditionListPrintInfo
+    use ConditionType        , only : ConditionListPrintInfo
+    use CouplingVariableType , only : CouplingVariableListPrintInfo
     implicit none
     !
     ! !ARGUMENTS
@@ -427,86 +274,16 @@ contains
     write(iulog,*)'    Goveqn_name       : ',trim(this%name)
     write(iulog,*)'    Goveqn_id         : ',this%id
     write(iulog,*)'    Goveqn_mesh_itype : ',this%mesh_itype
-    write(iulog,*)'    Num_vars_needed   : ',this%nvars_needed_from_other_goveqns
     write(iulog,*)' '
 
     write(iulog,*)'    BC'
     call ConditionListPrintInfo(this%boundary_conditions)
     write(iulog,*)'    SS'
     call ConditionListPrintInfo(this%source_sinks)
+    write(iulog,*)'    Coupling Vars'
+    call CouplingVariableListPrintInfo(this%coupling_vars)
 
   end subroutine GoveqnBasePrintInfo
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVars(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVars: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVars
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVarsIntrn(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables for internal cells
-    ! associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVarsIntrn: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVarsIntrn
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVarsBC(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables for boundary condition
-    ! associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVarsBC: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVarsBC
-
-  !------------------------------------------------------------------------
-  subroutine GoveqnBaseUpdateAuxVarsSS(this)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine to update auxiliary variables for source-sink
-    ! associated with the GE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-
-    write(iulog,*) 'In GoveqnBaseUpdateAuxVarsSS: This needs to be extended by ' // &
-         'child class.'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
-
-  end subroutine GoveqnBaseUpdateAuxVarsSS
 
   !------------------------------------------------------------------------
   subroutine GoveqnBasePreSolve(this)
@@ -526,55 +303,145 @@ contains
   end subroutine GoveqnBasePreSolve
 
   !------------------------------------------------------------------------
-  subroutine GoveqnBaseGetNumConditions(this, cond_type, &
-              cond_type_to_exclude, num_conds)
+  subroutine GoveqnBaseGetNConditionsExcptCondItype(this, cond_type, &
+              cond_itype_to_exclude, num_conds)
     !
     ! !DESCRIPTION:
     ! Returns the total number of conditions
     !
     ! !USES:
     use ConditionType             , only : condition_type
+    use ConditionType             , only : CondListGetNumCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_base_type) :: this
-    PetscInt                                 :: cond_type
-    PetscInt                                 :: cond_type_to_exclude
-    PetscInt, intent(out)                    :: num_conds
-    type(condition_type),pointer             :: cur_cond
-    character(len=256)                       :: string
+    class(goveqn_base_type)            :: this
+    PetscInt             , intent(in)  :: cond_type
+    PetscInt             , intent(in)  :: cond_itype_to_exclude
+    PetscInt             , intent(out) :: num_conds
+    !
+    ! !LOCAL VARIABLES:
+    character(len=256)                 :: string
 
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       cur_cond => this%boundary_conditions%first
+       call CondListGetNumCondsExcptCondItype( &
+            this%boundary_conditions, cond_itype_to_exclude, num_conds)
+
     case (COND_SS)
-      cur_cond => this%source_sinks%first
+       call CondListGetNumCondsExcptCondItype( &
+            this%source_sinks, cond_itype_to_exclude, num_conds)
+
     case default
        write(string,*) cond_type
        write(iulog,*) 'Unknown cond_type = ' // trim(string)
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-    num_conds = 0
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= cond_type_to_exclude) then
-          num_conds = num_conds + 1
-       endif
-       cur_cond => cur_cond%next
-    enddo
+  end subroutine GoveqnBaseGetNConditionsExcptCondItype
 
-  end subroutine GoveqnBaseGetNumConditions
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetNCellsInCondsExcptCondItype(this, cond_type, &
+              cond_itype_to_exclude, num_conds, ncells_for_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of conditions
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : CondListGetNumCellsForCondsExcptCondItype
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)                     :: this
+    PetscInt             , intent(in)           :: cond_type
+    PetscInt             , intent(in)           :: cond_itype_to_exclude
+    PetscInt             , intent(out)          :: num_conds
+    PetscInt             , intent(out), pointer :: ncells_for_conds(:)
+    !
+    ! !LOCAL VARIABLES:
+    character(len=256)                          :: string
+
+    call this%GetNConditionsExcptCondItype( &
+         cond_type, cond_itype_to_exclude, num_conds)
+
+    ! Choose the condition type
+    select case (cond_type)
+    case (COND_BC)
+       call CondListGetNumCellsForCondsExcptCondItype( &
+            this%boundary_conditions, cond_itype_to_exclude, ncells_for_conds)
+
+    case (COND_SS)
+       call CondListGetNumCellsForCondsExcptCondItype( &
+            this%source_sinks, cond_itype_to_exclude, ncells_for_conds)
+
+    case default
+       write(string,*) cond_type
+       write(iulog,*) 'Unknown cond_type = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine GoveqnBaseGetNCellsInCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetCondNamesExcptCondItype(this, cond_type, &
+                cond_itype_to_exclude, num_conds, cond_names)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number and names of conditions (eg. boundary condition
+    ! or source-sink) present.
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : CondListGetCondNamesExcptCondItype
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_NULL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)            :: this
+    PetscInt             , intent(in)  :: cond_type
+    PetscInt             , intent(in)  :: cond_itype_to_exclude
+    PetscInt             , intent(out) :: num_conds
+    character (len=256)  , pointer     :: cond_names(:)
+    type(condition_type) , pointer     :: cur_cond
+    !
+    ! !LOCAL VARIABLES
+    character(len=256)                 :: string
+
+    call this%GetNConditionsExcptCondItype( &
+         cond_type, cond_itype_to_exclude, num_conds)
+
+    ! Choose the condition type
+    select case (cond_type)
+    case (COND_BC)
+       call CondListGetCondNamesExcptCondItype( &
+            this%boundary_conditions, cond_itype_to_exclude, cond_names)
+
+    case (COND_SS)
+       call CondListGetCondNamesExcptCondItype( &
+            this%source_sinks, cond_itype_to_exclude, cond_names)
+
+    case default
+       write(string,*) cond_type
+       write(iulog,*) 'Unknown cond_type = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine GoveqnBaseGetCondNamesExcptCondItype
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseAddCondition(this, ss_or_bc_type, name, unit,    &
-       cond_type, region_type, id_of_other_goveq, itype_of_other_goveq, &
-       num_other_goveqs, id_of_other_goveqs, itype_of_other_goveqs,     &
-       icoupling_of_other_goveqns, conn_set)
+       cond_type, region_type, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds boundary/source-sink condition to governing equation
@@ -598,12 +465,6 @@ contains
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
     PetscInt                                    :: region_type
-    PetscInt, optional                          :: id_of_other_goveq
-    PetscInt, optional                          :: itype_of_other_goveq
-    PetscInt, optional                          :: num_other_goveqs
-    PetscInt, optional, pointer                 :: id_of_other_goveqs(:)
-    PetscInt, optional, pointer                 :: itype_of_other_goveqs(:)
-    PetscBool, optional, pointer                :: icoupling_of_other_goveqns(:)
     type(connection_set_type),pointer, optional :: conn_set
     !
     type(condition_type), pointer :: cond
@@ -630,65 +491,8 @@ contains
     select case (ss_or_bc_type)
     case (COND_BC)
        if (cond_type == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          if (.not. present(num_other_goveqs)) then
-
-             if (.not.present(id_of_other_goveq) ) then
-                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
-                     ' but id_of_other_goveq is absent'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             endif
-
-             if (.not.present(itype_of_other_goveq) ) then
-                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
-                     ' but itype_of_other_goveq is absent'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             endif
-
-             cond%num_other_goveqs = 1
-
-             allocate(cond%list_id_of_other_goveqs(                 cond%num_other_goveqs))
-             allocate(cond%itype_of_other_goveqs(                   cond%num_other_goveqs))
-             allocate(cond%swap_order_of_other_goveqs(              cond%num_other_goveqs))
-             allocate(cond%coupled_via_intauxvar_with_other_goveqns(cond%num_other_goveqs))
-
-             cond%list_id_of_other_goveqs(1)                  = id_of_other_goveq
-             cond%itype_of_other_goveqs(1)                    = itype_of_other_goveq
-             cond%coupled_via_intauxvar_with_other_goveqns(1) = PETSC_FALSE
-          else
-
-             if (.not.present(id_of_other_goveqs) ) then
-                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
-                     ' but id_of_other_goveqs is absent'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             else
-                if (size(id_of_other_goveqs) /= num_other_goveqs) then
-                   write(iulog,*) 'size(id_of_other_goveqs) /= num_other_goveqs'
-                   call endrun(msg=errMsg(__FILE__, __LINE__))
-                endif
-             endif
-
-             if (.not.present(itype_of_other_goveqs) ) then
-                write(iulog,*) 'BC type = COND_DIRICHLET_FRM_OTR_GOVEQ ' // &
-                     ' but itype_of_other_goveqs is absent'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             else
-                if (size(itype_of_other_goveqs) /= num_other_goveqs) then
-                   write(iulog,*) 'size(itype_of_other_goveqs) /= num_other_goveqs'
-                   call endrun(msg=errMsg(__FILE__, __LINE__))
-                endif
-             endif
-
-             cond%num_other_goveqs = num_other_goveqs
-
-             allocate(cond%list_id_of_other_goveqs(                 cond%num_other_goveqs))
-             allocate(cond%itype_of_other_goveqs(                   cond%num_other_goveqs))
-             allocate(cond%swap_order_of_other_goveqs(              cond%num_other_goveqs))
-             allocate(cond%coupled_via_intauxvar_with_other_goveqns(cond%num_other_goveqs))
-
-             cond%list_id_of_other_goveqs(:)                  = id_of_other_goveqs(:)
-             cond%itype_of_other_goveqs(:)                    = itype_of_other_goveqs(:)
-             cond%coupled_via_intauxvar_with_other_goveqns(:) = icoupling_of_other_goveqns(:)
-          endif
+          write(iulog,*) 'Call AddCouplingBC'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
        call ConditionListAddCondition(this%boundary_conditions, cond)
 
@@ -702,6 +506,78 @@ contains
     end select
 
   end subroutine GoveqnBaseAddCondition
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseAddCouplingBC(this, name, unit,    &
+       region_type, num_other_goveqs, id_of_other_goveqs, &
+       itype_of_other_goveqs, icoupling_of_other_goveqns, &
+       conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Adds boundary condition to the governing equation that is
+    ! used to couple it with another governing equation
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : ConditionListAddCondition
+    use ConditionType             , only : ConditionNew
+    use MeshType                  , only : MeshCreateConnectionSet
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use ConnectionSetType         , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)                                      :: this
+    character(len =*)         , intent(in)                       :: name
+    character(len =*)         , intent(in)                       :: unit
+    PetscInt                  , intent(in)                       :: region_type
+    PetscInt                  , intent(in)                       :: num_other_goveqs
+    PetscInt                  , intent(in), pointer              :: id_of_other_goveqs(:)
+    PetscInt                  , intent(in), pointer              :: itype_of_other_goveqs(:)
+    PetscBool                 , intent(in), pointer, optional    :: icoupling_of_other_goveqns(:)
+    type(connection_set_type) , intent(inout), pointer, optional :: conn_set
+    !
+    type(condition_type)      , pointer                          :: cond
+
+    cond => ConditionNew()
+
+    cond%name         = trim(name)
+    cond%units        = trim(unit)
+    cond%itype        = COND_DIRICHLET_FRM_OTR_GOVEQ
+    cond%region_itype = region_type
+
+    allocate(cond%conn_set)
+    if (.not. present(conn_set)) then
+       call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
+    else
+       cond%conn_set => conn_set
+       cond%ncells = conn_set%num_connections
+       nullify(conn_set)
+    endif
+
+    allocate(cond%value(cond%ncells))
+    cond%value(:) = 0.d0
+
+    cond%num_other_goveqs = num_other_goveqs
+
+    allocate (cond%list_id_of_other_goveqs                  (cond%num_other_goveqs))
+    allocate (cond%itype_of_other_goveqs                    (cond%num_other_goveqs))
+    allocate (cond%swap_order_of_other_goveqs               (cond%num_other_goveqs))
+    allocate (cond%coupled_via_intauxvar_with_other_goveqns (cond%num_other_goveqs))
+
+    cond%list_id_of_other_goveqs (:) = id_of_other_goveqs(:)
+    cond%itype_of_other_goveqs   (:) = itype_of_other_goveqs(:)
+
+    if (present(icoupling_of_other_goveqns)) then
+       cond%coupled_via_intauxvar_with_other_goveqns(:) = icoupling_of_other_goveqns(:)
+    endif
+
+    call ConditionListAddCondition(this%boundary_conditions, cond)
+
+  end subroutine GoveqnBaseAddCouplingBC
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseUpdateConditionConnSet(this, icond, &
@@ -804,6 +680,21 @@ contains
     enddo
 
   end subroutine GoveqnBaseUpdateConditionConnSet
+
+  !------------------------------------------------------------------------
+  function GoveqnBaseGetMeshIType(this)
+    !
+    ! !DESCRIPTION:
+    ! Returns mesh itype
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type) :: this
+    !
+    PetscInt                :: GoveqnBaseGetMeshIType
+
+    GoveqnBaseGetMeshIType = this%mesh%itype
+
+  end function GoveqnBaseGetMeshIType
 
 #endif
 

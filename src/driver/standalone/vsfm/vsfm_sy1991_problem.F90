@@ -442,11 +442,11 @@ contains
 
     ieqn = 1
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_SS,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Constant flux condition at top', 'kg/s/m^2', COND_MASS_RATE, &
          SOIL_TOP_CELLS)
 
-    call vsfm_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at bottom', 'Pa', COND_DIRICHLET, &
          SOIL_BOTTOM_CELLS)
 

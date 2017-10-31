@@ -1,6 +1,7 @@
 set(MPP_DTYPES_SOURCES
   ConditionType.F90
   ConnectionSetType.F90
+  CouplingVariableType.F90
   GoverningEquationBaseType.F90
   MeshType.F90
   MultiPhysicsProbBaseType.F90

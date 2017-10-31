@@ -387,7 +387,7 @@ subroutine add_conditions_to_goveqns()
 
   ieqn = 1
 
-  call thermal_enthalpy_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+  call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at top', 'K', COND_DIRICHLET, &
        SOIL_TOP_CELLS, conn_set=conn_set)
 
@@ -405,7 +405,7 @@ subroutine add_conditions_to_goveqns()
        nconn, id_up, id_dn,                                &
        dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-  call thermal_enthalpy_mpp%GovEqnAddCondition(ieqn, COND_BC,   &
+  call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
        SOIL_BOTTOM_CELLS, conn_set=conn_set)
 

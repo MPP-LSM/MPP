@@ -910,13 +910,11 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil mass equation',      &
          unit='Pa',                                 &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
@@ -944,13 +942,11 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil energy equation',    &
          unit='Pa',                                 &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
@@ -979,13 +975,11 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root mass equation',      &
          unit='Pa',                                 &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
@@ -1015,13 +1009,11 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root energy equation',    &
          unit='Pa',                                 &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
          conn_set=conn_set)
@@ -1044,13 +1036,11 @@ contains
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
 
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root mass equation',     &
          unit='Pa',                                 &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others)
 
@@ -1073,13 +1063,11 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root energy equation',   &
          unit='K',                                 &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others)
 
@@ -1100,13 +1088,11 @@ contains
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
 
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem mass equation',     &
          unit='K',                                  &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_BOTTOM_CELLS,             &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others)
 
@@ -1129,13 +1115,11 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    call th_mpp%GovEqnAddConditionForCoupling(ieqn, &
-         ss_or_bc_type=COND_BC,                     &
+    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem energy equation',   &
          unit='K',                                  &
-         cond_type=COND_DIRICHLET_FRM_OTR_GOVEQ,    &
          region_type=SOIL_BOTTOM_CELLS,             &
-         num_other_goveqns=num_ieqn_others,         &
+         num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others)
 
@@ -1549,7 +1533,7 @@ contains
     ! Set properties for internal auxvars
     aux_vars_in => cur_goveq%aux_vars_in
 
-    select case(cur_goveq%mesh_itype)
+    select case(cur_goveq%GetMeshIType())
     case (MESH_CLM_SOIL_COL)
        do ghosted_id = 1,cur_goveq%mesh%ncells_local
 
@@ -1735,7 +1719,7 @@ contains
     ! Set properties for internal auxvars
     aux_vars_in => cur_goveq%aux_vars_in
 
-    select case(cur_goveq%mesh_itype)
+    select case(cur_goveq%GetMeshIType())
     case (MESH_CLM_SOIL_COL)
        do ghosted_id = 1,cur_goveq%mesh%ncells_local
 

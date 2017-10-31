@@ -161,13 +161,14 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
        select type(cur_goveq)
-          class is (goveqn_richards_ode_pressure_type)
-             call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
-       end select
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
 
-       call cur_goveq%UpdateAuxVarsIntrn()
-       call cur_goveq%UpdateAuxVarsBC()
-       offset = offset + cur_goveq%mesh%ncells_local
+          call cur_goveq%UpdateAuxVarsIntrn()
+          call cur_goveq%UpdateAuxVarsBC()
+
+          offset = offset + cur_goveq%mesh%ncells_local
+       end select
 
        cur_goveq => cur_goveq%next
     enddo
@@ -185,7 +186,10 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
-       call cur_goveq%UpdateAuxVars()
+       select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          call cur_goveq%UpdateAuxVars()
+       end select
        cur_goveq => cur_goveq%next
     enddo
 
@@ -199,8 +203,9 @@ contains
 
        call VecZeroEntries(F_subvecs(dm_id), ierr); CHKERRQ(ierr)
 
-       call cur_goveq%Residual(X_subvecs(dm_id), &
-            F_subvecs(dm_id),                    &
+       call cur_goveq%ComputeResidual( &
+            X_subvecs(dm_id),          &
+            F_subvecs(dm_id),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq => cur_goveq%next
@@ -291,9 +296,10 @@ contains
 
        row = row + 1
 
-       call cur_goveq_1%Jacobian(X_subvecs(row), &
-            B_submats(row,row),                  &
-            B_submats(row,row),                  &
+       call cur_goveq_1%ComputeJacobian( &
+            X_subvecs(row),              &
+            B_submats(row,row),          &
+            B_submats(row,row),          &
             ierr); CHKERRQ(ierr)
 
        cur_goveq_2 => cur_goveq_1%next
@@ -304,22 +310,24 @@ contains
           col = col + 1
 
           ! J = dF_1/dx_2
-          call cur_goveq_1%JacobianOffDiag(X_subvecs(row),        &
-                                           X_subvecs(col),        &
-                                           B_submats(row,col),    &
-                                           B_submats(row,col),    &
-                                           cur_goveq_2%id,        &
-                                           cur_goveq_2%id_in_list,&
-                                           ierr); CHKERRQ(ierr)
+          call cur_goveq_1%ComputeOffDiagJacobian( &
+               X_subvecs(row),                     &
+               X_subvecs(col),                     &
+               B_submats(row,col),                 &
+               B_submats(row,col),                 &
+               cur_goveq_2%id,                     &
+               cur_goveq_2%rank_in_soe_list,       &
+               ierr); CHKERRQ(ierr)
 
           ! J = dF_2/dx_1
-          call cur_goveq_2%JacobianOffDiag(X_subvecs(col),        &
-                                           X_subvecs(row),        &
-                                           B_submats(col,row),    &
-                                           B_submats(col,row),    &
-                                           cur_goveq_1%id,        &
-                                           cur_goveq_1%id_in_list,&
-                                           ierr); CHKERRQ(ierr)
+          call cur_goveq_2%ComputeOffDiagJacobian( &
+               X_subvecs(col),                     &
+               X_subvecs(row),                     &
+               B_submats(col,row),                 &
+               B_submats(col,row),                 &
+               cur_goveq_1%id,                     &
+               cur_goveq_1%rank_in_soe_list,       &
+               ierr); CHKERRQ(ierr)
 
           cur_goveq_2 => cur_goveq_2%next
        enddo
@@ -1001,17 +1009,17 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
-       select type(cur_goveq)
-          class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%GetConditionNames(cond_type, cond_type_to_exclude, num_conds_tmp, cond_names_tmp)
-          if (num_conds_tmp > 0) then
-             do nn = 1, num_conds_tmp
-                num_conds = num_conds + 1
-                cond_names(num_conds) = cond_names_tmp(nn)
-             enddo
-             deallocate(cond_names_tmp)
-          endif
-       end select
+
+       call cur_goveq%GetCondNamesExcptCondItype( &
+            cond_type, cond_type_to_exclude, num_conds_tmp, cond_names_tmp)
+       if (num_conds_tmp > 0) then
+          do nn = 1, num_conds_tmp
+             num_conds = num_conds + 1
+             cond_names(num_conds) = cond_names_tmp(nn)
+          enddo
+          deallocate(cond_names_tmp)
+       endif
+
        cur_goveq => cur_goveq%next
     enddo
 
@@ -1057,9 +1065,9 @@ contains
           allocate(goveq_richards)
           call goveq_richards%Setup()
 
-          goveq_richards%name        = trim(name)
-          goveq_richards%id_in_list  = this%ngoveqns
-          goveq_richards%mesh_itype  = mesh_itype
+          goveq_richards%name              = trim(name)
+          goveq_richards%rank_in_soe_list  = this%ngoveqns
+          goveq_richards%mesh_itype        = mesh_itype
 
           if (this%ngoveqns == 1) then
              this%goveqns => goveq_richards
@@ -1116,6 +1124,7 @@ contains
     use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
     use ConnectionSetType             , only : connection_set_type
     use ConditionType                 , only : condition_type
+    use CouplingVariableType          , only : coupling_variable_type
     !
     implicit none
     !
@@ -1126,32 +1135,35 @@ contains
     ! !LOCAL VARIABLES:
     type(connection_set_type), pointer                  :: cur_conn_set_2
     type(condition_type),pointer                        :: cur_cond_2
+    type (coupling_variable_type), pointer              :: cpl_var_1
     PetscInt                                            :: idx
     PetscInt                                            :: iauxvar
-    PetscInt                                            :: ivar
     PetscInt                                            :: var_type
     PetscInt                                            :: ghosted_id
     PetscInt                                            :: bc_idx
     PetscInt                                            :: bc_offset
-    PetscInt                                            :: bc_auxvar_idx_of_other_goveqn
+    PetscInt                                            :: bc_rank_in_cpl_eqn
     PetscReal                                           :: var_value
     PetscBool                                           :: bc_found
-    PetscBool                                           :: bc_type
+    PetscBool                                           :: is_bc
 
-    do ivar = 1,cur_goveq_1%nvars_needed_from_other_goveqns
-       if (cur_goveq_1%ids_of_other_goveqns(ivar) == &
-           cur_goveq_2%id_in_list) then
+    cpl_var_1 => cur_goveq_1%coupling_vars%first
+    do
+       if (.not.associated(cpl_var_1)) exit
 
-          var_type                      = cur_goveq_1%var_ids_needed_from_other_goveqns(ivar)
-          bc_type                       = cur_goveq_1%is_bc_auxvar_type(ivar)
-          bc_offset                     = cur_goveq_1%bc_auxvar_offset(ivar)
-          bc_auxvar_idx_of_other_goveqn = cur_goveq_1%bc_auxvar_idx_of_other_goveqn(ivar)
+       if (cpl_var_1%rank_of_coupling_goveqn == &
+           cur_goveq_2%rank_in_soe_list) then
+
+          var_type           = cpl_var_1%variable_type
+          is_bc              = cpl_var_1%variable_is_bc_in_coupling_goveqn
+          bc_offset          = cpl_var_1%offset_of_bc_in_current_goveqn
+          bc_rank_in_cpl_eqn = cpl_var_1%rank_of_bc_in_coupling_goveqn
 
           !GB: Presently assuming that auxvars for ALL cells is needed from
           !    the other goveqn. Additionally, it is assumed that the retrieved
           !    data is needed for 'aux_vars_in' and not for boundary-conditions or
           !    source-sinks
-          if (.not.bc_type) then
+          if (.not.is_bc) then
              do ghosted_id = 1,cur_goveq_1%mesh%ncells_local
 
                 select type(cur_goveq_2)
@@ -1164,7 +1176,7 @@ contains
 
                 select type(cur_goveq_1)
                 class is (goveqn_richards_ode_pressure_type)
-                   if (.not.bc_type) then
+                   if (.not.is_bc) then
                       call cur_goveq_1%aux_vars_in(ghosted_id)%SetValue(var_type, var_value)
                    else
                       call cur_goveq_1%aux_vars_bc(ghosted_id+bc_offset)%SetValue(var_type, var_value)
@@ -1185,7 +1197,7 @@ contains
               do
                  if (.not.associated(cur_cond_2)) exit
                  cur_conn_set_2 => cur_cond_2%conn_set
-                 if (bc_idx == bc_auxvar_idx_of_other_goveqn) then
+                 if (bc_idx == bc_rank_in_cpl_eqn) then
                     bc_found = PETSC_TRUE
                     exit
                  endif
@@ -1200,12 +1212,12 @@ contains
               endif
 
               if (cur_conn_set_2%num_connections /= &
-                  cur_goveq_1%bc_auxvar_ncells(ivar) ) then
+                  cpl_var_1%num_cells ) then
                  write(iulog,*) 'VSFMSOEGovEqnExchangeAuxVars: Number of '
                  call endrun(msg=errMsg(__FILE__, __LINE__))
               endif
 
-              do iauxvar = 1, cur_goveq_1%bc_auxvar_ncells(ivar)
+              do iauxvar = 1, cpl_var_1%num_cells
 
                  ! Get value from cur_goveq_2
                  select type(cur_goveq_2)
@@ -1228,9 +1240,12 @@ contains
                     call endrun(msg=errMsg(__FILE__, __LINE__))
                  end select
               enddo
-           endif ! if (.not.bc_type)
+           endif ! if (.not.is_bc)
 
         endif ! (
+
+        cpl_var_1 => cpl_var_1%next
+        
      enddo
 
   end subroutine VSFMSOEGovEqnExchangeAuxVars
@@ -1274,11 +1289,12 @@ contains
     !
     use GoverningEquationBaseType     , only : goveqn_base_type
     use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
-    use ConnectionSetType, only             : connection_set_type
-    use ConditionType, only                 : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    use ConditionType                 , only : condition_type
     use RichardsODEPressureAuxType
     use SaturationFunction
-    use MultiPhysicsProbConstants , only : MPP_VSFM_SNES_CLM
+    use MultiPhysicsProbConstants     , only : MPP_VSFM_SNES_CLM
+    use CouplingVariableType          , only : coupling_variable_type
     !
     implicit none
     !
@@ -1296,13 +1312,13 @@ contains
     type (rich_ode_pres_auxvar_type), pointer           :: aux_vars_bc_2(:)
     type (rich_ode_pres_auxvar_type)                    :: tmp_aux_var_bc_1
     type (rich_ode_pres_auxvar_type)                    :: tmp_aux_var_bc_2
+    type (coupling_variable_type), pointer              :: cpl_var_1
     PetscInt                                            :: iauxvar
-    PetscInt                                            :: ivar
     PetscInt                                            :: sum_conn_1
     PetscInt                                            :: sum_conn_2
     PetscInt                                            :: bc_idx
-    PetscInt                                            :: bc_auxvar_idx
-    PetscInt                                            :: bc_auxvar_idx_of_other_goveqn
+    PetscInt                                            :: rank_of_bc_in_cur_eqn
+    PetscInt                                            :: bc_rank_in_cpl_eqn
     PetscInt                                            :: id_dn_1
     PetscInt                                            :: id_dn_2
     PetscReal                                           :: x_up, y_up, z_up
@@ -1312,7 +1328,7 @@ contains
     PetscReal                                           :: dist, dist_up, dist_dn
     PetscReal                                           :: area_1, area_2
     PetscBool                                           :: bc_found
-    PetscBool                                           :: bc_type
+    PetscBool                                           :: is_bc
 
     PetscReal, dimension(3) :: vec3Swap
     PetscReal :: valSwap
@@ -1334,15 +1350,18 @@ contains
         call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-    do ivar = 1,cur_goveq_1%nvars_needed_from_other_goveqns
-       if (cur_goveq_1%ids_of_other_goveqns(ivar) == &
-           cur_goveq_2%id_in_list) then
+    cpl_var_1 => cur_goveq_1%coupling_vars%first
+    do
+       if (.not.associated(cpl_var_1)) exit
 
-          bc_type                        = cur_goveq_1%is_bc_auxvar_type(ivar)
-          bc_auxvar_idx                  = cur_goveq_1%bc_auxvar_idx(ivar)
-          bc_auxvar_idx_of_other_goveqn  = cur_goveq_1%bc_auxvar_idx_of_other_goveqn(ivar)
+       if (cpl_var_1%rank_of_coupling_goveqn == &
+           cur_goveq_2%rank_in_soe_list) then
 
-          if (bc_type) then
+          is_bc                 = cpl_var_1%variable_is_bc_in_coupling_goveqn
+          rank_of_bc_in_cur_eqn = cpl_var_1%rank_of_bc_in_current_goveqn
+          bc_rank_in_cpl_eqn    = cpl_var_1%rank_of_bc_in_coupling_goveqn
+
+          if (is_bc) then
 
              bc_idx = 1
              sum_conn_1 = 0
@@ -1351,7 +1370,7 @@ contains
              do
                 if (.not.associated(cur_cond_1)) exit
                 cur_conn_set_1 => cur_cond_1%conn_set
-                if (bc_idx == bc_auxvar_idx) then
+                if (bc_idx == rank_of_bc_in_cur_eqn) then
                    bc_found = PETSC_TRUE
                    exit
                 endif
@@ -1373,7 +1392,7 @@ contains
              do
                 if (.not.associated(cur_cond_2)) exit
                 cur_conn_set_2 => cur_cond_2%conn_set
-                if (bc_idx == bc_auxvar_idx_of_other_goveqn) then
+                if (bc_idx == bc_rank_in_cpl_eqn) then
                    bc_found = PETSC_TRUE
                    exit
                 endif
@@ -1402,7 +1421,7 @@ contains
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              endif
 
-             if (cur_goveq_2%id_in_list > cur_goveq_1%id_in_list) then
+             if (cur_goveq_2%rank_in_soe_list > cur_goveq_1%rank_in_soe_list) then
                 cur_cond_2%swap_order = PETSC_TRUE
              else
                 cur_cond_1%swap_order = PETSC_TRUE
@@ -1477,10 +1496,13 @@ contains
                 call aux_vars_bc_1(sum_conn_1)%Copy(tmp_aux_var_bc_2)
                 call aux_vars_bc_2(sum_conn_2)%Copy(tmp_aux_var_bc_1)
 
-             enddo
+             enddo ! iauxvar
 
-          endif
-       endif
+          endif ! if bc
+       endif ! ids are equal
+
+       cpl_var_1 => cpl_var_1%next
+       
     enddo
 
   end subroutine VSFMSOEUpdateBCConnections
