@@ -55,8 +55,9 @@ module GoverningEquationBaseType
      procedure, public :: GetNCellsInCondsExcptCondItype => GoveqnBaseGetNCellsInCondsExcptCondItype
      procedure, public :: GetCondNamesExcptCondItype     => GoveqnBaseGetCondNamesExcptCondItype
      procedure, public :: AddCondition                   => GoveqnBaseAddCondition
-     procedure, public :: AddCouplingBC   => GoveqnBaseAddCouplingBC
+     procedure, public :: AddCouplingBC                  => GoveqnBaseAddCouplingBC
      procedure, public :: UpdateConditionConnSet         => GoveqnBaseUpdateConditionConnSet
+     procedure, public :: GetMeshIType                   => GoveqnBaseGetMeshIType
   end type goveqn_base_type
   !------------------------------------------------------------------------
 
@@ -679,6 +680,21 @@ contains
     enddo
 
   end subroutine GoveqnBaseUpdateConditionConnSet
+
+  !------------------------------------------------------------------------
+  function GoveqnBaseGetMeshIType(this)
+    !
+    ! !DESCRIPTION:
+    ! Returns mesh itype
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type) :: this
+    !
+    PetscInt                :: GoveqnBaseGetMeshIType
+
+    GoveqnBaseGetMeshIType = this%mesh%itype
+
+  end function GoveqnBaseGetMeshIType
 
 #endif
 

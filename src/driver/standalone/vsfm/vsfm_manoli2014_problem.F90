@@ -1129,7 +1129,7 @@ contains
           ! Set properties for internal auxvars
           aux_vars_in => cur_goveq%aux_vars_in
 
-          select case(cur_goveq%mesh_itype)
+          select case(cur_goveq%GetMeshIType())
           case (MESH_CLM_SOIL_COL)
              do ghosted_id = 1,cur_goveq%mesh%ncells_local
 
