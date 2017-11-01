@@ -75,7 +75,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(thermal_enthalpy_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(thermal_enthalpy_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -84,7 +84,7 @@ contains
        call set_bondary_conditions()
 
        ! Run the model
-       call thermal_enthalpy_mpp%sysofeqns%StepDT(dtime, istep, &
+       call thermal_enthalpy_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
     enddo
 
@@ -95,7 +95,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(thermal_enthalpy_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(thermal_enthalpy_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -345,11 +345,11 @@ contains
 
     ieqn = 1
 
-    call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+    call thermal_enthalpy_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant temperature condition at top', 'K', COND_DIRICHLET, &
          SOIL_TOP_CELLS)
 
-    call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+    call thermal_enthalpy_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
          SOIL_BOTTOM_CELLS)
 
@@ -483,17 +483,17 @@ contains
     PetscInt            :: soe_auxvar_id
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(thermal_enthalpy_mpp%sysofeqns%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(thermal_enthalpy_mpp%soe%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(thermal_enthalpy_mpp%sysofeqns%dm, dms, ierr)
+    call DMCompositeGetEntriesArray(thermal_enthalpy_mpp%soe%dm, dms, ierr)
 
     ! Allocate vectors for individual GEs
     allocate(soln_subvecs(nDM))
 
     ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
+    call DMCompositeGetAccessArray(thermal_enthalpy_mpp%soe%dm, thermal_enthalpy_mpp%soe%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     do ii = 1, nDM
@@ -503,16 +503,16 @@ contains
     enddo
 
     ! Restore solution vectors for individual GEs
-    call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
+    call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%soe%dm, thermal_enthalpy_mpp%soe%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-    call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, thermal_enthalpy_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, thermal_enthalpy_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecCopy(thermal_enthalpy_mpp%soe%soln, thermal_enthalpy_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(thermal_enthalpy_mpp%soe%soln, thermal_enthalpy_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
 
     allocate(pressure(ncells_local))
     pressure(:) = 091325.d0
     soe_auxvar_id = -1
-    call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_INTERNAL,  &
+    call thermal_enthalpy_mpp%soe%SetDataFromCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, soe_auxvar_id, pressure)
     deallocate(pressure)
 
@@ -543,15 +543,15 @@ contains
     pressure(:) = 091325.d0
 
     soe_auxvar_id = 1
-    call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call thermal_enthalpy_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, top_bc)
 
     soe_auxvar_id = 2
-    call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call thermal_enthalpy_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, bot_bc)
 
     soe_auxvar_id = -1
-    call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_INTERNAL,  &
+    call thermal_enthalpy_mpp%soe%SetDataFromCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, soe_auxvar_id, pressure)
 
     deallocate(top_bc)
@@ -588,7 +588,7 @@ contains
 
     name = 'temperature'
     category = 'general'
-    call thermal_enthalpy_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call thermal_enthalpy_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_TEMPERATURE, -1, data)
     call regression%WriteData(name, category, data)
 

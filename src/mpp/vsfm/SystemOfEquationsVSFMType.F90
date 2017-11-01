@@ -1260,7 +1260,7 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(sysofeqns_vsfm_type)    :: this
+    class(sysofeqns_base_type)    :: this
     PetscInt, intent(in)          :: mpp_id
     !
     ! !LOCAL VARIABLES:

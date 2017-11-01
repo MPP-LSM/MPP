@@ -73,7 +73,7 @@ program heat_transport_1D_with_advection
      endif
 
      call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-     call VecView(thermal_enthalpy_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+     call VecView(thermal_enthalpy_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
      call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
@@ -82,7 +82,7 @@ program heat_transport_1D_with_advection
      call set_bondary_conditions()
 
      ! Run the model
-     call thermal_enthalpy_mpp%sysofeqns%StepDT(dtime, istep, &
+     call thermal_enthalpy_mpp%soe%StepDT(dtime, istep, &
           converged, converged_reason, ierr); CHKERRQ(ierr)
   enddo
 
@@ -93,7 +93,7 @@ program heat_transport_1D_with_advection
         string = 'final_soln_' // trim(output_suffix) // '.bin'
      endif
      call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-     call VecView(thermal_enthalpy_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+     call VecView(thermal_enthalpy_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
      call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
@@ -387,7 +387,7 @@ subroutine add_conditions_to_goveqns()
 
   ieqn = 1
 
-  call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+  call thermal_enthalpy_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at top', 'K', COND_DIRICHLET, &
        SOIL_TOP_CELLS, conn_set=conn_set)
 
@@ -405,7 +405,7 @@ subroutine add_conditions_to_goveqns()
        nconn, id_up, id_dn,                                &
        dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-  call thermal_enthalpy_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+  call thermal_enthalpy_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
        SOIL_BOTTOM_CELLS, conn_set=conn_set)
 
@@ -532,6 +532,8 @@ subroutine set_initial_conditions()
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
   use mesh_info                       , only : nz, ncells_local, ncells_ghost
   use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL, VAR_PRESSURE
+  use SystemOfEquationsBaseType            , only : sysofeqns_base_type
+  use SystemOfEquationsThermalEnthalpyType , only : sysofeqns_thermal_enthalpy_type
   use petscsys
   use petscvec
   use petscdm
@@ -548,20 +550,21 @@ subroutine set_initial_conditions()
   Vec                 :: pressure_ic
   PetscReal, pointer  :: v_p(:)
   PetscInt            :: soe_auxvar_id
+  class(sysofeqns_base_type),pointer                 :: base_soe
 
   ! Find number of GEs packed within the SoE
-  call DMCompositeGetNumberDM(thermal_enthalpy_mpp%sysofeqns%dm, nDM, ierr)
+  call DMCompositeGetNumberDM(thermal_enthalpy_mpp%soe%dm, nDM, ierr)
 
   ! Get DMs for each GE
   allocate (dms(nDM))
-  call DMCompositeGetEntriesArray(thermal_enthalpy_mpp%sysofeqns%dm, dms, ierr)
+  call DMCompositeGetEntriesArray(thermal_enthalpy_mpp%soe%dm, dms, ierr)
 
   ! Allocate vectors for individual GEs
   allocate(soln_subvecs(nDM))
 
   ! Get solution vectors for individual GEs
-  call DMCompositeGetAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, &
-       thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
+  call DMCompositeGetAccessArray(thermal_enthalpy_mpp%soe%dm, &
+       thermal_enthalpy_mpp%soe%soln, nDM, &
        PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
   do ii = 1, nDM
@@ -571,24 +574,28 @@ subroutine set_initial_conditions()
   enddo
 
   ! Restore solution vectors for individual GEs
-  call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%sysofeqns%dm, &
-       thermal_enthalpy_mpp%sysofeqns%soln, nDM, &
+  call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%soe%dm, &
+       thermal_enthalpy_mpp%soe%soln, nDM, &
        PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-  call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, &
-       thermal_enthalpy_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
-  call VecCopy(thermal_enthalpy_mpp%sysofeqns%soln, &
-       thermal_enthalpy_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+  call VecCopy(thermal_enthalpy_mpp%soe%soln, &
+       thermal_enthalpy_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
+  call VecCopy(thermal_enthalpy_mpp%soe%soln, &
+       thermal_enthalpy_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
 
-  call VecDuplicate(thermal_enthalpy_mpp%sysofeqns%soln,pressure_ic,ierr); CHKERRQ(ierr)
+  call VecDuplicate(thermal_enthalpy_mpp%soe%soln,pressure_ic,ierr); CHKERRQ(ierr)
   call PetscViewerBinaryOpen(PETSC_COMM_SELF,'pressure_ic.bin',FILE_MODE_READ,viewer,ierr);CHKERRQ(ierr)
   call VecLoad(pressure_ic,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   call VecView(pressure_ic, PETSC_VIEWER_STDOUT_SELF,ierr)
 
   call VecGetArrayF90(pressure_ic, v_p, ierr); CHKERRQ(ierr);
-  call thermal_enthalpy_mpp%sysofeqns%SetRDataFromCLM(AUXVAR_INTERNAL, &
-       VAR_PRESSURE, -1, v_p)
+  base_soe => thermal_enthalpy_mpp%soe
+  select type(base_soe)
+  class is (sysofeqns_thermal_enthalpy_type)
+     call base_soe%SetRDataFromCLM(AUXVAR_INTERNAL, &
+          VAR_PRESSURE, -1, v_p)
+  end select
   call VecRestoreArrayF90(pressure_ic, v_p, ierr); CHKERRQ(ierr);
   call VecDestroy(pressure_ic,ierr);CHKERRQ(ierr)
 
@@ -616,11 +623,11 @@ subroutine set_bondary_conditions()
   bot_bc(:) = 293.15d0
 
   soe_auxvar_id = 1
-  call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+  call thermal_enthalpy_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
        VAR_BC_SS_CONDITION, soe_auxvar_id, top_bc)
   
   soe_auxvar_id = 2
-  call thermal_enthalpy_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+  call thermal_enthalpy_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
        VAR_BC_SS_CONDITION, soe_auxvar_id, bot_bc)
   
   deallocate(top_bc)

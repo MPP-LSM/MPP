@@ -75,7 +75,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -84,7 +84,7 @@ contains
        call set_bondary_conditions()
 
        ! Run the model
-       call th_mpp%sysofeqns%StepDT(dtime, istep, &
+       call th_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
     enddo
 
@@ -95,7 +95,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -396,7 +396,7 @@ contains
 
     ieqn = 2
 
-    call th_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+    call th_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant temperature condition at top', 'K', COND_DIRICHLET, &
          SOIL_TOP_CELLS, conn_set=conn_set)
 
@@ -415,7 +415,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call th_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+    call th_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
          SOIL_BOTTOM_CELLS, conn_set=conn_set)
 
@@ -466,8 +466,8 @@ contains
     goveqn_ids_for_coupling (1) = 2
     is_bc                   (1) = 0
 
-    call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
-         var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
+    call th_mpp%GovEqnSetInternalCouplingVars(ieqn, nvars_for_coupling, &
+         var_ids_for_coupling, goveqn_ids_for_coupling)
 
     deallocate(var_ids_for_coupling   )
     deallocate(goveqn_ids_for_coupling)
@@ -482,8 +482,8 @@ contains
     goveqn_ids_for_coupling (1) = 1
     is_bc                   (1) = 0
 
-    call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
-         var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
+    call th_mpp%GovEqnSetInternalCouplingVars(ieqn, nvars_for_coupling, &
+         var_ids_for_coupling, goveqn_ids_for_coupling)
 
     deallocate(var_ids_for_coupling   )
     deallocate(goveqn_ids_for_coupling)
@@ -602,18 +602,18 @@ contains
     PetscInt            :: soe_auxvar_id
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(th_mpp%sysofeqns%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(th_mpp%soe%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(th_mpp%sysofeqns%dm, dms, ierr)
+    call DMCompositeGetEntriesArray(th_mpp%soe%dm, dms, ierr)
 
     ! Allocate vectors for individual GEs
     allocate(soln_subvecs(nDM))
 
     ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(th_mpp%sysofeqns%dm, &
-         th_mpp%sysofeqns%soln, nDM, &
+    call DMCompositeGetAccessArray(th_mpp%soe%dm, &
+         th_mpp%soe%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     do ii = 1, nDM
@@ -627,14 +627,14 @@ contains
     enddo
 
     ! Restore solution vectors for individual GEs
-    call DMCompositeRestoreAccessArray(th_mpp%sysofeqns%dm, &
-         th_mpp%sysofeqns%soln, nDM, &
+    call DMCompositeRestoreAccessArray(th_mpp%soe%dm, &
+         th_mpp%soe%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-    call VecCopy(th_mpp%sysofeqns%soln, &
-         th_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(th_mpp%sysofeqns%soln, &
-         th_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%soln, &
+         th_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%soln, &
+         th_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_conditions
 
@@ -682,14 +682,14 @@ contains
     bot_pres_bc(:) = 091325.d0
 
     soe_auxvar_id = 1
-    call th_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call th_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, top_temp_bc)
 
     soe_auxvar_id = 2
-    call th_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call th_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, bot_temp_bc)
 
-    cur_goveq => th_mpp%sysofeqns%goveqns
+    cur_goveq => th_mpp%soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
 
@@ -774,14 +774,14 @@ contains
 
     name = 'liquid_pressure'
     category = 'pressure'
-    call th_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call th_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, -1, data)
     data_subset(:) = data(1:ncells_local)
     call regression%WriteData(name, category, data_subset)
 
     name = 'temperature'
     category = 'temperature'
-    call th_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call th_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_TEMPERATURE, -1, data)
     data_subset(:) = data(ncells_local+1:ncells_local*2)
     call regression%WriteData(name, category, data_subset)

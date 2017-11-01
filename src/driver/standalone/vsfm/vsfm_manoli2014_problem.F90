@@ -143,7 +143,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -151,7 +151,7 @@ contains
        ! Update BC
 
        ! Run the model
-       call vsfm_mpp%sysofeqns%StepDT(dtime, istep, &
+       call vsfm_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
     enddo
 
@@ -162,7 +162,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -202,7 +202,7 @@ contains
     ! 8. Set initial conditions
     call set_initial_conditions()
 
-    call VSFMSOEUpdateConnections(vsfm_mpp%sysofeqns, MPP_VSFM_SNES_CLM)
+    call VSFMSOEUpdateConnections(vsfm_mpp%soe, MPP_VSFM_SNES_CLM)
 
   end subroutine Init
 
@@ -912,7 +912,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in soil equation',   &
          unit               = 'Pa',                         &
          region_type        = SOIL_TOP_CELLS,               &
@@ -931,7 +931,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Soil BC in root equation', &
          unit               = 'Pa', &
          region_type        = SOIL_TOP_CELLS, &
@@ -944,7 +944,7 @@ contains
     ieqn           = 2
     ieqn_others(1) = 3
 
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Xylem BC in root equation', &
          unit               = 'Pa', &
          region_type        = SOIL_TOP_CELLS, &
@@ -954,7 +954,7 @@ contains
     ieqn           = 3
     ieqn_others(1) = 2
 
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in xylem equation', &
          unit               = 'Pa', &
          region_type        = SOIL_BOTTOM_CELLS, &
@@ -1119,7 +1119,7 @@ contains
     satfunc_type = 'van_genuchten'
 
 
-    cur_goveq => vsfm_mpp%sysofeqns%goveqns
+    cur_goveq => vsfm_mpp%soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
 
@@ -1309,9 +1309,9 @@ contains
     PetscErrorCode                                    :: ierr
 
     !
-    call VecSet (vsfm_mpp%sysofeqns%soln, press_initial, ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_mpp%sysofeqns%soln, vsfm_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_mpp%sysofeqns%soln, vsfm_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecSet (vsfm_mpp%soe%soln, press_initial, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%soln, vsfm_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%soln, vsfm_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_conditions
 
@@ -1338,6 +1338,7 @@ contains
     use MultiPhysicsProbConstants        , only : MPP_VSFM_SNES_CLM
     use MultiPhysicsProbConstants        , only : SOE_RE_ODE
     use mpp_abortutils                   , only : endrun
+    use SystemOfEquationsBaseType        , only : sysofeqns_base_type
     use petscmat
     use petscdm
     use petscdmda
@@ -1353,6 +1354,7 @@ contains
     class(goveqn_base_type),pointer                   :: cur_goveq
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_pres
     class(sysofeqns_vsfm_type),pointer                :: vsfm_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     PetscReal, parameter                              :: atol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: rtol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: stol    = 1.d-10
@@ -1360,8 +1362,15 @@ contains
     PetscInt, parameter                               :: max_f   = PETSC_DEFAULT_INTEGER
     !
 
-    vsfm_soe => vsfm_mpp%sysofeqns
-    vsfm_mpp%sysofeqns_ptr%ptr => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
+
+
+    vsfm_mpp%soe_ptr%ptr => vsfm_mpp%soe
 
     allocate(mesh_size(vsfm_soe%ngoveqns))
 
@@ -1477,17 +1486,17 @@ contains
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
     call SNESSetFunction(vsfm_soe%snes, vsfm_soe%res, SOEResidual, &
-                         vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
     call SNESSetJacobian(vsfm_soe%snes, vsfm_soe%jac, vsfm_soe%jac,     &
-                         SOEJacobian, vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         SOEJacobian, vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetFromOptions(vsfm_soe%snes, ierr); CHKERRQ(ierr)
 
     ! Get pointers to governing-equations
     call vsfm_soe%CreateVectorsForGovEqn()
 
-    vsfm_mpp%sysofeqns%solver_type = vsfm_mpp%solver_type
-    vsfm_mpp%sysofeqns%itype       = SOE_RE_ODE
+    vsfm_mpp%soe%solver_type = vsfm_mpp%solver_type
+    vsfm_mpp%soe%itype       = SOE_RE_ODE
 
   end subroutine setup_petsc_snes
 

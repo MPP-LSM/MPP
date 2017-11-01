@@ -24,7 +24,7 @@ module vsfm_spac_campbell_problem
 
   public :: run_vsfm_spac_campbell_problem
   public :: output_regression_vsfm_spac_campbell_problem
-  
+
 contains
 
   subroutine run_vsfm_spac_campbell_problem()
@@ -87,7 +87,7 @@ contains
        time = time + dtime
 
        ! Run the model
-       call vsfm_mpp%sysofeqns%StepDT(dtime, istep, &
+       call vsfm_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
 
     end do
@@ -135,7 +135,7 @@ contains
     else
        call setup_petsc_snes()
     end if
-    call vsfm_mpp%sysofeqns%PrintInfo()
+    call vsfm_mpp%soe%PrintInfo()
 
     ! 7. Add material properities associated with all governing equations
     call set_material_properties() 
@@ -146,7 +146,7 @@ contains
     ! 8. Set initial conditions
     call set_initial_conditions()
 
-    call VSFMSOEUpdateConnections(vsfm_mpp%sysofeqns, MPP_VSFM_SNES_CLM)
+    call VSFMSOEUpdateConnections(vsfm_mpp%soe, MPP_VSFM_SNES_CLM)
 
   end subroutine Init
 
@@ -772,7 +772,7 @@ contains
     type(connection_set_type) , pointer :: conn_set
 
     ieqn       = 1
-    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
+    call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Potential Mass_Flux', 'kg/s', COND_DOWNREGULATE_POT_MASS_RATE, &
          SOIL_BOTTOM_CELLS)
 
@@ -817,7 +817,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in xylem equation'  , &
          unit               = 'Pa'                         , &
          region_type        = SOIL_TOP_CELLS               , &
@@ -840,7 +840,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Xylem BC in root equation'  , &
          unit               = 'Pa'                         , &
          region_type        = SOIL_TOP_CELLS               , &
@@ -854,7 +854,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Soil BC in root equation'   , &
          unit               = 'Pa'                         , &
          region_type        = SOIL_TOP_CELLS               , &
@@ -877,7 +877,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
 
-    call vsfm_mpp%sysofeqns%AddCouplingBCsInGovEqn( ieqn   , &
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in soil equation'   , &
          unit               = 'Pa'                         , &
          region_type        = SOIL_TOP_CELLS               , &
@@ -1222,7 +1222,7 @@ contains
     PetscReal, pointer :: press_ic(:)
     PetscErrorCode     :: ierr
 
-    call VecGetArrayF90(vsfm_mpp%sysofeqns%soln, press_ic, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(vsfm_mpp%soe%soln, press_ic, ierr); CHKERRQ(ierr)
 
     theta = 0.20d0
 
@@ -1231,9 +1231,9 @@ contains
        press_ic(ii) = (Campbell_he * Se**(-Campbell_b))* 1.d3 + 101325.d0
     enddo
 
-    call VecRestoreArrayF90(vsfm_mpp%sysofeqns%soln, press_ic, ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_mpp%sysofeqns%soln, vsfm_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_mpp%sysofeqns%soln, vsfm_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(vsfm_mpp%soe%soln, press_ic, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%soln, vsfm_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%soln, vsfm_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
     
   end subroutine set_initial_conditions
 
@@ -1267,7 +1267,7 @@ contains
     ss_value(:) = -tp 
 
     soe_auxvar_id = 1
-    call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_SS,  &
+    call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_SS,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, ss_value)
 
     deallocate(ss_value   )
@@ -1614,13 +1614,13 @@ contains
 
     name = 'liquid_pressure'
     category = 'pressure'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, -1, data)
     call regression%WriteData(name, category, data)
 
     name = 'liquid_saturation'
     category = 'general'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_LIQ_SAT, -1, data)
     call regression%WriteData(name, category, data)
 
@@ -1653,6 +1653,7 @@ contains
     use MultiPhysicsProbConstants        , only : MPP_VSFM_SNES_CLM
     use MultiPhysicsProbConstants        , only : SOE_RE_ODE
     use mpp_abortutils                   , only : endrun
+    use SystemOfEquationsBaseType        , only : sysofeqns_base_type
     use petscmat
     use petscdm
     use petscdmda
@@ -1668,6 +1669,7 @@ contains
     class(goveqn_base_type),pointer                   :: cur_goveq
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_pres
     class(sysofeqns_vsfm_type),pointer                :: vsfm_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     PetscReal, parameter                              :: atol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: rtol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: stol    = 1.d-10
@@ -1675,8 +1677,14 @@ contains
     PetscInt, parameter                               :: max_f   = PETSC_DEFAULT_INTEGER
     !
 
-    vsfm_soe => vsfm_mpp%sysofeqns
-    vsfm_mpp%sysofeqns_ptr%ptr => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
+    
+    vsfm_mpp%soe_ptr%ptr => vsfm_mpp%soe
 
     allocate(mesh_size(vsfm_soe%ngoveqns))
 
@@ -1784,17 +1792,17 @@ contains
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
     call SNESSetFunction(vsfm_soe%snes, vsfm_soe%res, SOEResidual, &
-                         vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
     call SNESSetJacobian(vsfm_soe%snes, vsfm_soe%jac, vsfm_soe%jac,     &
-                         SOEJacobian, vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         SOEJacobian, vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetFromOptions(vsfm_soe%snes, ierr); CHKERRQ(ierr)
 
     ! Get pointers to governing-equations
     call vsfm_soe%CreateVectorsForGovEqn()
 
-    vsfm_mpp%sysofeqns%solver_type = vsfm_mpp%solver_type
-    vsfm_mpp%sysofeqns%itype       = SOE_RE_ODE
+    vsfm_mpp%soe%solver_type = vsfm_mpp%solver_type
+    vsfm_mpp%soe%itype       = SOE_RE_ODE
 
   end subroutine setup_petsc_snes
 
