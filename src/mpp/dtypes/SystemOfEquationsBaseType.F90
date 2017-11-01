@@ -68,6 +68,7 @@ module SystemOfEquationsBaseType
      procedure, public :: SetMeshesOfGoveqns     => SOESetMeshesOfGoveqns
      procedure, public :: AddCouplingBCsInGovEqn => SOEBaseAddCouplingBCsInGovEqn
      procedure, public :: AddConditionInGovEqn   => SOEBaseAddConditionInGovEqn
+     procedure, public :: CreateVectorsForGovEqn => SOBCreateVectorsForGovEqn
   end type sysofeqns_base_type
 
   public :: SOEBaseInit
@@ -907,6 +908,18 @@ contains
 
   end subroutine SOEBaseClean
 
+  !------------------------------------------------------------------------
+  subroutine SOBCreateVectorsForGovEqn(this)
+    !
+    ! !DESCRIPTION:
+    ! Dummy subroutine that is extended by child SoE class
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_base_type) :: this
+
+  end subroutine SOBCreateVectorsForGovEqn
 #endif
 
 end module SystemOfEquationsBaseType

@@ -31,9 +31,9 @@ module MultiPhysicsProbThermalEnthalpy
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_thermal_type
    contains
-     procedure, public :: Init                        => ThermalEnthalpyMPPInit
-     procedure, public :: AllocateAuxVars             => ThermalEnthalpyMPPAllocateAuxVars
-     procedure, public :: SetupProblem                => ThermalEnthalpyMPPSetupProblem
+     procedure, public :: Init            => ThermalEnthalpyMPPInit
+     procedure, public :: AllocateAuxVars => ThermalEnthalpyMPPAllocateAuxVars
+     procedure, public :: SetupProblem    => ThermalEnthalpyMPPSetupProblem
 
   end type mpp_thermal_type
 
@@ -560,16 +560,16 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants , only : SOE_THERMAL_EBASED
+    use MultiPhysicsProbBaseType  , only : MPPSetupProblem
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_thermal_type)           :: this
+    class(mpp_thermal_type) :: this
 
-    call ThermalEnthalpyMPPKSPSetup(this)
+    call MPPSetupProblem(this)
 
-    this%soe%solver%petsc_solver_type = this%solver_type
-    this%soe%itype                    = SOE_THERMAL_EBASED
+    this%soe%itype = SOE_THERMAL_EBASED
 
   end subroutine ThermalEnthalpyMPPSetupProblem
 
@@ -701,9 +701,6 @@ contains
          SOEJacobian, thermal_enthalpy_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetFromOptions(therm_soe%solver%snes, ierr); CHKERRQ(ierr)
-
-    ! Get pointers to governing-equations
-    call therm_soe%CreateVectorsForGovEqn()
 
     ! Cleanup
     do igoveq = 1, therm_soe%ngoveqns
