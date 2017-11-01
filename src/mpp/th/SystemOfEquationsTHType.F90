@@ -60,14 +60,6 @@ module SystemOfEquationsTHType
      procedure, public :: SetDataFromCLM         => SOETHSetDataFromCLM
      procedure, public :: GetDataForCLM          => SOETHGetDataForCLM
 
-     !procedure, public :: SetSolnPrevCLM         => SOETHSetSolnPrevCLM
-     !procedure, public :: GetSoln                => SOETHGetSoln
-     !procedure, public :: SetRDataFromCLM        => SOETHSetRDataFromCLM
-     !procedure, public :: SetBDataFromCLM        => SOETHSetBDataFromCLM
-     !procedure, public :: PreStepDT              => SOETHPreStepDT
-     !procedure, public :: PostSolve              => SOETHPostSolve
-     !procedure, public :: PostStepDT             => SOETHPostStepDT
-
   end type sysofeqns_th_type
 
   public :: SOETHSetAuxVars, &

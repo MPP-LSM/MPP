@@ -18,31 +18,42 @@ module MultiPhysicsProbBaseType
   use mpp_varctl      , only : iulog
   use mpp_abortutils  , only : endrun
   use mpp_shr_log_mod , only : errMsg => shr_log_errMsg
+  use SystemOfEquationsBaseType
+  use SystemOfEquationsBasePointerType   , only : sysofeqns_base_pointer_type
   !
   ! !PUBLIC TYPES:
   implicit none
   private
 
   type, public :: multiphysicsprob_base_type
-     character(len =256)      :: name        ! name of the multi-physics problem (MPP)
-     PetscInt                 :: id          ! identifier for the MPP
-     class(mesh_type),pointer :: meshes(:)   ! meshes associated with the MPP
-     PetscInt                 :: nmesh       ! number of meshes in the MPP
-     PetscInt                 :: solver_type ! identifier for the type of PETSc solver
+     character(len =256)                         :: name          ! name of the multi-physics problem (MPP)
+     PetscInt                                    :: id            ! identifier for the MPP
+     class(mesh_type)                  , pointer :: meshes(:)     ! meshes associated with the MPP
+     PetscInt                                    :: nmesh         ! number of meshes in the MPP
+     PetscInt                                    :: solver_type   ! identifier for the type of PETSc solver
+     class(sysofeqns_base_type)        , pointer :: soe           ! system-of-equations for the MPP
+     type(sysofeqns_base_pointer_type) , pointer :: soe_ptr ! workaround to send user defined context to PETSc
    contains
      procedure, public :: Init
      procedure, public :: Clean
-     procedure, public :: SetName                    => MPPSetName
-     procedure, public :: SetID                      => MPPSetID
-     procedure, public :: SetNumMeshes               => MPPSetNumMeshes
-     procedure, public :: MeshSetName                => MPPMeshSetName
-     procedure, public :: MeshSetOrientation         => MPPMeshSetOrientation
-     procedure, public :: MeshSetID                  => MPPMeshSetID
-     procedure, public :: MeshSetDimensions          => MPPMeshSetDimensions
-     procedure, public :: MeshSetGeometricAttributes => MPPMeshSetGeometricAttributes
-     procedure, public :: MeshSetGridCellFilter      => MPPMeshSetGridCellFilter
-     procedure, public :: MeshComputeVolume          => MPPMeshComputeVolume
-     procedure, public :: MeshSetConnectionSet       => MPPMeshSetConnectionSet
+     procedure, public :: SetName                       => MPPSetName
+     procedure, public :: SetID                         => MPPSetID
+     procedure, public :: SetNumMeshes                  => MPPSetNumMeshes
+     procedure, public :: MeshSetName                   => MPPMeshSetName
+     procedure, public :: MeshSetOrientation            => MPPMeshSetOrientation
+     procedure, public :: MeshSetID                     => MPPMeshSetID
+     procedure, public :: MeshSetDimensions             => MPPMeshSetDimensions
+     procedure, public :: MeshSetGeometricAttributes    => MPPMeshSetGeometricAttributes
+     procedure, public :: MeshSetGridCellFilter         => MPPMeshSetGridCellFilter
+     procedure, public :: MeshComputeVolume             => MPPMeshComputeVolume
+     procedure, public :: MeshSetConnectionSet          => MPPMeshSetConnectionSet
+     procedure, public :: AddGovEqn                     => MPPAddGovEqn
+     procedure, public :: SetMeshesOfGoveqns            => MPPSetMeshesOfGoveqns
+     procedure, public :: SetMPIRank                    => MPPSetMPIRank
+     procedure, public :: GovEqnUpdateBCConnectionSet   => MPPGovEqnUpdateBCConnectionSet
+     procedure, public :: GovEqnSetCouplingVars         => MPPGovEqnSetCouplingVars
+     procedure, public :: GovEqnSetInternalCouplingVars => MPPGovEqnSetInternalCouplingVars
+     procedure, public :: GovEqnSetBothCouplingVars     => MPPGovEqnSetBothCouplingVars
   end type multiphysicsprob_base_type
 
   public :: MPPBaseInit
@@ -84,7 +95,9 @@ contains
     this%nmesh        = 0
     this%solver_type  = 0
 
-    nullify(this%meshes)
+    nullify(this%meshes  )
+    nullify(this%soe     )
+    nullify(this%soe_ptr )
 
   end subroutine MPPBaseInit
 
@@ -387,6 +400,511 @@ contains
     enddo
 
   end subroutine MMPBaseClean
+
+  !------------------------------------------------------------------------
+  subroutine MPPAddGovEqn(this, geq_type, name, mesh_itype)
+    !
+    ! !DESCRIPTION:
+    ! Adds a governing equation to the MPP
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+    PetscInt                          :: geq_type
+    character(len =*)                 :: name
+    PetscInt                          :: mesh_itype
+
+    call this%soe%AddGovEqn(geq_type, name, mesh_itype)
+
+  end subroutine MPPAddGovEqn
+
+  !------------------------------------------------------------------------
+  subroutine MPPSetMeshesOfGoveqns(this)
+    !
+    ! !DESCRIPTION:
+    ! Set association of governing equations and meshes
+    !
+    use GoverningEquationBaseType, only : goveqn_base_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+
+    call this%soe%SetMeshesOfGoveqns(this%meshes, this%nmesh)
+
+  end subroutine MPPSetMeshesOfGoveqns
+
+  !------------------------------------------------------------------------
+  subroutine MPPSetMPIRank(this, rank)
+    !
+    ! !DESCRIPTION:
+    ! Sets MPI rank
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+    PetscInt                          :: rank
+
+    if (associated(this%soe)) then
+       this%soe%mpi_rank = rank
+    endif
+
+  end subroutine MPPSetMPIRank
+
+  !------------------------------------------------------------------------
+  subroutine MPPGovEqnUpdateBCConnectionSet(this, igoveqn, icond, &
+       var_type, nval, values)
+    !
+    ! !DESCRIPTION:
+    ! For a boundary condition of a given governing equation, update distance
+    ! for a downstream cell.
+    !
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use MultiPhysicsProbConstants , only : VAR_DIST_DN
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type)   :: this
+    PetscInt                            :: igoveqn
+    PetscInt                            :: icond
+    PetscInt                            :: nval
+    PetscInt                            :: var_type
+    PetscReal                 , pointer :: values (:)
+    !
+    class(goveqn_base_type)   , pointer :: cur_goveq
+    type(condition_type)      , pointer :: cur_cond
+    type(connection_set_type) , pointer :: cur_conn_set
+    PetscInt                            :: ii
+    PetscInt                            :: iconn
+    PetscInt                            :: bc_idx
+    PetscBool                           :: bc_found
+
+    if (igoveqn > this%soe%ngoveqns) then
+       write(iulog,*) 'Attempting to access governing equation that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%soe%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    bc_found = PETSC_FALSE
+    bc_idx = 0
+    cur_cond => cur_goveq%boundary_conditions%first
+    do
+       if (.not.associated(cur_cond)) exit
+
+       bc_idx = bc_idx + 1
+       if (bc_idx == icond) then
+          bc_found = PETSC_TRUE
+
+          cur_conn_set => cur_cond%conn_set
+          if (nval /= cur_conn_set%num_connections) then
+             write(iulog,*) 'Number of values to update connections ' // &
+                  'do not match number of connections.'
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          endif
+
+          do iconn = 1, cur_conn_set%num_connections
+
+             select case(var_type)
+             case (VAR_DIST_DN)
+                cur_conn_set%dist_dn(iconn) = values(iconn)
+             case default
+                write(iulog,*) 'Unknown variable type'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             end select
+          enddo
+
+          exit
+
+       end if
+
+       cur_cond => cur_cond%next
+    enddo
+
+    if (.not.bc_found) then
+       write(iulog,*) 'Failed to find icond = ',icond,' in the boundary condition list.'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+  end subroutine MPPGovEqnUpdateBCConnectionSet
+
+  !------------------------------------------------------------------------
+  subroutine MPPGovEqnSetCouplingVars(this, igoveqn, nvars, &
+       var_ids, goveqn_ids)
+    !
+    ! !DESCRIPTION:
+    ! In order to couple the given governing equation, add:
+    ! - ids of variables needed, and
+    ! - ids of governing equations from which variables are needed.
+    ! needed for coupling
+    ! 
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use CouplingVariableType      , only : coupling_variable_type
+    use CouplingVariableType      , only : CouplingVariableCreate
+    use CouplingVariableType      , only : CouplingVariableListAddCouplingVar
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type)      :: this
+    PetscInt                               :: igoveqn
+    PetscInt                               :: nvars
+    PetscInt                     , pointer :: var_ids(:)
+    PetscInt                     , pointer :: goveqn_ids(:)
+    !
+    class(goveqn_base_type)      , pointer :: cur_goveq_1
+    class(goveqn_base_type)      , pointer :: cur_goveq_2
+    type(condition_type)         , pointer :: cur_cond_1
+    type(condition_type)         , pointer :: cur_cond_2
+    type(coupling_variable_type) , pointer :: cpl_var
+    PetscInt                               :: ii
+    PetscInt                               :: ieqn
+    PetscInt                               :: ivar
+    PetscInt                               :: bc_idx_1
+    PetscInt                               :: bc_idx_2
+    PetscInt                               :: bc_offset_1
+    PetscBool                              :: bc_found
+
+    if (igoveqn > this%soe%ngoveqns) then
+       write(iulog,*) 'Attempting to set coupling vars for governing ' // &
+            'equation that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq_1 => this%soe%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq_1 => cur_goveq_1%next
+    end do
+
+    do ivar = 1, nvars
+
+       if (goveqn_ids(ivar) > this%soe%ngoveqns) then
+          write(iulog,*) 'Attempting to set coupling vars to a governing ' // &
+               'equation that is not in the list'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+       endif
+
+       bc_found    = PETSC_FALSE
+       bc_idx_1    = 1
+       bc_offset_1 = 0
+
+       cur_cond_1 => cur_goveq_1%boundary_conditions%first
+       do
+          if (.not.associated(cur_cond_1)) exit
+
+          ! Is this the appropriate BC?
+          if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+             do ieqn = 1, cur_cond_1%num_other_goveqs
+                if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
+                   bc_found = PETSC_TRUE
+                   exit
+                endif
+             enddo
+          endif
+
+          if (bc_found) exit
+
+          bc_idx_1    = bc_idx_1    + 1
+          bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
+
+          cur_cond_1 => cur_cond_1%next
+       enddo
+
+       if (.not.bc_found) then
+          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
+               ', no coupling boundary condition found to copule it with ' // &
+               'equation_number = ', goveqn_ids(ivar)
+       endif
+
+       cur_goveq_2 => this%soe%goveqns
+       do ii = 1, goveqn_ids(ivar)-1
+          cur_goveq_2 => cur_goveq_2%next
+       enddo
+
+       bc_found    = PETSC_FALSE
+       bc_idx_2    = 1
+
+       cur_cond_2 => cur_goveq_2%boundary_conditions%first
+       do
+          if (.not.associated(cur_cond_2)) exit
+
+          ! Is this the appropriate BC?
+          if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+             do ieqn = 1, cur_cond_2%num_other_goveqs
+                if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
+                   bc_found = PETSC_TRUE
+                   exit
+                endif
+             enddo
+          endif
+
+          if (bc_found) exit
+
+          bc_idx_2    = bc_idx_2    + 1
+
+          cur_cond_2 => cur_cond_2%next
+       enddo
+
+       if (.not.bc_found) then
+          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
+               ', no coupling boundary condition found to copule it with ' // &
+               'equation_number = ', bc_idx_2
+       endif
+
+       cpl_var => CouplingVariableCreate()
+
+       cpl_var%variable_type                     = var_ids(ivar)
+       cpl_var%num_cells                         = cur_cond_1%conn_set%num_connections
+       cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
+       cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_TRUE
+       cpl_var%offset_of_bc_in_current_goveqn    = bc_offset_1
+       cpl_var%rank_of_bc_in_current_goveqn      = bc_idx_1
+       cpl_var%rank_of_bc_in_coupling_goveqn     = bc_idx_2
+
+       call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
+
+    enddo
+
+  end subroutine MPPGovEqnSetCouplingVars
+  
+  !------------------------------------------------------------------------
+  subroutine MPPGovEqnSetInternalCouplingVars(this, igoveqn, nvars, &
+       var_ids, goveqn_ids)
+    !
+    ! !DESCRIPTION:
+    ! In order to couple the given governing equation, add:
+    ! - ids of variables needed, and
+    ! - ids of governing equations from which variables are needed.
+    ! needed for coupling
+    ! 
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use CouplingVariableType      , only : coupling_variable_type
+    use CouplingVariableType      , only : CouplingVariableCreate
+    use CouplingVariableType      , only : CouplingVariableListAddCouplingVar
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type)      :: this
+    PetscInt                               :: igoveqn
+    PetscInt                               :: nvars
+    PetscInt                     , pointer :: var_ids(:)
+    PetscInt                     , pointer :: goveqn_ids(:)
+    !
+    class(goveqn_base_type)      , pointer :: cur_goveq_1
+    class(goveqn_base_type)      , pointer :: cur_goveq_2
+    type(condition_type)         , pointer :: cur_cond_1
+    type(condition_type)         , pointer :: cur_cond_2
+    type(coupling_variable_type) , pointer :: cpl_var
+    PetscInt                               :: ii
+    PetscInt                               :: ieqn
+    PetscInt                               :: ivar
+    PetscInt                               :: bc_idx_1
+    PetscInt                               :: bc_idx_2
+    PetscInt                               :: bc_offset_1
+    PetscBool                              :: bc_found
+
+    if (igoveqn > this%soe%ngoveqns) then
+       write(iulog,*) 'Attempting to set coupling vars for governing ' // &
+            'equation that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq_1 => this%soe%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq_1 => cur_goveq_1%next
+    end do
+
+    do ivar = 1, nvars
+
+       if (goveqn_ids(ivar) > this%soe%ngoveqns) then
+          write(iulog,*) 'Attempting to set coupling vars to a governing ' // &
+               'equation that is not in the list'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+       endif
+       
+       cpl_var => CouplingVariableCreate()
+
+       cpl_var%variable_type                     = var_ids(ivar)
+       cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
+       cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_FALSE
+
+       call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
+
+    enddo
+
+  end subroutine MPPGovEqnSetInternalCouplingVars
+
+  !------------------------------------------------------------------------
+  subroutine MPPGovEqnSetBothCouplingVars(this, igoveqn, nvars, &
+       var_ids, goveqn_ids, is_bc)
+    !
+    ! !DESCRIPTION:
+    ! In order to couple the given governing equation, add:
+    ! - ids of variables needed, and
+    ! - ids of governing equations from which variables are needed.
+    ! needed for coupling
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use CouplingVariableType      , only : coupling_variable_type
+    use CouplingVariableType      , only : CouplingVariableCreate
+    use CouplingVariableType      , only : CouplingVariableListAddCouplingVar
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type)      :: this
+    PetscInt                               :: igoveqn
+    PetscInt                               :: nvars
+    PetscInt                     , pointer :: var_ids(:)
+    PetscInt                     , pointer :: goveqn_ids(:)
+    PetscInt                     , pointer :: is_bc(:)
+    !
+    class(goveqn_base_type)      , pointer :: cur_goveq_1
+    class(goveqn_base_type)      , pointer :: cur_goveq_2
+    type(condition_type)         , pointer :: cur_cond_1
+    type(condition_type)         , pointer :: cur_cond_2
+    type(coupling_variable_type) , pointer :: cpl_var
+    PetscInt                               :: ii
+    PetscInt                               :: ieqn
+    PetscInt                               :: ivar
+    PetscInt                               :: bc_idx_1
+    PetscInt                               :: bc_idx_2
+    PetscInt                               :: bc_offset_1
+    PetscBool                              :: bc_found
+
+    if (igoveqn > this%soe%ngoveqns) then
+       write(iulog,*) 'Attempting to set coupling vars for governing ' // &
+            'equation that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq_1 => this%soe%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq_1 => cur_goveq_1%next
+    end do
+
+    do ivar = 1, nvars
+
+       if (goveqn_ids(ivar) > this%soe%ngoveqns) then
+          write(iulog,*) 'Attempting to set coupling vars to a governing ' // &
+               'equation that is not in the list'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+       endif
+
+       if (is_bc(ivar) == 1) then
+          bc_found    = PETSC_FALSE
+          bc_idx_1    = 1
+          bc_offset_1 = 0
+
+          cur_cond_1 => cur_goveq_1%boundary_conditions%first
+          do
+             if (.not.associated(cur_cond_1)) exit
+
+             ! Is this the appropriate BC?
+             if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+                do ieqn = 1, cur_cond_1%num_other_goveqs
+                   if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
+                      bc_found = PETSC_TRUE
+                      exit
+                   endif
+                enddo
+             endif
+
+             if (bc_found) exit
+
+             bc_idx_1    = bc_idx_1    + 1
+             bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
+
+             cur_cond_1 => cur_cond_1%next
+          enddo
+
+          if (.not.bc_found) then
+             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
+                  ', no coupling boundary condition found to copule it with ' // &
+                  'equation_number = ', goveqn_ids(ivar)
+          endif
+
+          cur_goveq_2 => this%soe%goveqns
+          do ii = 1, goveqn_ids(ivar)-1
+             cur_goveq_2 => cur_goveq_2%next
+          enddo
+
+          bc_found    = PETSC_FALSE
+          bc_idx_2    = 1
+
+          cur_cond_2 => cur_goveq_2%boundary_conditions%first
+          do
+             if (.not.associated(cur_cond_2)) exit
+
+             ! Is this the appropriate BC?
+             if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+                do ieqn = 1, cur_cond_2%num_other_goveqs
+                   if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
+                      bc_found = PETSC_TRUE
+                      exit
+                   endif
+                enddo
+             endif
+
+             if (bc_found) exit
+
+             bc_idx_2    = bc_idx_2    + 1
+
+             cur_cond_2 => cur_cond_2%next
+          enddo
+
+          if (.not.bc_found) then
+             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
+                  ', no coupling boundary condition found to copule it with ' // &
+                  'equation_number = ', bc_idx_2
+          endif
+
+          cpl_var => CouplingVariableCreate()
+
+          cpl_var%variable_type                     = var_ids(ivar)
+          cpl_var%num_cells                         = cur_cond_1%conn_set%num_connections
+          cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
+          cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_TRUE
+          cpl_var%offset_of_bc_in_current_goveqn    = bc_offset_1
+          cpl_var%rank_of_bc_in_current_goveqn      = bc_idx_1
+          cpl_var%rank_of_bc_in_coupling_goveqn     = bc_idx_2
+
+          call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
+
+    else
+
+          cpl_var => CouplingVariableCreate()
+
+          cpl_var%variable_type                     = var_ids(ivar)
+          cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
+          cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_FALSE
+
+          call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
+
+       endif
+
+    enddo
+
+  end subroutine MPPGovEqnSetBothCouplingVars
 
 #endif
 

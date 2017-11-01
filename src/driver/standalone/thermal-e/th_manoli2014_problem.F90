@@ -1,6 +1,9 @@
 module th_manoli2014_problem
 
 #include <petsc/finclude/petsc.h>
+  use mpp_varctl      , only : iulog
+  use mpp_abortutils  , only : endrun
+  use mpp_shr_log_mod , only : errMsg => shr_log_errMsg
   use petscsys
   use petscvec
   use petscmat
@@ -85,7 +88,7 @@ contains
   subroutine run_th_manoli2014_problem()
     !
     use MultiPhysicsProbTH , only : th_mpp
-    use mpp_varpar           , only : mpp_varpar_init
+    use mpp_varpar         , only : mpp_varpar_init
     !
     implicit none
     !
@@ -128,7 +131,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -136,7 +139,7 @@ contains
        ! Update BC
 
        ! Run the model
-       call th_mpp%sysofeqns%StepDT(dtime, istep, &
+       call th_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
     enddo
 
@@ -147,7 +150,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -158,9 +161,12 @@ contains
     !
     use MultiPhysicsProbTH        , only : th_mpp
     use SystemOfEquationsTHType   , only : SOETHUpdateConnections
+    use SystemOfEquationsBaseType , only : sysofeqns_base_type
+    use SystemOfEquationsTHType   , only : sysofeqns_th_type
     !
     implicit none
     !
+    class(sysofeqns_base_type) , pointer :: base_soe
 
     ! 1. Initialize the multi-physics-problem (MPP)
     call initialize_mpp()
@@ -186,7 +192,14 @@ contains
     ! 8. Set initial conditions
     call set_initial_conditions()
 
-    call SOETHUpdateConnections(th_mpp%sysofeqns, th_mpp%id)
+    base_soe => th_mpp%soe
+    select type(base_soe)
+    class is(sysofeqns_th_type)
+       call SOETHUpdateConnections(base_soe, th_mpp%id)
+    class default
+       write(iulog,*) 'Unsupported class type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
 
   end subroutine Init
 
@@ -910,7 +923,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil mass equation',      &
          unit='Pa',                                 &
          region_type=SOIL_TOP_CELLS,                &
@@ -942,7 +955,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil energy equation',    &
          unit='Pa',                                 &
          region_type=SOIL_TOP_CELLS,                &
@@ -975,7 +988,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root mass equation',      &
          unit='Pa',                                 &
          region_type=SOIL_TOP_CELLS,                &
@@ -1009,7 +1022,7 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root energy equation',    &
          unit='Pa',                                 &
          region_type=SOIL_TOP_CELLS,                &
@@ -1036,7 +1049,7 @@ contains
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
 
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root mass equation',     &
          unit='Pa',                                 &
          region_type=SOIL_TOP_CELLS,                &
@@ -1063,7 +1076,7 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root energy equation',   &
          unit='K',                                 &
          region_type=SOIL_TOP_CELLS,                &
@@ -1088,7 +1101,7 @@ contains
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
 
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem mass equation',     &
          unit='K',                                  &
          region_type=SOIL_BOTTOM_CELLS,             &
@@ -1115,7 +1128,7 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    call th_mpp%sysofeqns%AddCouplingBCsInGovEqn(ieqn, &
+    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem energy equation',   &
          unit='K',                                  &
          region_type=SOIL_BOTTOM_CELLS,             &
@@ -1179,7 +1192,7 @@ contains
        is_bc                   (2) = 1
        is_bc                   (3) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1207,7 +1220,7 @@ contains
        is_bc                   (2) = 1
        is_bc                   (3) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1245,7 +1258,7 @@ contains
        is_bc                   (4) = 1
        is_bc                   (5) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1283,7 +1296,7 @@ contains
        is_bc                   (4) = 1
        is_bc                   (5) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1312,7 +1325,7 @@ contains
        is_bc                   (2) = 1
        is_bc                   (3) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1341,7 +1354,7 @@ contains
        is_bc                   (2) = 1
        is_bc                   (3) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1361,7 +1374,7 @@ contains
        goveqn_ids_for_coupling (1) = 2
        is_bc                   (1) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1377,7 +1390,7 @@ contains
        goveqn_ids_for_coupling (1) = 1
        is_bc                   (1) = 0
 
-       call th_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
        deallocate(var_ids_for_coupling   )
@@ -1454,7 +1467,7 @@ contains
     satfunc_type = 'van_genuchten'
 
 
-    cur_goveq => th_mpp%sysofeqns%goveqns
+    cur_goveq => th_mpp%soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
 
@@ -1891,18 +1904,18 @@ contains
     PetscInt            :: soe_auxvar_id
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(th_mpp%sysofeqns%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(th_mpp%soe%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(th_mpp%sysofeqns%dm, dms, ierr)
+    call DMCompositeGetEntriesArray(th_mpp%soe%dm, dms, ierr)
 
     ! Allocate vectors for individual GEs
     allocate(soln_subvecs(nDM))
 
     ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(th_mpp%sysofeqns%dm, &
-         th_mpp%sysofeqns%soln, nDM, &
+    call DMCompositeGetAccessArray(th_mpp%soe%dm, &
+         th_mpp%soe%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     do ii = 1, nDM
@@ -1924,14 +1937,14 @@ contains
     enddo
 
     ! Restore solution vectors for individual GEs
-    call DMCompositeRestoreAccessArray(th_mpp%sysofeqns%dm, &
-         th_mpp%sysofeqns%soln, nDM, &
+    call DMCompositeRestoreAccessArray(th_mpp%soe%dm, &
+         th_mpp%soe%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     deallocate(dms)
     
-    call VecCopy(th_mpp%sysofeqns%soln, th_mpp%sysofeqns%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(th_mpp%sysofeqns%soln, th_mpp%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%soln, th_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%soln, th_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_conditions
 
@@ -1956,6 +1969,7 @@ contains
     use MultiPhysicsProbConstants        , only : MPP_TH_SNES_CLM
     use MultiPhysicsProbConstants        , only : SOE_TH
     use mpp_abortutils                   , only : endrun
+    use SystemOfEquationsBaseType        , only : sysofeqns_base_type
     !
     implicit none
     !
@@ -1971,6 +1985,7 @@ contains
     class(goveqn_base_type),pointer                   :: cur_goveq
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_pres
     class(sysofeqns_th_type),pointer                  :: th_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     PetscReal, parameter                              :: atol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: rtol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: stol    = 1.d-10
@@ -1978,8 +1993,17 @@ contains
     PetscInt, parameter                               :: max_f   = PETSC_DEFAULT_INTEGER
     !
 
-    th_soe => th_mpp%sysofeqns
-    th_mpp%sysofeqns_ptr%ptr => th_mpp%sysofeqns
+    base_soe => th_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_th_type)
+       th_soe => base_soe
+    class default
+       write(iulog,*)'Only sysofeqns_th_type supported'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    th_mpp%soe_ptr%ptr => th_mpp%soe
 
     allocate(mesh_size(th_soe%ngoveqns))
 
@@ -2145,17 +2169,17 @@ contains
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
     call SNESSetFunction(th_soe%snes, th_soe%res, SOEResidual, &
-                         th_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
     call SNESSetJacobian(th_soe%snes, th_soe%jac, th_soe%jac,     &
-                         SOEJacobian, th_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         SOEJacobian, th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetFromOptions(th_soe%snes, ierr); CHKERRQ(ierr)
 
     ! Get pointers to governing-equations
     call th_soe%CreateVectorsForGovEqn()
 
-    th_mpp%sysofeqns%solver_type = th_mpp%solver_type
-    th_mpp%sysofeqns%itype       = SOE_TH
+    th_mpp%soe%solver_type = th_mpp%solver_type
+    th_mpp%soe%itype       = SOE_TH
 
   end subroutine setup_petsc_snes
 

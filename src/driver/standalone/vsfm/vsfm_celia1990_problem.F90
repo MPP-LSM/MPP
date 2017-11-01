@@ -76,7 +76,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -85,7 +85,7 @@ contains
        call set_bondary_conditions()
 
        ! Run the model
-       call vsfm_mpp%sysofeqns%StepDT(dtime, istep, &
+       call vsfm_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
     enddo
 
@@ -96,7 +96,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '_.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -344,11 +344,11 @@ contains
 
     ieqn = 1
 
-    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+    call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_DIRICHLET, &
          SOIL_TOP_CELLS)
 
-    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+    call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at bottom', 'Pa', COND_DIRICHLET, &
          SOIL_BOTTOM_CELLS)
 
@@ -481,11 +481,11 @@ contains
     bot_pressure_bc(:) = 3.5355d3
 
     soe_auxvar_id = 1
-    call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, top_pressure_bc)
 
     soe_auxvar_id = 2
-    call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, bot_pressure_bc)
 
     deallocate(top_pressure_bc)
@@ -521,13 +521,13 @@ contains
 
     name = 'liquid_pressure'
     category = 'pressure'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, -1, data)
     call regression%WriteData(name, category, data)
 
     name = 'liquid_saturation'
     category = 'general'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_LIQ_SAT, -1, data)
     call regression%WriteData(name, category, data)
 

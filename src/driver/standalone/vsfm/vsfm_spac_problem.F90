@@ -72,7 +72,7 @@ contains
     call set_bondary_conditions()
     
     ! Run the model
-    call vsfm_mpp%sysofeqns%StepDT(dtime, istep, &
+    call vsfm_mpp%soe%StepDT(dtime, istep, &
          converged, converged_reason, ierr); CHKERRQ(ierr)
 
      end subroutine run_vsfm_spac_problem
@@ -382,12 +382,12 @@ contains
          nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec, conn_set)
     
-    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, ss_or_bc_type=COND_BC,   &
+    call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, ss_or_bc_type=COND_BC,   &
          name='Root BC in soil equation', unit='Pa', cond_type=COND_DIRICHLET, &
          region_type=SOIL_TOP_CELLS, &
          conn_set=conn_set)
 
-    call vsfm_mpp%sysofeqns%AddConditionInGovEqn(ieqn, COND_SS,   &
+    call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Potential Mass_Flux', 'kg/s', COND_DOWNREGULATE_POT_MASS_RATE, &
          SOIL_BOTTOM_CELLS)
 
@@ -561,14 +561,14 @@ contains
     end do
 
     soe_auxvar_id = 1
-    call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, pressure_bc)
 
     allocate(ss_value(1))
     ss_value(:) = 7.1875e-10 * 1e3
 
     soe_auxvar_id = 1
-    call vsfm_mpp%sysofeqns%SetDataFromCLM(AUXVAR_SS,  &
+    call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_SS,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, ss_value)
 
     deallocate(pressure_bc)
@@ -734,13 +734,13 @@ contains
 
     name = 'liquid_pressure'
     category = 'pressure'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, -1, data)
     call regression%WriteData(name, category, data)
 
     name = 'liquid_saturation'
     category = 'general'
-    call vsfm_mpp%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_LIQ_SAT, -1, data)
     call regression%WriteData(name, category, data)
 

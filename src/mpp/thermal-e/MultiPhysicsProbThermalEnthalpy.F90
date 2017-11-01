@@ -17,6 +17,7 @@ module MultiPhysicsProbThermalEnthalpy
   use MultiPhysicsProbBaseType             , only : multiphysicsprob_base_type
   use SystemOfEquationsThermalEnthalpyType , only : sysofeqns_thermal_enthalpy_type
   use SystemOfEquationsBasePointerType     , only : sysofeqns_base_pointer_type
+  use SystemOfEquationsBaseType            , only : sysofeqns_base_type
   use petscsys
   use petscvec
   use petscmat
@@ -29,17 +30,10 @@ module MultiPhysicsProbThermalEnthalpy
   private
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_thermal_type
-     class(sysofeqns_thermal_enthalpy_type),pointer :: sysofeqns
-     type(sysofeqns_base_pointer_type), pointer     :: sysofeqns_ptr
    contains
      procedure, public :: Init                        => ThermalEnthalpyMPPInit
-     procedure, public :: AddGovEqn                   => ThermalEnthalpyMPPAddGovEqn
-     procedure, public :: SetMeshesOfGoveqns          => ThermalEnthalpyMPPSetMeshesOfGoveqns
      procedure, public :: AllocateAuxVars             => ThermalEnthalpyMPPAllocateAuxVars
-     procedure, public :: GovEqnSetCouplingVars       => ThermalEnthalpyMPPGovEqnSetCouplingVars
      procedure, public :: SetupProblem                => ThermalEnthalpyMPPSetupProblem
-     procedure, public :: GovEqnUpdateBCConnectionSet => ThermalEnthalpyMPPGovEqnUpdateBCConnectionSet
-     procedure, public :: SetMPIRank                  => ThermalEnthalpyMPPSetMPIRank
 
   end type mpp_thermal_type
 
@@ -62,34 +56,20 @@ contains
     !
     ! !ARGUMENTS
     class(mpp_thermal_type) :: this
+    !
+    class(sysofeqns_thermal_enthalpy_type), pointer :: sysofeqns
 
     call MPPBaseInit(this)
 
-    allocate(this%sysofeqns)
-    call this%sysofeqns%Init()
+    allocate(sysofeqns)
+    call sysofeqns%Init()
 
-    allocate(this%sysofeqns_ptr)
-    nullify(this%sysofeqns_ptr%ptr)
+    this%soe => sysofeqns
+
+    allocate(this%soe_ptr)
+    nullify(this%soe_ptr%ptr)
 
   end subroutine ThermalEnthalpyMPPInit
-
-  !------------------------------------------------------------------------
-  subroutine ThermalEnthalpyMPPSetMPIRank(this, rank)
-    !
-    ! !DESCRIPTION:
-    ! Sets MPI rank
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type) :: this
-    PetscInt                :: rank
-
-    if (associated(this%sysofeqns)) then
-       this%sysofeqns%mpi_rank = rank
-    endif
-
-  end subroutine ThermalEnthalpyMPPSetMPIRank
 
   !------------------------------------------------------------------------
   subroutine MPPThermalSetSoils(therm_enth_mpp, begc, endc, filter_thermal, &
@@ -138,6 +118,7 @@ contains
     type (therm_enthalpy_soil_auxvar_type)    , pointer :: aux_vars_in(:)
     type (therm_enthalpy_soil_auxvar_type)    , pointer :: aux_vars_bc(:)
     type (therm_enthalpy_soil_auxvar_type)    , pointer :: aux_vars_ss(:)
+    class(sysofeqns_base_type),pointer                  :: base_soe
     type(condition_type),pointer                        :: cur_cond
     type(connection_set_type), pointer                  :: cur_conn_set
     PetscInt                                            :: j,c,g,l
@@ -155,8 +136,16 @@ contains
     PetscReal                                           :: lambda
     PetscReal, parameter                                :: vish2o = 0.001002d0    ! [N s/m^2] @ 20 degC
 
-    therm_soe => therm_enth_mpp%sysofeqns
-
+    base_soe => therm_enth_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_thermal_enthalpy_type)
+       therm_soe => base_soe
+    class default
+       write(iulog,*)'Only sysofeqns_thermal_enthalpy_type supported'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
     found = PETSC_FALSE
     cur_goveq => therm_soe%goveqns
     do
@@ -339,41 +328,6 @@ contains
   end subroutine MPPThermalSetSoils
 
   !------------------------------------------------------------------------
-  subroutine ThermalEnthalpyMPPAddGovEqn(this, geq_type, name, mesh_itype)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to the MPP
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type) :: this
-    PetscInt                :: geq_type
-    character(len =*)       :: name
-    PetscInt                :: mesh_itype
-
-    call this%sysofeqns%AddGovEqn(geq_type, name, mesh_itype)
-
-  end subroutine ThermalEnthalpyMPPAddGovEqn
-
-  !------------------------------------------------------------------------
-  subroutine ThermalEnthalpyMPPSetMeshesOfGoveqns(this)
-    !
-    ! !DESCRIPTION:
-    ! Set association of governing equations and meshes
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type) :: this
-
-    call this%sysofeqns%SetMeshesOfGoveqns(this%meshes, this%nmesh)
-
-  end subroutine ThermalEnthalpyMPPSetMeshesOfGoveqns
-
-  !------------------------------------------------------------------------
   subroutine ThermalEnthalpyMPPAllocateAuxVars(this)
     !
     ! !DESCRIPTION:
@@ -391,37 +345,37 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_thermal_type)                :: this
+    class(mpp_thermal_type)                          :: this
     !
-    class(sysofeqns_base_type), pointer    :: soe_base
-    class(sysofeqns_thermal_enthalpy_type), pointer :: soe
-    class(goveqn_base_type), pointer       :: cur_goveq
-    PetscInt                               :: igoveqn
-    PetscInt                               :: num_bc
-    PetscInt                               :: num_ss
-    PetscInt                               :: icond
-    PetscInt                               :: iauxvar
-    PetscInt                               :: iauxvar_beg, iauxvar_end
-    PetscInt                               :: iauxvar_beg_bc, iauxvar_end_bc
-    PetscInt                               :: iauxvar_beg_ss, iauxvar_end_ss
-    PetscInt                               :: count_bc, count_ss
-    PetscInt                               :: offset_bc, offset_ss
-    PetscInt                               :: cond_itype_to_exclude
-    PetscInt, pointer                      :: ncells_for_bc(:)
-    PetscInt, pointer                      :: ncells_for_ss(:)
-    PetscInt, pointer                      :: offsets_bc(:)
-    PetscInt, pointer                      :: offsets_ss(:)
+    class(sysofeqns_base_type)             , pointer :: base_soe
+    class(sysofeqns_thermal_enthalpy_type) , pointer :: soe
+    class(goveqn_base_type)                , pointer :: cur_goveq
+    PetscInt                                         :: igoveqn
+    PetscInt                                         :: num_bc
+    PetscInt                                         :: num_ss
+    PetscInt                                         :: icond
+    PetscInt                                         :: iauxvar
+    PetscInt                                         :: iauxvar_beg    , iauxvar_end
+    PetscInt                                         :: iauxvar_beg_bc , iauxvar_end_bc
+    PetscInt                                         :: iauxvar_beg_ss , iauxvar_end_ss
+    PetscInt                                         :: count_bc       , count_ss
+    PetscInt                                         :: offset_bc      , offset_ss
+    PetscInt                                         :: cond_itype_to_exclude
+    PetscInt                               , pointer :: ncells_for_bc(:)
+    PetscInt                               , pointer :: ncells_for_ss(:)
+    PetscInt                               , pointer :: offsets_bc(:)
+    PetscInt                               , pointer :: offsets_ss(:)
 
-    soe_base => this%sysofeqns
-
-    select type(soe_base)
-    class is(sysofeqns_thermal_enthalpy_type)
-       soe => this%sysofeqns
+    base_soe => this%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_thermal_enthalpy_type)
+       soe => base_soe
     class default
-       write(iulog,*) 'Unsupported class type'
+       write(iulog,*)'Only sysofeqns_thermal_enthalpy_type supported'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
-
+    
     !
     ! Pass-1: Determine total number of BCs (excluding BCs
     !         needed for coupling various governing equations)
@@ -599,148 +553,6 @@ contains
   end subroutine ThermalEnthalpyMPPAllocateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine ThermalEnthalpyMPPGovEqnSetCouplingVars(this, igoveqn, nvars, &
-       var_ids, goveqn_ids)
-    !
-    ! !DESCRIPTION:
-    ! In order to couple the given governing equation, add:
-    ! - ids of variables needed, and
-    ! - ids of governing equations from which variables are needed.
-    ! needed for coupling
-    ! 
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use GoverningEquationBaseType , only : goveqn_base_type
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use CouplingVariableType      , only : coupling_variable_type
-    use CouplingVariableType      , only : CouplingVariableCreate
-    use CouplingVariableType      , only : CouplingVariableListAddCouplingVar
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type)                :: this
-    PetscInt                               :: igoveqn
-    PetscInt                               :: nvars
-    PetscInt                     , pointer :: var_ids(:)
-    PetscInt                     , pointer :: goveqn_ids(:)
-    !
-    class(goveqn_base_type)      , pointer :: cur_goveq_1
-    class(goveqn_base_type)      , pointer :: cur_goveq_2
-    type(condition_type)         , pointer :: cur_cond_1
-    type(condition_type)         , pointer :: cur_cond_2
-    type(coupling_variable_type) , pointer :: cpl_var
-    PetscInt                               :: ii
-    PetscInt                               :: ieqn
-    PetscInt                               :: ivar
-    PetscInt                               :: bc_idx_1
-    PetscInt                               :: bc_idx_2
-    PetscInt                               :: bc_offset_1
-    PetscBool                              :: bc_found
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to set coupling vars for governing ' // &
-            'equation that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq_1 => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq_1 => cur_goveq_1%next
-    end do
-
-    do ivar = 1, nvars
-
-       if (goveqn_ids(ivar) > this%sysofeqns%ngoveqns) then
-          write(iulog,*) 'Attempting to set coupling vars to a governing ' // &
-               'equation that is not in the list'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       endif
-
-       bc_found    = PETSC_FALSE
-       bc_idx_1    = 1
-       bc_offset_1 = 0
-
-       cur_cond_1 => cur_goveq_1%boundary_conditions%first
-       do
-          if (.not.associated(cur_cond_1)) exit
-
-          ! Is this the appropriate BC?
-          if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-             do ieqn = 1, cur_cond_1%num_other_goveqs
-                if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
-                   bc_found = PETSC_TRUE
-                   exit
-                endif
-             enddo
-          endif
-
-          if (bc_found) exit
-
-          bc_idx_1    = bc_idx_1    + 1
-          bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
-
-          cur_cond_1 => cur_cond_1%next
-       enddo
-
-       if (.not.bc_found) then
-          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
-               ', no coupling boundary condition found to copule it with ' // &
-               'equation_number = ', goveqn_ids(ivar)
-       endif
-
-       cur_goveq_2 => this%sysofeqns%goveqns
-       do ii = 1, goveqn_ids(ivar)-1
-          cur_goveq_2 => cur_goveq_2%next
-       enddo
-
-       bc_found    = PETSC_FALSE
-       bc_idx_2    = 1
-
-       cur_cond_2 => cur_goveq_2%boundary_conditions%first
-       do
-          if (.not.associated(cur_cond_2)) exit
-
-          ! Is this the appropriate BC?
-          if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-             do ieqn = 1, cur_cond_2%num_other_goveqs
-                if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
-                   bc_found = PETSC_TRUE
-                   exit
-                endif
-             enddo
-          endif
-
-          if (bc_found) exit
-
-          bc_idx_2    = bc_idx_2    + 1
-
-          cur_cond_2 => cur_cond_2%next
-       enddo
-
-       if (.not.bc_found) then
-          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
-               ', no coupling boundary condition found to copule it with ' // &
-               'equation_number = ', bc_idx_2
-       endif
-
-       cpl_var => CouplingVariableCreate()
-
-       cpl_var%variable_type                     = var_ids(ivar)
-       cpl_var%num_cells                         = cur_cond_1%conn_set%num_connections
-       cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
-       cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_TRUE
-       cpl_var%offset_of_bc_in_current_goveqn    = bc_offset_1
-       cpl_var%rank_of_bc_in_current_goveqn      = bc_idx_1
-       cpl_var%rank_of_bc_in_coupling_goveqn     = bc_idx_2
-
-       call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
-
-    enddo
-
-  end subroutine ThermalEnthalpyMPPGovEqnSetCouplingVars
-
-  !------------------------------------------------------------------------
   subroutine ThermalEnthalpyMPPSetupProblem(this)
     !
     ! !DESCRIPTION:
@@ -756,8 +568,8 @@ contains
 
     call ThermalEnthalpyMPPKSPSetup(this)
 
-    this%sysofeqns%solver_type = this%solver_type
-    this%sysofeqns%itype       = SOE_THERMAL_EBASED
+    this%soe%solver_type = this%solver_type
+    this%soe%itype       = SOE_THERMAL_EBASED
 
   end subroutine ThermalEnthalpyMPPSetupProblem
 
@@ -779,6 +591,7 @@ contains
     ! !LOCAL VARIABLES:
     class(goveqn_base_type)                , pointer   :: cur_goveq
     class(sysofeqns_thermal_enthalpy_type) , pointer   :: therm_soe
+    class(sysofeqns_base_type),pointer                 :: base_soe
     PetscInt                                           :: size
     PetscInt                                           :: igoveq
     PetscErrorCode                                     :: ierr
@@ -790,8 +603,17 @@ contains
     PetscInt                               , parameter :: max_f   = PETSC_DEFAULT_INTEGER
     character(len=256)                                 :: name
 
-    therm_soe => therm_enth_mpp%sysofeqns
-    therm_enth_mpp%sysofeqns_ptr%ptr => therm_enth_mpp%sysofeqns
+    base_soe => therm_enth_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_thermal_enthalpy_type)
+       therm_soe => base_soe
+    class default
+       write(iulog,*)'Only sysofeqns_thermal_enthalpy_type supported'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
+    therm_enth_mpp%soe_ptr%ptr => therm_enth_mpp%soe
 
     ! Create PETSc DM for each governing equation
 
@@ -873,10 +695,10 @@ contains
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
     call SNESSetFunction(therm_soe%snes, therm_soe%res, SOEResidual, &
-         thermal_enthalpy_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+         thermal_enthalpy_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetJacobian(therm_soe%snes, therm_soe%jac, therm_soe%jac,     &
-         SOEJacobian, thermal_enthalpy_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+         SOEJacobian, thermal_enthalpy_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetFromOptions(therm_soe%snes, ierr); CHKERRQ(ierr)
 
@@ -892,88 +714,6 @@ contains
   end subroutine ThermalEnthalpyMPPKSPSetup
 
   !------------------------------------------------------------------------
-  subroutine ThermalEnthalpyMPPGovEqnUpdateBCConnectionSet(this, igoveqn, icond, &
-       var_type, nval, values)
-    !
-    ! !DESCRIPTION:
-    ! For a boundary condition of a given governing equation, update distance
-    ! for a downstream cell.
-    !
-    use ConditionType             , only : condition_type
-    use ConnectionSetType         , only : connection_set_type
-    use GoverningEquationBaseType, only : goveqn_base_type
-    use MultiPhysicsProbConstants, only : VAR_DIST_DN
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type) :: this
-    PetscInt :: igoveqn
-    PetscInt :: icond
-    PetscInt :: nval
-    PetscInt :: var_type
-    PetscReal, pointer :: values (:)
-    !
-    class(goveqn_base_type),pointer   :: cur_goveq
-    type(condition_type)    , pointer :: cur_cond
-    type(connection_set_type)     , pointer :: cur_conn_set
-    PetscInt :: ii
-    PetscInt :: iconn
-    PetscInt :: bc_idx
-    PetscBool :: bc_found
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to access governing equation that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    bc_found = PETSC_FALSE
-    cur_cond => cur_goveq%boundary_conditions%first
-    do
-       if (.not.associated(cur_cond)) exit
-
-       bc_idx = bc_idx + 1
-       if (bc_idx == icond) then
-          bc_found = PETSC_TRUE
-
-          cur_conn_set => cur_cond%conn_set
-          if (nval /= cur_conn_set%num_connections) then
-             write(iulog,*) 'Number of values to update connections ' // &
-                  'do not match number of connections.'
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          endif
-
-          do iconn = 1, cur_conn_set%num_connections
-
-             select case(var_type)
-             case (VAR_DIST_DN)
-                cur_conn_set%dist_dn(iconn) = values(iconn)
-             case default
-                write(iulog,*) 'Unknown variable type'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             end select
-          enddo
-
-          exit
-
-       end if
-
-       cur_cond => cur_cond%next
-    enddo
-
-    if (.not.bc_found) then
-       write(iulog,*) 'Failed to find icond = ',icond,' in the boundary condition list.'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-
-  end subroutine ThermalEnthalpyMPPGovEqnUpdateBCConnectionSet
-
 #endif
 
 end module MultiPhysicsProbThermalEnthalpy

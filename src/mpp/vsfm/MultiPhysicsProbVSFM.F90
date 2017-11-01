@@ -17,6 +17,7 @@ module MultiPhysicsProbVSFM
   use MultiPhysicsProbBaseType           , only : multiphysicsprob_base_type
   use SystemOfEquationsVSFMType          , only : sysofeqns_vsfm_type
   use SystemOfEquationsBasePointerType   , only : sysofeqns_base_pointer_type
+  use SystemOfEquationsBaseType          , only : sysofeqns_base_type
   use petscsys
   use petscvec
   use petscmat
@@ -30,22 +31,15 @@ module MultiPhysicsProbVSFM
 
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_vsfm_type
-     class(sysofeqns_vsfm_type),pointer          :: sysofeqns
-     type(sysofeqns_base_pointer_type), pointer  :: sysofeqns_ptr
    contains
      procedure, public :: Init                         => VSFMMPPInit
      procedure, public :: Clean                        => VSFMMPPClean
      procedure, public :: Restart                      => VSFMMPPRestart
      procedure, public :: UpdateSysOfEqnsAuxVars       => VSFMMPPUpdateSysOfEqnsAuxVars
-     procedure, public :: SetMPIRank                   => VSFMMPPSetMPIRank
      procedure, public :: GetMPIRank                   => VSFMMPPGetMPIRank
-     procedure, public :: SetMeshesOfGoveqns           => VSFMMPPSetMeshesOfGoveqns
-     procedure, public :: AddGovEqn                    => VSFMMPPAddGovEqn
      procedure, public :: AllocateAuxVars              => VSFMMPPAllocateAuxVars
      procedure, public :: SetupProblem                 => VSFMMPPSetupProblem
      procedure, public :: GovEqnUpdateConditionConnSet => VSFMMPPGovEqnUpdateConditionConnSet
-     procedure, public :: GovEqnSetCouplingVars        => VSFMMPPGovEqnSetCouplingVars
-
   end type mpp_vsfm_type
 
   type(mpp_vsfm_type), public, target :: vsfm_mpp
@@ -74,34 +68,20 @@ contains
     !
     ! !ARGUMENTS
     class(mpp_vsfm_type) :: this
+    !
+    class(sysofeqns_vsfm_type), pointer :: sysofeqns
 
     call MPPBaseInit(this)
 
-    allocate(this%sysofeqns)
-    call this%sysofeqns%Init()
+    allocate(sysofeqns)
+    call sysofeqns%Init()
 
-    allocate(this%sysofeqns_ptr)
-    nullify(this%sysofeqns_ptr%ptr)
+    this%soe => sysofeqns
+
+    allocate(this%soe_ptr)
+    nullify(this%soe_ptr%ptr)
 
   end subroutine VSFMMPPInit
-
-  !------------------------------------------------------------------------
-  subroutine VSFMMPPSetMPIRank(this, rank)
-    !
-    ! !DESCRIPTION:
-    ! Sets MPI rank
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type)    :: this
-    PetscInt                :: rank
-
-    if (associated(this%sysofeqns)) then
-       this%sysofeqns%mpi_rank = rank
-    endif
-
-  end subroutine VSFMMPPSetMPIRank
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPGetMPIRank(this, rank)
@@ -116,8 +96,11 @@ contains
     PetscInt, intent(out)   :: rank
 
     rank = -1
-    if (associated(this%sysofeqns)) then
-       rank = this%sysofeqns%mpi_rank
+    !if (associated(this%sysofeqns)) then
+    !   rank = this%soe%mpi_rank
+    !endif
+    if (associated(this%soe)) then
+       rank = this%soe%mpi_rank
     endif
 
   end subroutine VSFMMPPGetMPIRank
@@ -150,14 +133,21 @@ contains
     class(goveqn_base_type),pointer                   :: cur_goveq
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_pres
     class(sysofeqns_vsfm_type),pointer                :: vsfm_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     PetscReal, parameter                              :: atol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: rtol    = PETSC_DEFAULT_REAL
     PetscReal, parameter                              :: stol    = 1.d-10
     PetscInt, parameter                               :: max_it  = PETSC_DEFAULT_INTEGER
     PetscInt, parameter                               :: max_f   = PETSC_DEFAULT_INTEGER
 
-    vsfm_soe => vsfm_mpp%sysofeqns
-    vsfm_mpp%sysofeqns_ptr%ptr => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
+    
+    vsfm_mpp%soe_ptr%ptr => vsfm_mpp%soe
 
     ! Get pointers to governing-equations
 
@@ -226,9 +216,9 @@ contains
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
     call SNESSetFunction(vsfm_soe%snes, vsfm_soe%res, SOEResidual, &
-                         vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
     call SNESSetJacobian(vsfm_soe%snes, vsfm_soe%jac, vsfm_soe%jac,     &
-                         SOEJacobian, vsfm_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+                         SOEJacobian, vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetFromOptions(vsfm_soe%snes, ierr); CHKERRQ(ierr)
 
@@ -282,11 +272,17 @@ contains
     class(goveqn_base_type),pointer                   :: cur_goveq
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_pres
     class(sysofeqns_vsfm_type),pointer                :: vsfm_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     Vec                                               :: variable_vec
     PetscReal, pointer                                :: vec_p(:)
     PetscErrorCode                                    :: ierr
 
-    vsfm_soe => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
 
     ! Set initial coniditions
     call VSFMMPPSetSoils(vsfm_mpp, begc, endc, ncols_ghost, filter_vsfmc, &
@@ -434,6 +430,7 @@ contains
     ! !LOCAL VARIABLES:
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_ode_pres
     class(sysofeqns_vsfm_type),pointer                :: vsfm_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     class(goveqn_base_type),pointer                   :: cur_goveq
     type (rich_ode_pres_auxvar_type), pointer         :: ode_aux_vars_in(:)
     type (rich_ode_pres_auxvar_type), pointer         :: ode_aux_vars_bc(:)
@@ -458,8 +455,13 @@ contains
 
     first_active_hydro_col_id = -1
 
-    vsfm_soe => vsfm_mpp%sysofeqns
-
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
+    
     cur_goveq => vsfm_soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
@@ -645,6 +647,7 @@ contains
     class(goveqn_base_type),pointer                   :: cur_goveq
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_ode_pres
     class(sysofeqns_vsfm_type),pointer                :: vsfm_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     PetscInt                                          :: nDM
     DM, pointer                                       :: dms(:)
     Vec, pointer                                      :: soln_subvecs(:)
@@ -657,8 +660,14 @@ contains
     PetscInt                                          :: col_id
 
     first_active_hydro_col_id = -1
-    vsfm_soe => vsfm_mpp%sysofeqns
 
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
+    
     cur_goveq => vsfm_soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
@@ -763,10 +772,16 @@ contains
     PetscReal,intent(in)               :: values(:)
     ! !LOCAL VARIABLES:
     class(sysofeqns_vsfm_type),pointer :: vsfm_soe
+    class(sysofeqns_base_type),pointer :: base_soe
     PetscInt                           :: iauxvar
     PetscInt                           :: counter
 
-    vsfm_soe => this%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
 
     select case(auxvar_type)
     case (AUXVAR_INTERNAL)
@@ -843,14 +858,20 @@ contains
     class(goveqn_base_type),pointer                   :: cur_goveq
     class (goveqn_richards_ode_pressure_type),pointer :: goveq_richards_pres
     class(sysofeqns_vsfm_type),pointer                :: vsfm_soe
+    class(sysofeqns_base_type),pointer                :: base_soe
     PetscInt                                          :: nDM
     DM, pointer                                       :: dms(:)
     Vec, pointer                                      :: soln_subvecs(:)
     PetscReal, pointer                                :: press_p(:)
     PetscInt                                          :: local_id
 
-    vsfm_soe => this%sysofeqns
-
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
+    
     cur_goveq => vsfm_soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
@@ -904,41 +925,6 @@ contains
   end subroutine VSFMMPPRestart
 
   !------------------------------------------------------------------------
-  subroutine VSFMMPPSetMeshesOfGoveqns(this)
-    !
-    ! !DESCRIPTION:
-    ! Set association of governing equations and meshes
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type) :: this
-
-    call this%sysofeqns%SetMeshesOfGoveqns(this%meshes, this%nmesh)
-
-  end subroutine VSFMMPPSetMeshesOfGoveqns
-
-  !------------------------------------------------------------------------
-  subroutine VSFMMPPAddGovEqn(this, geq_type, name, mesh_itype)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to the MPP
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type) :: this
-    PetscInt             :: geq_type
-    character(len =*)    :: name
-    PetscInt             :: mesh_itype
-
-    call this%sysofeqns%AddGovEqn(geq_type, name, mesh_itype)
-
-  end subroutine VSFMMPPAddGovEqn
-
-  !------------------------------------------------------------------------
   subroutine VSFMMPPGovEqnUpdateConditionConnSet(this, igoveqn, icond, &
        ss_or_bc_type, nconn,  conn_id_up, conn_id_dn, &
        conn_dist_up, conn_dist_dn,  conn_unitvec, conn_area)
@@ -969,13 +955,13 @@ contains
     class(goveqn_base_type),pointer :: other_goveq
     PetscInt                        :: ii
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to add condition for governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo
@@ -1005,7 +991,7 @@ contains
     ! !ARGUMENTS
     class(mpp_vsfm_type)                   :: this
     !
-    class(sysofeqns_base_type), pointer    :: soe_base
+    class(sysofeqns_base_type), pointer    :: base_soe
     class(sysofeqns_vsfm_type), pointer :: soe
     class(goveqn_base_type), pointer       :: cur_goveq
     PetscInt                               :: igoveqn
@@ -1026,11 +1012,11 @@ contains
     PetscInt, pointer                      :: offsets_bc(:)
     PetscInt, pointer                      :: offsets_ss(:)
 
-    soe_base => this%sysofeqns
+    base_soe => this%soe
 
-    select type(soe_base)
+    select type(base_soe)
     class is(sysofeqns_vsfm_type)
-       soe => this%sysofeqns
+       soe => base_soe
     class default
        write(iulog,*) 'Unsupported class type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1215,149 +1201,6 @@ contains
   end subroutine VSFMMPPAllocateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine VSFMMPPGovEqnSetCouplingVars(this, igoveqn, nvars, &
-       var_ids, goveqn_ids)
-    !
-    ! !DESCRIPTION:
-    ! In order to couple the given governing equation, add:
-    ! - ids of variables needed, and
-    ! - ids of governing equations from which variables are needed.
-    ! needed for coupling
-    ! 
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use GoverningEquationBaseType , only : goveqn_base_type
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use CouplingVariableType      , only : coupling_variable_type
-    use CouplingVariableType      , only : CouplingVariableCreate
-    use CouplingVariableType      , only : CouplingVariableListAddCouplingVar
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type)                   :: this
-    PetscInt                               :: igoveqn
-    PetscInt                               :: nvars
-    PetscInt                     , pointer :: var_ids(:)
-    PetscInt                     , pointer :: goveqn_ids(:)
-    !
-    ! !LOCAL VARIABLES:
-    class(goveqn_base_type)      , pointer :: cur_goveq_1
-    class(goveqn_base_type)      , pointer :: cur_goveq_2
-    type(condition_type)         , pointer :: cur_cond_1
-    type(condition_type)         , pointer :: cur_cond_2
-    type(coupling_variable_type) , pointer :: cpl_var
-    PetscInt                               :: ii
-    PetscInt                               :: ieqn
-    PetscInt                               :: ivar
-    PetscInt                               :: bc_idx_1
-    PetscInt                               :: bc_idx_2
-    PetscInt                               :: bc_offset_1
-    PetscBool                              :: bc_found
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to set coupling vars for governing ' // &
-            'equation that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq_1 => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq_1 => cur_goveq_1%next
-    end do
-
-    do ivar = 1, nvars
-
-       if (goveqn_ids(ivar) > this%sysofeqns%ngoveqns) then
-          write(iulog,*) 'Attempting to set coupling vars to a governing ' // &
-               'equation that is not in the list'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       endif
-
-       bc_found    = PETSC_FALSE
-       bc_idx_1    = 1
-       bc_offset_1 = 0
-
-       cur_cond_1 => cur_goveq_1%boundary_conditions%first
-       do
-          if (.not.associated(cur_cond_1)) exit
-
-          ! Is this the appropriate BC?
-          if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-             do ieqn = 1, cur_cond_1%num_other_goveqs
-                if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
-                   bc_found = PETSC_TRUE
-                   exit
-                endif
-             enddo
-          endif
-
-          if (bc_found) exit
-
-          bc_idx_1    = bc_idx_1    + 1
-          bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
-
-          cur_cond_1 => cur_cond_1%next
-       enddo
-
-       if (.not.bc_found) then
-          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
-               ', no coupling boundary condition found to copule it with ' // &
-               'equation_number = ', goveqn_ids(ivar)
-       endif
-
-       cur_goveq_2 => this%sysofeqns%goveqns
-       do ii = 1, goveqn_ids(ivar)-1
-          cur_goveq_2 => cur_goveq_2%next
-       enddo
-
-       bc_found    = PETSC_FALSE
-       bc_idx_2    = 1
-
-       cur_cond_2 => cur_goveq_2%boundary_conditions%first
-       do
-          if (.not.associated(cur_cond_2)) exit
-
-          ! Is this the appropriate BC?
-          if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-             do ieqn = 1, cur_cond_2%num_other_goveqs
-                if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
-                   bc_found = PETSC_TRUE
-                   exit
-                endif
-             enddo
-          endif
-
-          if (bc_found) exit
-
-          bc_idx_2    = bc_idx_2    + 1
-
-          cur_cond_2 => cur_cond_2%next
-       enddo
-
-       if (.not.bc_found) then
-          write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
-               ', no coupling boundary condition found to copule it with ' // &
-               'equation_number = ', bc_idx_2
-       endif
-
-       cpl_var => CouplingVariableCreate()
-
-       cpl_var%variable_type                     = var_ids(ivar)
-       cpl_var%num_cells                         = cur_cond_1%conn_set%num_connections
-       cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
-       cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_TRUE
-       cpl_var%offset_of_bc_in_current_goveqn    = bc_offset_1
-       cpl_var%rank_of_bc_in_current_goveqn      = bc_idx_1
-       cpl_var%rank_of_bc_in_coupling_goveqn     = bc_idx_2
-
-       call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
-
-    enddo
-
-  end subroutine VSFMMPPGovEqnSetCouplingVars
-
-  !------------------------------------------------------------------------
   subroutine VSFMMPPSetupProblem(this, dyn_linesearch)
     !
     ! !DESCRIPTION:
@@ -1381,11 +1224,11 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-    this%sysofeqns%solver_type = this%solver_type
-    this%sysofeqns%itype       = SOE_RE_ODE
+    this%soe%solver_type = this%solver_type
+    this%soe%itype       = SOE_RE_ODE
 
     if (present(dyn_linesearch)) then
-       this%sysofeqns%use_dynamic_linesearch = dyn_linesearch
+       this%soe%use_dynamic_linesearch = dyn_linesearch
     endif
 
   end subroutine VSFMMPPSetupProblem
@@ -1432,13 +1275,13 @@ contains
     PetscInt                             :: ii
     class(goveqn_base_type) , pointer    :: cur_goveq
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to access governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo
@@ -1481,13 +1324,13 @@ contains
     PetscInt                             :: ii
     class(goveqn_base_type) , pointer    :: cur_goveq
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to access governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo
@@ -1533,6 +1376,7 @@ contains
     class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
     class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
     class(goveqn_base_type)                   , pointer             :: cur_goveq
+    class(sysofeqns_base_type)                , pointer             :: base_soe
     type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
     type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
     type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
@@ -1544,15 +1388,20 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    vsfm_soe => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to add condition for governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo
@@ -1658,6 +1507,7 @@ contains
     ! !LOCAL VARIABLES:
     class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
     class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
+    class(sysofeqns_base_type)                , pointer             :: base_soe
     class(goveqn_base_type)                   , pointer             :: cur_goveq
     type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
     type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
@@ -1670,15 +1520,20 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    vsfm_soe => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to add condition for governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo
@@ -1800,6 +1655,7 @@ contains
     ! !LOCAL VARIABLES:
     class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
     class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
+    class(sysofeqns_base_type)                , pointer             :: base_soe
     class(goveqn_base_type)                   , pointer             :: cur_goveq
     type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
     type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
@@ -1812,15 +1668,20 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    vsfm_soe => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to add condition for governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo
@@ -1971,13 +1832,13 @@ contains
     PetscInt                                                           :: sum_conn
     PetscInt                                                           :: iconn
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to access governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo
@@ -2054,6 +1915,7 @@ contains
     ! !LOCAL VARIABLES:
     class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
     class(sysofeqns_vsfm_type)                , pointer             :: vsfm_soe
+    class(sysofeqns_base_type)                , pointer             :: base_soe
     class(goveqn_base_type)                   , pointer             :: cur_goveq
     type (rich_ode_pres_conn_auxvar_type)     , pointer             :: conn_aux_vars(:)
     type(condition_type)                      , pointer             :: cur_cond
@@ -2063,15 +1925,20 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    vsfm_soe => vsfm_mpp%sysofeqns
+    base_soe => vsfm_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_vsfm_type)
+       vsfm_soe => base_soe
+    end select
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to add condition for governing equation ' // &
             'that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo

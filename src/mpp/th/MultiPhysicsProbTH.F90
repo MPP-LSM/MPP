@@ -17,6 +17,7 @@ module MultiPhysicsProbTH
   use MultiPhysicsProbBaseType             , only : multiphysicsprob_base_type
   use SystemOfEquationsTHType              , only : sysofeqns_th_type
   use SystemOfEquationsBasePointerType     , only : sysofeqns_base_pointer_type
+  use SystemOfEquationsBaseType            , only : sysofeqns_base_type
   use petscsys
   use petscvec
   use petscmat
@@ -29,17 +30,11 @@ module MultiPhysicsProbTH
   private
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_th_type
-     class(sysofeqns_th_type),pointer :: sysofeqns
-     type(sysofeqns_base_pointer_type), pointer     :: sysofeqns_ptr
    contains
      procedure, public :: Init                          => MPPTHInit
-     procedure, public :: AddGovEqn                     => MPPTHAddGovEqn
-     procedure, public :: SetMeshesOfGoveqns            => MPPTHSetMeshesOfGoveqns
      procedure, public :: AllocateAuxVars               => MPPTHAllocateAuxVars
-     procedure, public :: GovEqnSetCouplingVars         => MPPTHGovEqnSetCouplingVars
      procedure, public :: SetupProblem                  => MPPTHSetupProblem
      procedure, public :: GovEqnUpdateBCConnectionSet   => MPPTHGovEqnUpdateBCConnectionSet
-     procedure, public :: SetMPIRank                    => MPPTHSetMPIRank
 
   end type mpp_th_type
 
@@ -62,34 +57,20 @@ contains
     !
     ! !ARGUMENTS
     class(mpp_th_type) :: this
+    !
+    class(sysofeqns_th_type), pointer :: sysofeqns
 
     call MPPBaseInit(this)
 
-    allocate(this%sysofeqns)
-    call this%sysofeqns%Init()
+    allocate(sysofeqns)
+    call sysofeqns%Init()
 
-    allocate(this%sysofeqns_ptr)
-    nullify(this%sysofeqns_ptr%ptr)
+    this%soe => sysofeqns
+
+    allocate(this%soe_ptr)
+    nullify(this%soe_ptr%ptr)
 
   end subroutine MPPTHInit
-
-  !------------------------------------------------------------------------
-  subroutine MPPTHSetMPIRank(this, rank)
-    !
-    ! !DESCRIPTION:
-    ! Sets MPI rank
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type) :: this
-    PetscInt           :: rank
-
-    if (associated(this%sysofeqns)) then
-       this%sysofeqns%mpi_rank = rank
-    endif
-
-  end subroutine MPPTHSetMPIRank
 
   !------------------------------------------------------------------------
   subroutine MPPTHSetSoils(therm_enth_mpp, filter_thermal, &
@@ -129,13 +110,13 @@ contains
     character(len=32)                         , intent(in)          :: vsfm_satfunc_type
     PetscInt                                                        :: density_type
     PetscInt                                                        :: int_energy_enthalpy_type
-
     !
     ! !LOCAL VARIABLES:
     class (goveqn_thermal_enthalpy_soil_type) , pointer             :: goveq_soil
     class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
     class(sysofeqns_th_type)                  , pointer             :: therm_soe
     class(goveqn_base_type)                   , pointer             :: cur_goveq
+    class(sysofeqns_base_type)                , pointer             :: base_soe
     PetscInt :: ncols_ghost
     PetscInt :: begc_goveqn
     PetscInt :: endc_goveqn
@@ -143,7 +124,15 @@ contains
     begc_goveqn = 1
     endc_goveqn = 0
 
-    therm_soe => therm_enth_mpp%sysofeqns
+    base_soe => therm_enth_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_th_type)
+       therm_soe => base_soe
+    class default
+       write(iulog,*)'Only sysofeqns_th_type supported'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
 
     cur_goveq => therm_soe%goveqns
     do
@@ -615,41 +604,6 @@ contains
 
   end subroutine MPPTHSetSoilsForVSFM
 
- !------------------------------------------------------------------------
-  subroutine MPPTHAddGovEqn(this, geq_type, name, mesh_itype)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to the MPP
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type) :: this
-    PetscInt                :: geq_type
-    character(len =*)       :: name
-    PetscInt                :: mesh_itype
-
-    call this%sysofeqns%AddGovEqn(geq_type, name, mesh_itype)
-
-  end subroutine MPPTHAddGovEqn
-
-  !------------------------------------------------------------------------
-  subroutine MPPTHSetMeshesOfGoveqns(this)
-    !
-    ! !DESCRIPTION:
-    ! Set association of governing equations and meshes
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type) :: this
-
-    call this%sysofeqns%SetMeshesOfGoveqns(this%meshes, this%nmesh)
-
-  end subroutine MPPTHSetMeshesOfGoveqns
-
   !------------------------------------------------------------------------
   subroutine MPPTHAllocateAuxVars(this)
     !
@@ -670,7 +624,7 @@ contains
     ! !ARGUMENTS
     class(mpp_th_type)                   :: this
     !
-    class(sysofeqns_base_type) , pointer :: soe_base
+    class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_th_type)   , pointer :: soe
     class(goveqn_base_type)    , pointer :: cur_goveq
     PetscInt                             :: igoveqn
@@ -689,11 +643,11 @@ contains
     PetscInt                   , pointer :: offsets_bc(:)
     PetscInt                   , pointer :: offsets_ss(:)
 
-    soe_base => this%sysofeqns
+    base_soe => this%soe
 
-    select type(soe_base)
+    select type(base_soe)
     class is(sysofeqns_th_type)
-       soe => this%sysofeqns
+       soe => base_soe
     class default
        write(iulog,*) 'Unsupported class type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -880,162 +834,6 @@ contains
   end subroutine MPPTHAllocateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine MPPTHGovEqnSetCouplingVars(this, igoveqn, nvars, &
-       var_ids, goveqn_ids, is_bc)
-    !
-    ! !DESCRIPTION:
-    ! In order to couple the given governing equation, add:
-    ! - ids of variables needed, and
-    ! - ids of governing equations from which variables are needed.
-    ! needed for coupling
-    ! 
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use GoverningEquationBaseType , only : goveqn_base_type
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use CouplingVariableType      , only : coupling_variable_type
-    use CouplingVariableType      , only : CouplingVariableCreate
-    use CouplingVariableType      , only : CouplingVariableListAddCouplingVar
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type)                     :: this
-    PetscInt                               :: igoveqn
-    PetscInt                               :: nvars
-    PetscInt                     , pointer :: var_ids(:)
-    PetscInt                     , pointer :: goveqn_ids(:)
-    PetscInt                     , pointer :: is_bc(:)
-    !
-    class(goveqn_base_type)      , pointer :: cur_goveq_1
-    class(goveqn_base_type)      , pointer :: cur_goveq_2
-    type(condition_type)         , pointer :: cur_cond_1
-    type(condition_type)         , pointer :: cur_cond_2
-    type(coupling_variable_type) , pointer :: cpl_var
-    PetscInt                               :: ii
-    PetscInt                               :: ieqn
-    PetscInt                               :: ivar
-    PetscInt                               :: bc_idx_1
-    PetscInt                               :: bc_idx_2
-    PetscInt                               :: bc_offset_1
-    PetscBool                              :: bc_found
-
-    if (igoveqn > this%sysofeqns%ngoveqns) then
-       write(iulog,*) 'Attempting to set coupling vars for governing ' // &
-            'equation that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq_1 => this%sysofeqns%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq_1 => cur_goveq_1%next
-    end do
-
-    do ivar = 1, nvars
-
-       if (goveqn_ids(ivar) > this%sysofeqns%ngoveqns) then
-          write(iulog,*) 'Attempting to set coupling vars to a governing ' // &
-               'equation that is not in the list'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       endif
-
-       if (is_bc(ivar) == 1) then
-          bc_found    = PETSC_FALSE
-          bc_idx_1    = 1
-          bc_offset_1 = 0
-
-          cur_cond_1 => cur_goveq_1%boundary_conditions%first
-          do
-             if (.not.associated(cur_cond_1)) exit
-
-             ! Is this the appropriate BC?
-             if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-                do ieqn = 1, cur_cond_1%num_other_goveqs
-                   if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
-                      bc_found = PETSC_TRUE
-                      exit
-                   endif
-                enddo
-             endif
-
-             if (bc_found) exit
-
-             bc_idx_1    = bc_idx_1    + 1
-             bc_offset_1 = bc_offset_1 + cur_cond_1%conn_set%num_connections
-
-             cur_cond_1 => cur_cond_1%next
-          enddo
-
-          if (.not.bc_found) then
-             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
-                  ', no coupling boundary condition found to copule it with ' // &
-                  'equation_number = ', goveqn_ids(ivar)
-          endif
-
-          cur_goveq_2 => this%sysofeqns%goveqns
-          do ii = 1, goveqn_ids(ivar)-1
-             cur_goveq_2 => cur_goveq_2%next
-          enddo
-
-          bc_found    = PETSC_FALSE
-          bc_idx_2    = 1
-
-          cur_cond_2 => cur_goveq_2%boundary_conditions%first
-          do
-             if (.not.associated(cur_cond_2)) exit
-
-             ! Is this the appropriate BC?
-             if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
-                do ieqn = 1, cur_cond_2%num_other_goveqs
-                   if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
-                      bc_found = PETSC_TRUE
-                      exit
-                   endif
-                enddo
-             endif
-
-             if (bc_found) exit
-
-             bc_idx_2    = bc_idx_2    + 1
-
-             cur_cond_2 => cur_cond_2%next
-          enddo
-
-          if (.not.bc_found) then
-             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
-                  ', no coupling boundary condition found to copule it with ' // &
-                  'equation_number = ', bc_idx_2
-          endif
-
-          cpl_var => CouplingVariableCreate()
-
-          cpl_var%variable_type                     = var_ids(ivar)
-          cpl_var%num_cells                         = cur_cond_1%conn_set%num_connections
-          cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
-          cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_TRUE
-          cpl_var%offset_of_bc_in_current_goveqn    = bc_offset_1
-          cpl_var%rank_of_bc_in_current_goveqn      = bc_idx_1
-          cpl_var%rank_of_bc_in_coupling_goveqn     = bc_idx_2
-
-          call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
-
-    else
-
-          cpl_var => CouplingVariableCreate()
-
-          cpl_var%variable_type                     = var_ids(ivar)
-          cpl_var%rank_of_coupling_goveqn           = goveqn_ids(ivar)
-          cpl_var%variable_is_bc_in_coupling_goveqn = PETSC_FALSE
-
-          call CouplingVariableListAddCouplingVar(cur_goveq_1%coupling_vars, cpl_var)
-
-       endif
-
-    enddo
-
-  end subroutine MPPTHGovEqnSetCouplingVars
-
-  !------------------------------------------------------------------------
   subroutine MPPTHSetupProblem(this)
     !
     ! !DESCRIPTION:
@@ -1051,8 +849,8 @@ contains
 
     call MPPTHKSPSetup(this)
 
-    this%sysofeqns%solver_type = this%solver_type
-    this%sysofeqns%itype       = SOE_TH
+    this%soe%solver_type = this%solver_type
+    this%soe%itype       = SOE_TH
 
   end subroutine MPPTHSetupProblem
 
@@ -1074,6 +872,7 @@ contains
     ! !LOCAL VARIABLES:
     class(goveqn_base_type)                , pointer   :: cur_goveq
     class(sysofeqns_th_type) , pointer   :: therm_soe
+    class(sysofeqns_base_type), pointer                  :: base_soe
     PetscInt                                           :: size
     PetscInt                                           :: igoveq
     PetscErrorCode                                     :: ierr
@@ -1085,8 +884,16 @@ contains
     PetscInt                               , parameter :: max_f   = PETSC_DEFAULT_INTEGER
     character(len=256)                                 :: name
 
-    therm_soe => therm_enth_mpp%sysofeqns
-    therm_enth_mpp%sysofeqns_ptr%ptr => therm_enth_mpp%sysofeqns
+    base_soe => therm_enth_mpp%soe
+    
+    select type(base_soe)
+    class is (sysofeqns_th_type)
+       therm_soe => base_soe
+    class default
+       write(iulog,*)'Only sysofeqns_th_type supported'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    therm_enth_mpp%soe_ptr%ptr => therm_enth_mpp%soe
 
     ! Create PETSc DM for each governing equation
 
@@ -1168,10 +975,10 @@ contains
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
     call SNESSetFunction(therm_soe%snes, therm_soe%res, SOEResidual, &
-         th_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+         th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetJacobian(therm_soe%snes, therm_soe%jac, therm_soe%jac,     &
-         SOEJacobian, th_mpp%sysofeqns_ptr, ierr); CHKERRQ(ierr)
+         SOEJacobian, th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
     call SNESSetFromOptions(therm_soe%snes, ierr); CHKERRQ(ierr)
 
@@ -1217,12 +1024,12 @@ contains
     PetscInt :: bc_idx
     PetscBool :: bc_found
 
-    if (igoveqn > this%sysofeqns%ngoveqns) then
+    if (igoveqn > this%soe%ngoveqns) then
        write(iulog,*) 'Attempting to access governing equation that is not in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    cur_goveq => this%sysofeqns%goveqns
+    cur_goveq => this%soe%goveqns
     do ii = 1, igoveqn-1
        cur_goveq => cur_goveq%next
     enddo

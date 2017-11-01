@@ -90,7 +90,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp_vertical%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp_vertical%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -99,19 +99,19 @@ contains
        if (with_seepage_bc) call set_bondary_conditions()
 
        ! Run the model
-       call vsfm_mpp_vertical%sysofeqns%StepDT(dtime, istep, &
+       call vsfm_mpp_vertical%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
 
-       call VecCopy(vsfm_mpp_vertical%sysofeqns%soln, vsfm_mpp_lateral%sysofeqns%soln         , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_vertical%sysofeqns%soln, vsfm_mpp_lateral%sysofeqns%soln_prev    , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_vertical%sysofeqns%soln, vsfm_mpp_lateral%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%soe%soln, vsfm_mpp_lateral%soe%soln         , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%soe%soln, vsfm_mpp_lateral%soe%soln_prev    , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%soe%soln, vsfm_mpp_lateral%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
 
-       call vsfm_mpp_lateral%sysofeqns%StepDT(dtime, istep, &
+       call vsfm_mpp_lateral%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
 
-       call VecCopy(vsfm_mpp_lateral%sysofeqns%soln, vsfm_mpp_vertical%sysofeqns%soln         , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_lateral%sysofeqns%soln, vsfm_mpp_vertical%sysofeqns%soln_prev    , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_lateral%sysofeqns%soln, vsfm_mpp_vertical%sysofeqns%soln_prev_clm, ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%soe%soln, vsfm_mpp_vertical%soe%soln         , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%soe%soln, vsfm_mpp_vertical%soe%soln_prev    , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%soe%soln, vsfm_mpp_vertical%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
 
     enddo
 
@@ -122,7 +122,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp_lateral%sysofeqns%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp_lateral%soe%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -952,7 +952,7 @@ contains
     enddo
 
     ieqn = 1
-    call vsfm_mpp_vertical%sysofeqns%AddConditionInGovEqn(ieqn, COND_BC,   &
+    call vsfm_mpp_vertical%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_SEEPAGE_BC, &
          SOIL_TOP_CELLS)
 
@@ -1110,7 +1110,7 @@ contains
     top_pressure_bc(:) = 101325.d0
 
     soe_auxvar_id = 1
-    call vsfm_mpp_vertical%sysofeqns%SetDataFromCLM(AUXVAR_BC,  &
+    call vsfm_mpp_vertical%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, top_pressure_bc)
 
     deallocate(top_pressure_bc)
@@ -1144,13 +1144,13 @@ contains
 
     name = 'liquid_pressure'
     category = 'pressure'
-    call vsfm_mpp_lateral%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp_lateral%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_PRESSURE, -1, data)
     call regression%WriteData(name, category, data)
 
     name = 'liquid_saturation'
     category = 'general'
-    call vsfm_mpp_lateral%sysofeqns%GetDataForCLM(AUXVAR_INTERNAL,  &
+    call vsfm_mpp_lateral%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
          VAR_LIQ_SAT, -1, data)
     call regression%WriteData(name, category, data)
 
