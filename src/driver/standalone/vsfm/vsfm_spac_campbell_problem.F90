@@ -1222,7 +1222,7 @@ contains
     PetscReal, pointer :: press_ic(:)
     PetscErrorCode     :: ierr
 
-    call VecGetArrayF90(vsfm_mpp%soe%soln, press_ic, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
 
     theta = 0.20d0
 
@@ -1231,9 +1231,9 @@ contains
        press_ic(ii) = (Campbell_he * Se**(-Campbell_b))* 1.d3 + 101325.d0
     enddo
 
-    call VecRestoreArrayF90(vsfm_mpp%soe%soln, press_ic, ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_mpp%soe%soln, vsfm_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_mpp%soe%soln, vsfm_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
     
   end subroutine set_initial_conditions
 
@@ -1758,51 +1758,51 @@ contains
     call DMDASetFieldName   (dm_s , 0     , "soil_" , ierr ); CHKERRQ(ierr)
 
     ! Create DMComposite: pressure
-    call DMCompositeCreate  (PETSC_COMM_SELF , vsfm_soe%dm , ierr ); CHKERRQ(ierr)
-    call DMSetOptionsPrefix (vsfm_soe%dm     , "pressure_" , ierr ); CHKERRQ(ierr)
+    call DMCompositeCreate  (PETSC_COMM_SELF , vsfm_soe%solver%dm , ierr ); CHKERRQ(ierr)
+    call DMSetOptionsPrefix (vsfm_soe%solver%dm     , "pressure_" , ierr ); CHKERRQ(ierr)
 
-    call DMCompositeAddDM   (vsfm_soe%dm     , dm_x        , ierr ); CHKERRQ(ierr)
-    call DMCompositeAddDM   (vsfm_soe%dm     , dm_r        , ierr ); CHKERRQ(ierr)
-    call DMCompositeAddDM   (vsfm_soe%dm     , dm_s        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (vsfm_soe%solver%dm     , dm_x        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (vsfm_soe%solver%dm     , dm_r        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (vsfm_soe%solver%dm     , dm_s        , ierr ); CHKERRQ(ierr)
 
     call DMDestroy          (dm_s            , ierr               ); CHKERRQ(ierr)
     call DMDestroy          (dm_r            , ierr               ); CHKERRQ(ierr)
     call DMDestroy          (dm_x            , ierr               ); CHKERRQ(ierr)
 
-    call DMSetUp            (vsfm_soe%dm     , ierr               ); CHKERRQ(ierr)
+    call DMSetUp            (vsfm_soe%solver%dm     , ierr               ); CHKERRQ(ierr)
 
-    call DMCreateMatrix     (vsfm_soe%dm     , vsfm_soe%jac, ierr ); CHKERRQ(ierr)
-    call MatSetOption       (vsfm_soe%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
-    call MatSetOption       (vsfm_soe%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call DMCreateMatrix     (vsfm_soe%solver%dm     , vsfm_soe%solver%jac, ierr ); CHKERRQ(ierr)
+    call MatSetOption       (vsfm_soe%solver%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call MatSetOption       (vsfm_soe%solver%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
 
     ! Create solution vector
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln          , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln_prev     , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln_prev_clm , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%res           , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%soln          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%soln_prev     , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%soln_prev_clm , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%res           , ierr); CHKERRQ(ierr)
 
-    call VecZeroEntries(vsfm_soe%soln         , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(vsfm_soe%soln_prev    , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(vsfm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
-    call VecZeroEntries(vsfm_soe%res          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%soln         , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%res          , ierr); CHKERRQ(ierr)
 
     ! SNES
-    call SNESCreate(PETSC_COMM_SELF, vsfm_soe%snes, ierr); CHKERRQ(ierr)
-    call SNESSetTolerances(vsfm_soe%snes, atol, rtol, stol, &
+    call SNESCreate(PETSC_COMM_SELF, vsfm_soe%solver%snes, ierr); CHKERRQ(ierr)
+    call SNESSetTolerances(vsfm_soe%solver%snes, atol, rtol, stol, &
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
-    call SNESSetFunction(vsfm_soe%snes, vsfm_soe%res, SOEResidual, &
+    call SNESSetFunction(vsfm_soe%solver%snes, vsfm_soe%solver%res, SOEResidual, &
                          vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
-    call SNESSetJacobian(vsfm_soe%snes, vsfm_soe%jac, vsfm_soe%jac,     &
+    call SNESSetJacobian(vsfm_soe%solver%snes, vsfm_soe%solver%jac, vsfm_soe%solver%jac,     &
                          SOEJacobian, vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
-    call SNESSetFromOptions(vsfm_soe%snes, ierr); CHKERRQ(ierr)
+    call SNESSetFromOptions(vsfm_soe%solver%snes, ierr); CHKERRQ(ierr)
 
     ! Get pointers to governing-equations
     call vsfm_soe%CreateVectorsForGovEqn()
 
-    vsfm_mpp%soe%solver_type = vsfm_mpp%solver_type
-    vsfm_mpp%soe%itype       = SOE_RE_ODE
+    vsfm_mpp%soe%solver%petsc_solver_type = vsfm_mpp%solver_type
+    vsfm_mpp%soe%itype                    = SOE_RE_ODE
 
   end subroutine setup_petsc_snes
 

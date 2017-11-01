@@ -29,57 +29,13 @@ module SystemOfEquationsBasePointerType
      class(sysofeqns_base_type), pointer :: ptr
   end type sysofeqns_base_pointer_type
 
-  public :: SOEIFunction, &
-       SOEIJacobian, &
-       SOEResidual,  &
+  public :: SOEResidual,  &
        SOEJacobian,  &
        SOEComputeRHS, &
        SOEComputeOperators
   !------------------------------------------------------------------------
 
 contains
-
-  !------------------------------------------------------------------------
-  subroutine SOEIFunction(ts, t, U, Udot, F, this, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Wrapper subroutine when SoE uss PETSc TS
-    !
-    implicit none
-
-    TS                                :: ts
-    PetscReal                         :: t
-    Vec                               :: U
-    Vec                               :: Udot
-    Vec                               :: F
-    type(sysofeqns_base_pointer_type) :: this
-    PetscErrorCode                    :: ierr
-
-    call this%ptr%IFunction(ts, t, U, Udot, F, ierr)
-
-  end subroutine SOEIFunction
-
-  !------------------------------------------------------------------------
-  subroutine SOEIJacobian(ts, t, U, Udot, shift, A, B, this, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Wrapper subroutine when SoE uss PETSc TS
-    !
-    implicit none
-
-    TS                                :: ts
-    PetscReal                         :: t
-    Vec                               :: U
-    Vec                               :: Udot
-    PetscReal                         :: shift
-    Mat                               :: A
-    Mat                               :: B
-    type(sysofeqns_base_pointer_type) :: this
-    PetscErrorCode                    :: ierr
-
-    call this%ptr%IJacobian(ts, t, U, Udot, shift, A, B, ierr)
-
-  end subroutine SOEIJacobian
 
   !------------------------------------------------------------------------
   subroutine SOEResidual(snes, X, R, this, ierr)

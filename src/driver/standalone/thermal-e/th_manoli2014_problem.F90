@@ -131,7 +131,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -150,7 +150,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -1416,7 +1416,6 @@ contains
     use EOSWaterMod                      , only : DENSITY_TGDPB01
     use mpp_varcon                       , only : denh2o
     use mpp_varcon                       , only : grav
-    use SystemOfEquationsBasePointerType , only : SOEIFunction, SOEIJacobian
     use GoveqnThermalEnthalpySoilType    , only : goveqn_thermal_enthalpy_soil_type
     use SaturationFunction               , only : SatFunc_Set_VG
     use SaturationFunction               , only : SatFunc_Set_Weibull_RelPerm
@@ -1499,7 +1498,6 @@ contains
     use EOSWaterMod                      , only : DENSITY_TGDPB01
     use mpp_varcon                       , only : denh2o
     use mpp_varcon                       , only : grav
-    use SystemOfEquationsBasePointerType , only : SOEIFunction, SOEIJacobian
     use GoveqnThermalEnthalpySoilType    , only : goveqn_thermal_enthalpy_soil_type
     use SaturationFunction               , only : SatFunc_Set_VG
     use SaturationFunction               , only : SatFunc_Set_Weibull_RelPerm
@@ -1686,7 +1684,6 @@ contains
     use EOSWaterMod                      , only : DENSITY_TGDPB01
     use mpp_varcon                       , only : denh2o
     use mpp_varcon                       , only : grav
-    use SystemOfEquationsBasePointerType , only : SOEIFunction, SOEIJacobian
     use GoveqnThermalEnthalpySoilType    , only : goveqn_thermal_enthalpy_soil_type
     use SaturationFunction               , only : SatFunc_Set_VG
     use SaturationFunction               , only : SatFunc_Set_Weibull_RelPerm
@@ -1904,18 +1901,18 @@ contains
     PetscInt            :: soe_auxvar_id
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(th_mpp%soe%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(th_mpp%soe%solver%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(th_mpp%soe%dm, dms, ierr)
+    call DMCompositeGetEntriesArray(th_mpp%soe%solver%dm, dms, ierr)
 
     ! Allocate vectors for individual GEs
     allocate(soln_subvecs(nDM))
 
     ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(th_mpp%soe%dm, &
-         th_mpp%soe%soln, nDM, &
+    call DMCompositeGetAccessArray(th_mpp%soe%solver%dm, &
+         th_mpp%soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     do ii = 1, nDM
@@ -1937,14 +1934,14 @@ contains
     enddo
 
     ! Restore solution vectors for individual GEs
-    call DMCompositeRestoreAccessArray(th_mpp%soe%dm, &
-         th_mpp%soe%soln, nDM, &
+    call DMCompositeRestoreAccessArray(th_mpp%soe%solver%dm, &
+         th_mpp%soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     deallocate(dms)
     
-    call VecCopy(th_mpp%soe%soln, th_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(th_mpp%soe%soln, th_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%solver%soln, th_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%solver%soln, th_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_conditions
 
@@ -2123,18 +2120,18 @@ contains
     endif
 
     ! Create DMComposite: pressure
-    call DMCompositeCreate  (PETSC_COMM_SELF , th_soe%dm , ierr ); CHKERRQ(ierr)
-    call DMSetOptionsPrefix (th_soe%dm     , "th_" , ierr ); CHKERRQ(ierr)
+    call DMCompositeCreate  (PETSC_COMM_SELF , th_soe%solver%dm , ierr ); CHKERRQ(ierr)
+    call DMSetOptionsPrefix (th_soe%solver%dm     , "th_" , ierr ); CHKERRQ(ierr)
 
-    call DMCompositeAddDM   (th_soe%dm     , dm_mass_s        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (th_soe%solver%dm     , dm_mass_s        , ierr ); CHKERRQ(ierr)
     if (.not.single_pde_formulation) then
-    call DMCompositeAddDM   (th_soe%dm     , dm_mass_r        , ierr ); CHKERRQ(ierr)
-    call DMCompositeAddDM   (th_soe%dm     , dm_mass_x        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (th_soe%solver%dm     , dm_mass_r        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (th_soe%solver%dm     , dm_mass_x        , ierr ); CHKERRQ(ierr)
     endif
-    call DMCompositeAddDM   (th_soe%dm     , dm_eneg_s        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (th_soe%solver%dm     , dm_eneg_s        , ierr ); CHKERRQ(ierr)
     if (.not.single_pde_formulation) then
-    call DMCompositeAddDM   (th_soe%dm     , dm_eneg_r        , ierr ); CHKERRQ(ierr)
-    call DMCompositeAddDM   (th_soe%dm     , dm_eneg_x        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (th_soe%solver%dm     , dm_eneg_r        , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (th_soe%solver%dm     , dm_eneg_x        , ierr ); CHKERRQ(ierr)
     endif
 
     call DMDestroy          (dm_mass_s     , ierr               ); CHKERRQ(ierr)
@@ -2146,40 +2143,40 @@ contains
     call DMDestroy          (dm_eneg_x     , ierr               ); CHKERRQ(ierr)
     endif
 
-    call DMSetUp            (th_soe%dm     , ierr               ); CHKERRQ(ierr)
+    call DMSetUp            (th_soe%solver%dm     , ierr               ); CHKERRQ(ierr)
 
-    call DMCreateMatrix     (th_soe%dm , th_soe%jac, ierr ); CHKERRQ(ierr)
-    call MatSetOption       (th_soe%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
-    call MatSetOption       (th_soe%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call DMCreateMatrix     (th_soe%solver%dm , th_soe%solver%jac, ierr ); CHKERRQ(ierr)
+    call MatSetOption       (th_soe%solver%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call MatSetOption       (th_soe%solver%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
 
     ! Create solution vector
-    call DMCreateGlobalVector(th_soe%dm , th_soe%soln          , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(th_soe%dm , th_soe%soln_prev     , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(th_soe%dm , th_soe%soln_prev_clm , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(th_soe%dm , th_soe%res           , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(th_soe%solver%dm , th_soe%solver%soln          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(th_soe%solver%dm , th_soe%solver%soln_prev     , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(th_soe%solver%dm , th_soe%solver%soln_prev_clm , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(th_soe%solver%dm , th_soe%solver%res           , ierr); CHKERRQ(ierr)
 
-    call VecZeroEntries(th_soe%soln         , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(th_soe%soln_prev    , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(th_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
-    call VecZeroEntries(th_soe%res          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(th_soe%solver%soln         , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(th_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(th_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecZeroEntries(th_soe%solver%res          , ierr); CHKERRQ(ierr)
 
     ! SNES
-    call SNESCreate(PETSC_COMM_SELF, th_soe%snes, ierr); CHKERRQ(ierr)
-    call SNESSetTolerances(th_soe%snes, atol, rtol, stol, &
+    call SNESCreate(PETSC_COMM_SELF, th_soe%solver%snes, ierr); CHKERRQ(ierr)
+    call SNESSetTolerances(th_soe%solver%snes, atol, rtol, stol, &
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
-    call SNESSetFunction(th_soe%snes, th_soe%res, SOEResidual, &
+    call SNESSetFunction(th_soe%solver%snes, th_soe%solver%res, SOEResidual, &
                          th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
-    call SNESSetJacobian(th_soe%snes, th_soe%jac, th_soe%jac,     &
+    call SNESSetJacobian(th_soe%solver%snes, th_soe%solver%jac, th_soe%solver%jac,     &
                          SOEJacobian, th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
-    call SNESSetFromOptions(th_soe%snes, ierr); CHKERRQ(ierr)
+    call SNESSetFromOptions(th_soe%solver%snes, ierr); CHKERRQ(ierr)
 
     ! Get pointers to governing-equations
     call th_soe%CreateVectorsForGovEqn()
 
-    th_mpp%soe%solver_type = th_mpp%solver_type
-    th_mpp%soe%itype       = SOE_TH
+    th_mpp%soe%solver%petsc_solver_type = th_mpp%solver_type
+    th_mpp%soe%itype                    = SOE_TH
 
   end subroutine setup_petsc_snes
 

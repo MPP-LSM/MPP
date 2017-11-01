@@ -207,16 +207,16 @@ contains
     PetscErrorCode                :: ierr
     PetscScalar, pointer          :: x_p(:)
 
-    call VecGetSize(this%soln_prev_clm, vsize, ierr); CHKERRQ(ierr)
+    call VecGetSize(this%solver%soln_prev_clm, vsize, ierr); CHKERRQ(ierr)
 
     if ( vsize /= size(data_1d)) then
        write(iulog,*) 'ThermalSOESetSolnPrevCLM: vsize /= size(data_1d)'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    call VecGetArrayF90(this%soln_prev_clm, x_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(this%solver%soln_prev_clm, x_p, ierr); CHKERRQ(ierr)
     x_p(:) = data_1d(:)
-    call VecRestoreArrayF90(this%soln_prev_clm, x_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(this%solver%soln_prev_clm, x_p, ierr); CHKERRQ(ierr)
 
   end subroutine ThermalSOESetSolnPrevCLM
 
@@ -238,16 +238,16 @@ contains
     PetscErrorCode                :: ierr
     PetscScalar, pointer          :: x_p(:)
 
-    call VecGetSize(this%soln, vsize, ierr); CHKERRQ(ierr)
+    call VecGetSize(this%solver%soln, vsize, ierr); CHKERRQ(ierr)
 
     if ( vsize /= size(data_1d)) then
        write(iulog,*) 'ThermalSOESetSolnPrevCLM: vsize /= size(data_1d)'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    call VecGetArrayF90(this%soln, x_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(this%solver%soln, x_p, ierr); CHKERRQ(ierr)
     data_1d(:) = x_p(:)
-    call VecRestoreArrayF90(this%soln, x_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(this%solver%soln, x_p, ierr); CHKERRQ(ierr)
 
   end subroutine ThermalSOEGetSoln
 
@@ -413,8 +413,8 @@ contains
     !
     PetscErrorCode                :: ierr
 
-    call VecCopy(this%soln_prev_clm, this%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(this%soln_prev_clm, this%soln     , ierr); CHKERRQ(ierr)
+    call VecCopy(this%solver%soln_prev_clm, this%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(this%solver%soln_prev_clm, this%solver%soln     , ierr); CHKERRQ(ierr)
 
   end subroutine ThermalSOEPreStepDT
 
@@ -444,7 +444,7 @@ contains
     case(SOE_THERMAL_TBASED)
 
        ! 1) {soln_prev}  ---> sim_aux()
-       call ThermalSOEUpdateAuxVarsTBased(this, this%soln_prev)
+       call ThermalSOEUpdateAuxVarsTBased(this, this%solver%soln_prev)
 
        ! 2) GE ---> GetFromSimAux()
        cur_goveq => this%goveqns
@@ -517,17 +517,17 @@ contains
     PetscErrorCode             :: ierr
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(therm_soe%dm, nDM, ierr); CHKERRQ(ierr)
+    call DMCompositeGetNumberDM(therm_soe%solver%dm, nDM, ierr); CHKERRQ(ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(therm_soe%dm, dms, ierr); CHKERRQ(ierr)
+    call DMCompositeGetEntriesArray(therm_soe%solver%dm, dms, ierr); CHKERRQ(ierr)
 
     ! Allocate vectors for individual GEs
     allocate(X_subvecs(nDM))
 
     ! Get vectors (X) for individual GEs
-    call DMCompositeGetAccessArray(therm_soe%dm, X, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeGetAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
          X_subvecs, ierr); CHKERRQ(ierr)
 
     ! Update the SoE auxvars
@@ -540,7 +540,7 @@ contains
     enddo
 
     ! Restore vectors (u,udot,F) for individual GEs
-    call DMCompositeRestoreAccessArray(therm_soe%dm, X, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeRestoreAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
          X_subvecs, ierr); CHKERRQ(ierr)
 
     ! Free memory
@@ -643,17 +643,17 @@ contains
 
     
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(this%dm, nDM, ierr); CHKERRQ(ierr)
+    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr); CHKERRQ(ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(this%dm, dms, ierr); CHKERRQ(ierr)
+    call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
 
     ! Allocate vectors for individual GEs
     allocate(B_subvecs(nDM))
 
     ! Get vectors for individual GEs
-    call DMCompositeGetAccessArray(this%dm, B, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeGetAccessArray(this%solver%dm, B, nDM, PETSC_NULL_INTEGER, &
          B_subvecs, ierr); CHKERRQ(ierr)
 
     ! 1) GE: UpdateAuxVars
@@ -708,7 +708,7 @@ contains
     enddo
 
     ! Restore vectors for individual GEs
-    call DMCompositeRestoreAccessArray(this%dm, B, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeRestoreAccessArray(this%solver%dm, B, nDM, PETSC_NULL_INTEGER, &
          B_subvecs, ierr); CHKERRQ(ierr)
 
     ! Free memory
@@ -746,11 +746,11 @@ contains
     class(goveqn_base_type),pointer :: cur_goveq_2
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(this%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(this%dm, dms, ierr); CHKERRQ(ierr)
+    call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
 
     ! Initialize the matrix
     call MatZeroEntries(B, ierr); CHKERRQ(ierr)
@@ -758,7 +758,7 @@ contains
     ! Get submatrices
     allocate(is(nDM))
     allocate(B_submats(nDM,nDM))
-    call DMCompositeGetLocalISs(this%dm, is, ierr); CHKERRQ(ierr)
+    call DMCompositeGetLocalISs(this%solver%dm, is, ierr); CHKERRQ(ierr)
     do row = 1,nDM
       do col = 1,nDM
         call MatGetLocalSubMatrix(B, is(row), is(col), B_submats(row,col), ierr); CHKERRQ(ierr)

@@ -560,8 +560,8 @@ contains
     call ThermalMPPUpdatCouplingBCConnections(this)
     call ThermalMPPKSPSetup(this)
 
-    this%soe%solver_type = this%solver_type
-    this%soe%itype       = SOE_THERMAL_TBASED
+    this%soe%solver%petsc_solver_type = this%solver_type
+    this%soe%itype                    = SOE_THERMAL_TBASED
 
   end subroutine ThermalMPPSetupProblem
 
@@ -765,49 +765,49 @@ contains
     ! DM-Composite approach
 
     ! Create DMComposite: temperature
-    call DMCompositeCreate(PETSC_COMM_SELF, therm_soe%dm, ierr); CHKERRQ(ierr)
-    call DMSetOptionsPrefix(therm_soe%dm, "temperature_", ierr); CHKERRQ(ierr)
+    call DMCompositeCreate(PETSC_COMM_SELF, therm_soe%solver%dm, ierr); CHKERRQ(ierr)
+    call DMSetOptionsPrefix(therm_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
 
     ! Add DMs to DMComposite
     do igoveq = 1, therm_soe%ngoveqns
-       call DMCompositeAddDM(therm_soe%dm, dms(igoveq), ierr); CHKERRQ(ierr)
+       call DMCompositeAddDM(therm_soe%solver%dm, dms(igoveq), ierr); CHKERRQ(ierr)
     enddo
 
     ! Setup DM
-    call DMSetUp(therm_soe%dm, ierr); CHKERRQ(ierr)
+    call DMSetUp(therm_soe%solver%dm, ierr); CHKERRQ(ierr)
 
     ! Create matrix
-    call DMCreateMatrix    (therm_soe%dm   , therm_soe%Amat, ierr); CHKERRQ(ierr)
+    call DMCreateMatrix    (therm_soe%solver%dm   , therm_soe%solver%Amat, ierr); CHKERRQ(ierr)
 
-    call MatSetOption      (therm_soe%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
+    call MatSetOption      (therm_soe%solver%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
          PETSC_FALSE, ierr); CHKERRQ(ierr)
-    call MatSetOption      (therm_soe%Amat , MAT_NEW_NONZERO_ALLOCATION_ERR, &
+    call MatSetOption      (therm_soe%solver%Amat , MAT_NEW_NONZERO_ALLOCATION_ERR, &
          PETSC_FALSE, ierr); CHKERRQ(ierr)
 
-    call MatSetFromOptions (therm_soe%Amat , ierr); CHKERRQ(ierr)
+    call MatSetFromOptions (therm_soe%solver%Amat , ierr); CHKERRQ(ierr)
 
     ! Create vectors
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln         , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%rhs          , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln_prev    , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln         , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%rhs          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
     ! Initialize vectors
-    call VecZeroEntries(therm_soe%soln          , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%rhs           ,  ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%soln_prev     ,  ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%soln_prev_clm ,  ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%soln          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%rhs           ,  ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%soln_prev     ,  ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%soln_prev_clm ,  ierr); CHKERRQ(ierr)
 
     ! Create KSP
-    call KSPCreate              (PETSC_COMM_SELF , therm_soe%ksp, ierr); CHKERRQ(ierr)
-    call KSPSetOptionsPrefix    (therm_soe%ksp   , "temperature_", ierr); CHKERRQ(ierr)
+    call KSPCreate              (PETSC_COMM_SELF , therm_soe%solver%ksp, ierr); CHKERRQ(ierr)
+    call KSPSetOptionsPrefix    (therm_soe%solver%ksp   , "temperature_", ierr); CHKERRQ(ierr)
 
-    call KSPSetComputeRHS       (therm_soe%ksp   , SOEComputeRHS      , &
+    call KSPSetComputeRHS       (therm_soe%solver%ksp   , SOEComputeRHS      , &
          therm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
-    call KSPSetComputeOperators (therm_soe%ksp   , SOEComputeOperators, &
+    call KSPSetComputeOperators (therm_soe%solver%ksp   , SOEComputeOperators, &
          therm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
-    call KSPSetFromOptions      (therm_soe%ksp   , ierr); CHKERRQ(ierr)
+    call KSPSetFromOptions      (therm_soe%solver%ksp   , ierr); CHKERRQ(ierr)
 
     ! Cleanup
     do igoveq = 1, therm_soe%ngoveqns

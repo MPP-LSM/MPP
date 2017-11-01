@@ -172,7 +172,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -192,7 +192,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
