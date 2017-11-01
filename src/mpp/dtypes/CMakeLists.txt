@@ -5,6 +5,7 @@ set(MPP_DTYPES_SOURCES
   GoverningEquationBaseType.F90
   MeshType.F90
   MultiPhysicsProbBaseType.F90
+  SolverType.F90
   SystemOfEquationsBasePointerType.F90
   SystemOfEquationsBaseType.F90
   UnstructuredGridType.F90

@@ -236,6 +236,10 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
+       write(*,*)'nauxvar         ',nauxvar
+       write(*,*)'size(soe_avars) ',size(soe_avars)
+       write(*,*)'offset          ',offset
+       write(*,*)''
     do iauxvar = 1, nauxvar
        this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
        this%aux_vars_in(iauxvar)%pressure    = soe_avars(iauxvar+offset)%pressure

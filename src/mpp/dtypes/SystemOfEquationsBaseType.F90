@@ -25,6 +25,7 @@ module SystemOfEquationsBaseType
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use MeshType                  , only : mesh_type
   use GoverningEquationBaseType , only : goveqn_base_type
+  use SolverType                , only : solver_type
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -44,30 +45,11 @@ module SystemOfEquationsBaseType
      PetscReal                       :: dtime                        ! [sec]
      PetscReal                       :: nstep                        ! [-]
 
-     PetscInt                        :: cumulative_newton_iterations ! Total number of Newton iterations
-     PetscInt                        :: cumulative_linear_iterations ! Total number of Linear iterations
-
-     PetscBool                       :: use_dynamic_linesearch       ! Try another linesearch before cutting timestep
-
-     PetscInt                        :: solver_type                  ! type of PETSc equation being solved (KSP, SNES, TS)
-     DM                              :: dm                           ! PETSc DM
-     TS                              :: ts                           ! PETSc TS
-     SNES                            :: snes                         ! PETSc SNES
-     KSP                             :: ksp                          ! PETSc KSP
-
-     Vec                             :: soln                         ! solution at current iteration + time step
-     Vec                             :: soln_prev                    ! solution vector at previous time step
-     Vec                             :: soln_prev_clm                ! solution vector at previous CLM time step
-     Vec                             :: res                          ! residual vector
-     Vec                             :: rhs                          ! used if SoE is a PETSc TS
-     Mat                             :: jac                          ! used if SoE is a PETSc TS/SNES
-     Mat                             :: Amat                         ! used if SoE is a PETSc KSP
+     type(solver_type)               :: solver
 
    contains
      procedure, public :: Init                   => SOEBaseInit
      procedure, public :: Clean                  => SOEBaseClean
-     procedure, public :: IFunction              => SOEBaseIFunction
-     procedure, public :: IJacobian              => SOEBaseIJacobian
      procedure, public :: Residual               => SOEBaseResidual
      procedure, public :: Jacobian               => SOEBaseJacobian
      procedure, public :: ComputeRHS             => SOEComputeRHS
@@ -115,76 +97,11 @@ contains
     this%dtime                        = 0.d0
     this%nstep                        = 0
 
-    this%cumulative_newton_iterations = 0
-    this%cumulative_linear_iterations = 0
-
-    this%use_dynamic_linesearch       = PETSC_FALSE
-
-    this%solver_type                  = 0
-    this%dm                           = PETSC_NULL_DM
-    this%ts                           = PETSC_NULL_TS
-    this%snes                         = PETSC_NULL_SNES
-    this%ksp                          = PETSC_NULL_KSP
-
-    this%soln                         = PETSC_NULL_VEC
-    this%soln_prev                    = PETSC_NULL_VEC
-    this%soln_prev_clm                = PETSC_NULL_VEC
-    this%res                          = PETSC_NULL_VEC
-    this%rhs                          = PETSC_NULL_VEC
-    this%jac                          = PETSC_NULL_MAT
-    this%Amat                         = PETSC_NULL_MAT
-
+    call this%solver%Init()
+    
     nullify(this%goveqns)
 
   end subroutine SOEBaseInit
-
-  !------------------------------------------------------------------------
-  subroutine SOEBaseIFunction(this, ts, t, U, Udot, F, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine used when the SoE uses PETSc TS.
-    ! This subroutines needs to be extended by a child class.
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_base_type) :: this
-    TS                         :: ts
-    PetscReal                  :: t
-    Vec                        :: U
-    Vec                        :: Udot
-    Vec                        :: F
-    PetscErrorCode             :: ierr
-
-    call endrun(msg='ERROR SystemOfEquationsBaseType: '//&
-         'SOEBaseIFunction must be extended')
-
-  end subroutine SOEBaseIFunction
-
-  !------------------------------------------------------------------------
-  subroutine SOEBaseIJacobian(this, ts, t, U, Udot, shift, A, B, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Dummy subroutine used when the SoE uses PETSc TS.
-    ! This subroutines needs to be extended by a child class.
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_base_type) :: this
-    TS                         :: ts
-    PetscReal                  :: t
-    Vec                        :: U
-    Vec                        :: Udot
-    PetscReal                  :: shift
-    Mat                        :: A
-    Mat                        :: B
-    PetscErrorCode             :: ierr
-
-    call endrun(msg='ERROR SystemOfEquationsBaseType: '//&
-         'SOEBaseIJacobian must be extended')
-
-  end subroutine SOEBaseIJacobian
 
   !------------------------------------------------------------------------
   subroutine SOEBaseResidual(this,snes, X, F, ierr)
@@ -346,9 +263,7 @@ contains
     PetscInt,intent(out)       :: converged_reason
     PetscErrorCode             :: ierr
 
-    select case(this%solver_type)
-    case (PETSC_TS)
-       call SOEBaseStepDT_TS(this, dt, ierr)
+    select case(this%solver%GetSolverType())
     case (PETSC_SNES)
        call SOEBaseStepDT_SNES(this, dt, nstep, converged, converged_reason, ierr)
     case (PETSC_KSP)
@@ -359,32 +274,6 @@ contains
     end select
 
   end subroutine SOEBaseStepDT
-
-  !------------------------------------------------------------------------
-  subroutine SOEBaseStepDT_TS(soe, dt, ierr)
-    !
-    ! !DESCRIPTION:
-    ! Solves SoE via PETSc TS
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_base_type) :: soe
-    PetscReal                  :: dt
-    PetscErrorCode             :: ierr
-    !
-    ! !LOCAL VARIABLES:
-    SNESConvergedReason        :: snes_reason
-
-    call TSSetTime(soe%ts, 0.d0, ierr); CHKERRQ(ierr)
-    call TSSetDuration(soe%ts, 100000, dt, ierr); CHKERRQ(ierr)
-    call TSsetInitialTimeStep(soe%ts, 0.0d0, 3600.0d0, ierr); CHKERRQ(ierr)
-
-    call TSSetFromOptions(soe%ts, ierr); CHKERRQ(ierr)
-
-    call TSSolve(soe%ts, soe%soln, ierr); CHKERRQ(ierr)
-
-  end subroutine SOEBaseStepDT_TS
 
   !------------------------------------------------------------------------
   subroutine SOEBaseStepDT_SNES(soe, dt, nstep, converged, converged_reason, ierr)
@@ -435,7 +324,7 @@ contains
     soe%nstep      = nstep
 
     ! Determine the default linesearch option
-    call SNESGetLineSearch(soe%snes, linesearch, ierr); CHKERRQ(ierr)
+    call SNESGetLineSearch(soe%solver%snes, linesearch, ierr); CHKERRQ(ierr)
     call PetscObjectTypeCompare(linesearch, SNESLINESEARCHBASIC, is_default_linesearch_basic, ierr); CHKERRQ(ierr)
     call PetscObjectTypeCompare(linesearch, SNESLINESEARCHBT, is_default_linesearch_bt, ierr); CHKERRQ(ierr)
     call PetscObjectTypeCompare(linesearch, SNESLINESEARCHL2, is_default_linesearch_l2, ierr); CHKERRQ(ierr)
@@ -497,10 +386,10 @@ contains
        end select
 
        ! Solve the nonlinear equation
-       call SNESSolve(soe%snes, PETSC_NULL_VEC, soe%soln, ierr); CHKERRQ(ierr)
+       call SNESSolve(soe%solver%snes, PETSC_NULL_VEC, soe%solver%soln, ierr); CHKERRQ(ierr)
 
        ! Get reason why SNES iteration stopped
-       call SNESGetConvergedReason(soe%snes, snes_reason, ierr); CHKERRQ(ierr)
+       call SNESGetConvergedReason(soe%solver%snes, snes_reason, ierr); CHKERRQ(ierr)
 
        converged_reason = snes_reason
 
@@ -509,11 +398,11 @@ contains
 
           linesearch_iter = linesearch_iter + 1
 
-          if (soe%use_dynamic_linesearch .and. linesearch_iter < max_linesearch_iter) then
+          if (soe%solver%use_dynamic_linesearch .and. linesearch_iter < max_linesearch_iter) then
              ! Let's try another linesearch
              write(iulog,*),'On proc ', soe%mpi_rank, ' time_step = ', soe%nstep, &
                   linesearch_name // ' unsuccessful. Trying another one.'
-             call VecCopy(soe%soln_prev, soe%soln, ierr); CHKERRQ(ierr)
+             call VecCopy(soe%solver%soln_prev, soe%solver%soln, ierr); CHKERRQ(ierr)
           else
              ! All linesearch options failed, reset the linesearch iteration
              ! counter
@@ -526,21 +415,23 @@ contains
                   'snes_reason = ',snes_reason,' cutting dt to ',dt_iter
           endif
 
-          call VecCopy(soe%soln_prev, soe%soln, ierr); CHKERRQ(ierr)
+          call VecCopy(soe%solver%soln_prev, soe%solver%soln, ierr); CHKERRQ(ierr)
        else
           ! SNES converged.
           converged = PETSC_TRUE
           soe%time = soe%time + dt_iter
 
-          call SNESGetIterationNumber(soe%snes,       &
+          call SNESGetIterationNumber(soe%solver%snes,       &
                num_newton_iterations, ierr); CHKERRQ(ierr)
-          call SNESGetLinearSolveIterations(soe%snes, &
+          call SNESGetLinearSolveIterations(soe%solver%snes, &
                num_linear_iterations, ierr); CHKERRQ(ierr)
 
-          soe%cumulative_newton_iterations = soe%cumulative_newton_iterations + &
-               num_newton_iterations
-          soe%cumulative_linear_iterations = soe%cumulative_linear_iterations + &
-               num_linear_iterations
+          call soe%solver%IncrementNewtonIterCount(num_newton_iterations)
+          call soe%solver%IncrementLinearIterCount(num_linear_iterations)
+          !soe%cumulative_newton_iterations = soe%cumulative_newton_iterations + &
+          !     num_newton_iterations
+          !soe%cumulative_linear_iterations = soe%cumulative_linear_iterations + &
+          !     num_linear_iterations
 
           ! Do any post-solve operations
           call soe%PostSolve()
@@ -605,19 +496,19 @@ contains
     call soe%PreSolve()
 
     ! Compute the 'b' vector
-    call soe%ComputeRHS(soe%ksp, soe%rhs, ierr)
+    call soe%ComputeRHS(soe%solver%ksp, soe%solver%rhs, ierr)
 
     ! Compute the 'A' matrix
-    call soe%ComputeOperators(soe%ksp, soe%Amat, soe%Amat, ierr);
+    call soe%ComputeOperators(soe%solver%ksp, soe%solver%Amat, soe%solver%Amat, ierr);
 
     ! Set the A matrix
-    call KSPSetOperators(soe%ksp, soe%Amat, soe%Amat, ierr)
+    call KSPSetOperators(soe%solver%ksp, soe%solver%Amat, soe%solver%Amat, ierr)
 
     ! Solve Ax = b
-    call KSPSolve(soe%ksp, soe%rhs, soe%soln, ierr)
+    call KSPSolve(soe%solver%ksp, soe%solver%rhs, soe%solver%soln, ierr)
 
     ! Did KSP converge?
-    call KSPGetConvergedReason(soe%ksp, converged_reason, ierr); CHKERRQ(ierr)
+    call KSPGetConvergedReason(soe%solver%ksp, converged_reason, ierr); CHKERRQ(ierr)
 
     ! Did KSP converge?
     if (converged_reason < 0) then
@@ -628,12 +519,13 @@ contains
        converged = PETSC_TRUE
     endif
 
-    ! Keep track of cummulative number of iterations
-    call KSPGetIterationNumber(soe%ksp, &
+    ! Keep track of cumulative number of iterations
+    call KSPGetIterationNumber(soe%solver%ksp, &
             num_linear_iterations, ierr); CHKERRQ(ierr)
 
-    soe%cumulative_linear_iterations = soe%cumulative_linear_iterations + &
-         num_linear_iterations
+    call soe%solver%IncrementLinearIterCount(num_linear_iterations)
+    !soe%cumulative_linear_iterations = soe%cumulative_linear_iterations + &
+    !     num_linear_iterations
 
     ! Do post-solve operations
     call soe%PostSolve()
@@ -656,7 +548,7 @@ contains
     ! !LOCAL VARIABLES:
     PetscErrorCode             :: ierr
 
-    call VecCopy(this%soln, this%soln_prev,ierr); CHKERRQ(ierr)
+    call VecCopy(this%solver%soln, this%solver%soln_prev, ierr); CHKERRQ(ierr)
 
   end subroutine SOEBasePostSolve
 
@@ -701,16 +593,16 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(sysofeqns_base_type), intent(inout)  :: soe
-    class(mesh_type), pointer, intent(in)      :: meshes(:)
-    PetscInt, intent(in)                       :: nmesh
+    class(sysofeqns_base_type) , intent(inout)       :: soe
+    class(mesh_type)           , pointer, intent(in) :: meshes(:)
+    PetscInt                   , intent(in)          :: nmesh
     !
     ! !LOCAL VARIABLES:
-    PetscInt                                   :: imesh
-    PetscInt                                   :: mesh_itype
-    PetscBool                                  :: mesh_found
-    class(mesh_type), pointer                  :: cur_mesh
-    class(goveqn_base_type),pointer            :: cur_goveqn
+    PetscInt                                         :: imesh
+    PetscInt                                         :: mesh_itype
+    PetscBool                                        :: mesh_found
+    class(mesh_type)           , pointer             :: cur_mesh
+    class(goveqn_base_type)    , pointer             :: cur_goveqn
 
     cur_goveqn => soe%goveqns
     do

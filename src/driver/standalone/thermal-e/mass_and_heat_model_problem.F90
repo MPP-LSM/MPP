@@ -75,7 +75,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -95,7 +95,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(th_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(th_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -602,18 +602,18 @@ contains
     PetscInt            :: soe_auxvar_id
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(th_mpp%soe%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(th_mpp%soe%solver%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(th_mpp%soe%dm, dms, ierr)
+    call DMCompositeGetEntriesArray(th_mpp%soe%solver%dm, dms, ierr)
 
     ! Allocate vectors for individual GEs
     allocate(soln_subvecs(nDM))
 
     ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(th_mpp%soe%dm, &
-         th_mpp%soe%soln, nDM, &
+    call DMCompositeGetAccessArray(th_mpp%soe%solver%dm, &
+         th_mpp%soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     do ii = 1, nDM
@@ -627,14 +627,14 @@ contains
     enddo
 
     ! Restore solution vectors for individual GEs
-    call DMCompositeRestoreAccessArray(th_mpp%soe%dm, &
-         th_mpp%soe%soln, nDM, &
+    call DMCompositeRestoreAccessArray(th_mpp%soe%solver%dm, &
+         th_mpp%soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-    call VecCopy(th_mpp%soe%soln, &
-         th_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(th_mpp%soe%soln, &
-         th_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%solver%soln, &
+         th_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(th_mpp%soe%solver%soln, &
+         th_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_conditions
 

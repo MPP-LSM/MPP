@@ -163,38 +163,38 @@ contains
     call DMDASetFieldName   (dm_p , 0     , "pressure_" , ierr ); CHKERRQ(ierr)
 
     ! Create DMComposite: pressure
-    call DMCompositeCreate  (PETSC_COMM_SELF , vsfm_soe%dm , ierr ); CHKERRQ(ierr)
-    call DMSetOptionsPrefix (vsfm_soe%dm     , "pressure_" , ierr ); CHKERRQ(ierr)
-    call DMCompositeAddDM   (vsfm_soe%dm     , dm_p        , ierr ); CHKERRQ(ierr)
+    call DMCompositeCreate  (PETSC_COMM_SELF , vsfm_soe%solver%dm , ierr ); CHKERRQ(ierr)
+    call DMSetOptionsPrefix (vsfm_soe%solver%dm     , "pressure_" , ierr ); CHKERRQ(ierr)
+    call DMCompositeAddDM   (vsfm_soe%solver%dm     , dm_p        , ierr ); CHKERRQ(ierr)
     call DMDestroy          (dm_p            , ierr               ); CHKERRQ(ierr)
-    call DMSetUp            (vsfm_soe%dm     , ierr               ); CHKERRQ(ierr)
+    call DMSetUp            (vsfm_soe%solver%dm     , ierr               ); CHKERRQ(ierr)
 
-    call DMCreateMatrix     (vsfm_soe%dm     , vsfm_soe%jac, ierr ); CHKERRQ(ierr)
-    call MatSetOption       (vsfm_soe%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
-    call MatSetOption       (vsfm_soe%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call DMCreateMatrix     (vsfm_soe%solver%dm     , vsfm_soe%solver%jac, ierr ); CHKERRQ(ierr)
+    call MatSetOption       (vsfm_soe%solver%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call MatSetOption       (vsfm_soe%solver%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
 
     ! Create solution vector
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln          , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln_prev     , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%soln_prev_clm , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(vsfm_soe%dm , vsfm_soe%res           , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%soln          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%soln_prev     , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%soln_prev_clm , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(vsfm_soe%solver%dm , vsfm_soe%solver%res           , ierr); CHKERRQ(ierr)
 
-    call VecZeroEntries(vsfm_soe%soln         , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(vsfm_soe%soln_prev    , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(vsfm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
-    call VecZeroEntries(vsfm_soe%res          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%soln         , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecZeroEntries(vsfm_soe%solver%res          , ierr); CHKERRQ(ierr)
 
     ! SNES
-    call SNESCreate(PETSC_COMM_SELF, vsfm_soe%snes, ierr); CHKERRQ(ierr)
-    call SNESSetTolerances(vsfm_soe%snes, atol, rtol, stol, &
+    call SNESCreate(PETSC_COMM_SELF, vsfm_soe%solver%snes, ierr); CHKERRQ(ierr)
+    call SNESSetTolerances(vsfm_soe%solver%snes, atol, rtol, stol, &
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
-    call SNESSetFunction(vsfm_soe%snes, vsfm_soe%res, SOEResidual, &
+    call SNESSetFunction(vsfm_soe%solver%snes, vsfm_soe%solver%res, SOEResidual, &
                          vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
-    call SNESSetJacobian(vsfm_soe%snes, vsfm_soe%jac, vsfm_soe%jac,     &
+    call SNESSetJacobian(vsfm_soe%solver%snes, vsfm_soe%solver%jac, vsfm_soe%solver%jac,     &
                          SOEJacobian, vsfm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
-    call SNESSetFromOptions(vsfm_soe%snes, ierr); CHKERRQ(ierr)
+    call SNESSetFromOptions(vsfm_soe%solver%snes, ierr); CHKERRQ(ierr)
 
     ! Get pointers to governing-equations
     call vsfm_soe%CreateVectorsForGovEqn()
@@ -600,7 +600,6 @@ contains
     ! Sets inital conditions for VSFM solver from CLM
     !
     ! !USES:
-    use SystemOfEquationsBasePointerType , only : SOEIFunction, SOEIJacobian
     use GoverningEquationBaseType        , only : goveqn_base_type
     use GoveqnRichardsODEPressureType    , only : goveqn_richards_ode_pressure_type
     use mpp_varpar                       , only : nlevgrnd
@@ -655,17 +654,17 @@ contains
     enddo
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(vsfm_soe%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(vsfm_soe%solver%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(vsfm_soe%dm, dms, ierr)
+    call DMCompositeGetEntriesArray(vsfm_soe%solver%dm, dms, ierr)
 
     ! Allocate vectors for individual GEs
     allocate(soln_subvecs(nDM))
 
     ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(vsfm_soe%dm, vsfm_soe%soln, nDM, &
+    call DMCompositeGetAccessArray(vsfm_soe%solver%dm, vsfm_soe%solver%soln, nDM, &
                                    PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     call VecGetArrayF90(soln_subvecs(1), press_p, ierr)
@@ -707,11 +706,11 @@ contains
     call VecRestoreArrayF90(soln_subvecs(1), press_p, ierr)
 
     ! Restore solution vectors for individual GEs
-    call DMCompositeRestoreAccessArray(vsfm_soe%dm, vsfm_soe%soln, nDM, &
+    call DMCompositeRestoreAccessArray(vsfm_soe%solver%dm, vsfm_soe%solver%soln, nDM, &
                                        PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-    call VecCopy(vsfm_soe%soln, vsfm_soe%soln_prev,     ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_soe%soln, vsfm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_soe%solver%soln, vsfm_soe%solver%soln_prev,     ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_soe%solver%soln, vsfm_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
     ! Free memory
     deallocate(dms)
@@ -749,11 +748,14 @@ contains
     PetscReal, pointer                                :: press_p(:)
     PetscInt                                          :: local_id
 
-    base_soe => vsfm_mpp%soe
+    base_soe => this%soe
     
     select type(base_soe)
     class is (sysofeqns_vsfm_type)
        vsfm_soe => base_soe
+    class default
+       write(*,*)'SoE is not of sysofeqns_vsfm_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
     
     cur_goveq => vsfm_soe%goveqns
@@ -776,17 +778,17 @@ contains
     endif
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(vsfm_soe%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(vsfm_soe%solver%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(vsfm_soe%dm, dms, ierr)
+    call DMCompositeGetEntriesArray(vsfm_soe%solver%dm, dms, ierr)
 
     ! Allocate vectors for individual GEs
     allocate(soln_subvecs(nDM))
 
     ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(vsfm_soe%dm, vsfm_soe%soln, nDM, &
+    call DMCompositeGetAccessArray(vsfm_soe%solver%dm, vsfm_soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
     call VecGetArrayF90(soln_subvecs(1), press_p, ierr)
@@ -796,11 +798,11 @@ contains
     call VecRestoreArrayF90(soln_subvecs(1), press_p, ierr)
 
     ! Restore solution vectors for individual GEs
-    call DMCompositeRestoreAccessArray(vsfm_soe%dm, vsfm_soe%soln, nDM, &
+    call DMCompositeRestoreAccessArray(vsfm_soe%solver%dm, vsfm_soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-    call VecCopy(vsfm_soe%soln, vsfm_soe%soln_prev, ierr); CHKERRQ(ierr)
-    call VecCopy(vsfm_soe%soln, vsfm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_soe%solver%soln, vsfm_soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_soe%solver%soln, vsfm_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
     ! Free up memory
     deallocate(dms)
@@ -1060,11 +1062,11 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-    this%soe%solver_type = this%solver_type
-    this%soe%itype       = SOE_RE_ODE
+    this%soe%solver%petsc_solver_type = this%solver_type
+    this%soe%itype                    = SOE_RE_ODE
 
     if (present(dyn_linesearch)) then
-       this%soe%use_dynamic_linesearch = dyn_linesearch
+       call this%soe%solver%SetUseDynLineSearch(dyn_linesearch)
     endif
 
   end subroutine VSFMMPPSetupProblem

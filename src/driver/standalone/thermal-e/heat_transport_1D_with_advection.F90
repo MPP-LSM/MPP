@@ -73,7 +73,7 @@ program heat_transport_1D_with_advection
      endif
 
      call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-     call VecView(thermal_enthalpy_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+     call VecView(thermal_enthalpy_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
      call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
@@ -93,7 +93,7 @@ program heat_transport_1D_with_advection
         string = 'final_soln_' // trim(output_suffix) // '.bin'
      endif
      call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-     call VecView(thermal_enthalpy_mpp%soe%soln,viewer,ierr);CHKERRQ(ierr)
+     call VecView(thermal_enthalpy_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
      call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
@@ -553,18 +553,18 @@ subroutine set_initial_conditions()
   class(sysofeqns_base_type),pointer                 :: base_soe
 
   ! Find number of GEs packed within the SoE
-  call DMCompositeGetNumberDM(thermal_enthalpy_mpp%soe%dm, nDM, ierr)
+  call DMCompositeGetNumberDM(thermal_enthalpy_mpp%soe%solver%dm, nDM, ierr)
 
   ! Get DMs for each GE
   allocate (dms(nDM))
-  call DMCompositeGetEntriesArray(thermal_enthalpy_mpp%soe%dm, dms, ierr)
+  call DMCompositeGetEntriesArray(thermal_enthalpy_mpp%soe%solver%dm, dms, ierr)
 
   ! Allocate vectors for individual GEs
   allocate(soln_subvecs(nDM))
 
   ! Get solution vectors for individual GEs
-  call DMCompositeGetAccessArray(thermal_enthalpy_mpp%soe%dm, &
-       thermal_enthalpy_mpp%soe%soln, nDM, &
+  call DMCompositeGetAccessArray(thermal_enthalpy_mpp%soe%solver%dm, &
+       thermal_enthalpy_mpp%soe%solver%soln, nDM, &
        PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
   do ii = 1, nDM
@@ -574,16 +574,16 @@ subroutine set_initial_conditions()
   enddo
 
   ! Restore solution vectors for individual GEs
-  call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%soe%dm, &
-       thermal_enthalpy_mpp%soe%soln, nDM, &
+  call DMCompositeRestoreAccessArray(thermal_enthalpy_mpp%soe%solver%dm, &
+       thermal_enthalpy_mpp%soe%solver%soln, nDM, &
        PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
-  call VecCopy(thermal_enthalpy_mpp%soe%soln, &
-       thermal_enthalpy_mpp%soe%soln_prev, ierr); CHKERRQ(ierr)
-  call VecCopy(thermal_enthalpy_mpp%soe%soln, &
-       thermal_enthalpy_mpp%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+  call VecCopy(thermal_enthalpy_mpp%soe%solver%soln, &
+       thermal_enthalpy_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+  call VecCopy(thermal_enthalpy_mpp%soe%solver%soln, &
+       thermal_enthalpy_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
-  call VecDuplicate(thermal_enthalpy_mpp%soe%soln,pressure_ic,ierr); CHKERRQ(ierr)
+  call VecDuplicate(thermal_enthalpy_mpp%soe%solver%soln,pressure_ic,ierr); CHKERRQ(ierr)
   call PetscViewerBinaryOpen(PETSC_COMM_SELF,'pressure_ic.bin',FILE_MODE_READ,viewer,ierr);CHKERRQ(ierr)
   call VecLoad(pressure_ic,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)

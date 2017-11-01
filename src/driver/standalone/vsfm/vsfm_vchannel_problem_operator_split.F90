@@ -90,7 +90,7 @@ contains
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp_vertical%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp_vertical%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 
@@ -102,16 +102,16 @@ contains
        call vsfm_mpp_vertical%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
 
-       call VecCopy(vsfm_mpp_vertical%soe%soln, vsfm_mpp_lateral%soe%soln         , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_vertical%soe%soln, vsfm_mpp_lateral%soe%soln_prev    , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_vertical%soe%soln, vsfm_mpp_lateral%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%soe%solver%soln, vsfm_mpp_lateral%soe%solver%soln         , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%soe%solver%soln, vsfm_mpp_lateral%soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_vertical%soe%solver%soln, vsfm_mpp_lateral%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
        call vsfm_mpp_lateral%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
 
-       call VecCopy(vsfm_mpp_lateral%soe%soln, vsfm_mpp_vertical%soe%soln         , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_lateral%soe%soln, vsfm_mpp_vertical%soe%soln_prev    , ierr); CHKERRQ(ierr)
-       call VecCopy(vsfm_mpp_lateral%soe%soln, vsfm_mpp_vertical%soe%soln_prev_clm, ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%soe%solver%soln, vsfm_mpp_vertical%soe%solver%soln         , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%soe%solver%soln, vsfm_mpp_vertical%soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+       call VecCopy(vsfm_mpp_lateral%soe%solver%soln, vsfm_mpp_vertical%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
     enddo
 
@@ -122,7 +122,7 @@ contains
           string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-       call VecView(vsfm_mpp_lateral%soe%soln,viewer,ierr);CHKERRQ(ierr)
+       call VecView(vsfm_mpp_lateral%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
     endif
 

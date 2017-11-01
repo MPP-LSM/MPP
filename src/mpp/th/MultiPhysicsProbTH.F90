@@ -848,8 +848,8 @@ contains
 
     call MPPTHKSPSetup(this)
 
-    this%soe%solver_type = this%solver_type
-    this%soe%itype       = SOE_TH
+    this%soe%solver%petsc_solver_type = this%solver_type
+    this%soe%itype                    = SOE_TH
 
   end subroutine MPPTHSetupProblem
 
@@ -928,58 +928,58 @@ contains
     ! DM-Composite approach
 
     ! Create DMComposite: temperature
-    call DMCompositeCreate(PETSC_COMM_SELF, therm_soe%dm, ierr); CHKERRQ(ierr)
-    call DMSetOptionsPrefix(therm_soe%dm, "temperature_", ierr); CHKERRQ(ierr)
+    call DMCompositeCreate(PETSC_COMM_SELF, therm_soe%solver%dm, ierr); CHKERRQ(ierr)
+    call DMSetOptionsPrefix(therm_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
 
     ! Add DMs to DMComposite
     do igoveq = 1, therm_soe%ngoveqns
-       call DMCompositeAddDM(therm_soe%dm, dms(igoveq), ierr); CHKERRQ(ierr)
+       call DMCompositeAddDM(therm_soe%solver%dm, dms(igoveq), ierr); CHKERRQ(ierr)
     enddo
 
     ! Setup DM
-    call DMSetUp(therm_soe%dm, ierr); CHKERRQ(ierr)
+    call DMSetUp(therm_soe%solver%dm, ierr); CHKERRQ(ierr)
 
     ! Create matrix
-    call DMCreateMatrix    (therm_soe%dm   , therm_soe%Amat, ierr); CHKERRQ(ierr)
+    call DMCreateMatrix    (therm_soe%solver%dm   , therm_soe%solver%Amat, ierr); CHKERRQ(ierr)
 
-    call MatSetOption      (therm_soe%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
+    call MatSetOption      (therm_soe%solver%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
          PETSC_FALSE, ierr); CHKERRQ(ierr)
-    call MatSetOption      (therm_soe%Amat , MAT_NEW_NONZERO_ALLOCATION_ERR, &
+    call MatSetOption      (therm_soe%solver%Amat , MAT_NEW_NONZERO_ALLOCATION_ERR, &
          PETSC_FALSE, ierr); CHKERRQ(ierr)
 
-    call MatSetFromOptions (therm_soe%Amat , ierr); CHKERRQ(ierr)
+    call MatSetFromOptions (therm_soe%solver%Amat , ierr); CHKERRQ(ierr)
 
-    call DMCreateMatrix     (therm_soe%dm , therm_soe%jac, ierr ); CHKERRQ(ierr)
-    call MatSetOption       (therm_soe%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
-    call MatSetOption       (therm_soe%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call DMCreateMatrix     (therm_soe%solver%dm , therm_soe%solver%jac, ierr ); CHKERRQ(ierr)
+    call MatSetOption       (therm_soe%solver%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call MatSetOption       (therm_soe%solver%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
 
     ! Create vectors
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln         , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%rhs          , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln_prev    , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%soln_prev_clm, ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%dm, therm_soe%res          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln         , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%rhs          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%res          , ierr); CHKERRQ(ierr)
 
     ! Initialize vectors
-    call VecZeroEntries(therm_soe%soln          , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%soln_prev     , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%soln_prev_clm , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%res          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%soln          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%soln_prev     , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%soln_prev_clm , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(therm_soe%solver%res          , ierr); CHKERRQ(ierr)
 
     ! Create SNES
-    call SNESCreate             (PETSC_COMM_SELF , therm_soe%snes, ierr); CHKERRQ(ierr)
-    call SNESSetOptionsPrefix   (therm_soe%snes  , "temperature_", ierr); CHKERRQ(ierr)
+    call SNESCreate             (PETSC_COMM_SELF , therm_soe%solver%snes, ierr); CHKERRQ(ierr)
+    call SNESSetOptionsPrefix   (therm_soe%solver%snes  , "temperature_", ierr); CHKERRQ(ierr)
 
-    call SNESSetTolerances(therm_soe%snes, atol, rtol, stol, &
+    call SNESSetTolerances(therm_soe%solver%snes, atol, rtol, stol, &
                            max_it, max_f, ierr); CHKERRQ(ierr)
 
-    call SNESSetFunction(therm_soe%snes, therm_soe%res, SOEResidual, &
+    call SNESSetFunction(therm_soe%solver%snes, therm_soe%solver%res, SOEResidual, &
          th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
-    call SNESSetJacobian(therm_soe%snes, therm_soe%jac, therm_soe%jac,     &
+    call SNESSetJacobian(therm_soe%solver%snes, therm_soe%solver%jac, therm_soe%solver%jac,     &
          SOEJacobian, th_mpp%soe_ptr, ierr); CHKERRQ(ierr)
 
-    call SNESSetFromOptions(therm_soe%snes, ierr); CHKERRQ(ierr)
+    call SNESSetFromOptions(therm_soe%solver%snes, ierr); CHKERRQ(ierr)
 
     ! Get pointers to governing-equations
     call therm_soe%CreateVectorsForGovEqn()

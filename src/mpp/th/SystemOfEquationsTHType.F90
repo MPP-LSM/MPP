@@ -261,7 +261,7 @@ contains
     case(SOE_TH)
 
        ! 1) {soln_prev}  ---> sim_aux()
-       call SOETHUpdateAuxVars(this, this%soln_prev)
+       call SOETHUpdateAuxVars(this, this%solver%soln_prev)
 
        ! 2) GE ---> GetFromSimAux()
        cur_goveq => this%goveqns
@@ -412,17 +412,17 @@ contains
     class(goveqn_base_type) , pointer :: cur_goveq
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(therm_soe%dm, nDM, ierr); CHKERRQ(ierr)
+    call DMCompositeGetNumberDM(therm_soe%solver%dm, nDM, ierr); CHKERRQ(ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(therm_soe%dm, dms, ierr); CHKERRQ(ierr)
+    call DMCompositeGetEntriesArray(therm_soe%solver%dm, dms, ierr); CHKERRQ(ierr)
 
     ! Allocate vectors for individual GEs
     allocate(X_subvecs(nDM))
 
     ! Get vectors (X) for individual GEs
-    call DMCompositeGetAccessArray(therm_soe%dm, X, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeGetAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
          X_subvecs, ierr); CHKERRQ(ierr)
 
     ! Update the SoE auxvars
@@ -455,7 +455,7 @@ contains
     enddo
 
     ! Restore vectors (u,udot,F) for individual GEs
-    call DMCompositeRestoreAccessArray(therm_soe%dm, X, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeRestoreAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
          X_subvecs, ierr); CHKERRQ(ierr)
 
     ! Free memory
@@ -852,20 +852,20 @@ contains
     PetscInt                          :: offset
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(this%dm, nDM, ierr); CHKERRQ(ierr)
+    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr); CHKERRQ(ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(this%dm, dms, ierr); CHKERRQ(ierr)
+    call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
 
     ! Allocate vectors for individual GEs
     allocate(X_subvecs(    nDM))
     allocate(F_subvecs(    nDM))
 
     ! Get vectors (X,F) for individual GEs
-    call DMCompositeGetAccessArray(this%dm, X, nDM, PETSC_NULL_INTEGER, X_subvecs, &
+    call DMCompositeGetAccessArray(this%solver%dm, X, nDM, PETSC_NULL_INTEGER, X_subvecs, &
          ierr); CHKERRQ(ierr)
-    call DMCompositeGetAccessArray(this%dm, F, nDM, PETSC_NULL_INTEGER, F_subvecs, &
+    call DMCompositeGetAccessArray(this%solver%dm, F, nDM, PETSC_NULL_INTEGER, F_subvecs, &
          ierr); CHKERRQ(ierr)
 
 
@@ -968,9 +968,9 @@ contains
     enddo
 
     ! Restore vectors (u,udot,F) for individual GEs
-    call DMCompositeRestoreAccessArray(this%dm, X, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeRestoreAccessArray(this%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
          X_subvecs, ierr); CHKERRQ(ierr)
-    call DMCompositeRestoreAccessArray(this%dm, F, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeRestoreAccessArray(this%solver%dm, F, nDM, PETSC_NULL_INTEGER, &
          F_subvecs, ierr); CHKERRQ(ierr)
     
     ! Free memory
@@ -1018,17 +1018,17 @@ contains
 
 
     ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(this%dm, nDM, ierr)
+    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
 
     ! Get DMs for each GE
     allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(this%dm, dms, ierr); CHKERRQ(ierr)
+    call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
 
     ! Allocate vectors for individual GEs
     allocate(X_subvecs(    nDM))
 
     ! Get vectors (X) for individual GEs
-    call DMCompositeGetAccessArray(this%dm, X, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeGetAccessArray(this%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
          X_subvecs, ierr); CHKERRQ(ierr)
 
     ! Initialize the matrix
@@ -1037,7 +1037,7 @@ contains
     ! Get submatrices
     allocate(is(nDM))
     allocate(B_submats(nDM,nDM))
-    call DMCompositeGetLocalISs(this%dm, is, ierr); CHKERRQ(ierr)
+    call DMCompositeGetLocalISs(this%solver%dm, is, ierr); CHKERRQ(ierr)
     do row = 1,nDM
        do col = 1,nDM
           call MatGetLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
@@ -1093,7 +1093,7 @@ contains
     enddo
 
     ! Restore vectors (X) for individual GEs
-    call DMCompositeRestoreAccessArray(this%dm, X, nDM, PETSC_NULL_INTEGER, &
+    call DMCompositeRestoreAccessArray(this%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
          X_subvecs, ierr); CHKERRQ(ierr)
 
     ! Restore submatrices
