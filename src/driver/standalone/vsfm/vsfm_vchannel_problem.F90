@@ -846,21 +846,25 @@ contains
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SEEPAGE_BC
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use ConnectionSetType         , only : connection_set_type
+    use ConnectionSetType         , only : ConnectionSetDestroy
+    use MeshType                  , only : MeshCreateConnectionSet
     !
     ! !ARGUMENTS
     implicit none
     !
-    PetscInt           :: ieqn
-    PetscInt           :: icond
-    PetscInt           :: iconn, nconn
-    PetscInt           :: ii,jj
-    PetscInt, pointer  :: conn_id_up(:)   !
-    PetscInt, pointer  :: conn_id_dn(:)   !
-    PetscReal, pointer :: conn_dist_up(:) !
-    PetscReal, pointer :: conn_dist_dn(:) !
-    PetscReal, pointer :: conn_area(:)    !
-    PetscReal, pointer :: conn_type(:)    !
-    PetscReal, pointer :: conn_unitvec(:,:)
+    PetscInt                            :: ieqn
+    PetscInt                            :: icond
+    PetscInt                            :: iconn, nconn
+    PetscInt                            :: ii,jj
+    PetscInt                  , pointer :: conn_id_up(:)   !
+    PetscInt                  , pointer :: conn_id_dn(:)   !
+    PetscReal                 , pointer :: conn_dist_up(:) !
+    PetscReal                 , pointer :: conn_dist_dn(:) !
+    PetscReal                 , pointer :: conn_area(:)    !
+    PetscInt                  , pointer :: conn_type(:)    !
+    PetscReal                 , pointer :: conn_unitvec(:,:)
+    type(connection_set_type) , pointer :: conn_set
 
     if (.not. with_seepage_bc) return
 
@@ -889,15 +893,19 @@ contains
        enddo
     enddo
 
+    allocate(conn_set)
+
+    call MeshCreateConnectionSet(vsfm_mpp%meshes(1), &
+         nconn, conn_id_up, conn_id_dn, &
+         conn_dist_up, conn_dist_dn, conn_area, &
+         conn_type, conn_unitvec, conn_set)
+
     ieqn = 1
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_SEEPAGE_BC, &
-         SOIL_TOP_CELLS)
+         SOIL_TOP_CELLS, conn_set)
 
-    icond = 1
-    call vsfm_mpp%GovEqnUpdateConditionConnSet(ieqn, icond, COND_BC, &
-         nconn,  conn_id_up, conn_id_dn, &
-         conn_dist_up, conn_dist_dn,  conn_unitvec, conn_area)
+    call ConnectionSetDestroy(conn_set)
 
     deallocate (conn_id_up   )
     deallocate (conn_id_dn   )

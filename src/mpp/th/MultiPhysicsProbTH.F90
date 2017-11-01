@@ -31,10 +31,9 @@ module MultiPhysicsProbTH
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_th_type
    contains
-     procedure, public :: Init                          => MPPTHInit
-     procedure, public :: AllocateAuxVars               => MPPTHAllocateAuxVars
-     procedure, public :: SetupProblem                  => MPPTHSetupProblem
-     procedure, public :: GovEqnUpdateBCConnectionSet   => MPPTHGovEqnUpdateBCConnectionSet
+     procedure, public :: Init                        => MPPTHInit
+     procedure, public :: AllocateAuxVars             => MPPTHAllocateAuxVars
+     procedure, public :: SetupProblem                => MPPTHSetupProblem
 
   end type mpp_th_type
 
@@ -992,89 +991,6 @@ contains
     deallocate(dms)
 
   end subroutine MPPTHKSPSetup
-
-  !------------------------------------------------------------------------
-  subroutine MPPTHGovEqnUpdateBCConnectionSet(this, igoveqn, icond, &
-       var_type, nval, values)
-    !
-    ! !DESCRIPTION:
-    ! For a boundary condition of a given governing equation, update distance
-    ! for a downstream cell.
-    !
-    use ConditionType             , only : condition_type
-    use ConnectionSetType         , only : connection_set_type
-    use GoverningEquationBaseType, only : goveqn_base_type
-    use MultiPhysicsProbConstants, only : VAR_DIST_DN
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_th_type) :: this
-    PetscInt :: igoveqn
-    PetscInt :: icond
-    PetscInt :: nval
-    PetscInt :: var_type
-    PetscReal, pointer :: values (:)
-    !
-    class(goveqn_base_type),pointer   :: cur_goveq
-    type(condition_type)    , pointer :: cur_cond
-    type(connection_set_type)     , pointer :: cur_conn_set
-    PetscInt :: ii
-    PetscInt :: iconn
-    PetscInt :: bc_idx
-    PetscBool :: bc_found
-
-    if (igoveqn > this%soe%ngoveqns) then
-       write(iulog,*) 'Attempting to access governing equation that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%soe%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    bc_found = PETSC_FALSE
-    cur_cond => cur_goveq%boundary_conditions%first
-    do
-       if (.not.associated(cur_cond)) exit
-
-       bc_idx = bc_idx + 1
-       if (bc_idx == icond) then
-          bc_found = PETSC_TRUE
-
-          cur_conn_set => cur_cond%conn_set
-          if (nval /= cur_conn_set%num_connections) then
-             write(iulog,*) 'Number of values to update connections ' // &
-                  'do not match number of connections.'
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          endif
-
-          do iconn = 1, cur_conn_set%num_connections
-
-             select case(var_type)
-             case (VAR_DIST_DN)
-                cur_conn_set%dist_dn(iconn) = values(iconn)
-             case default
-                write(iulog,*) 'Unknown variable type'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             end select
-          enddo
-
-          exit
-
-       end if
-
-       cur_cond => cur_cond%next
-    enddo
-
-    if (.not.bc_found) then
-       write(iulog,*) 'Failed to find icond = ',icond,' in the boundary condition list.'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-
-  end subroutine MPPTHGovEqnUpdateBCConnectionSet
 
 #endif
 

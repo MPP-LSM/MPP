@@ -32,14 +32,10 @@ module MultiPhysicsProbVSFM
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_vsfm_type
    contains
-     procedure, public :: Init                         => VSFMMPPInit
-     procedure, public :: Clean                        => VSFMMPPClean
-     procedure, public :: Restart                      => VSFMMPPRestart
-     procedure, public :: UpdateSysOfEqnsAuxVars       => VSFMMPPUpdateSysOfEqnsAuxVars
-     procedure, public :: GetMPIRank                   => VSFMMPPGetMPIRank
-     procedure, public :: AllocateAuxVars              => VSFMMPPAllocateAuxVars
-     procedure, public :: SetupProblem                 => VSFMMPPSetupProblem
-     procedure, public :: GovEqnUpdateConditionConnSet => VSFMMPPGovEqnUpdateConditionConnSet
+     procedure, public :: Init            => VSFMMPPInit
+     procedure, public :: Restart         => VSFMMPPRestart
+     procedure, public :: AllocateAuxVars => VSFMMPPAllocateAuxVars
+     procedure, public :: SetupProblem    => VSFMMPPSetupProblem
   end type mpp_vsfm_type
 
   type(mpp_vsfm_type), public, target :: vsfm_mpp
@@ -82,28 +78,6 @@ contains
     nullify(this%soe_ptr%ptr)
 
   end subroutine VSFMMPPInit
-
-  !------------------------------------------------------------------------
-  subroutine VSFMMPPGetMPIRank(this, rank)
-    !
-    ! !DESCRIPTION:
-    ! Returns MPI rank
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type)    :: this
-    PetscInt, intent(out)   :: rank
-
-    rank = -1
-    !if (associated(this%sysofeqns)) then
-    !   rank = this%soe%mpi_rank
-    !endif
-    if (associated(this%soe)) then
-       rank = this%soe%mpi_rank
-    endif
-
-  end subroutine VSFMMPPGetMPIRank
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetupPetscSNESSetup(vsfm_mpp)
@@ -746,96 +720,6 @@ contains
   end subroutine VSFMMPPSetICsSNESCLM
 
   !------------------------------------------------------------------------
-  subroutine VSFMMPPUpdateSysOfEqnsAuxVars(this, gov_eqn_id, auxvar_type, &
-                                           condition_id, num_values, &
-                                           values)
-    !
-    ! !DESCRIPTION:
-    ! Updates SoE auxvars associated with:
-    ! - Internal connections,
-    ! - Boundary conditions, and
-    ! - Source-sink terms.
-    !
-    ! !USES:
-    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
-    use MultiPhysicsProbConstants, only : AUXVAR_BC
-    use MultiPhysicsProbConstants, only : AUXVAR_SS
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type)               :: this
-    PetscInt, intent(in)               :: gov_eqn_id
-    PetscInt, intent(in)               :: auxvar_type
-    PetscInt, intent(in)               :: condition_id
-    PetscInt, intent(in)               :: num_values
-    PetscReal,intent(in)               :: values(:)
-    ! !LOCAL VARIABLES:
-    class(sysofeqns_vsfm_type),pointer :: vsfm_soe
-    class(sysofeqns_base_type),pointer :: base_soe
-    PetscInt                           :: iauxvar
-    PetscInt                           :: counter
-
-    base_soe => vsfm_mpp%soe
-    
-    select type(base_soe)
-    class is (sysofeqns_vsfm_type)
-       vsfm_soe => base_soe
-    end select
-
-    select case(auxvar_type)
-    case (AUXVAR_INTERNAL)
-       write(iulog,*)'VSFMMPPUpdateSysOfEqnsAuxVars: Add code for AUXVAR_INTERNAL'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-
-    case (AUXVAR_BC)
-       counter = 0
-       do iauxvar = 1, vsfm_soe%num_auxvars_bc
-          if (vsfm_soe%aux_vars_bc(iauxvar)%is_bc                         .and. &
-              vsfm_soe%aux_vars_bc(iauxvar)%goveqn_id == gov_eqn_id       .and. &
-              vsfm_soe%aux_vars_bc(iauxvar)%condition_id == condition_id        &
-              ) then
-
-             counter = counter + 1
-             vsfm_soe%aux_vars_bc(iauxvar)%condition_value = values(counter)
-
-          end if
-       enddo
-
-       if (counter /= num_values) then
-          write(iulog,*)'VSFMMPPUpdateSysOfEqnsAuxVars: All BC values not assigned to ' // &
-             'vsfm_soe%aux_vars_bc'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       endif
-
-    case (AUXVAR_SS)
-       counter = 0
-       do iauxvar = 1, vsfm_soe%num_auxvars_ss
-          if (vsfm_soe%aux_vars_ss(iauxvar)%is_ss                         .and. &
-              vsfm_soe%aux_vars_ss(iauxvar)%goveqn_id == gov_eqn_id       .and. &
-              vsfm_soe%aux_vars_ss(iauxvar)%condition_id == condition_id        &
-              ) then
-
-             counter = counter + 1
-             vsfm_soe%aux_vars_ss(iauxvar)%condition_value = values(counter)
-
-          end if
-       enddo
-
-       if (counter /= num_values) then
-          write(iulog,*)'VSFMMPPUpdateSysOfEqnsAuxVars: All BC values not assigned to ' // &
-             'vsfm_soe%aux_vars_ss'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       endif
-
-    case default
-       write(iulog,*) 'VSFMMPPUpdateSysOfEqnsAuxVars: Unknown auxvar_type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-  end subroutine VSFMMPPUpdateSysOfEqnsAuxVars
-
-  !------------------------------------------------------------------------
   subroutine VSFMMPPRestart(this, data_1d)
     !
     ! !DESCRIPTION:
@@ -923,54 +807,6 @@ contains
     deallocate(soln_subvecs)
 
   end subroutine VSFMMPPRestart
-
-  !------------------------------------------------------------------------
-  subroutine VSFMMPPGovEqnUpdateConditionConnSet(this, igoveqn, icond, &
-       ss_or_bc_type, nconn,  conn_id_up, conn_id_dn, &
-       conn_dist_up, conn_dist_dn,  conn_unitvec, conn_area)
-    !
-    ! !DESCRIPTION:
-    ! For a given governing equation, updates connection set of a
-    ! boundary/source-sink condition
-    !
-    use GoverningEquationBaseType, only : goveqn_base_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type)            :: this
-    PetscInt                        :: igoveqn
-    PetscInt                        :: icond
-    PetscInt                        :: ss_or_bc_type
-    PetscInt                        :: nconn
-    PetscInt, pointer               :: conn_id_up(:)   !
-    PetscInt, pointer               :: conn_id_dn(:)   !
-    PetscReal, pointer              :: conn_dist_up(:) !
-    PetscReal, pointer              :: conn_dist_dn(:) !
-    PetscReal, pointer              :: conn_area(:)    !
-    PetscReal, pointer              :: conn_type(:)    !
-    PetscReal, pointer              :: conn_unitvec(:,:)
-    !
-    class(goveqn_base_type),pointer :: cur_goveq
-    class(goveqn_base_type),pointer :: other_goveq
-    PetscInt                        :: ii
-
-    if (igoveqn > this%soe%ngoveqns) then
-       write(iulog,*) 'Attempting to add condition for governing equation ' // &
-            'that is not in the list'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    cur_goveq => this%soe%goveqns
-    do ii = 1, igoveqn-1
-       cur_goveq => cur_goveq%next
-    enddo
-
-    call cur_goveq%UpdateConditionConnSet(icond, ss_or_bc_type, nconn, &
-         conn_id_up, conn_id_dn, conn_dist_up, conn_dist_dn,    &
-         conn_unitvec, conn_area)
-
-  end subroutine VSFMMPPGovEqnUpdateConditionConnSet
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPAllocateAuxVars(this)
@@ -1232,24 +1068,6 @@ contains
     endif
 
   end subroutine VSFMMPPSetupProblem
-
-  !------------------------------------------------------------------------
-  subroutine VSFMMPPClean(this)
-    !
-    ! !DESCRIPTION:
-    ! Release memory allocated to the object
-    !
-    ! !USES:
-    use MultiPhysicsProbBaseType , only : MMPBaseClean
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_vsfm_type) :: this
-
-    call MMPBaseClean(this)
-
-  end subroutine VSFMMPPClean
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetAuxVarConnRealValue(this, igoveqn, auxvar_type, &

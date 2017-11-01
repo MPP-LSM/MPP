@@ -50,10 +50,12 @@ module MultiPhysicsProbBaseType
      procedure, public :: AddGovEqn                     => MPPAddGovEqn
      procedure, public :: SetMeshesOfGoveqns            => MPPSetMeshesOfGoveqns
      procedure, public :: SetMPIRank                    => MPPSetMPIRank
+     procedure, public :: GetMPIRank                    => MPPGetMPIRank
      procedure, public :: GovEqnUpdateBCConnectionSet   => MPPGovEqnUpdateBCConnectionSet
      procedure, public :: GovEqnSetCouplingVars         => MPPGovEqnSetCouplingVars
      procedure, public :: GovEqnSetInternalCouplingVars => MPPGovEqnSetInternalCouplingVars
      procedure, public :: GovEqnSetBothCouplingVars     => MPPGovEqnSetBothCouplingVars
+     procedure, public :: GovEqnAddCouplingCondition    => MPPGovEqnAddCouplingCondition
   end type multiphysicsprob_base_type
 
   public :: MPPBaseInit
@@ -453,6 +455,25 @@ contains
     endif
 
   end subroutine MPPSetMPIRank
+
+  !------------------------------------------------------------------------
+  subroutine MPPGetMPIRank(this, rank)
+    !
+    ! !DESCRIPTION:
+    ! Returns MPI rank
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+    PetscInt, intent(out)             :: rank
+
+    rank = -1
+    if (associated(this%soe)) then
+       rank = this%soe%mpi_rank
+    endif
+
+  end subroutine MPPGetMPIRank
 
   !------------------------------------------------------------------------
   subroutine MPPGovEqnUpdateBCConnectionSet(this, igoveqn, icond, &
@@ -906,6 +927,44 @@ contains
 
   end subroutine MPPGovEqnSetBothCouplingVars
 
+  !------------------------------------------------------------------------
+  subroutine MPPGovEqnAddCouplingCondition(this, ieqn_1, ieqn_2, &
+       iregion_1, iregion_2)
+    !
+    ! !DESCRIPTION:
+    ! Adds a boundary condition to couple ieqn_1 and ieqn_2
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+    PetscInt                          :: ieqn_1
+    PetscInt                          :: ieqn_2
+    PetscInt                          :: iregion_1
+    PetscInt                          :: iregion_2
+    !
+    character(len=256)                :: name
+    PetscInt                          :: num_other_goveqs
+    PetscInt, pointer                 :: id_of_other_goveqs(:)
+
+    num_other_goveqs = 1
+    allocate(id_of_other_goveqs(num_other_goveqs))
+
+    write(name,*) ieqn_2
+    name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
+    id_of_other_goveqs(1) = ieqn_2
+    call this%soe%AddCouplingBCsInGovEqn(ieqn_1, &
+         name, '[K]', iregion_1, num_other_goveqs, id_of_other_goveqs)
+
+    write(name,*) ieqn_1
+    name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
+    id_of_other_goveqs(1) = ieqn_1
+    call this%soe%AddCouplingBCsInGovEqn(ieqn_2,  &
+         name, '[K]', iregion_2, num_other_goveqs, id_of_other_goveqs)
+
+    deallocate(id_of_other_goveqs)
+
+  end subroutine MPPGovEqnAddCouplingCondition
 #endif
 
 end module MultiPhysicsProbBaseType
