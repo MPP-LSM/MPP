@@ -10,9 +10,13 @@ module MultiPhysicsProbBaseType
 
 #include <petsc/finclude/petsc.h>
   use petscsys
-
-
-
+  use petscvec
+  use petscmat
+  use petscts
+  use petscsnes
+  use petscdm
+  use petscdmda
+  !
   ! !USES:
   use MeshType        , only : mesh_type
   use mpp_varctl      , only : iulog
@@ -62,6 +66,7 @@ module MultiPhysicsProbBaseType
   public :: MMPBaseClean
   public :: MPPSetName
   public :: MPPSetNumMeshes
+  public :: MPPSetupProblem
 
   !------------------------------------------------------------------------
 contains
@@ -965,6 +970,277 @@ contains
     deallocate(id_of_other_goveqs)
 
   end subroutine MPPGovEqnAddCouplingCondition
+
+  !------------------------------------------------------------------------
+  subroutine MPPSetupProblem(this)
+    !
+    ! !DESCRIPTION:
+    ! Sets the PETSc SNES problem
+    !
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use MultiPhysicsProbConstants , only : PETSC_SNES
+    use MultiPhysicsProbConstants , only : PETSC_KSP
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type)      :: this
+
+    select case(this%solver_type)
+    case (PETSC_SNES)
+       call MPPSetupProblemSNES(this)
+    case (PETSC_KSP)
+       call MPPSetupProblemKSP(this)
+    case default
+       write(iulog,*) 'VSFMMPPSetup: Unknown this%solver_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    call this%soe%CreateVectorsForGovEqn()
+
+    this%soe%solver%petsc_solver_type = this%solver_type
+    
+  end subroutine MPPSetupProblem
+
+  !------------------------------------------------------------------------
+  subroutine MPPSetupProblemSNES(this)
+    !
+    ! !DESCRIPTION:
+    ! Sets the PETSc SNES problem
+    !
+    use GoverningEquationBaseType        , only : goveqn_base_type
+    use SystemOfEquationsBasePointerType , only : SOEResidual
+    use SystemOfEquationsBasePointerType , only : SOEJacobian
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type)      :: this
+    !
+    ! !LOCAL VARIABLES:
+    class(goveqn_base_type)    , pointer   :: cur_goveq
+    class(sysofeqns_base_type) , pointer   :: base_soe
+    PetscInt                               :: size
+    PetscInt                               :: igoveq
+    PetscErrorCode                         :: ierr
+    DM                         , pointer   :: dms(:)
+    PetscReal                  , parameter :: atol    = PETSC_DEFAULT_REAL
+    PetscReal                  , parameter :: rtol    = PETSC_DEFAULT_REAL
+    PetscReal                  , parameter :: stol    = 1.d-10
+    PetscInt                   , parameter :: max_it  = PETSC_DEFAULT_INTEGER
+    PetscInt                   , parameter :: max_f   = PETSC_DEFAULT_INTEGER
+    character(len=256)                     :: name
+
+    base_soe         => this%soe
+    this%soe_ptr%ptr => this%soe
+    
+    ! Create PETSc DM for each governing equation
+
+    allocate(dms(base_soe%ngoveqns))
+
+    igoveq = 0
+    cur_goveq => base_soe%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       igoveq = igoveq + 1
+       size   = cur_goveq%mesh%ncells_local
+
+       call DMDACreate1d(PETSC_COMM_SELF, &
+            DM_BOUNDARY_NONE, size, 1, 1, &
+            PETSC_NULL_INTEGER, dms(igoveq), ierr);
+       CHKERRQ(ierr)
+
+       write(name,*) igoveq
+       name = 'fgoveq_' // trim(adjustl(name))
+       call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
+
+       call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
+       call DMSetUp(         dms(igoveq) , ierr); CHKERRQ(ierr)
+
+       write(name,*) igoveq
+       name = 'goveq_' // trim(adjustl(name))
+       call DMDASetFieldName(dms(igoveq), 0, name, ierr); CHKERRQ(ierr)
+
+       cur_goveq => cur_goveq%next
+    enddo
+
+    ! DM-Composite approach
+
+    ! Create DMComposite: temperature
+    call DMCompositeCreate(PETSC_COMM_SELF, base_soe%solver%dm, ierr); CHKERRQ(ierr)
+    call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
+
+    ! Add DMs to DMComposite
+    do igoveq = 1, base_soe%ngoveqns
+       call DMCompositeAddDM(base_soe%solver%dm, dms(igoveq), ierr); CHKERRQ(ierr)
+    enddo
+
+    ! Setup DM
+    call DMSetUp(base_soe%solver%dm, ierr); CHKERRQ(ierr)
+
+    ! Create matrix
+    call DMCreateMatrix    (base_soe%solver%dm   , base_soe%solver%Amat, ierr); CHKERRQ(ierr)
+
+    call MatSetOption      (base_soe%solver%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
+         PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call MatSetOption      (base_soe%solver%Amat , MAT_NEW_NONZERO_ALLOCATION_ERR, &
+         PETSC_FALSE, ierr); CHKERRQ(ierr)
+
+    call MatSetFromOptions (base_soe%solver%Amat , ierr); CHKERRQ(ierr)
+
+    call DMCreateMatrix     (base_soe%solver%dm , base_soe%solver%jac, ierr ); CHKERRQ(ierr)
+    call MatSetOption       (base_soe%solver%jac, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call MatSetOption       (base_soe%solver%jac, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr); CHKERRQ(ierr)
+
+    ! Create vectors
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%soln         , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%rhs          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%res          , ierr); CHKERRQ(ierr)
+
+    ! Initialize vectors
+    call VecZeroEntries(base_soe%solver%soln          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(base_soe%solver%soln_prev     , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(base_soe%solver%soln_prev_clm , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(base_soe%solver%res          , ierr); CHKERRQ(ierr)
+
+    ! Create SNES
+    call SNESCreate             (PETSC_COMM_SELF , base_soe%solver%snes, ierr); CHKERRQ(ierr)
+    !call SNESSetOptionsPrefix   (base_soe%solver%snes  , "temperature_", ierr); CHKERRQ(ierr)
+
+    call SNESSetTolerances(base_soe%solver%snes, atol, rtol, stol, &
+                           max_it, max_f, ierr); CHKERRQ(ierr)
+
+    call SNESSetFunction(base_soe%solver%snes, base_soe%solver%res, SOEResidual, &
+         this%soe_ptr, ierr); CHKERRQ(ierr)
+
+    call SNESSetJacobian(base_soe%solver%snes, base_soe%solver%jac, base_soe%solver%jac,     &
+         SOEJacobian, this%soe_ptr, ierr); CHKERRQ(ierr)
+
+    call SNESSetFromOptions(base_soe%solver%snes, ierr); CHKERRQ(ierr)
+
+    ! Cleanup
+    do igoveq = 1, base_soe%ngoveqns
+       call DMDestroy(dms(igoveq), ierr); CHKERRQ(ierr)
+    enddo
+    deallocate(dms)
+
+  end subroutine MPPSetupProblemSNES
+
+  !------------------------------------------------------------------------
+  subroutine MPPSetupProblemKSP(this)
+    !
+    ! !DESCRIPTION:
+    ! Sets the PETSc KSP problem
+    !
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use SystemOfEquationsBasePointerType, only : SOEComputeRHS, SOEComputeOperators
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type)      :: this
+    !
+    ! !LOCAL VARIABLES:
+    class(goveqn_base_type)       , pointer :: cur_goveq
+    class(sysofeqns_base_type)    , pointer :: base_soe
+    PetscInt                                :: size
+    PetscInt                                :: igoveq
+    PetscErrorCode                          :: ierr
+    DM                            , pointer :: dms(:)
+    character(len=256)                      :: name
+
+    base_soe         => this%soe
+    this%soe_ptr%ptr => this%soe
+
+    ! Create PETSc DM for each governing equation
+
+    allocate(dms(base_soe%ngoveqns))
+
+    igoveq = 0
+    cur_goveq => base_soe%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       igoveq = igoveq + 1
+       size   = cur_goveq%mesh%ncells_local
+
+       call DMDACreate1d(PETSC_COMM_SELF, &
+            DM_BOUNDARY_NONE, size, 1, 0, &
+            PETSC_NULL_INTEGER, dms(igoveq), ierr);
+       CHKERRQ(ierr)
+
+       write(name,*) igoveq
+       name = 'fgoveq_' // trim(adjustl(name))
+       call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
+
+       call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
+       call DMSetUp         (dms(igoveq), ierr); CHKERRQ(ierr)
+
+       write(name,*) igoveq
+       name = 'goveq_' // trim(adjustl(name))
+       call DMDASetFieldName(dms(igoveq), 0, name, ierr); CHKERRQ(ierr)
+
+       cur_goveq => cur_goveq%next
+    enddo
+
+    ! DM-Composite approach
+
+    ! Create DMComposite: temperature
+    call DMCompositeCreate(PETSC_COMM_SELF, base_soe%solver%dm, ierr); CHKERRQ(ierr)
+    call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
+
+    ! Add DMs to DMComposite
+    do igoveq = 1, base_soe%ngoveqns
+       call DMCompositeAddDM(base_soe%solver%dm, dms(igoveq), ierr); CHKERRQ(ierr)
+    enddo
+
+    ! Setup DM
+    call DMSetUp(base_soe%solver%dm, ierr); CHKERRQ(ierr)
+
+    ! Create matrix
+    call DMCreateMatrix    (base_soe%solver%dm   , base_soe%solver%Amat, ierr); CHKERRQ(ierr)
+
+    call MatSetOption      (base_soe%solver%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
+         PETSC_FALSE, ierr); CHKERRQ(ierr)
+    call MatSetOption      (base_soe%solver%Amat , MAT_NEW_NONZERO_ALLOCATION_ERR, &
+         PETSC_FALSE, ierr); CHKERRQ(ierr)
+
+    call MatSetFromOptions (base_soe%solver%Amat , ierr); CHKERRQ(ierr)
+
+    ! Create vectors
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%soln         , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%rhs          , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
+    call DMCreateGlobalVector(base_soe%solver%dm, base_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+
+    ! Initialize vectors
+    call VecZeroEntries(base_soe%solver%soln          , ierr); CHKERRQ(ierr)
+    call VecZeroEntries(base_soe%solver%rhs           ,  ierr); CHKERRQ(ierr)
+    call VecZeroEntries(base_soe%solver%soln_prev     ,  ierr); CHKERRQ(ierr)
+    call VecZeroEntries(base_soe%solver%soln_prev_clm ,  ierr); CHKERRQ(ierr)
+
+    ! Create KSP
+    call KSPCreate              (PETSC_COMM_SELF , base_soe%solver%ksp, ierr); CHKERRQ(ierr)
+    call KSPSetOptionsPrefix    (base_soe%solver%ksp   , "temperature_", ierr); CHKERRQ(ierr)
+
+    call KSPSetComputeRHS       (base_soe%solver%ksp   , SOEComputeRHS      , &
+         this%soe_ptr, ierr); CHKERRQ(ierr)
+    call KSPSetComputeOperators (base_soe%solver%ksp   , SOEComputeOperators, &
+         this%soe_ptr, ierr); CHKERRQ(ierr)
+
+    call KSPSetFromOptions      (base_soe%solver%ksp   , ierr); CHKERRQ(ierr)
+
+    ! Cleanup
+    do igoveq = 1, base_soe%ngoveqns
+       call DMDestroy(dms(igoveq), ierr); CHKERRQ(ierr)
+    enddo
+    deallocate(dms)
+
+  end subroutine MPPSetupProblemKSP
+
 #endif
 
 end module MultiPhysicsProbBaseType

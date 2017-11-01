@@ -31,9 +31,9 @@ module MultiPhysicsProbThermal
 
   type, public, extends(multiphysicsprob_base_type) :: mpp_thermal_type
    contains
-     procedure, public :: Init                        => ThermalMPPInit
-     procedure, public :: AllocateAuxVars             => ThermalMPPAllocateAuxVars
-     procedure, public :: SetupProblem                => ThermalMPPSetupProblem
+     procedure, public :: Init            => ThermalMPPInit
+     procedure, public :: AllocateAuxVars => ThermalMPPAllocateAuxVars
+     procedure, public :: SetupProblem    => ThermalMPPSetupProblem
 
   end type mpp_thermal_type
 
@@ -99,28 +99,16 @@ contains
     !
     ! !LOCAL VARIABLES:
     class (goveqn_thermal_ksp_temp_soil_type) , pointer :: goveq_soil
-    class(sysofeqns_thermal_type)             , pointer :: therm_soe
     class(goveqn_base_type)                   , pointer :: cur_goveq
     type (therm_ksp_temp_soil_auxvar_type)    , pointer :: aux_vars_in(:)
-    class(sysofeqns_base_type)                , pointer :: base_soe
     PetscInt                                            :: j,c,g,l
     PetscInt                                            :: icell
     PetscInt                                            :: col_id
     PetscInt                                            :: first_active_col_id
     PetscBool                                           :: found
 
-    base_soe => therm_mpp%soe
-    
-    select type(base_soe)
-    class is (sysofeqns_thermal_type)
-       therm_soe => base_soe
-    class default
-       write(iulog,*)'Only sysofeqns_thermal_enthalpy_type supported'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select    
-
     found = PETSC_FALSE
-    cur_goveq => therm_soe%goveqns
+    cur_goveq => therm_mpp%soe%goveqns
     do
        if (.not.associated(cur_goveq)) exit
 
@@ -551,17 +539,18 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants , only : SOE_THERMAL_TBASED
+    use MultiPhysicsProbBaseType  , only : MPPSetupProblem
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_thermal_type)           :: this
+    class(mpp_thermal_type) :: this
 
     call ThermalMPPUpdatCouplingBCConnections(this)
-    call ThermalMPPKSPSetup(this)
 
-    this%soe%solver%petsc_solver_type = this%solver_type
-    this%soe%itype                    = SOE_THERMAL_TBASED
+    call MPPSetupProblem(this)
+
+    this%soe%itype = SOE_THERMAL_TBASED
 
   end subroutine ThermalMPPSetupProblem
 
@@ -694,128 +683,6 @@ contains
     enddo
 
   end subroutine ThermalMPPUpdatCouplingBCConnections
-
-  !------------------------------------------------------------------------
-  subroutine ThermalMPPKSPSetup(therm_mpp)
-    !
-    ! !DESCRIPTION:
-    ! Sets the PETSc KSP for the thermal mpp
-    !
-    use GoverningEquationBaseType , only : goveqn_base_type
-    use SystemOfEquationsBasePointerType, only : SOEComputeRHS, SOEComputeOperators
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(mpp_thermal_type)                 :: therm_mpp
-    !
-    ! !LOCAL VARIABLES:
-    class(goveqn_base_type)       , pointer :: cur_goveq
-    class(sysofeqns_base_type)    , pointer :: base_soe
-    class(sysofeqns_thermal_type) , pointer :: therm_soe
-    PetscInt                                :: size
-    PetscInt                                :: igoveq
-    PetscErrorCode                          :: ierr
-    DM                            , pointer :: dms(:)
-    character(len=256)                      :: name
-
-    base_soe => therm_mpp%soe
-
-    select type(base_soe)
-    class is(sysofeqns_thermal_type)
-       therm_soe => base_soe
-    class default
-       write(iulog,*) 'Unsupported class type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-    therm_mpp%soe_ptr%ptr => therm_mpp%soe
-
-    ! Create PETSc DM for each governing equation
-
-    allocate(dms(therm_soe%ngoveqns))
-
-    igoveq = 0
-    cur_goveq => therm_soe%goveqns
-    do
-       if (.not.associated(cur_goveq)) exit
-
-       igoveq = igoveq + 1
-       size   = cur_goveq%mesh%ncells_local
-
-       call DMDACreate1d(PETSC_COMM_SELF, &
-            DM_BOUNDARY_NONE, size, 1, 0, &
-            PETSC_NULL_INTEGER, dms(igoveq), ierr);
-       CHKERRQ(ierr)
-
-       write(name,*) igoveq
-       name = 'fgoveq_' // trim(adjustl(name))
-       call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
-
-       call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
-       call DMSetUp         (dms(igoveq), ierr); CHKERRQ(ierr)
-
-       write(name,*) igoveq
-       name = 'goveq_' // trim(adjustl(name))
-       call DMDASetFieldName(dms(igoveq), 0, name, ierr); CHKERRQ(ierr)
-
-       cur_goveq => cur_goveq%next
-    enddo
-
-    ! DM-Composite approach
-
-    ! Create DMComposite: temperature
-    call DMCompositeCreate(PETSC_COMM_SELF, therm_soe%solver%dm, ierr); CHKERRQ(ierr)
-    call DMSetOptionsPrefix(therm_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
-
-    ! Add DMs to DMComposite
-    do igoveq = 1, therm_soe%ngoveqns
-       call DMCompositeAddDM(therm_soe%solver%dm, dms(igoveq), ierr); CHKERRQ(ierr)
-    enddo
-
-    ! Setup DM
-    call DMSetUp(therm_soe%solver%dm, ierr); CHKERRQ(ierr)
-
-    ! Create matrix
-    call DMCreateMatrix    (therm_soe%solver%dm   , therm_soe%solver%Amat, ierr); CHKERRQ(ierr)
-
-    call MatSetOption      (therm_soe%solver%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
-         PETSC_FALSE, ierr); CHKERRQ(ierr)
-    call MatSetOption      (therm_soe%solver%Amat , MAT_NEW_NONZERO_ALLOCATION_ERR, &
-         PETSC_FALSE, ierr); CHKERRQ(ierr)
-
-    call MatSetFromOptions (therm_soe%solver%Amat , ierr); CHKERRQ(ierr)
-
-    ! Create vectors
-    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln         , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%rhs          , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln_prev    , ierr); CHKERRQ(ierr)
-    call DMCreateGlobalVector(therm_soe%solver%dm, therm_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
-
-    ! Initialize vectors
-    call VecZeroEntries(therm_soe%solver%soln          , ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%solver%rhs           ,  ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%solver%soln_prev     ,  ierr); CHKERRQ(ierr)
-    call VecZeroEntries(therm_soe%solver%soln_prev_clm ,  ierr); CHKERRQ(ierr)
-
-    ! Create KSP
-    call KSPCreate              (PETSC_COMM_SELF , therm_soe%solver%ksp, ierr); CHKERRQ(ierr)
-    call KSPSetOptionsPrefix    (therm_soe%solver%ksp   , "temperature_", ierr); CHKERRQ(ierr)
-
-    call KSPSetComputeRHS       (therm_soe%solver%ksp   , SOEComputeRHS      , &
-         therm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
-    call KSPSetComputeOperators (therm_soe%solver%ksp   , SOEComputeOperators, &
-         therm_mpp%soe_ptr, ierr); CHKERRQ(ierr)
-
-    call KSPSetFromOptions      (therm_soe%solver%ksp   , ierr); CHKERRQ(ierr)
-
-    ! Cleanup
-    do igoveq = 1, therm_soe%ngoveqns
-       call DMDestroy(dms(igoveq), ierr); CHKERRQ(ierr)
-    enddo
-    deallocate(dms)
-
-  end subroutine ThermalMPPKSPSetup
 
   !------------------------------------------------------------------------
 #endif
