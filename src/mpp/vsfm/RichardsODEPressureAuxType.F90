@@ -46,12 +46,13 @@ module RichardsODEPressureAuxType
      PetscReal :: sat                    ! [-]
      PetscReal :: den                    ! [kg m^{-3}]
 
-     PetscReal :: dvis_dP                ! [s]
-     PetscReal :: dvis_dT                ! [Pa s K^{-1}]
      PetscReal :: dpor_dP                ! [Pa^{-1}]
+     PetscReal :: dvis_dP                ! [s]
      PetscReal :: dkr_dP                 ! [Pa^{-1}]
      PetscReal :: dsat_dP                ! [Pa^{-1}]
      PetscReal :: dden_dP                ! [kg m^{-3} Pa^{-1}]
+
+     PetscReal :: dvis_dT                ! [Pa s K^{-1}]
      PetscReal :: dden_dT                ! [kmol m^{-3} K^{-1}]
 
      type(porosity_params_type)   :: porParams
@@ -59,11 +60,13 @@ module RichardsODEPressureAuxType
 
    contains
      procedure, public :: Init          => RichODEPressureAuxVarInit
-     procedure, public :: Copy          => RichODEPressureAuxVarCopy
      procedure, public :: SetValue      => RichODEPressureAuxVarSetValue
      procedure, public :: GetValue      => RichODEPressureAuxVarGetValue
      procedure, public :: AuxVarCompute => RichODEPressureAuxVarCompute
   end type rich_ode_pres_auxvar_type
+
+  public :: RichODEPressureAuxVarInit
+  public :: RichODEPressureAuxVarCopy
 
   !------------------------------------------------------------------------
 contains
