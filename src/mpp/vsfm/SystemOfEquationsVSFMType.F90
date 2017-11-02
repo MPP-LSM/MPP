@@ -1490,11 +1490,11 @@ contains
                 sum_conn_1 = sum_conn_1 + 1
                 sum_conn_2 = sum_conn_2 + 1
 
-                call tmp_aux_var_bc_1%Copy(aux_vars_bc_1(sum_conn_1))
-                call tmp_aux_var_bc_2%Copy(aux_vars_bc_2(sum_conn_2))
+                call RichODEPressureAuxVarCopy(tmp_aux_var_bc_1, aux_vars_bc_1(sum_conn_1))
+                call RichODEPressureAuxVarCopy(tmp_aux_var_bc_2, aux_vars_bc_2(sum_conn_2))
 
-                call aux_vars_bc_1(sum_conn_1)%Copy(tmp_aux_var_bc_2)
-                call aux_vars_bc_2(sum_conn_2)%Copy(tmp_aux_var_bc_1)
+                call RichODEPressureAuxVarCopy(aux_vars_bc_1(sum_conn_1), tmp_aux_var_bc_2)
+                call RichODEPressureAuxVarCopy(aux_vars_bc_2(sum_conn_2), tmp_aux_var_bc_1)
 
              enddo ! iauxvar
 

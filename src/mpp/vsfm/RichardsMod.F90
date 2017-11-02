@@ -19,37 +19,21 @@ module RichardsMod
   public :: RichardsFlux
   public :: RichardsFluxDerivativeWrtTemperature
   public :: RichardsFluxConductanceModel
-
+  !
   !------------------------------------------------------------------------------
 
 contains
 
-  subroutine RichardsFlux(Pres_up, &
-       kr_up,                      &
-       dkr_dP_up,                  &
-       den_up,                     &
-       dden_dP_up,                 &
-       vis_up,                     &
-       dvis_dP_up,                 &
-       perm_vec_up,                &
-       Pres_dn,                    &
-       kr_dn,                      &
-       dkr_dP_dn,                  &
-       den_dn,                     &
-       dden_dP_dn,                 &
-       vis_dn,                     &
-       dvis_dP_dn,                 &
-       perm_vec_dn,                &
-       area,                       &
-       dist_up,                    &
-       dist_dn,                    &
-       dist_unitvec,               &
-       compute_deriv,              &
-       internal_conn,              &
-       cond_type,                  &
-       flux,                       &
-       dflux_dP_up,                &
-       dflux_dP_dn                 &
+  subroutine RichardsFlux( &
+       aux_var_up,         &
+       aux_var_dn,         &
+       conn_up2dn,         &
+       compute_deriv,      &
+       internal_conn,      &
+       cond_type,          &
+       flux,               &
+       dflux_dP_up,        &
+       dflux_dP_dn         &
        )
 
     !
@@ -62,42 +46,47 @@ contains
     ! Negative flux implies flow occurs from upwind to downwind control volume.
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GRAVITY_CONSTANT, PRESSURE_REF
-    use MultiPhysicsProbConstants, only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
-    use MultiPhysicsProbConstants, only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
-    use MultiPhysicsProbConstants, only : FMWH2O
+    use MultiPhysicsProbConstants  , only : GRAVITY_CONSTANT, PRESSURE_REF
+    use MultiPhysicsProbConstants  , only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
+    use MultiPhysicsProbConstants  , only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants  , only : FMWH2O
+    use ConnectionSetType          , only : connection_type
+    use RichardsODEPressureAuxType , only : rich_ode_pres_auxvar_type
     !
     implicit none
     !
     ! !ARGUMENTS
-    PetscReal, intent(in)  :: Pres_up
-    PetscReal, intent(in)  :: kr_up
-    PetscReal, intent(in)  :: dkr_dP_up
-    PetscReal, intent(in)  :: den_up
-    PetscReal, intent(in)  :: dden_dP_up
-    PetscReal, intent(in)  :: vis_up
-    PetscReal, intent(in)  :: dvis_dP_up
-    PetscReal, intent(in)  :: perm_vec_up(3)
-    PetscReal, intent(in)  :: Pres_dn
-    PetscReal, intent(in)  :: kr_dn
-    PetscReal, intent(in)  :: dkr_dP_dn
-    PetscReal, intent(in)  :: den_dn
-    PetscReal, intent(in)  :: dden_dP_dn
-    PetscReal, intent(in)  :: vis_dn
-    PetscReal, intent(in)  :: dvis_dP_dn
-    PetscReal, intent(in)  :: perm_vec_dn(3)
-    PetscReal, intent(in)  :: area
-    PetscReal, intent(in)  :: dist_up
-    PetscReal, intent(in)  :: dist_dn
-    PetscReal, intent(in)  :: dist_unitvec(3)
-    PetscBool, intent(in)  :: compute_deriv
-    PetscBool, intent(in)  :: internal_conn
-    PetscInt,  intent(in)  :: cond_type
-    PetscReal, intent(out) :: flux
-    PetscReal, intent(out) :: dflux_dP_up
-    PetscReal, intent(out) :: dflux_dP_dn
+    class(rich_ode_pres_auxvar_type) , intent(in)  :: aux_var_up
+    class(rich_ode_pres_auxvar_type) , intent(in)  :: aux_var_dn
+    type(connection_type)            , intent(in)  :: conn_up2dn
+    PetscBool                        , intent(in)  :: compute_deriv
+    PetscBool                        , intent(in)  :: internal_conn
+    PetscInt                         , intent(in)  :: cond_type
+    PetscReal                        , intent(out) :: flux
+    PetscReal                        , intent(out) :: dflux_dP_up
+    PetscReal                        , intent(out) :: dflux_dP_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: area
+    PetscReal :: dist_up
+    PetscReal :: dist_dn
+    PetscReal :: dist_unitvec(3)
+    PetscReal :: Pres_up
+    PetscReal :: kr_up
+    PetscReal :: dkr_dP_up
+    PetscReal :: den_up
+    PetscReal :: dden_dP_up
+    PetscReal :: vis_up
+    PetscReal :: dvis_dP_up
+    PetscReal :: perm_vec_up(3)
+    PetscReal :: Pres_dn
+    PetscReal :: kr_dn
+    PetscReal :: dkr_dP_dn
+    PetscReal :: den_dn
+    PetscReal :: dden_dP_dn
+    PetscReal :: vis_dn
+    PetscReal :: dvis_dP_dn
+    PetscReal :: perm_vec_dn(3)
     PetscReal :: upweight
     PetscReal :: Dq
     PetscReal :: grav_vec(3)
@@ -124,6 +113,34 @@ contains
     PetscReal :: dq_dP_dn
 
     PetscBool :: seepage_bc_update
+
+    ! Get geometric attributes about connection
+    area            = conn_up2dn%GetArea()
+    dist_up         = conn_up2dn%GetDistUp()
+    dist_dn         = conn_up2dn%GetDistDn()
+    dist_unitvec(1) = conn_up2dn%GetDistUnitVecX()
+    dist_unitvec(2) = conn_up2dn%GetDistUnitVecY()
+    dist_unitvec(3) = conn_up2dn%GetDistUnitVecZ()
+
+    ! Get variables related to upwind cell
+    Pres_up         = aux_var_up%pressure
+    kr_up           = aux_var_up%kr
+    dkr_dP_up       = aux_var_up%dkr_dP
+    den_up          = aux_var_up%den
+    dden_dP_up      = aux_var_up%dden_dP
+    vis_up          = aux_var_up%vis
+    dvis_dP_up      = aux_var_up%dvis_dP
+    perm_vec_up     = aux_var_up%perm
+
+    ! Get variables related to downwind cell
+    Pres_dn         = aux_var_dn%pressure
+    kr_dn           = aux_var_dn%kr
+    dkr_dP_dn       = aux_var_dn%dkr_dP
+    den_dn          = aux_var_dn%den
+    dden_dP_dn      = aux_var_dn%dden_dP
+    vis_dn          = aux_var_dn%vis
+    dvis_dP_dn      = aux_var_dn%dvis_dP
+    perm_vec_dn     = aux_var_dn%perm
 
     perm_up = dabs(dist_unitvec(1))*perm_vec_up(1) + &
          dabs(dist_unitvec(2))*perm_vec_up(2) + &
@@ -232,30 +249,16 @@ contains
   end subroutine RichardsFlux
 
   !------------------------------------------------------------------------------
-  subroutine RichardsFluxDerivativeWrtTemperature(Pres_up, &
-       kr_up,                      &
-       den_up,                     &
-       dden_dT_up,                 &
-       vis_up,                     &
-       dvis_dT_up,                 &
-       perm_vec_up,                &
-       Pres_dn,                    &
-       kr_dn,                      &
-       den_dn,                     &
-       dden_dT_dn,                 &
-       vis_dn,                     &
-       dvis_dT_dn,                 &
-       perm_vec_dn,                &
-       area,                       &
-       dist_up,                    &
-       dist_dn,                    &
-       dist_unitvec,               &
-       compute_deriv,              &
-       internal_conn,              &
-       cond_type,                  &
-       flux,                       &
-       dflux_dT_up,                &
-       dflux_dT_dn                 &
+  subroutine RichardsFluxDerivativeWrtTemperature( &
+       aux_var_up,                                 &
+       aux_var_dn,                                 &
+       conn_up2dn,                                 &
+       compute_deriv,                              &
+       internal_conn,                              &
+       cond_type,                                  &
+       flux,                                       &
+       dflux_dT_up,                                &
+       dflux_dT_dn                                 &
        )
     !
     ! !DESCRIPTION:
@@ -267,40 +270,45 @@ contains
     ! Negative flux implies flow occurs from upwind to downwind control volume.
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GRAVITY_CONSTANT, PRESSURE_REF
-    use MultiPhysicsProbConstants, only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
-    use MultiPhysicsProbConstants, only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
-    use MultiPhysicsProbConstants, only : FMWH2O
+    use MultiPhysicsProbConstants  , only : GRAVITY_CONSTANT, PRESSURE_REF
+    use MultiPhysicsProbConstants  , only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
+    use MultiPhysicsProbConstants  , only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants  , only : FMWH2O
+    use ConnectionSetType          , only : connection_type
+    use RichardsODEPressureAuxType , only : rich_ode_pres_auxvar_type
     !
     implicit none
     !
     ! !ARGUMENTS
-    PetscReal, intent(in)  :: Pres_up
-    PetscReal, intent(in)  :: kr_up
-    PetscReal, intent(in)  :: den_up
-    PetscReal, intent(in)  :: dden_dT_up
-    PetscReal, intent(in)  :: vis_up
-    PetscReal, intent(in)  :: dvis_dT_up
-    PetscReal, intent(in)  :: perm_vec_up(3)
-    PetscReal, intent(in)  :: Pres_dn
-    PetscReal, intent(in)  :: kr_dn
-    PetscReal, intent(in)  :: den_dn
-    PetscReal, intent(in)  :: dden_dT_dn
-    PetscReal, intent(in)  :: vis_dn
-    PetscReal, intent(in)  :: dvis_dT_dn
-    PetscReal, intent(in)  :: perm_vec_dn(3)
-    PetscReal, intent(in)  :: area
-    PetscReal, intent(in)  :: dist_up
-    PetscReal, intent(in)  :: dist_dn
-    PetscReal, intent(in)  :: dist_unitvec(3)
-    PetscBool, intent(in)  :: compute_deriv
-    PetscBool, intent(in)  :: internal_conn
-    PetscInt,  intent(in)  :: cond_type
-    PetscReal, intent(out) :: flux
-    PetscReal, intent(out) :: dflux_dT_up
-    PetscReal, intent(out) :: dflux_dT_dn
+    class(rich_ode_pres_auxvar_type) , intent(in)  :: aux_var_up
+    class(rich_ode_pres_auxvar_type) , intent(in)  :: aux_var_dn
+    type(connection_type)            , intent(in)  :: conn_up2dn
+    PetscBool                        , intent(in)  :: compute_deriv
+    PetscBool                        , intent(in)  :: internal_conn
+    PetscInt                         , intent(in)  :: cond_type
+    PetscReal                        , intent(out) :: flux
+    PetscReal                        , intent(out) :: dflux_dT_up
+    PetscReal                        , intent(out) :: dflux_dT_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: area
+    PetscReal :: dist_up
+    PetscReal :: dist_dn
+    PetscReal :: dist_unitvec(3)
+    PetscReal :: Pres_up
+    PetscReal :: kr_up
+    PetscReal :: den_up
+    PetscReal :: dden_dT_up
+    PetscReal :: vis_up
+    PetscReal :: dvis_dT_up
+    PetscReal :: perm_vec_up(3)
+    PetscReal :: Pres_dn
+    PetscReal :: kr_dn
+    PetscReal :: den_dn
+    PetscReal :: dden_dT_dn
+    PetscReal :: vis_dn
+    PetscReal :: dvis_dT_dn
+    PetscReal :: perm_vec_dn(3)
     PetscReal :: upweight
     PetscReal :: Dq
     PetscReal :: grav_vec(3)
@@ -328,6 +336,31 @@ contains
 
     PetscBool :: seepage_bc_update
 
+    area            = conn_up2dn%GetArea()
+    dist_up         = conn_up2dn%GetDistUp()
+    dist_dn         = conn_up2dn%GetDistDn()
+    dist_unitvec(1) = conn_up2dn%GetDistUnitVecX()
+    dist_unitvec(2) = conn_up2dn%GetDistUnitVecY()
+    dist_unitvec(3) = conn_up2dn%GetDistUnitVecZ()
+
+    ! Get variables related to upwind cell
+    Pres_up         = aux_var_up%pressure
+    kr_up           = aux_var_up%kr
+    den_up          = aux_var_up%den
+    dden_dT_up      = aux_var_up%dden_dT
+    vis_up          = aux_var_up%vis
+    dvis_dT_up      = aux_var_up%dvis_dT
+    perm_vec_up     = aux_var_up%perm
+
+    ! Get variables related to downwind cell
+    Pres_dn         = aux_var_dn%pressure
+    kr_dn           = aux_var_dn%kr
+    den_dn          = aux_var_dn%den
+    dden_dT_dn      = aux_var_dn%dden_dT
+    vis_dn          = aux_var_dn%vis
+    dvis_dT_dn      = aux_var_dn%dvis_dT
+    perm_vec_dn     = aux_var_dn%perm
+    
     perm_up = dabs(dist_unitvec(1))*perm_vec_up(1) + &
          dabs(dist_unitvec(2))*perm_vec_up(2) + &
          dabs(dist_unitvec(3))*perm_vec_up(3)
@@ -437,17 +470,10 @@ contains
 
   !------------------------------------------------------------------------------
   subroutine RichardsFluxConductanceModel( &
-       Pres_up,                            &
-       den_up,                             &
-       dden_dP_up,                         &
-       Pres_dn,                            &
-       den_dn,                             &
-       dden_dP_dn,                         &
-       conductance,                        &
-       kr,                                 &
-       dkr_dP_up,                          &
-       dkr_dP_dn,                          &
-       area,                               &
+       aux_var_up,                         &
+       aux_var_dn,                         &
+       aux_var_conn,                       &
+       conn_up2dn,                         &
        compute_deriv,                      &
        internal_conn,                      &
        cond_type,                          &
@@ -466,39 +492,66 @@ contains
     ! Negative flux implies flow occurs from upwind to downwind control volume.
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GRAVITY_CONSTANT, PRESSURE_REF
-    use MultiPhysicsProbConstants, only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
-    use MultiPhysicsProbConstants, only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
-    use MultiPhysicsProbConstants, only : FMWH2O
+    use MultiPhysicsProbConstants      , only : GRAVITY_CONSTANT, PRESSURE_REF
+    use MultiPhysicsProbConstants      , only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
+    use MultiPhysicsProbConstants      , only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants      , only : FMWH2O
+    use ConnectionSetType              , only : connection_type
+    use RichardsODEPressureAuxType     , only : rich_ode_pres_auxvar_type
+    use RichardsODEPressureConnAuxType , only : rich_ode_pres_conn_auxvar_type
     !
     implicit none
     !
     ! !ARGUMENTS
-    PetscReal, intent(in)  :: Pres_up
-    PetscReal, intent(in)  :: den_up
-    PetscReal, intent(in)  :: dden_dP_up
-    PetscReal, intent(in)  :: Pres_dn
-    PetscReal, intent(in)  :: den_dn
-    PetscReal, intent(in)  :: dden_dP_dn
-    PetscReal, intent(in)  :: conductance
-    PetscReal, intent(in)  :: area
-    PetscBool, intent(in)  :: compute_deriv
-    PetscBool, intent(in)  :: internal_conn
-    PetscInt,  intent(in)  :: cond_type
-    PetscReal, intent(out) :: flux
-    PetscReal, intent(out) :: dflux_dP_up
-    PetscReal, intent(out) :: dflux_dP_dn
+    class(rich_ode_pres_auxvar_type)      , intent(in)  :: aux_var_up
+    class(rich_ode_pres_auxvar_type)      , intent(in)  :: aux_var_dn
+    class(rich_ode_pres_conn_auxvar_type) , intent(in)  :: aux_var_conn
+    type(connection_type)                 , intent(in)  :: conn_up2dn
+    PetscBool                             , intent(in)  :: compute_deriv
+    PetscBool                             , intent(in)  :: internal_conn
+    PetscInt                              , intent(in)  :: cond_type
+    PetscReal                             , intent(out) :: flux
+    PetscReal                             , intent(out) :: dflux_dP_up
+    PetscReal                             , intent(out) :: dflux_dP_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: area
+    PetscReal :: Pres_up
+    PetscReal :: den_up
+    PetscReal :: dden_dP_up
+    PetscReal :: Pres_dn
+    PetscReal :: den_dn
+    PetscReal :: dden_dP_dn
+    PetscReal :: conductance
+    PetscReal :: kr
+    PetscReal :: dkr_dP_up
+    PetscReal :: dkr_dP_dn
     PetscReal :: den_ave
     PetscReal :: upweight
     PetscReal :: dphi
-    PetscReal :: kr
     PetscReal :: dden_ave_dP_up, dden_ave_dP_dn
-    PetscReal :: dkr_dP_up, dkr_dP_dn
     PetscReal :: dphi_dP_up, dphi_dP_dn
 
-    upweight = 0.5d0
+    upweight    = 0.5d0
+
+    ! Get geometric attribute about connection
+    area        = conn_up2dn%GetArea()
+
+    ! Get variables about upwind cell
+    Pres_up     = aux_var_up%pressure
+    den_up      = aux_var_up%den
+    dden_dP_up  = aux_var_up%dden_dP
+
+    ! Get variables about downwind cell
+    Pres_dn     = aux_var_dn%pressure
+    den_dn      = aux_var_dn%den
+    dden_dP_dn  = aux_var_dn%dden_dP
+
+    ! Get variables about connection
+    conductance = aux_var_conn%conductance
+    kr          = aux_var_conn%kr
+    dkr_dP_up   = aux_var_conn%dkr_dP_up
+    dkr_dP_dn   = aux_var_conn%dkr_dP_dn
 
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
     dphi = (Pres_up - Pres_dn)
