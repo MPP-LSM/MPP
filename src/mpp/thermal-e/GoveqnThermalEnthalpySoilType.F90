@@ -373,7 +373,7 @@ contains
        do iconn = 1, cur_conn_set%num_connections
 
           sum_conn = sum_conn + 1
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           select case(cur_cond%itype)
           case (COND_DIRICHLET, COND_HEAT_FLUX)
@@ -1007,7 +1007,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
           this%aux_vars_ss(sum_conn)%temperature =  &
               this%aux_vars_in(ghosted_id)%temperature
           call this%aux_vars_ss(sum_conn)%Compute()
@@ -1310,8 +1310,8 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
           internal_conn = PETSC_TRUE
           cond_type     = COND_NULL
@@ -1336,10 +1336,10 @@ contains
                geq_soil%aux_vars_in(cell_id_dn)%vis,      &
                geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
                geq_soil%aux_vars_in(cell_id_dn)%perm,     &
-               cur_conn_set%area(iconn),                  &
-               cur_conn_set%dist_up(iconn),               &
-               cur_conn_set%dist_dn(iconn),               &
-               cur_conn_set%dist_unitvec(iconn)%arr,      &
+               cur_conn_set%conn(iconn)%GetArea(),        &
+               cur_conn_set%conn(iconn)%GetDistUp(),      &
+               cur_conn_set%conn(iconn)%GetDistDn(),      &
+               cur_conn_set%conn(iconn)%GetDistUnitVec(), &
                compute_deriv,                             &
                internal_conn,                             &
                cond_type,                                 &
@@ -1367,9 +1367,9 @@ contains
                mflux,                                        &
                dmflux_dT_up,                                 &
                dmflux_dT_dn,                                 &
-               cur_conn_set%area(iconn),                     &
-               cur_conn_set%dist_up(iconn),                  &
-               cur_conn_set%dist_dn(iconn),                  &
+               cur_conn_set%conn(iconn)%GetArea(),           &
+               cur_conn_set%conn(iconn)%GetDistUp(),         &
+               cur_conn_set%conn(iconn)%GetDistDn(),         &
                compute_deriv,                                &
                internal_conn,                                &
                cond_type,                                    &
@@ -1396,7 +1396,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id  = cur_conn_set%id_dn(iconn)
+          cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if (.not.geq_soil%mesh%is_active(cell_id )) cycle
@@ -1407,33 +1407,33 @@ contains
              internal_conn = PETSC_FALSE
              cond_type     = cur_cond%itype
 
-             call RichardsFlux(                            &
-                  geq_soil%aux_vars_bc(sum_conn)%pressure, &
-                  geq_soil%aux_vars_bc(sum_conn)%krl,      &
-                  geq_soil%aux_vars_bc(sum_conn)%dkrl_dP,  &
-                  geq_soil%aux_vars_bc(sum_conn)%denl,     &
-                  geq_soil%aux_vars_bc(sum_conn)%ddenl_dP, &
-                  geq_soil%aux_vars_bc(sum_conn)%vis,      &
-                  geq_soil%aux_vars_bc(sum_conn)%dvis_dP,  &
-                  geq_soil%aux_vars_bc(sum_conn)%perm,     &
-                  geq_soil%aux_vars_in(cell_id )%pressure, &
-                  geq_soil%aux_vars_in(cell_id )%krl,      &
-                  geq_soil%aux_vars_in(cell_id )%dkrl_dP,  &
-                  geq_soil%aux_vars_in(cell_id )%denl,     &
-                  geq_soil%aux_vars_in(cell_id )%ddenl_dP, &
-                  geq_soil%aux_vars_in(cell_id )%vis,      &
-                  geq_soil%aux_vars_in(cell_id )%dvis_dP,  &
-                  geq_soil%aux_vars_in(cell_id )%perm,     &
-                  cur_conn_set%area(iconn),                &
-                  cur_conn_set%dist_up(iconn),             &
-                  cur_conn_set%dist_dn(iconn),             &
-                  cur_conn_set%dist_unitvec(iconn)%arr,    &
-                  compute_deriv,                           &
-                  internal_conn,                           &
-                  cond_type,                               &
-                  mflux,                                   &
-                  dummy_var1,                              &
-                  dummy_var2                               &
+             call RichardsFlux(                              &
+                  geq_soil%aux_vars_bc(sum_conn)%pressure,   &
+                  geq_soil%aux_vars_bc(sum_conn)%krl,        &
+                  geq_soil%aux_vars_bc(sum_conn)%dkrl_dP,    &
+                  geq_soil%aux_vars_bc(sum_conn)%denl,       &
+                  geq_soil%aux_vars_bc(sum_conn)%ddenl_dP,   &
+                  geq_soil%aux_vars_bc(sum_conn)%vis,        &
+                  geq_soil%aux_vars_bc(sum_conn)%dvis_dP,    &
+                  geq_soil%aux_vars_bc(sum_conn)%perm,       &
+                  geq_soil%aux_vars_in(cell_id )%pressure,   &
+                  geq_soil%aux_vars_in(cell_id )%krl,        &
+                  geq_soil%aux_vars_in(cell_id )%dkrl_dP,    &
+                  geq_soil%aux_vars_in(cell_id )%denl,       &
+                  geq_soil%aux_vars_in(cell_id )%ddenl_dP,   &
+                  geq_soil%aux_vars_in(cell_id )%vis,        &
+                  geq_soil%aux_vars_in(cell_id )%dvis_dP,    &
+                  geq_soil%aux_vars_in(cell_id )%perm,       &
+                  cur_conn_set%conn(iconn)%GetArea(),        &
+                  cur_conn_set%conn(iconn)%GetDistUp(),      &
+                  cur_conn_set%conn(iconn)%GetDistDn(),      &
+                  cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+                  compute_deriv,                             &
+                  internal_conn,                             &
+                  cond_type,                                 &
+                  mflux,                                     &
+                  dummy_var1,                                &
+                  dummy_var2                                 &
                   )
 
              dmflux_dT_up = 0.d0
@@ -1455,9 +1455,9 @@ contains
                   mflux,                                       &
                   dmflux_dT_up,                                &
                   dmflux_dT_dn,                                &
-                  cur_conn_set%area(iconn),                    &
-                  cur_conn_set%dist_up(iconn),                 &
-                  cur_conn_set%dist_dn(iconn),                 &
+                  cur_conn_set%conn(iconn)%GetArea(),          &
+                  cur_conn_set%conn(iconn)%GetDistUp(),        &
+                  cur_conn_set%conn(iconn)%GetDistDn(),        &
                   compute_deriv,                               &
                   internal_conn,                               &
                   cond_type,                                   &
@@ -1469,7 +1469,7 @@ contains
              f_p(cell_id) = f_p(cell_id) + eflux
 
           case (COND_HEAT_FLUX)             
-             area = cur_conn_set%area(iconn)
+             area = cur_conn_set%conn(iconn)%GetArea()
 
              f_p(cell_id) = f_p(cell_id) + cur_cond%value(iconn)*area
 
@@ -1491,7 +1491,7 @@ contains
        cur_conn_set => cur_cond%conn_set
 
        do iconn = 1, cur_conn_set%num_connections
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.geq_soil%mesh%is_active(cell_id))) cycle
 
@@ -1569,8 +1569,8 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
           internal_conn = PETSC_TRUE
           cond_type     = COND_NULL
@@ -1593,10 +1593,10 @@ contains
                geq_soil%aux_vars_in(cell_id_dn)%vis,         &
                geq_soil%aux_vars_in(cell_id_dn)%dvis_dT,     &
                geq_soil%aux_vars_in(cell_id_dn)%perm,        &
-               cur_conn_set%area(iconn),                     &
-               cur_conn_set%dist_up(iconn),                  &
-               cur_conn_set%dist_dn(iconn),                  &
-               cur_conn_set%dist_unitvec(iconn)%arr,         &
+               cur_conn_set%conn(iconn)%GetArea(),           &
+               cur_conn_set%conn(iconn)%GetDistUp(),         &
+               cur_conn_set%conn(iconn)%GetDistDn(),         &
+               cur_conn_set%conn(iconn)%GetDistUnitVec(),    &
                compute_deriv,                                &
                internal_conn,                                &
                cond_type,                                    &
@@ -1621,9 +1621,9 @@ contains
                mflux,                                        &
                dmflux_dT_up,                                 &
                dmflux_dT_dn,                                 &
-               cur_conn_set%area(iconn),                     &
-               cur_conn_set%dist_up(iconn),                  &
-               cur_conn_set%dist_dn(iconn),                  &
+               cur_conn_set%conn(iconn)%GetArea(),           &
+               cur_conn_set%conn(iconn)%GetDistUp(),         &
+               cur_conn_set%conn(iconn)%GetDistDn(),         &
                compute_deriv,                                &
                internal_conn,                                &
                cond_type,                                    &
@@ -1667,7 +1667,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id  = cur_conn_set%id_dn(iconn)
+          cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if (.not.geq_soil%mesh%is_active(cell_id )) cycle
@@ -1679,30 +1679,30 @@ contains
              cond_type     = cur_cond%itype
 
              call RichardsFluxDerivativeWrtTemperature(    &
-                  geq_soil%aux_vars_bc(sum_conn)%pressure, &
-                  geq_soil%aux_vars_bc(sum_conn)%krl,      &
-                  geq_soil%aux_vars_bc(sum_conn)%denl,     &
-                  geq_soil%aux_vars_bc(sum_conn)%ddenl_dT, &
-                  geq_soil%aux_vars_bc(sum_conn)%vis,      &
-                  geq_soil%aux_vars_bc(sum_conn)%dvis_dT,  &
-                  geq_soil%aux_vars_bc(sum_conn)%perm,     &
-                  geq_soil%aux_vars_in(cell_id)%pressure,  &
-                  geq_soil%aux_vars_in(cell_id)%krl,       &
-                  geq_soil%aux_vars_in(cell_id)%denl,      &
-                  geq_soil%aux_vars_in(cell_id)%ddenl_dT,  &
-                  geq_soil%aux_vars_in(cell_id)%vis,       &
-                  geq_soil%aux_vars_in(cell_id)%dvis_dT,   &
-                  geq_soil%aux_vars_in(cell_id)%perm,      &
-                  cur_conn_set%area(iconn),                &
-                  cur_conn_set%dist_up(iconn),             &
-                  cur_conn_set%dist_dn(iconn),             &
-                  cur_conn_set%dist_unitvec(iconn)%arr,    &
-                  compute_deriv,                           &
-                  internal_conn,                           &
-                  cond_type,                               &
-                  mflux,                                   &
-                  dmflux_dT_up,                            &
-                  dmflux_dT_dn                             &
+                  geq_soil%aux_vars_bc(sum_conn)%pressure,   &
+                  geq_soil%aux_vars_bc(sum_conn)%krl,        &
+                  geq_soil%aux_vars_bc(sum_conn)%denl,       &
+                  geq_soil%aux_vars_bc(sum_conn)%ddenl_dT,   &
+                  geq_soil%aux_vars_bc(sum_conn)%vis,        &
+                  geq_soil%aux_vars_bc(sum_conn)%dvis_dT,    &
+                  geq_soil%aux_vars_bc(sum_conn)%perm,       &
+                  geq_soil%aux_vars_in(cell_id)%pressure,    &
+                  geq_soil%aux_vars_in(cell_id)%krl,         &
+                  geq_soil%aux_vars_in(cell_id)%denl,        &
+                  geq_soil%aux_vars_in(cell_id)%ddenl_dT,    &
+                  geq_soil%aux_vars_in(cell_id)%vis,         &
+                  geq_soil%aux_vars_in(cell_id)%dvis_dT,     &
+                  geq_soil%aux_vars_in(cell_id)%perm,        &
+                  cur_conn_set%conn(iconn)%GetArea(),        &
+                  cur_conn_set%conn(iconn)%GetDistUp(),      &
+                  cur_conn_set%conn(iconn)%GetDistDn(),      &
+                  cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+                  compute_deriv,                             &
+                  internal_conn,                             &
+                  cond_type,                                 &
+                  mflux,                                     &
+                  dmflux_dT_up,                              &
+                  dmflux_dT_dn                               &
                   )
 
              call ThermalEnthalpyFlux(                         &
@@ -1721,9 +1721,9 @@ contains
                   mflux,                                       &
                   dmflux_dT_up,                                &
                   dmflux_dT_dn,                                &
-                  cur_conn_set%area(iconn),                    &
-                  cur_conn_set%dist_up(iconn),                 &
-                  cur_conn_set%dist_dn(iconn),                 &
+                  cur_conn_set%conn(iconn)%GetArea(),          &
+                  cur_conn_set%conn(iconn)%GetDistUp(),        &
+                  cur_conn_set%conn(iconn)%GetDistDn(),        &
                   compute_deriv,                               &
                   internal_conn,                               &
                   cond_type,                                   &
@@ -1758,7 +1758,7 @@ contains
        cur_conn_set => cur_cond%conn_set
 
        do iconn = 1, cur_conn_set%num_connections
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.geq_soil%mesh%is_active(cell_id))) cycle
 
@@ -1850,7 +1850,7 @@ contains
 
                 do iconn = 1, cur_conn_set%num_connections
 
-                   cell_id  = cur_conn_set%id_dn(iconn)
+                   cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
                    sum_conn = sum_conn + 1
 
                    if (.not.geq_soil%mesh%is_active(cell_id )) cycle
@@ -1858,31 +1858,31 @@ contains
                    internal_conn = PETSC_FALSE
                    cond_type     = cur_cond%itype
 
-                   call RichardsFluxDerivativeWrtTemperature(    &
-                        geq_soil%aux_vars_bc(sum_conn)%pressure, &
-                        geq_soil%aux_vars_bc(sum_conn)%krl,      &
-                        geq_soil%aux_vars_bc(sum_conn)%denl,     &
-                        geq_soil%aux_vars_bc(sum_conn)%ddenl_dT, &
-                        geq_soil%aux_vars_bc(sum_conn)%vis,      &
-                        geq_soil%aux_vars_bc(sum_conn)%dvis_dT,  &
-                        geq_soil%aux_vars_bc(sum_conn)%perm,     &
-                        geq_soil%aux_vars_in(cell_id)%pressure,  &
-                        geq_soil%aux_vars_in(cell_id)%krl,       &
-                        geq_soil%aux_vars_in(cell_id)%denl,      &
-                        geq_soil%aux_vars_in(cell_id)%ddenl_dT,  &
-                        geq_soil%aux_vars_in(cell_id)%vis,       &
-                        geq_soil%aux_vars_in(cell_id)%dvis_dT,   &
-                        geq_soil%aux_vars_in(cell_id)%perm,      &
-                        cur_conn_set%area(iconn),                &
-                        cur_conn_set%dist_up(iconn),             &
-                        cur_conn_set%dist_dn(iconn),             &
-                        cur_conn_set%dist_unitvec(iconn)%arr,    &
-                        compute_deriv,                           &
-                        internal_conn,                           &
-                        cond_type,                               &
-                        mflux,                                   &
-                        dmflux_dT_up,                            &
-                        dmflux_dT_dn                             &
+                   call RichardsFluxDerivativeWrtTemperature(      &
+                        geq_soil%aux_vars_bc(sum_conn)%pressure,   &
+                        geq_soil%aux_vars_bc(sum_conn)%krl,        &
+                        geq_soil%aux_vars_bc(sum_conn)%denl,       &
+                        geq_soil%aux_vars_bc(sum_conn)%ddenl_dT,   &
+                        geq_soil%aux_vars_bc(sum_conn)%vis,        &
+                        geq_soil%aux_vars_bc(sum_conn)%dvis_dT,    &
+                        geq_soil%aux_vars_bc(sum_conn)%perm,       &
+                        geq_soil%aux_vars_in(cell_id)%pressure,    &
+                        geq_soil%aux_vars_in(cell_id)%krl,         &
+                        geq_soil%aux_vars_in(cell_id)%denl,        &
+                        geq_soil%aux_vars_in(cell_id)%ddenl_dT,    &
+                        geq_soil%aux_vars_in(cell_id)%vis,         &
+                        geq_soil%aux_vars_in(cell_id)%dvis_dT,     &
+                        geq_soil%aux_vars_in(cell_id)%perm,        &
+                        cur_conn_set%conn(iconn)%GetArea(),        &
+                        cur_conn_set%conn(iconn)%GetDistUp(),      &
+                        cur_conn_set%conn(iconn)%GetDistDn(),      &
+                        cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+                        compute_deriv,                             &
+                        internal_conn,                             &
+                        cond_type,                                 &
+                        mflux,                                     &
+                        dmflux_dT_up,                              &
+                        dmflux_dT_dn                               &
                         )
 
                    call ThermalEnthalpyFlux(                         &
@@ -1901,9 +1901,9 @@ contains
                         mflux,                                       &
                         dmflux_dT_up,                                &
                         dmflux_dT_dn,                                &
-                        cur_conn_set%area(iconn),                    &
-                        cur_conn_set%dist_up(iconn),                 &
-                        cur_conn_set%dist_dn(iconn),                 &
+                        cur_conn_set%conn(iconn)%GetArea(),          &
+                        cur_conn_set%conn(iconn)%GetDistUp(),        &
+                        cur_conn_set%conn(iconn)%GetDistDn(),        &
                         compute_deriv,                               &
                         internal_conn,                               &
                         cond_type,                                   &
@@ -1913,7 +1913,7 @@ contains
                         )
 
                    row = cell_id - 1
-                   col = cur_conn_set%id_up(iconn) - 1
+                   col = cur_conn_set%conn(iconn)%GetIDUp() - 1
                    val = Jup
                    call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
 
@@ -2041,7 +2041,7 @@ contains
                 do iconn = 1, cur_conn_set%num_connections
                    sum_conn = sum_conn + 1
 
-                   cell_id = cur_conn_set%id_dn(iconn)
+                   cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
                    internal_conn = PETSC_FALSE
                    cond_type     = cur_cond%itype
@@ -2067,10 +2067,10 @@ contains
                            geq_soil%aux_vars_in(cell_id  )%vis,      &
                            geq_soil%aux_vars_in(cell_id  )%dvis_dP,  &
                            geq_soil%aux_vars_in(cell_id  )%perm,     &
-                           cur_conn_set%area(iconn),                 &
-                           cur_conn_set%dist_up(iconn),              &
-                           cur_conn_set%dist_dn(iconn),              &
-                           cur_conn_set%dist_unitvec(iconn)%arr,     &
+                           cur_conn_set%conn(iconn)%GetArea(),       &
+                           cur_conn_set%conn(iconn)%GetDistUp(),     &
+                           cur_conn_set%conn(iconn)%GetDistDn(),     &
+                           cur_conn_set%conn(iconn)%GetDistUnitVec(),&
                            compute_deriv,                            &
                            internal_conn,                            &
                            cond_type,                                &
@@ -2098,9 +2098,9 @@ contains
                            mflux,                                       &
                            dmflux_dP_up,                                &
                            dmflux_dP_dn,                                &
-                           cur_conn_set%area(iconn),                    &
-                           cur_conn_set%dist_up(iconn),                 &
-                           cur_conn_set%dist_dn(iconn),                 &
+                           cur_conn_set%conn(iconn)%GetArea(),          &
+                           cur_conn_set%conn(iconn)%GetDistUp(),        &
+                           cur_conn_set%conn(iconn)%GetDistDn(),        &
                            compute_deriv,                               &
                            internal_conn,                               &
                            cond_type,                                   &
@@ -2134,10 +2134,10 @@ contains
                            geq_soil%aux_vars_bc(sum_conn )%vis,      &
                            geq_soil%aux_vars_bc(sum_conn )%dvis_dP,  &
                            geq_soil%aux_vars_bc(sum_conn )%perm,     &
-                           cur_conn_set%area(iconn),                 &
-                           cur_conn_set%dist_up(iconn),              &
-                           cur_conn_set%dist_dn(iconn),              &
-                           -cur_conn_set%dist_unitvec(iconn)%arr,     &
+                           cur_conn_set%conn(iconn)%GetArea(),       &
+                           cur_conn_set%conn(iconn)%GetDistUp(),     &
+                           cur_conn_set%conn(iconn)%GetDistDn(),     &
+                           -cur_conn_set%conn(iconn)%GetDistUnitVec(),&
                            compute_deriv,                            &
                            internal_conn,                            &
                            cond_type,                                &
@@ -2165,9 +2165,9 @@ contains
                            mflux,                                       &
                            dmflux_dP_up,                                &
                            dmflux_dP_dn,                                &
-                           cur_conn_set%area(iconn),                    &
-                           cur_conn_set%dist_up(iconn),                 &
-                           cur_conn_set%dist_dn(iconn),                 &
+                           cur_conn_set%conn(iconn)%GetArea(),          &
+                           cur_conn_set%conn(iconn)%GetDistUp(),        &
+                           cur_conn_set%conn(iconn)%GetDistDn(),        &
                            compute_deriv,                               &
                            internal_conn,                               &
                            cond_type,                                   &
@@ -2185,7 +2185,7 @@ contains
 
 
                    row = cell_id - 1
-                   col = cur_conn_set%id_up(iconn) - 1
+                   col = cur_conn_set%conn(iconn)%GetIDUp() - 1
 
                    if (cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn)) then
                       col = row
@@ -2258,8 +2258,8 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
           internal_conn = PETSC_TRUE
           cond_type     = COND_NULL
@@ -2284,10 +2284,10 @@ contains
                geq_soil%aux_vars_in(cell_id_dn)%vis,      &
                geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
                geq_soil%aux_vars_in(cell_id_dn)%perm,     &
-               cur_conn_set%area(iconn),                  &
-               cur_conn_set%dist_up(iconn),               &
-               cur_conn_set%dist_dn(iconn),               &
-               cur_conn_set%dist_unitvec(iconn)%arr,      &
+               cur_conn_set%conn(iconn)%GetArea(),        &
+               cur_conn_set%conn(iconn)%GetDistUp(),      &
+               cur_conn_set%conn(iconn)%GetDistDn(),      &
+               cur_conn_set%conn(iconn)%GetDistUnitVec(), &
                compute_deriv,                             &
                internal_conn,                             &
                cond_type,                                 &
@@ -2315,9 +2315,9 @@ contains
                mflux,                                        &
                dmflux_dP_up,                                 &
                dmflux_dP_dn,                                 &
-               cur_conn_set%area(iconn),                     &
-               cur_conn_set%dist_up(iconn),                  &
-               cur_conn_set%dist_dn(iconn),                  &
+               cur_conn_set%conn(iconn)%GetArea(),           &
+               cur_conn_set%conn(iconn)%GetDistUp(),         &
+               cur_conn_set%conn(iconn)%GetDistDn(),         &
                compute_deriv,                                &
                internal_conn,                                &
                cond_type,                                    &

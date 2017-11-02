@@ -670,11 +670,11 @@ contains
              endif
 
              do iconn = 1, cur_conn_set_1%num_connections
-                cur_conn_set_2%id_up(iconn)   = cur_conn_set_1%id_dn(iconn)
-                cur_conn_set_2%dist_up(iconn) = cur_conn_set_1%dist_dn(iconn)
+                call cur_conn_set_2%conn(iconn)%SetIDUp(cur_conn_set_1%conn(iconn)%GetIDDn())
+                call cur_conn_set_2%conn(iconn)%SetDistUp(cur_conn_set_1%conn(iconn)%GetDistDn())
 
-                cur_conn_set_1%id_up(iconn)   = cur_conn_set_2%id_dn(iconn)
-                cur_conn_set_1%dist_up(iconn) = cur_conn_set_2%dist_dn(iconn)
+                call cur_conn_set_1%conn(iconn)%SetIDUp(cur_conn_set_2%conn(iconn)%GetIDDn())
+                call cur_conn_set_1%conn(iconn)%SetDistUp(cur_conn_set_2%conn(iconn)%GetDistDn())
              enddo
 
           endif

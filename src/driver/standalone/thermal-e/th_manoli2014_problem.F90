@@ -1639,7 +1639,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           aux_vars_bc(sum_conn)%perm(:)             = aux_vars_in(ghosted_id)%perm(:)
           aux_vars_bc(sum_conn)%por                 = aux_vars_in(ghosted_id)%por
@@ -1660,7 +1660,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           aux_vars_ss(sum_conn)%perm(:)             = aux_vars_in(ghosted_id)%perm(:)
           aux_vars_ss(sum_conn)%por                 = aux_vars_in(ghosted_id)%por
@@ -1835,7 +1835,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           aux_vars_bc(sum_conn)%perm(:)       = aux_vars_in(ghosted_id)%perm(:)
           aux_vars_bc(sum_conn)%por           = aux_vars_in(ghosted_id)%por
@@ -1861,7 +1861,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%id_dn(iconn)
+          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           aux_vars_ss(sum_conn)%perm(:)       = aux_vars_in(ghosted_id)%perm(:)
           aux_vars_ss(sum_conn)%por           = aux_vars_in(ghosted_id)%por

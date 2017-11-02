@@ -304,7 +304,7 @@ contains
        do iconn = 1, cur_conn_set%num_connections
 
           sum_conn = sum_conn + 1
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           select case(cur_cond%itype)
           case (COND_HEAT_FLUX)
@@ -569,11 +569,11 @@ contains
     iconn = 0
     do iconn = 1, cur_conn_set%num_connections
 
-       cell_id_up = cur_conn_set%id_up(iconn)
-       cell_id_dn = cur_conn_set%id_dn(iconn)
+       cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+       cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
-       cur_conn_set%dist_up(iconn) = this%aux_vars_in(cell_id_up)%dist_up
-       cur_conn_set%dist_dn(iconn) = this%aux_vars_in(cell_id_dn)%dist_dn
+       call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_in(cell_id_up)%dist_up)
+       call cur_conn_set%conn(iconn)%SetDistDn(this%aux_vars_in(cell_id_dn)%dist_dn)
 
     end do
 
@@ -649,8 +649,8 @@ contains
     conn_set => top_hflux_cond%conn_set
     do iconn = 1, conn_set%num_connections
        if (this%aux_vars_in(iconn*nlevsno)%is_active ) then
-          conn_set%id_dn(iconn) = iconn*nlevsno - &
-               this%aux_vars_in(iconn*nlevsno)%num_snow_layer + 1
+          call conn_set%conn(iconn)%SetIDDn(iconn*nlevsno - &
+               this%aux_vars_in(iconn*nlevsno)%num_snow_layer + 1)
        endif       
     enddo
 
@@ -658,10 +658,10 @@ contains
     conn_set => soil_temp_cond%conn_set
     do iconn = 1, conn_set%num_connections
 
-       cell_id = conn_set%id_dn(iconn)
+       cell_id = conn_set%conn(iconn)%GetIDDn()
 
        if (this%aux_vars_in(cell_id)%is_active ) then
-          conn_set%dist_dn(iconn) = this%aux_vars_in(cell_id)%dist_up
+          call conn_set%conn(iconn)%SetDistDn(this%aux_vars_in(cell_id)%dist_up)
        endif       
     enddo
 
@@ -804,8 +804,8 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.geq_snow%aux_vars_in(cell_id_up)%is_active) .or. &
               (.not.geq_snow%aux_vars_in(cell_id_dn)%is_active)) cycle
@@ -814,12 +814,12 @@ contains
                             geq_snow%aux_vars_in(cell_id_up)%therm_cond,   &
                             geq_snow%aux_vars_in(cell_id_dn)%temperature,  &
                             geq_snow%aux_vars_in(cell_id_dn)%therm_cond,   &
-                            cur_conn_set%dist_up(iconn),                   &
-                            cur_conn_set%dist_dn(iconn),                   &
+                            cur_conn_set%conn(iconn)%GetDistUp(),                   &
+                            cur_conn_set%conn(iconn)%GetDistDn(),                   &
                             flux                                           &
                             )
 
-          area = cur_conn_set%area(iconn)
+          area = cur_conn_set%conn(iconn)%GetArea()
 
           heat_cap = geq_snow%aux_vars_in(cell_id_up)%heat_cap_pva
           tfactor  = geq_snow%aux_vars_in(cell_id_up)%tuning_factor
@@ -856,21 +856,21 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id  = cur_conn_set%id_dn(iconn)
+          cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if (.not.geq_snow%aux_vars_in(cell_id )%is_active) cycle
           
           select case(cur_cond%itype)
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
-             area = cur_conn_set%area(iconn)
+             area = cur_conn_set%conn(iconn)%GetArea()
 
              call DiffHeatFlux(geq_snow%aux_vars_bc(sum_conn)%temperature,  &
                                geq_snow%aux_vars_bc(sum_conn)%therm_cond,   &
                                geq_snow%aux_vars_in(cell_id )%temperature,  &
                                geq_snow%aux_vars_in(cell_id )%therm_cond,   &
-                               cur_conn_set%dist_up(iconn),                   &
-                               cur_conn_set%dist_dn(iconn),                   &
+                               cur_conn_set%conn(iconn)%GetDistUp(),                   &
+                               cur_conn_set%conn(iconn)%GetDistDn(),                   &
                                flux                                           &
                                )
 
@@ -887,7 +887,7 @@ contains
                 b_p(cell_id) = b_p(cell_id) - cnfac*flux*area*factor
 
           case (COND_HEAT_FLUX)             
-             area     = cur_conn_set%area(iconn)
+             area     = cur_conn_set%conn(iconn)%GetArea()
              heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
              tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
              vol      = geq_snow%mesh%vol(cell_id)
@@ -917,7 +917,7 @@ contains
        cur_conn_set => cur_cond%conn_set
 
        do iconn = 1, cur_conn_set%num_connections
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.geq_snow%aux_vars_in(cell_id)%is_active)) cycle
 
@@ -1043,15 +1043,15 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.this%aux_vars_in(cell_id_up)%is_active) .or. &
               (.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
-          area          = cur_conn_set%area(iconn)
-          dist_up       = cur_conn_set%dist_up(iconn)
-          dist_dn       = cur_conn_set%dist_dn(iconn)
+          area          = cur_conn_set%conn(iconn)%GetArea()
+          dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+          dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
           dist          = dist_up + dist_dn
 
           therm_cond_up = this%aux_vars_in(cell_id_up)%therm_cond
@@ -1100,8 +1100,8 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
@@ -1109,9 +1109,9 @@ contains
           select case(cur_cond%itype)
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
 
-             area          = cur_conn_set%area(iconn)
-             dist_up       = cur_conn_set%dist_up(iconn)
-             dist_dn       = cur_conn_set%dist_dn(iconn)
+             area          = cur_conn_set%conn(iconn)%GetArea()
+             dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+             dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
              dist          = dist_up + dist_dn
 
              therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -1137,7 +1137,7 @@ contains
           case (COND_HEAT_FLUX)
 
              dhsdT = this%aux_vars_bc(sum_conn)%dhsdT
-             area  = cur_conn_set%area(iconn)
+             area  = cur_conn_set%conn(iconn)%GetArea()
              heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
              tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
              vol      = this%mesh%vol(cell_id_dn)
@@ -1219,15 +1219,15 @@ contains
              if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
                 do iconn = 1, cur_conn_set%num_connections
 
-                   cell_id_dn = cur_conn_set%id_dn(iconn)
-                   cell_id_up = cur_conn_set%id_up(iconn)
+                   cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
+                   cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
                    sum_conn = sum_conn + 1
 
                    if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
-                   area          = cur_conn_set%area(iconn)
-                   dist_up       = cur_conn_set%dist_up(iconn)
-                   dist_dn       = cur_conn_set%dist_dn(iconn)
+                   area          = cur_conn_set%conn(iconn)%GetArea()
+                   dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+                   dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
                    dist          = dist_up + dist_dn
 
                    therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond

@@ -297,7 +297,7 @@ contains
        do iconn = 1, cur_conn_set%num_connections
 
           sum_conn = sum_conn + 1
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           select case(cur_cond%itype)
           case (COND_HEAT_FLUX)
@@ -662,8 +662,8 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.geq_soil%aux_vars_in(cell_id_up)%is_active) .or. &
               (.not.geq_soil%aux_vars_in(cell_id_dn)%is_active)) cycle
@@ -672,12 +672,12 @@ contains
                             geq_soil%aux_vars_in(cell_id_up)%therm_cond,   &
                             geq_soil%aux_vars_in(cell_id_dn)%temperature,  &
                             geq_soil%aux_vars_in(cell_id_dn)%therm_cond,   &
-                            cur_conn_set%dist_up(iconn),                   &
-                            cur_conn_set%dist_dn(iconn),                   &
+                            cur_conn_set%conn(iconn)%GetDistUp(),                   &
+                            cur_conn_set%conn(iconn)%GetDistDn(),                   &
                             flux                                           &
                             )
 
-          area = cur_conn_set%area(iconn)
+          area = cur_conn_set%conn(iconn)%GetArea()
 
           T        = geq_soil%aux_vars_in(cell_id_up)%temperature
           heat_cap = geq_soil%aux_vars_in(cell_id_up)%heat_cap_pva
@@ -724,7 +724,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id  = cur_conn_set%id_dn(iconn)
+          cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if (.not.geq_soil%aux_vars_in(cell_id )%is_active) cycle
@@ -735,8 +735,8 @@ contains
              if (.not.geq_soil%aux_vars_bc(sum_conn)%is_active) cycle
 
                 if (is_bc_sh2o) then
-                   dist_up       = cur_conn_set%dist_up(iconn)
-                   dist_dn       = cur_conn_set%dist_dn(iconn)
+                   dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+                   dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
                    dist          = dist_up + dist_dn
 
                    therm_cond_up = geq_soil%aux_vars_bc(sum_conn)%therm_cond
@@ -758,8 +758,8 @@ contains
                                      geq_soil%aux_vars_bc(sum_conn)%therm_cond,  &
                                      geq_soil%aux_vars_in(cell_id )%temperature, &
                                      geq_soil%aux_vars_in(cell_id )%therm_cond,  &
-                                     cur_conn_set%dist_up(iconn),                &
-                                     cur_conn_set%dist_dn(iconn),                &
+                                     cur_conn_set%conn(iconn)%GetDistUp(),                &
+                                     cur_conn_set%conn(iconn)%GetDistDn(),                &
                                      flux                                        &
                                     )
                 endif
@@ -779,7 +779,7 @@ contains
                      cnfac * flux * area * factor
 
           case (COND_HEAT_FLUX)             
-             area = cur_conn_set%area(iconn)
+             area = cur_conn_set%conn(iconn)%GetArea()
 
              T        = geq_soil%aux_vars_in(cell_id)%temperature
              heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
@@ -813,7 +813,7 @@ contains
        cur_conn_set => cur_cond%conn_set
 
        do iconn = 1, cur_conn_set%num_connections
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.geq_soil%aux_vars_in(cell_id)%is_active)) cycle
 
@@ -954,15 +954,15 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id_up = cur_conn_set%id_up(iconn)
-          cell_id_dn = cur_conn_set%id_dn(iconn)
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.this%aux_vars_in(cell_id_up)%is_active) .or. &
               (.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
-          area          = cur_conn_set%area(iconn)
-          dist_up       = cur_conn_set%dist_up(iconn)
-          dist_dn       = cur_conn_set%dist_dn(iconn)
+          area          = cur_conn_set%conn(iconn)%GetArea()
+          dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+          dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
           dist          = dist_up + dist_dn
 
           therm_cond_up = this%aux_vars_in(cell_id_up)%therm_cond
@@ -1022,8 +1022,8 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id_dn = cur_conn_set%id_dn(iconn)
-          cell_id_up = cur_conn_set%id_up(iconn)
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
+          cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
           sum_conn = sum_conn + 1
 
           if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
@@ -1033,9 +1033,9 @@ contains
              if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
 
              frac          = this%aux_vars_bc(sum_conn)%frac
-             area          = cur_conn_set%area(iconn)
-             dist_up       = cur_conn_set%dist_up(iconn)
-             dist_dn       = cur_conn_set%dist_dn(iconn)
+             area          = cur_conn_set%conn(iconn)%GetArea()
+             dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+             dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
              dist          = dist_up + dist_dn
 
              therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -1070,7 +1070,7 @@ contains
 
              dhsdT = this%aux_vars_bc(sum_conn)%dhsdT
              frac  = this%aux_vars_bc(sum_conn)%frac
-             area  = cur_conn_set%area(iconn)
+             area  = cur_conn_set%conn(iconn)%GetArea()
 
              T        = this%aux_vars_in(cell_id_dn)%temperature
              heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
@@ -1170,8 +1170,8 @@ contains
 
                 do iconn = 1, cur_conn_set%num_connections
 
-                   cell_id_dn = cur_conn_set%id_dn(iconn)
-                   cell_id_up = cur_conn_set%id_up(iconn)
+                   cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
+                   cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
 
                    sum_conn = sum_conn + 1
 
@@ -1180,9 +1180,9 @@ contains
                    if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
 
                    frac          = this%aux_vars_bc(sum_conn)%frac
-                   area          = cur_conn_set%area(iconn)
-                   dist_up       = cur_conn_set%dist_up(iconn)
-                   dist_dn       = cur_conn_set%dist_dn(iconn)
+                   area          = cur_conn_set%conn(iconn)%GetArea()
+                   dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+                   dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
                    dist          = dist_up + dist_dn
 
                    therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -1281,7 +1281,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id  = cur_conn_set%id_dn(iconn)
+          cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           select case(cur_cond%itype)
@@ -1289,9 +1289,9 @@ contains
              if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
              
              if (is_bc_snow) then
-                cur_conn_set%dist_up(iconn) = this%aux_vars_bc(sum_conn)%dist_up
+                call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_bc(sum_conn)%dist_up)
              elseif (is_bc_sh2o) then
-                cur_conn_set%dist_up(iconn) = this%aux_vars_bc(sum_conn)%dz/2.d0
+                call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_bc(sum_conn)%dz/2.d0)
              endif
 
           case default

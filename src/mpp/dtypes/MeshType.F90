@@ -344,18 +344,16 @@ contains
           id_up = (c-begc)*this%nlev + j
           id_dn = id_up + 1
 
-          conn_set%type         = CONN_VERTICAL
-          conn_set%id_up(iconn) = id_up
-          conn_set%id_dn(iconn) = id_dn
+          call conn_set%conn(iconn)%SetType(CONN_VERTICAL)
+          call conn_set%conn(iconn)%SetIDUp(id_up)
+          call conn_set%conn(iconn)%SetIDDn(id_dn)
 
-          conn_set%area(iconn) = area_col(c)
+          call conn_set%conn(iconn)%SetArea(area_col(c))
 
-          conn_set%dist_up(iconn) = 0.5d0*this%dz(id_up)
-          conn_set%dist_dn(iconn) = 0.5d0*this%dz(id_dn)
+          call conn_set%conn(iconn)%SetDistUp(0.5d0*this%dz(id_up))
+          call conn_set%conn(iconn)%SetDistDn(0.5d0*this%dz(id_dn))
 
-          conn_set%dist_unitvec(iconn)%arr(1) = 0.d0
-          conn_set%dist_unitvec(iconn)%arr(2) = 0.d0
-          conn_set%dist_unitvec(iconn)%arr(3) = -1.d0
+          call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, -1.d0)
 
        enddo
     enddo
@@ -438,26 +436,24 @@ contains
                       id_up = (c_idx_up - begc)*this%nlev + j
                       id_dn = (c_idx_dn - begc)*this%nlev + j
 
-                      conn_set%type         = CONN_HORIZONTAL
-                      conn_set%id_up(iconn) = id_up
-                      conn_set%id_dn(iconn) = id_dn
+                      call conn_set%conn(iconn)%SetType(CONN_HORIZONTAL)
+                      call conn_set%conn(iconn)%SetIDUp(id_up)
+                      call conn_set%conn(iconn)%SetIDDn(id_dn)
 
                       this%is_active(id_up) = PETSC_TRUE
                       this%is_active(id_dn) = PETSC_TRUE
 
-                      conn_set%area(iconn) = this%dz(id_up)*dv
+                      call conn_set%conn(iconn)%SetArea(this%dz(id_up)*dv)
 
                       dist_x = dc
                       dist_y = 0.d0
                       dist_z = this%z(id_dn) - this%z(id_up)
                       dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
 
-                      conn_set%dist_up(iconn) = 0.5d0*dist
-                      conn_set%dist_dn(iconn) = 0.5d0*dist
+                      call conn_set%conn(iconn)%SetDistUp(0.5d0*dist)
+                      call conn_set%conn(iconn)%SetDistDn(0.5d0*dist)
 
-                      conn_set%dist_unitvec(iconn)%arr(1) = dist_x/dist
-                      conn_set%dist_unitvec(iconn)%arr(2) = dist_y/dist
-                      conn_set%dist_unitvec(iconn)%arr(3) = dist_z/dist
+                      call conn_set%conn(iconn)%SetDistUnitVec(dist_x/dist, dist_y/dist, dist_z/dist)
                    enddo
                 endif ! if (c_idx_up > -1 .and. c_idx_dn > -1)
              endif ! if (ugrid%gridsOnGrid_local(iedge,icell) > icell)
@@ -569,18 +565,14 @@ contains
                 id_up = -1
                 id_dn = mesh%nlev*c + offset
 
-                conn_set%dist_unitvec(iconn)%arr(1) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(2) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(3) =  -1.d0
+                call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, -1.d0)
 
              case (SOIL_BOTTOM_CELLS, SNOW_BOTTOM_CELLS)
 
                 id_up = -1
                 id_dn = mesh%nlev*(c-1) + 1 + offset
 
-                conn_set%dist_unitvec(iconn)%arr(1) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(2) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(3) =  1.d0
+                call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, 1.d0)
              end select
 
           case (MESH_ALONG_GRAVITY)
@@ -589,17 +581,13 @@ contains
                 id_up = -1
                 id_dn = mesh%nlev*c + offset
 
-                conn_set%dist_unitvec(iconn)%arr(1) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(2) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(3) =  1.d0
+                call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, 1.d0)
 
              case (SOIL_TOP_CELLS, SNOW_TOP_CELLS, SSW_TOP_CELLS)
                 id_up = -1
                 id_dn = mesh%nlev*(c-1) + 1 + offset
 
-                conn_set%dist_unitvec(iconn)%arr(1) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(2) =  0.d0
-                conn_set%dist_unitvec(iconn)%arr(3) = -1.d0
+                call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, -1.d0)
              end select
 
           case default
@@ -607,15 +595,15 @@ contains
              call endrun(msg=errMsg(__FILE__, __LINE__))
           end select
 
-          conn_set%id_up(iconn) = id_up
-          conn_set%id_dn(iconn) = id_dn
-          conn_set%area(iconn)  = mesh%area_xy(id_dn)
-          conn_set%dist_up(iconn) = 0.0d0
+          call conn_set%conn(iconn)%SetIdUp(id_up)
+          call conn_set%conn(iconn)%SetIDDn(id_dn)
+          call conn_set%conn(iconn)%SetArea(mesh%area_xy(id_dn))
+          call conn_set%conn(iconn)%SetDistUp(0.0d0)
           if (use_centroid_in_dist_computation) then
              j = 0
-             conn_set%dist_dn(iconn) = z(begc+c-1,j+1) - zi(begc+c-1,j)
+             call conn_set%conn(iconn)%SetDistDn(z(begc+c-1,j+1) - zi(begc+c-1,j))
           else
-             conn_set%dist_dn(iconn) = 0.5d0*mesh%dz(id_dn)
+             call conn_set%conn(iconn)%SetDistDn(0.5d0*mesh%dz(id_dn))
           endif
        enddo
 
@@ -632,17 +620,15 @@ contains
              id_up = -1
              id_dn = iconn
 
-             conn_set%id_up(iconn) = id_up
-             conn_set%id_dn(iconn) = id_dn
+             call conn_set%conn(iconn)%SetIDUp(id_up)
+             call conn_set%conn(iconn)%SetIDDn(id_dn)
 
-             conn_set%dist_unitvec(iconn)%arr(1) =  0.d0
-             conn_set%dist_unitvec(iconn)%arr(2) =  0.d0
-             conn_set%dist_unitvec(iconn)%arr(3) =  0.d0
+                call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, 0.d0)
 
-             conn_set%area(iconn)  = mesh%area_xy(id_dn)
+             call conn_set%conn(iconn)%SetArea(mesh%area_xy(id_dn))
 
-             conn_set%dist_up(iconn) = 0.0d0
-             conn_set%dist_dn(iconn) = 0.0d0
+             call conn_set%conn(iconn)%SetDistUp(0.0d0)
+             call conn_set%conn(iconn)%SetDistDn(0.0d0)
 
           enddo
        enddo
@@ -701,12 +687,12 @@ contains
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
 
-       conn_set%id_up(iconn) = id_up(iconn)
-       conn_set%id_dn(iconn) = id_dn(iconn)
-       conn_set%area(iconn)  = area(iconn)
+       call conn_set%conn(iconn)%SetIDUp(id_up(iconn))
+       call conn_set%conn(iconn)%SetIDDn(id_dn(iconn))
+       call conn_set%conn(iconn)%SetArea(area(iconn))
 
-       conn_set%dist_up(iconn) = dist_up(iconn)
-       conn_set%dist_dn(iconn) = dist_dn(iconn)
+       call conn_set%conn(iconn)%SetDistUp(dist_up(iconn))
+       call conn_set%conn(iconn)%SetDistDn(dist_dn(iconn))
 
        if (.not.present(unit_vec)) then
           dist_x = this%x(id_dn(iconn)) - this%x(id_up(iconn))
@@ -714,16 +700,12 @@ contains
           dist_z = this%z(id_dn(iconn)) - this%z(id_up(iconn))
           dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
 
-          conn_set%dist_unitvec(iconn)%arr(1) = dist_x/dist
-          conn_set%dist_unitvec(iconn)%arr(2) = dist_y/dist
-          conn_set%dist_unitvec(iconn)%arr(3) = dist_z/dist
+          call conn_set%conn(iconn)%SetDistUnitVec(dist_x/dist, dist_y/dist, dist_z/dist)
        else
-          conn_set%dist_unitvec(iconn)%arr(1) = unit_vec(iconn,1)
-          conn_set%dist_unitvec(iconn)%arr(2) = unit_vec(iconn,2)
-          conn_set%dist_unitvec(iconn)%arr(3) = unit_vec(iconn,3)
+          call conn_set%conn(iconn)%SetDistUnitVec(unit_vec(iconn,1), unit_vec(iconn,2), unit_vec(iconn,3))
        endif
 
-       conn_set%type(iconn) = itype(iconn)
+       call conn_set%conn(iconn)%SetType(itype(iconn))
     end do
 
   end subroutine MeshCreateConnectionSet2

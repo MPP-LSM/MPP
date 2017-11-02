@@ -669,14 +669,12 @@ contains
     cond%conn_set => ConnectionSetNew(nconn)
 
     do iconn = 1, nconn
-       cond%conn_set%id_up(iconn)               = conn_id_up(iconn)
-       cond%conn_set%id_dn(iconn)               = conn_id_dn(iconn)
-       cond%conn_set%area(iconn)                = conn_area(iconn)
-       cond%conn_set%dist_up(iconn)             = conn_dist_up(iconn)
-       cond%conn_set%dist_dn(iconn)             = conn_dist_dn(iconn)
-       cond%conn_set%dist_unitvec(iconn)%arr(1) = conn_unitvec(iconn,1)
-       cond%conn_set%dist_unitvec(iconn)%arr(2) = conn_unitvec(iconn,2)
-       cond%conn_set%dist_unitvec(iconn)%arr(3) = conn_unitvec(iconn,3)
+       call cond%conn_set%conn(iconn)%SetIDUp  (conn_id_up(iconn))
+       call cond%conn_set%conn(iconn)%SetIDDn  (conn_id_dn(iconn))
+       call cond%conn_set%conn(iconn)%SetArea  (conn_area(iconn))
+       call cond%conn_set%conn(iconn)%SetDistUp(conn_dist_up(iconn))
+       call cond%conn_set%conn(iconn)%SetDistDn(conn_dist_dn(iconn))
+       call cond%conn_set%conn(iconn)%SetDistUnitVec(conn_unitvec(iconn,1), conn_unitvec(iconn,2),conn_unitvec(iconn,3))
     enddo
 
   end subroutine GoveqnBaseUpdateConditionConnSet
