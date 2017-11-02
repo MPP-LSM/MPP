@@ -9,25 +9,45 @@ module ConnectionSetType
   private
 #include <petsc/finclude/petsc.h>
 
+  type, public :: connection_type
+     private
+     PetscInt                       :: type         ! horizontal or vertical
+     PetscInt                       :: id_up        ! IDs of upwind cells [-]
+     PetscInt                       :: id_dn        ! IDs of downwind cells [-]
+     PetscReal                      :: area         ! area normal to connection [m^2]
+
+     ! Distances are computed as : downwind - upwind
+     PetscReal                      :: dist_up      ! Magnitude of distance from centroid of upwind cell to centroid of cell face [m]
+     PetscReal                      :: dist_dn      ! Magnitude of distance from centroid of downwind cell to centroid of cell face [m]
+
+     type(array_dim3_type), pointer :: dist_unitvec ! Unit vector [-]
+   contains
+     procedure, public :: Init            => ConnInit
+     procedure, public :: SetType         => ConnSetType
+     procedure, public :: SetIDUp         => ConnSetIDUp
+     procedure, public :: SetIDDn         => ConnSetIDDn
+     procedure, public :: SetArea         => ConnSetArea
+     procedure, public :: SetDistUp       => ConnSetDistUp
+     procedure, public :: SetDistDn       => ConnSetDistDn
+     procedure, public :: SetDistUnitVec  => ConnSetDistUnitVec
+     procedure, public :: GetType         => ConnGetType
+     procedure, public :: GetIDUp         => ConnGetIDUp
+     procedure, public :: GetIDDn         => ConnGetIDDn
+     procedure, public :: GetArea         => ConnGetArea
+     procedure, public :: GetDistUp       => ConnGetDistUp
+     procedure, public :: GetDistDn       => ConnGetDistDn
+     procedure, public :: GetDistUnitVec  => ConnGetDistUnitVec
+     procedure, public :: GetDistUnitVecX => ConnGetDistUnitVecX
+     procedure, public :: GetDistUnitVecY => ConnGetDistUnitVecY
+     procedure, public :: GetDistUnitVecZ => ConnGetDistUnitVecZ
+  end type connection_type
+
   type, public :: connection_set_type
 
-     PetscInt                                     :: id              ! identifier
-     PetscInt, pointer                            :: type(:)         ! horizontal or vertical
-
-     PetscInt                                     :: num_connections ! total num. of connections
-     PetscInt, pointer                            :: id_up(:)        ! IDs of upwind cells [-]
-     PetscInt, pointer                            :: id_dn(:)        ! IDs of downwind cells [-]
-
-     PetscReal, pointer                           :: area(:)         ! area normal to connection [m^2]
-
-                                                                     ! Distances are computed as : downwind - upwind
-     PetscReal, pointer                           :: dist_up(:)      ! Magnitude of distance from centroid of
-                                                                     ! upwind cell to centroid of cell face [m]
-     PetscReal, pointer                           :: dist_dn(:)      ! Magnitude of distance from centroid of
-                                                                     ! downwind cell to centroid of cell face [m]
-     type(array_dim3_type), dimension(:), pointer :: dist_unitvec    ! Unit vector [-]
-
-     type(connection_set_type), pointer           :: next
+     PetscInt                           :: id              ! identifier
+     PetscInt                           :: num_connections ! total num. of connections
+     type(connection_type)    , pointer :: conn(:)         ! information about all connections
+     type(connection_set_type), pointer :: next
 
   end type connection_set_type
 
@@ -47,6 +67,334 @@ module ConnectionSetType
 contains
 
   !------------------------------------------------------------------------
+  subroutine ConnInit(this)
+    !
+    ! !DESCRIPTION:
+    ! Initialize a connection
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants   , only : CONN_VERTICAL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+
+    this%type    = CONN_VERTICAL
+    this%id_up   = 0
+    this%id_dn   = 0
+    this%area    = 0.d0
+    this%dist_up = 0.d0
+    this%dist_dn = 0.d0
+    allocate(this%dist_unitvec)
+    
+  end subroutine ConnInit
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetType(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set type of connection
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    PetscInt               :: val
+
+    this%type = val
+    
+  end subroutine ConnSetType
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetIDUp(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set ID of upwind cell
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    PetscInt               :: val
+
+    this%id_up = val
+    
+  end subroutine ConnSetIDUp
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetIDDn(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set ID of downwind cell
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    PetscInt               :: val
+
+    this%id_dn = val
+    
+  end subroutine ConnSetIDDn
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetArea(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set area of connection
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    PetscReal              :: val
+
+    this%area = val
+    
+  end subroutine ConnSetArea
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetDistUp(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set upwind distance
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    PetscReal              :: val
+
+    this%dist_up = val
+    
+  end subroutine ConnSetDistUp
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetDistDn(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set downwind distance
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    PetscReal              :: val
+
+    this%dist_dn = val
+    
+  end subroutine ConnSetDistDn
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetDistUnitVec(this, u_x, u_y, u_z)
+    !
+    ! !DESCRIPTION:
+    ! Set downwind distance
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    PetscReal              :: u_x, u_y, u_z
+
+    this%dist_unitvec%arr(1) = u_x
+    this%dist_unitvec%arr(2) = u_y
+    this%dist_unitvec%arr(3) = u_z
+    
+  end subroutine ConnSetDistUnitVec
+
+  !------------------------------------------------------------------------
+  function ConnGetIDUp(this)
+    !
+    ! !DESCRIPTION:
+    ! Return ID of upwind cell
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscInt               :: ConnGetIDUp
+
+    ConnGetIDUp = this%id_up
+    
+  end function ConnGetIDUp
+
+  !------------------------------------------------------------------------
+  function ConnGetIDDn(this)
+    !
+    ! !DESCRIPTION:
+    ! Return ID of downwind cell
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscInt               :: ConnGetIDDn
+
+    ConnGetIDDn = this%id_dn
+    
+  end function ConnGetIDDn
+
+  !------------------------------------------------------------------------
+  function ConnGetType(this)
+    !
+    ! !DESCRIPTION:
+    ! Return connection type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscInt               :: ConnGetType
+
+    ConnGetType = this%type
+    
+  end function ConnGetType
+
+  !------------------------------------------------------------------------
+  function ConnGetArea(this)
+    !
+    ! !DESCRIPTION:
+    ! Return area of connection
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscReal              :: ConnGetArea
+
+    ConnGetArea = this%area
+    
+  end function ConnGetArea
+
+  !------------------------------------------------------------------------
+  function ConnGetDistUp(this)
+    !
+    ! !DESCRIPTION:
+    ! Return upwind distance
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscReal              :: ConnGetDistUp
+
+    ConnGetDistUp = this%dist_up
+    
+  end function ConnGetDistUp
+
+  !------------------------------------------------------------------------
+  function ConnGetDistDn(this)
+    !
+    ! !DESCRIPTION:
+    ! Return downwind distance
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscReal              :: ConnGetDistDn
+
+    ConnGetDistDn = this%dist_dn
+    
+  end function ConnGetDistDn
+
+  !------------------------------------------------------------------------
+  function ConnGetDistUnitVec(this)
+    !
+    ! !DESCRIPTION:
+    ! Return all components of unit distance vector
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscReal              :: ConnGetDistUnitVec(3)
+
+    ConnGetDistUnitVec(1) = this%GetDistUnitVecX()
+    ConnGetDistUnitVec(2) = this%GetDistUnitVecY()
+    ConnGetDistUnitVec(3) = this%GetDistUnitVecZ()
+    
+  end function ConnGetDistUnitVec
+
+  !------------------------------------------------------------------------
+  function ConnGetDistUnitVecX(this)
+    !
+    ! !DESCRIPTION:
+    ! Return X component of unit vector
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscReal              :: ConnGetDistUnitVecX
+
+    ConnGetDistUnitVecX = this%dist_unitvec%arr(1)
+    
+  end function ConnGetDistUnitVecX
+
+  !------------------------------------------------------------------------
+  function ConnGetDistUnitVecY(this)
+    !
+    ! !DESCRIPTION:
+    ! Return Y component of unit vector
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscReal              :: ConnGetDistUnitVecY
+
+    ConnGetDistUnitVecY = this%dist_unitvec%arr(2)
+    
+  end function ConnGetDistUnitVecY
+
+  !------------------------------------------------------------------------
+  function ConnGetDistUnitVecZ(this)
+    !
+    ! !DESCRIPTION:
+    ! Return Z component of unit vector
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type) :: this
+    !
+    PetscReal              :: ConnGetDistUnitVecZ
+
+    ConnGetDistUnitVecZ = this%dist_unitvec%arr(3)
+    
+  end function ConnGetDistUnitVecZ
+
+  !------------------------------------------------------------------------
   function ConnectionSetNew(num_connections)
     !
     ! !DESCRIPTION:
@@ -63,19 +411,17 @@ contains
     ! !LOCAL VARIABLES:
     type(connection_set_type),pointer :: ConnectionSetNew
     type(connection_set_type),pointer :: conn_set
+    PetscInt                          :: iconn
 
     allocate(conn_set)
 
     conn_set%id                = 0
     conn_set%num_connections   = num_connections
 
-    allocate(conn_set%type        (num_connections)); conn_set%type   (:) = CONN_VERTICAL
-    allocate(conn_set%id_up       (num_connections)); conn_set%id_up  (:) = 0
-    allocate(conn_set%id_dn       (num_connections)); conn_set%id_dn  (:) = 0
-    allocate(conn_set%area        (num_connections)); conn_set%area   (:) = 0.d0
-    allocate(conn_set%dist_up     (num_connections)); conn_set%dist_up(:) = 0.d0
-    allocate(conn_set%dist_dn     (num_connections)); conn_set%dist_dn(:) = 0.d0
-    allocate(conn_set%dist_unitvec(num_connections));
+    allocate(conn_set%conn(num_connections));
+    do iconn = 1, num_connections
+       call conn_set%conn(iconn)%Init()
+    end do
 
     nullify(conn_set%next)
 
@@ -141,23 +487,10 @@ contains
 
     if (.not.(associated(conn_set))) return
 
-    if (associated(conn_set%type         )) deallocate(conn_set%type)
-    if (associated(conn_set%id_up        )) deallocate(conn_set%id_up)
-    if (associated(conn_set%id_dn        )) deallocate(conn_set%id_dn)
-    if (associated(conn_set%area         )) deallocate(conn_set%area)
-    if (associated(conn_set%dist_up      )) deallocate(conn_set%dist_up)
-    if (associated(conn_set%dist_dn      )) deallocate(conn_set%dist_dn)
-    if (associated(conn_set%dist_unitvec )) deallocate(conn_set%dist_unitvec)
+    deallocate(conn_set%conn)
+    nullify(conn_set%conn)
 
-    nullify(conn_set%type         )
-    nullify(conn_set%id_up        )
-    nullify(conn_set%id_up        )
-    nullify(conn_set%area         )
-    nullify(conn_set%dist_up      )
-    nullify(conn_set%dist_dn      )
-    nullify(conn_set%dist_unitvec )
-    nullify(conn_set%next         )
-
+    nullify(conn_set%next)
     deallocate(conn_set)
     nullify(conn_set)
 

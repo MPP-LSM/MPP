@@ -856,7 +856,7 @@ contains
 
              ! Save the IDs to get the data from
              do iauxvar = 1, cpl_var_1%num_cells
-                ids(iauxvar) = cur_conn_set_2%id_dn(iauxvar)
+                ids(iauxvar) = cur_conn_set_2%conn(iauxvar)%GetIDDn()
              enddo
 
              ! Get the data

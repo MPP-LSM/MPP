@@ -288,7 +288,7 @@ contains
        do iconn = 1, cur_conn_set%num_connections
 
           sum_conn = sum_conn + 1
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           select case(cur_cond%itype)
           case (COND_HEAT_FLUX)
@@ -595,10 +595,10 @@ contains
     conn_set => soil_temp_cond%conn_set
     do iconn = 1, conn_set%num_connections
 
-       cell_id = conn_set%id_dn(iconn)
+       cell_id = conn_set%conn(iconn)%GetIDDn()
 
        if (this%aux_vars_in(cell_id)%is_active ) then
-          conn_set%dist_dn(iconn) = this%mesh%dz(cell_id)/2.d0
+          call conn_set%conn(iconn)%SetDistDn(this%mesh%dz(cell_id)/2.d0)
        endif       
     enddo
 
@@ -723,7 +723,7 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if ((.not.this%aux_vars_in(cell_id)%is_active)) cycle
@@ -732,9 +732,9 @@ contains
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
              !if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
 
-             area          = cur_conn_set%area(iconn)
-             dist_up       = cur_conn_set%dist_up(iconn)
-             dist_dn       = cur_conn_set%dist_dn(iconn)
+             area          = cur_conn_set%conn(iconn)%GetArea()
+             dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+             dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
              dist          = dist_up + dist_dn
 
              therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -762,7 +762,7 @@ contains
           case (COND_HEAT_FLUX)
 
              dhsdT = this%aux_vars_bc(sum_conn)%dhsdT
-             area  = cur_conn_set%area(iconn)
+             area  = cur_conn_set%conn(iconn)%GetArea()
 
              heat_cap = this%aux_vars_in(cell_id)%heat_cap_pva
              vol      = this%mesh%vol(cell_id)
@@ -843,15 +843,15 @@ contains
 
                 do iconn = 1, cur_conn_set%num_connections
 
-                   cell_id_dn = cur_conn_set%id_dn(iconn)
-                   cell_id_up = cur_conn_set%id_up(iconn)
+                   cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
+                   cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
                    sum_conn   = sum_conn + 1
 
                    if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
-                   area          = cur_conn_set%area(iconn)
-                   dist_up       = cur_conn_set%dist_up(iconn)
-                   dist_dn       = cur_conn_set%dist_dn(iconn)
+                   area          = cur_conn_set%conn(iconn)%GetArea()
+                   dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+                   dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
                    dist          = dist_up + dist_dn
 
                    therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -987,17 +987,17 @@ contains
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id  = cur_conn_set%id_dn(iconn)
+          cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if (.not.geq_ssw%aux_vars_in(cell_id )%is_active) cycle
           
           select case(cur_cond%itype)
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
-             area = cur_conn_set%area(iconn)
+             area = cur_conn_set%conn(iconn)%GetArea()
 
-             dist_up       = cur_conn_set%dist_up(iconn)
-             dist_dn       = cur_conn_set%dist_dn(iconn)
+             dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
+             dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
              dist          = dist_up + dist_dn
 
              therm_cond_up = geq_ssw%aux_vars_bc(sum_conn)%therm_cond
@@ -1024,7 +1024,7 @@ contains
              b_p(cell_id) = b_p(cell_id) - cnfac*flux*area*factor
 
           case (COND_HEAT_FLUX)             
-             area = cur_conn_set%area(iconn)
+             area = cur_conn_set%conn(iconn)%GetArea()
 
              heat_cap = geq_ssw%aux_vars_in(cell_id)%heat_cap_pva
              vol      = geq_ssw%mesh%vol(cell_id)
@@ -1056,7 +1056,7 @@ contains
        cur_conn_set => cur_cond%conn_set
 
        do iconn = 1, cur_conn_set%num_connections
-          cell_id = cur_conn_set%id_dn(iconn)
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           if ((.not.geq_ssw%aux_vars_in(cell_id)%is_active)) cycle
 

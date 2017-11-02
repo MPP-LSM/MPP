@@ -754,7 +754,7 @@ contains
              select type(cur_goveq_2)
              class is (goveqn_richards_ode_pressure_type)
                 do iauxvar = 1, cpl_var_1%num_cells
-                   idx = cur_conn_set_2%id_dn(iauxvar)
+                   idx = cur_conn_set_2%conn(iauxvar)%GetIDDn()
                    call cur_goveq_2%aux_vars_in(idx)%GetValue(var_type, var_value)
                    var_values(iauxvar) = var_value
                 enddo
@@ -763,7 +763,7 @@ contains
 
                 ! Save the IDs to get the data from
                 do iauxvar = 1, cpl_var_1%num_cells
-                   ids(iauxvar) = cur_conn_set_2%id_dn(iauxvar)
+                   ids(iauxvar) = cur_conn_set_2%conn(iauxvar)%GetIDDn()
                 enddo
 
                 call ThermalEnthalpySoilAuxVarGetRValues(cur_goveq_2%aux_vars_in, var_type, &
@@ -1478,8 +1478,8 @@ contains
                !              unit_vec
                !
 
-                id_dn_1 = cur_conn_set_1%id_dn(iauxvar)
-                id_dn_2 = cur_conn_set_2%id_dn(iauxvar)
+                id_dn_1 = cur_conn_set_1%conn(iauxvar)%GetIDDn()
+                id_dn_2 = cur_conn_set_2%conn(iauxvar)%GetIDDn()
 
                 x_dn = cur_goveq_1%mesh%x(id_dn_1)
                 y_dn = cur_goveq_1%mesh%y(id_dn_1)
@@ -1495,26 +1495,26 @@ contains
 
                 dist = (dx**2.d0 + dy**2.d0 + dz**2.d0)**0.5d0
 
-                cur_conn_set_1%dist_unitvec(iauxvar)%arr(1) = dx/dist
-                cur_conn_set_1%dist_unitvec(iauxvar)%arr(2) = dy/dist
-                cur_conn_set_1%dist_unitvec(iauxvar)%arr(3) = dz/dist
+                call cur_conn_set_1%conn(iauxvar)%SetDistUnitVec(dx/dist, dy/dist, dz/dist)
 
                 x_half = (x_dn + x_up)/2.d0
                 y_half = (y_dn + y_up)/2.d0
                 z_half = (z_dn + z_up)/2.d0
 
-                cur_conn_set_1%id_up(iauxvar)   = id_dn_2
+                call cur_conn_set_1%conn(iauxvar)%SetIDUp(id_dn_2)
 
                 ! unit_vector for eq1 = -unit_vector for eq2
-                cur_conn_set_2%dist_unitvec(iauxvar)%arr = &
-                    -cur_conn_set_1%dist_unitvec(iauxvar)%arr
+                call cur_conn_set_2%conn(iauxvar)%SetDistUnitVec(    &
+                    -cur_conn_set_1%conn(iauxvar)%GetDistUnitVecX(), &
+                    -cur_conn_set_1%conn(iauxvar)%GetDistUnitVecY(), &
+                    -cur_conn_set_1%conn(iauxvar)%GetDistUnitVecZ() )
 
                 ! dist_up eq2 = dist_dn eq1
                 ! dist_up eq1 = dist_dn eq2
-                cur_conn_set_2%dist_up(iauxvar) = cur_conn_set_1%dist_dn(iauxvar)
-                cur_conn_set_1%dist_up(iauxvar) = cur_conn_set_2%dist_dn(iauxvar)
+                call cur_conn_set_2%conn(iauxvar)%SetDistUp(cur_conn_set_1%conn(iauxvar)%GetDistDn())
+                call cur_conn_set_1%conn(iauxvar)%SetDistUp(cur_conn_set_2%conn(iauxvar)%GetDistDn())
 
-                cur_conn_set_2%id_up(iauxvar)   = id_dn_1
+                call cur_conn_set_2%conn(iauxvar)%SetIDUp(id_dn_1)
 
                 sum_conn_1 = sum_conn_1 + 1
                 sum_conn_2 = sum_conn_2 + 1

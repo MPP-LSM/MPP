@@ -542,7 +542,7 @@ contains
 
              select case(var_type)
              case (VAR_DIST_DN)
-                cur_conn_set%dist_dn(iconn) = values(iconn)
+                call cur_conn_set%conn(iconn)%SetDistDn(values(iconn))
              case default
                 write(iulog,*) 'Unknown variable type'
                 call endrun(msg=errMsg(__FILE__, __LINE__))
