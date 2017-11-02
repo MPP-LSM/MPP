@@ -1315,30 +1315,16 @@ contains
           if ((.not.geq_soil%mesh%is_active(cell_id_up)) .or. &
               (.not.geq_soil%mesh%is_active(cell_id_dn))) cycle
 
-          call RichardsFlux(                              &
-               geq_soil%aux_vars_in(cell_id_up)%pressure, &
-               geq_soil%aux_vars_in(cell_id_up)%kr,      &
-               geq_soil%aux_vars_in(cell_id_up)%dkr_dP,  &
-               geq_soil%aux_vars_in(cell_id_up)%den,     &
-               geq_soil%aux_vars_in(cell_id_up)%dden_dP, &
-               geq_soil%aux_vars_in(cell_id_up)%vis,      &
-               geq_soil%aux_vars_in(cell_id_up)%dvis_dP,  &
-               geq_soil%aux_vars_in(cell_id_up)%perm,     &
-               geq_soil%aux_vars_in(cell_id_dn)%pressure, &
-               geq_soil%aux_vars_in(cell_id_dn)%kr,      &
-               geq_soil%aux_vars_in(cell_id_dn)%dkr_dP,  &
-               geq_soil%aux_vars_in(cell_id_dn)%den,     &
-               geq_soil%aux_vars_in(cell_id_dn)%dden_dP, &
-               geq_soil%aux_vars_in(cell_id_dn)%vis,      &
-               geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
-               geq_soil%aux_vars_in(cell_id_dn)%perm,     &
-               cur_conn_set%conn(iconn),                  &
-               compute_deriv,                             &
-               internal_conn,                             &
-               cond_type,                                 &
-               mflux,                                     &
-               dummy_var1,                                &
-               dummy_var2                                 &
+          call RichardsFlux(                     &
+               geq_soil%aux_vars_in(cell_id_up), &
+               geq_soil%aux_vars_in(cell_id_dn), &
+               cur_conn_set%conn(iconn),         &
+               compute_deriv,                    &
+               internal_conn,                    &
+               cond_type,                        &
+               mflux,                            &
+               dummy_var1,                       &
+               dummy_var2                        &
                )
 
           dmflux_dT_up = 0.d0
@@ -1348,14 +1334,14 @@ contains
                geq_soil%aux_vars_in(cell_id_up)%temperature, &
                geq_soil%aux_vars_in(cell_id_up)%hl,          &
                geq_soil%aux_vars_in(cell_id_up)%dhl_dT,      &
-               geq_soil%aux_vars_in(cell_id_up)%den,        &
-               geq_soil%aux_vars_in(cell_id_up)%dden_dT,    &
+               geq_soil%aux_vars_in(cell_id_up)%den,         &
+               geq_soil%aux_vars_in(cell_id_up)%dden_dT,     &
                geq_soil%aux_vars_in(cell_id_up)%therm_cond,  &
                geq_soil%aux_vars_in(cell_id_dn)%temperature, &
                geq_soil%aux_vars_in(cell_id_dn)%hl,          &
                geq_soil%aux_vars_in(cell_id_dn)%dhl_dT,      &
-               geq_soil%aux_vars_in(cell_id_dn)%den,        &
-               geq_soil%aux_vars_in(cell_id_dn)%dden_dT,    &
+               geq_soil%aux_vars_in(cell_id_dn)%den,         &
+               geq_soil%aux_vars_in(cell_id_dn)%dden_dT,     &
                geq_soil%aux_vars_in(cell_id_dn)%therm_cond,  &
                mflux,                                        &
                dmflux_dT_up,                                 &
@@ -1400,31 +1386,16 @@ contains
              internal_conn = PETSC_FALSE
              cond_type     = cur_cond%itype
 
-             call RichardsFlux(                              &
-                  geq_soil%aux_vars_bc(sum_conn)%pressure,   &
-                  geq_soil%aux_vars_bc(sum_conn)%kr,        &
-                  geq_soil%aux_vars_bc(sum_conn)%dkr_dP,    &
-                  geq_soil%aux_vars_bc(sum_conn)%den,       &
-                  geq_soil%aux_vars_bc(sum_conn)%dden_dP,   &
-                  geq_soil%aux_vars_bc(sum_conn)%vis,        &
-                  geq_soil%aux_vars_bc(sum_conn)%dvis_dP,    &
-                  geq_soil%aux_vars_bc(sum_conn)%perm,       &
-                  geq_soil%aux_vars_in(cell_id )%pressure,   &
-                  geq_soil%aux_vars_in(cell_id )%kr,        &
-                  geq_soil%aux_vars_in(cell_id )%dkr_dP,    &
-                  geq_soil%aux_vars_in(cell_id )%den,       &
-                  geq_soil%aux_vars_in(cell_id )%dden_dP,   &
-                  geq_soil%aux_vars_in(cell_id )%vis,        &
-                  geq_soil%aux_vars_in(cell_id )%dvis_dP,    &
-                  geq_soil%aux_vars_in(cell_id )%perm,       &
-                  cur_conn_set%conn(iconn),                  &
-
-                  compute_deriv,                             &
-                  internal_conn,                             &
-                  cond_type,                                 &
-                  mflux,                                     &
-                  dummy_var1,                                &
-                  dummy_var2                                 &
+             call RichardsFlux(                   &
+                  geq_soil%aux_vars_bc(sum_conn), &
+                  geq_soil%aux_vars_in(cell_id ), &
+                  cur_conn_set%conn(iconn),       &
+                  compute_deriv,                  &
+                  internal_conn,                  &
+                  cond_type,                      &
+                  mflux,                          &
+                  dummy_var1,                     &
+                  dummy_var2                      &
                   )
 
              dmflux_dT_up = 0.d0
@@ -1434,14 +1405,14 @@ contains
                   geq_soil%aux_vars_bc(sum_conn )%temperature, &
                   geq_soil%aux_vars_bc(sum_conn )%hl,          &
                   geq_soil%aux_vars_bc(sum_conn )%dhl_dT,      &
-                  geq_soil%aux_vars_bc(sum_conn )%den,        &
-                  geq_soil%aux_vars_bc(sum_conn )%dden_dT,    &
+                  geq_soil%aux_vars_bc(sum_conn )%den,         &
+                  geq_soil%aux_vars_bc(sum_conn )%dden_dT,     &
                   geq_soil%aux_vars_bc(sum_conn )%therm_cond,  &
                   geq_soil%aux_vars_in(cell_id  )%temperature, &
                   geq_soil%aux_vars_in(cell_id  )%hl,          &
                   geq_soil%aux_vars_in(cell_id  )%dhl_dT,      &
-                  geq_soil%aux_vars_in(cell_id  )%den,        &
-                  geq_soil%aux_vars_in(cell_id  )%dden_dT,    &
+                  geq_soil%aux_vars_in(cell_id  )%den,         &
+                  geq_soil%aux_vars_in(cell_id  )%dden_dT,     &
                   geq_soil%aux_vars_in(cell_id  )%therm_cond,  &
                   mflux,                                       &
                   dmflux_dT_up,                                &
@@ -1570,20 +1541,8 @@ contains
               (.not.geq_soil%mesh%is_active(cell_id_dn))) cycle
 
           call RichardsFluxDerivativeWrtTemperature(         &
-               geq_soil%aux_vars_in(cell_id_up)%pressure,    &
-               geq_soil%aux_vars_in(cell_id_up)%kr,         &
-               geq_soil%aux_vars_in(cell_id_up)%den,        &
-               geq_soil%aux_vars_in(cell_id_up)%dden_dT,    &
-               geq_soil%aux_vars_in(cell_id_up)%vis,         &
-               geq_soil%aux_vars_in(cell_id_up)%dvis_dT,     &
-               geq_soil%aux_vars_in(cell_id_up)%perm,        &
-               geq_soil%aux_vars_in(cell_id_dn)%pressure,    &
-               geq_soil%aux_vars_in(cell_id_dn)%kr,         &
-               geq_soil%aux_vars_in(cell_id_dn)%den,        &
-               geq_soil%aux_vars_in(cell_id_dn)%dden_dT,    &
-               geq_soil%aux_vars_in(cell_id_dn)%vis,         &
-               geq_soil%aux_vars_in(cell_id_dn)%dvis_dT,     &
-               geq_soil%aux_vars_in(cell_id_dn)%perm,        &
+               geq_soil%aux_vars_in(cell_id_up),             &
+               geq_soil%aux_vars_in(cell_id_dn),             &
                cur_conn_set%conn(iconn),                     &
                compute_deriv,                                &
                internal_conn,                                &
@@ -1597,14 +1556,14 @@ contains
                geq_soil%aux_vars_in(cell_id_up)%temperature, &
                geq_soil%aux_vars_in(cell_id_up)%hl,          &
                geq_soil%aux_vars_in(cell_id_up)%dhl_dT,      &
-               geq_soil%aux_vars_in(cell_id_up)%den,        &
-               geq_soil%aux_vars_in(cell_id_up)%dden_dT,    &
+               geq_soil%aux_vars_in(cell_id_up)%den,         &
+               geq_soil%aux_vars_in(cell_id_up)%dden_dT,     &
                geq_soil%aux_vars_in(cell_id_up)%therm_cond,  &
                geq_soil%aux_vars_in(cell_id_dn)%temperature, &
                geq_soil%aux_vars_in(cell_id_dn)%hl,          &
                geq_soil%aux_vars_in(cell_id_dn)%dhl_dT,      &
-               geq_soil%aux_vars_in(cell_id_dn)%den,        &
-               geq_soil%aux_vars_in(cell_id_dn)%dden_dT,    &
+               geq_soil%aux_vars_in(cell_id_dn)%den,         &
+               geq_soil%aux_vars_in(cell_id_dn)%dden_dT,     &
                geq_soil%aux_vars_in(cell_id_dn)%therm_cond,  &
                mflux,                                        &
                dmflux_dT_up,                                 &
@@ -1666,42 +1625,30 @@ contains
              internal_conn = PETSC_FALSE
              cond_type     = cur_cond%itype
 
-             call RichardsFluxDerivativeWrtTemperature(    &
-                  geq_soil%aux_vars_bc(sum_conn)%pressure,   &
-                  geq_soil%aux_vars_bc(sum_conn)%kr,        &
-                  geq_soil%aux_vars_bc(sum_conn)%den,       &
-                  geq_soil%aux_vars_bc(sum_conn)%dden_dT,   &
-                  geq_soil%aux_vars_bc(sum_conn)%vis,        &
-                  geq_soil%aux_vars_bc(sum_conn)%dvis_dT,    &
-                  geq_soil%aux_vars_bc(sum_conn)%perm,       &
-                  geq_soil%aux_vars_in(cell_id)%pressure,    &
-                  geq_soil%aux_vars_in(cell_id)%kr,         &
-                  geq_soil%aux_vars_in(cell_id)%den,        &
-                  geq_soil%aux_vars_in(cell_id)%dden_dT,    &
-                  geq_soil%aux_vars_in(cell_id)%vis,         &
-                  geq_soil%aux_vars_in(cell_id)%dvis_dT,     &
-                  geq_soil%aux_vars_in(cell_id)%perm,        &
-                  cur_conn_set%conn(iconn),                  &
-                  compute_deriv,                             &
-                  internal_conn,                             &
-                  cond_type,                                 &
-                  mflux,                                     &
-                  dmflux_dT_up,                              &
-                  dmflux_dT_dn                               &
+             call RichardsFluxDerivativeWrtTemperature(        &
+                  geq_soil%aux_vars_bc(sum_conn),              &
+                  geq_soil%aux_vars_in(cell_id),               &
+                  cur_conn_set%conn(iconn),                    &
+                  compute_deriv,                               &
+                  internal_conn,                               &
+                  cond_type,                                   &
+                  mflux,                                       &
+                  dmflux_dT_up,                                &
+                  dmflux_dT_dn                                 &
                   )
 
              call ThermalEnthalpyFlux(                         &
                   geq_soil%aux_vars_bc(sum_conn )%temperature, &
                   geq_soil%aux_vars_bc(sum_conn )%hl,          &
                   geq_soil%aux_vars_bc(sum_conn )%dhl_dT,      &
-                  geq_soil%aux_vars_bc(sum_conn )%den,        &
-                  geq_soil%aux_vars_bc(sum_conn )%dden_dT,    &
+                  geq_soil%aux_vars_bc(sum_conn )%den,         &
+                  geq_soil%aux_vars_bc(sum_conn )%dden_dT,     &
                   geq_soil%aux_vars_bc(sum_conn )%therm_cond,  &
                   geq_soil%aux_vars_in(cell_id  )%temperature, &
                   geq_soil%aux_vars_in(cell_id  )%hl,          &
                   geq_soil%aux_vars_in(cell_id  )%dhl_dT,      &
-                  geq_soil%aux_vars_in(cell_id  )%den,        &
-                  geq_soil%aux_vars_in(cell_id  )%dden_dT,    &
+                  geq_soil%aux_vars_in(cell_id  )%den,         &
+                  geq_soil%aux_vars_in(cell_id  )%dden_dT,     &
                   geq_soil%aux_vars_in(cell_id  )%therm_cond,  &
                   mflux,                                       &
                   dmflux_dT_up,                                &
@@ -1843,42 +1790,30 @@ contains
                    internal_conn = PETSC_FALSE
                    cond_type     = cur_cond%itype
 
-                   call RichardsFluxDerivativeWrtTemperature(      &
-                        geq_soil%aux_vars_bc(sum_conn)%pressure,   &
-                        geq_soil%aux_vars_bc(sum_conn)%kr,        &
-                        geq_soil%aux_vars_bc(sum_conn)%den,       &
-                        geq_soil%aux_vars_bc(sum_conn)%dden_dT,   &
-                        geq_soil%aux_vars_bc(sum_conn)%vis,        &
-                        geq_soil%aux_vars_bc(sum_conn)%dvis_dT,    &
-                        geq_soil%aux_vars_bc(sum_conn)%perm,       &
-                        geq_soil%aux_vars_in(cell_id)%pressure,    &
-                        geq_soil%aux_vars_in(cell_id)%kr,         &
-                        geq_soil%aux_vars_in(cell_id)%den,        &
-                        geq_soil%aux_vars_in(cell_id)%dden_dT,    &
-                        geq_soil%aux_vars_in(cell_id)%vis,         &
-                        geq_soil%aux_vars_in(cell_id)%dvis_dT,     &
-                        geq_soil%aux_vars_in(cell_id)%perm,        &
-                        cur_conn_set%conn(iconn),                  &
-                        compute_deriv,                             &
-                        internal_conn,                             &
-                        cond_type,                                 &
-                        mflux,                                     &
-                        dmflux_dT_up,                              &
-                        dmflux_dT_dn                               &
+                   call RichardsFluxDerivativeWrtTemperature(        &
+                        geq_soil%aux_vars_bc(sum_conn),              &
+                        geq_soil%aux_vars_in(cell_id),               &
+                        cur_conn_set%conn(iconn),                    &
+                        compute_deriv,                               &
+                        internal_conn,                               &
+                        cond_type,                                   &
+                        mflux,                                       &
+                        dmflux_dT_up,                                &
+                        dmflux_dT_dn                                 &
                         )
 
                    call ThermalEnthalpyFlux(                         &
                         geq_soil%aux_vars_bc(sum_conn )%temperature, &
                         geq_soil%aux_vars_bc(sum_conn )%hl,          &
                         geq_soil%aux_vars_bc(sum_conn )%dhl_dT,      &
-                        geq_soil%aux_vars_bc(sum_conn )%den,        &
-                        geq_soil%aux_vars_bc(sum_conn )%dden_dT,    &
+                        geq_soil%aux_vars_bc(sum_conn )%den,         &
+                        geq_soil%aux_vars_bc(sum_conn )%dden_dT,     &
                         geq_soil%aux_vars_bc(sum_conn )%therm_cond,  &
                         geq_soil%aux_vars_in(cell_id  )%temperature, &
                         geq_soil%aux_vars_in(cell_id  )%hl,          &
                         geq_soil%aux_vars_in(cell_id  )%dhl_dT,      &
-                        geq_soil%aux_vars_in(cell_id  )%den,        &
-                        geq_soil%aux_vars_in(cell_id  )%dden_dT,    &
+                        geq_soil%aux_vars_in(cell_id  )%den,         &
+                        geq_soil%aux_vars_in(cell_id  )%dden_dT,     &
                         geq_soil%aux_vars_in(cell_id  )%therm_cond,  &
                         mflux,                                       &
                         dmflux_dT_up,                                &
@@ -2032,30 +1967,16 @@ contains
 
                    if (.not.swap_order) then
 
-                      call RichardsFlux(                             &
-                           geq_soil%aux_vars_bc(sum_conn )%pressure, &
-                           geq_soil%aux_vars_bc(sum_conn )%kr,      &
-                           geq_soil%aux_vars_bc(sum_conn )%dkr_dP,  &
-                           geq_soil%aux_vars_bc(sum_conn )%den,     &
-                           geq_soil%aux_vars_bc(sum_conn )%dden_dP, &
-                           geq_soil%aux_vars_bc(sum_conn )%vis,      &
-                           geq_soil%aux_vars_bc(sum_conn )%dvis_dP,  &
-                           geq_soil%aux_vars_bc(sum_conn )%perm,     &
-                           geq_soil%aux_vars_in(cell_id  )%pressure, &
-                           geq_soil%aux_vars_in(cell_id  )%kr,      &
-                           geq_soil%aux_vars_in(cell_id  )%dkr_dP,  &
-                           geq_soil%aux_vars_in(cell_id  )%den,     &
-                           geq_soil%aux_vars_in(cell_id  )%dden_dP, &
-                           geq_soil%aux_vars_in(cell_id  )%vis,      &
-                           geq_soil%aux_vars_in(cell_id  )%dvis_dP,  &
-                           geq_soil%aux_vars_in(cell_id  )%perm,     &
-                           cur_conn_set%conn(iconn),                 &
-                           compute_deriv,                            &
-                           internal_conn,                            &
-                           cond_type,                                &
-                           mflux,                                    &
-                           dmflux_dP_up,                             &
-                           dmflux_dP_dn                              &
+                      call RichardsFlux(                    &
+                           geq_soil%aux_vars_bc(sum_conn ), &
+                           geq_soil%aux_vars_in(cell_id  ), &
+                           cur_conn_set%conn(iconn),        &
+                           compute_deriv,                   &
+                           internal_conn,                   &
+                           cond_type,                       &
+                           mflux,                           &
+                           dmflux_dP_up,                    &
+                           dmflux_dP_dn                     &
                            )
 
                       dmflux_dP_up = -dmflux_dP_up
@@ -2065,14 +1986,14 @@ contains
                            geq_soil%aux_vars_bc(sum_conn )%temperature, &
                            geq_soil%aux_vars_bc(sum_conn )%hl,          &
                            geq_soil%aux_vars_bc(sum_conn )%dhl_dP,      &
-                           geq_soil%aux_vars_bc(sum_conn )%den,        &
-                           geq_soil%aux_vars_bc(sum_conn )%dden_dP,    &
+                           geq_soil%aux_vars_bc(sum_conn )%den,         &
+                           geq_soil%aux_vars_bc(sum_conn )%dden_dP,     &
                            geq_soil%aux_vars_bc(sum_conn )%therm_cond,  &
                            geq_soil%aux_vars_in(cell_id  )%temperature, &
                            geq_soil%aux_vars_in(cell_id  )%hl,          &
                            geq_soil%aux_vars_in(cell_id  )%dhl_dP,      &
-                           geq_soil%aux_vars_in(cell_id  )%den,        &
-                           geq_soil%aux_vars_in(cell_id  )%dden_dP,    &
+                           geq_soil%aux_vars_in(cell_id  )%den,         &
+                           geq_soil%aux_vars_in(cell_id  )%dden_dP,     &
                            geq_soil%aux_vars_in(cell_id  )%therm_cond,  &
                            mflux,                                       &
                            dmflux_dP_up,                                &
@@ -2096,30 +2017,16 @@ contains
 
                    else
 
-                      call RichardsFlux(                             &
-                           geq_soil%aux_vars_in(cell_id  )%pressure, &
-                           geq_soil%aux_vars_in(cell_id  )%kr,      &
-                           geq_soil%aux_vars_in(cell_id  )%dkr_dP,  &
-                           geq_soil%aux_vars_in(cell_id  )%den,     &
-                           geq_soil%aux_vars_in(cell_id  )%dden_dP, &
-                           geq_soil%aux_vars_in(cell_id  )%vis,      &
-                           geq_soil%aux_vars_in(cell_id  )%dvis_dP,  &
-                           geq_soil%aux_vars_in(cell_id  )%perm,     &
-                           geq_soil%aux_vars_bc(sum_conn )%pressure, &
-                           geq_soil%aux_vars_bc(sum_conn )%kr,      &
-                           geq_soil%aux_vars_bc(sum_conn )%dkr_dP,  &
-                           geq_soil%aux_vars_bc(sum_conn )%den,     &
-                           geq_soil%aux_vars_bc(sum_conn )%dden_dP, &
-                           geq_soil%aux_vars_bc(sum_conn )%vis,      &
-                           geq_soil%aux_vars_bc(sum_conn )%dvis_dP,  &
-                           geq_soil%aux_vars_bc(sum_conn )%perm,     &
-                           cur_conn_set%conn(iconn),                 &
-                           compute_deriv,                            &
-                           internal_conn,                            &
-                           cond_type,                                &
-                           mflux,                                    &
-                           dmflux_dP_up,                             &
-                           dmflux_dP_dn                              &
+                      call RichardsFlux(                    &
+                           geq_soil%aux_vars_in(cell_id  ), &
+                           geq_soil%aux_vars_bc(sum_conn ), &
+                           cur_conn_set%conn(iconn),        &
+                           compute_deriv,                   &
+                           internal_conn,                   &
+                           cond_type,                       &
+                           mflux,                           &
+                           dmflux_dP_up,                    &
+                           dmflux_dP_dn                     &
                            )
 
                       dmflux_dP_up = -dmflux_dP_up
@@ -2129,14 +2036,14 @@ contains
                            geq_soil%aux_vars_in(cell_id  )%temperature, &
                            geq_soil%aux_vars_in(cell_id  )%hl,          &
                            geq_soil%aux_vars_in(cell_id  )%dhl_dP,      &
-                           geq_soil%aux_vars_in(cell_id  )%den,        &
-                           geq_soil%aux_vars_in(cell_id  )%dden_dP,    &
+                           geq_soil%aux_vars_in(cell_id  )%den,         &
+                           geq_soil%aux_vars_in(cell_id  )%dden_dP,     &
                            geq_soil%aux_vars_in(cell_id  )%therm_cond,  &
                            geq_soil%aux_vars_bc(sum_conn )%temperature, &
                            geq_soil%aux_vars_bc(sum_conn )%hl,          &
                            geq_soil%aux_vars_bc(sum_conn )%dhl_dP,      &
-                           geq_soil%aux_vars_bc(sum_conn )%den,        &
-                           geq_soil%aux_vars_bc(sum_conn )%dden_dP,    &
+                           geq_soil%aux_vars_bc(sum_conn )%den,         &
+                           geq_soil%aux_vars_bc(sum_conn )%dden_dP,     &
                            geq_soil%aux_vars_bc(sum_conn )%therm_cond,  &
                            mflux,                                       &
                            dmflux_dP_up,                                &
@@ -2243,30 +2150,16 @@ contains
           if ((.not.geq_soil%mesh%is_active(cell_id_up)) .or. &
                (.not.geq_soil%mesh%is_active(cell_id_dn))) cycle
 
-          call RichardsFlux(                              &
-               geq_soil%aux_vars_in(cell_id_up)%pressure, &
-               geq_soil%aux_vars_in(cell_id_up)%kr,      &
-               geq_soil%aux_vars_in(cell_id_up)%dkr_dP,  &
-               geq_soil%aux_vars_in(cell_id_up)%den,     &
-               geq_soil%aux_vars_in(cell_id_up)%dden_dP, &
-               geq_soil%aux_vars_in(cell_id_up)%vis,      &
-               geq_soil%aux_vars_in(cell_id_up)%dvis_dP,  &
-               geq_soil%aux_vars_in(cell_id_up)%perm,     &
-               geq_soil%aux_vars_in(cell_id_dn)%pressure, &
-               geq_soil%aux_vars_in(cell_id_dn)%kr,      &
-               geq_soil%aux_vars_in(cell_id_dn)%dkr_dP,  &
-               geq_soil%aux_vars_in(cell_id_dn)%den,     &
-               geq_soil%aux_vars_in(cell_id_dn)%dden_dP, &
-               geq_soil%aux_vars_in(cell_id_dn)%vis,      &
-               geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
-               geq_soil%aux_vars_in(cell_id_dn)%perm,     &
-               cur_conn_set%conn(iconn),                  &
-               compute_deriv,                             &
-               internal_conn,                             &
-               cond_type,                                 &
-               mflux,                                     &
-               dmflux_dP_up,                              &
-               dmflux_dP_dn                               &
+          call RichardsFlux(                     &
+               geq_soil%aux_vars_in(cell_id_up), &
+               geq_soil%aux_vars_in(cell_id_dn), &
+               cur_conn_set%conn(iconn),         &
+               compute_deriv,                    &
+               internal_conn,                    &
+               cond_type,                        &
+               mflux,                            &
+               dmflux_dP_up,                     &
+               dmflux_dP_dn                      &
                )
 
           dmflux_dP_up = -dmflux_dP_up
@@ -2276,14 +2169,14 @@ contains
                geq_soil%aux_vars_in(cell_id_up)%temperature, &
                geq_soil%aux_vars_in(cell_id_up)%hl,          &
                geq_soil%aux_vars_in(cell_id_up)%dhl_dP,      &
-               geq_soil%aux_vars_in(cell_id_up)%den,        &
-               geq_soil%aux_vars_in(cell_id_up)%dden_dP,    &
+               geq_soil%aux_vars_in(cell_id_up)%den,         &
+               geq_soil%aux_vars_in(cell_id_up)%dden_dP,     &
                geq_soil%aux_vars_in(cell_id_up)%therm_cond,  &
                geq_soil%aux_vars_in(cell_id_dn)%temperature, &
                geq_soil%aux_vars_in(cell_id_dn)%hl,          &
                geq_soil%aux_vars_in(cell_id_dn)%dhl_dP,      &
-               geq_soil%aux_vars_in(cell_id_dn)%den,        &
-               geq_soil%aux_vars_in(cell_id_dn)%dden_dP,    &
+               geq_soil%aux_vars_in(cell_id_dn)%den,         &
+               geq_soil%aux_vars_in(cell_id_dn)%dden_dP,     &
                geq_soil%aux_vars_in(cell_id_dn)%therm_cond,  &
                mflux,                                        &
                dmflux_dP_up,                                 &

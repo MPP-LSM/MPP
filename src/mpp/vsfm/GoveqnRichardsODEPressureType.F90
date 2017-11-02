@@ -1483,52 +1483,31 @@ contains
 
           case (DARCY_FLUX_TYPE)
 
-             call RichardsFlux( &
-                  this%aux_vars_in(cell_id_up)%pressure,     &
-                  this%aux_vars_in(cell_id_up)%kr,           &
-                  this%aux_vars_in(cell_id_up)%dkr_dP,       &
-                  this%aux_vars_in(cell_id_up)%den,          &
-                  this%aux_vars_in(cell_id_up)%dden_dP,      &
-                  this%aux_vars_in(cell_id_up)%vis,          &
-                  this%aux_vars_in(cell_id_up)%dvis_dP,      &
-                  this%aux_vars_in(cell_id_up)%perm,         &
-                  this%aux_vars_in(cell_id_dn)%pressure,     &
-                  this%aux_vars_in(cell_id_dn)%kr,           &
-                  this%aux_vars_in(cell_id_dn)%dkr_dP,       &
-                  this%aux_vars_in(cell_id_dn)%den,          &
-                  this%aux_vars_in(cell_id_dn)%dden_dP,      &
-                  this%aux_vars_in(cell_id_dn)%vis,          &
-                  this%aux_vars_in(cell_id_dn)%dvis_dP,      &
-                  this%aux_vars_in(cell_id_dn)%perm,         &
-                  cur_conn_set%conn(iconn),                  &
-                  compute_deriv,                             &
-                  internal_conn,                             &
-                  cond_type,                                 &
-                  flux,                                      &
-                  dummy_var1,                                &
-                  dummy_var2                                 &
+             call RichardsFlux(                 &
+                  this%aux_vars_in(cell_id_up), &
+                  this%aux_vars_in(cell_id_dn), &
+                  cur_conn_set%conn(iconn),     &
+                  compute_deriv,                &
+                  internal_conn,                &
+                  cond_type,                    &
+                  flux,                         &
+                  dummy_var1,                   &
+                  dummy_var2                    &
                   )
 
           case (CONDUCTANCE_FLUX_TYPE)
 
-             call RichardsFluxConductanceModel(                &
-                  this%aux_vars_in(cell_id_up)%pressure,       &
-                  this%aux_vars_in(cell_id_up)%den,            &
-                  this%aux_vars_in(cell_id_up)%dden_dP,        &
-                  this%aux_vars_in(cell_id_dn)%pressure,       &
-                  this%aux_vars_in(cell_id_dn)%den,            &
-                  this%aux_vars_in(cell_id_dn)%dden_dP,        &
-                  this%aux_vars_conn_in(sum_conn)%conductance, &
-                  this%aux_vars_conn_in(sum_conn)%kr,          &
-                  this%aux_vars_conn_in(sum_conn)%dkr_dP_up,   &
-                  this%aux_vars_conn_in(sum_conn)%dkr_dP_dn,   &
-                  cur_conn_set%conn(iconn),                    &
-                  compute_deriv,                               &
-                  internal_conn,                               &
-                  cond_type,                                   &
-                  flux,                                        &
-                  dummy_var1,                                  &
-                  dummy_var2                                   &
+             call RichardsFluxConductanceModel(    &
+                  this%aux_vars_in(cell_id_up),    &
+                  this%aux_vars_in(cell_id_dn),    &
+                  this%aux_vars_conn_in(sum_conn), &
+                  cur_conn_set%conn(iconn),        &
+                  compute_deriv,                   &
+                  internal_conn,                   &
+                  cond_type,                       &
+                  flux,                            &
+                  dummy_var1,                      &
+                  dummy_var2                       &
                   )
 
           case default
@@ -1569,51 +1548,30 @@ contains
 
              case (DARCY_FLUX_TYPE)
 
-                call RichardsFlux( &
-                     this%aux_vars_bc(sum_conn)%pressure,   &
-                     this%aux_vars_bc(sum_conn)%kr,             &
-                     this%aux_vars_bc(sum_conn)%dkr_dP,         &
-                     this%aux_vars_bc(sum_conn)%den,            &
-                     this%aux_vars_bc(sum_conn)%dden_dP,        &
-                     this%aux_vars_bc(sum_conn)%vis,            &
-                     this%aux_vars_bc(sum_conn)%dvis_dP,        &
-                     this%aux_vars_bc(sum_conn)%perm,           &
-                     this%aux_vars_in(cell_id )%pressure,       &
-                     this%aux_vars_in(cell_id )%kr,             &
-                     this%aux_vars_in(cell_id )%dkr_dP,         &
-                     this%aux_vars_in(cell_id )%den,            &
-                     this%aux_vars_in(cell_id )%dden_dP,        &
-                     this%aux_vars_in(cell_id )%vis,            &
-                     this%aux_vars_in(cell_id )%dvis_dP,        &
-                     this%aux_vars_in(cell_id )%perm,           &
-                     cur_conn_set%conn(iconn),                  &
-                     compute_deriv,                             &
-                     internal_conn,                             &
-                     cond_type,                                 &
-                     flux,                                      &
-                     dummy_var1,                                &
-                     dummy_var2                                 &
+                call RichardsFlux(                    &
+                     this%aux_vars_bc(sum_conn),      &
+                     this%aux_vars_in(cell_id ),      &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     flux,                            &
+                     dummy_var1,                      &
+                     dummy_var2                       &
                      )
 
              case (CONDUCTANCE_FLUX_TYPE)
-                call RichardsFluxConductanceModel(                &
-                     this%aux_vars_bc(sum_conn )%pressure,        &
-                     this%aux_vars_bc(sum_conn )%den,             &
-                     this%aux_vars_bc(sum_conn )%dden_dP,         &
-                     this%aux_vars_in(cell_id  )%pressure,        &
-                     this%aux_vars_in(cell_id  )%den,             &
-                     this%aux_vars_in(cell_id  )%dden_dP,         &
-                     this%aux_vars_conn_bc(sum_conn)%conductance, &
-                     this%aux_vars_conn_bc(sum_conn)%kr,          &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
-                     cur_conn_set%conn(iconn),                    &
-                     compute_deriv,                               &
-                     internal_conn,                               &
-                     cond_type,                                   &
-                     flux,                                        &
-                     dummy_var1,                                  &
-                     dummy_var2                                   &
+                call RichardsFluxConductanceModel(    &
+                     this%aux_vars_bc(sum_conn ),     &
+                     this%aux_vars_in(cell_id  ),     &
+                     this%aux_vars_conn_bc(sum_conn), &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     flux,                            &
+                     dummy_var1,                      &
+                     dummy_var2                       &
                      )
 
              case default
@@ -1627,51 +1585,30 @@ contains
 
              case (DARCY_FLUX_TYPE)
 
-                call RichardsFlux( &
-                     this%aux_vars_in(cell_id )%pressure,        &
-                     this%aux_vars_in(cell_id )%kr,              &
-                     this%aux_vars_in(cell_id )%dkr_dP,          &
-                     this%aux_vars_in(cell_id )%den,             &
-                     this%aux_vars_in(cell_id )%dden_dP,         &
-                     this%aux_vars_in(cell_id )%vis,             &
-                     this%aux_vars_in(cell_id )%dvis_dP,         &
-                     this%aux_vars_in(cell_id )%perm,            &
-                     this%aux_vars_bc(sum_conn)%pressure,        &
-                     this%aux_vars_bc(sum_conn)%kr,              &
-                     this%aux_vars_bc(sum_conn)%dkr_dP,          &
-                     this%aux_vars_bc(sum_conn)%den,             &
-                     this%aux_vars_bc(sum_conn)%dden_dP,         &
-                     this%aux_vars_bc(sum_conn)%vis,             &
-                     this%aux_vars_bc(sum_conn)%dvis_dP,         &
-                     this%aux_vars_bc(sum_conn)%perm,            &
-                     cur_conn_set%conn(iconn),                   &
-                     compute_deriv,                              &
-                     internal_conn,                              &
-                     cond_type,                                  &
-                     flux,                                       &
-                     dummy_var1,                                 &
-                     dummy_var2                                  &
+                call RichardsFlux(                    &
+                     this%aux_vars_in(cell_id ),      &
+                     this%aux_vars_bc(sum_conn),      &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     flux,                            &
+                     dummy_var1,                      &
+                     dummy_var2                       &
                      )
 
              case (CONDUCTANCE_FLUX_TYPE)
-                call RichardsFluxConductanceModel(                &
-                     this%aux_vars_in(cell_id )%pressure,         &
-                     this%aux_vars_in(cell_id  )%den,             &
-                     this%aux_vars_in(cell_id  )%dden_dP,         &
-                     this%aux_vars_bc(sum_conn )%pressure,        &
-                     this%aux_vars_bc(sum_conn )%den,             &
-                     this%aux_vars_bc(sum_conn )%dden_dP,         &
-                     this%aux_vars_conn_bc(sum_conn)%conductance, &
-                     this%aux_vars_conn_bc(sum_conn)%kr,          &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
-                     cur_conn_set%conn(iconn),                    &
-                     compute_deriv,                               &
-                     internal_conn,                               &
-                     cond_type,                                   &
-                     flux,                                        &
-                     dummy_var1,                                  &
-                     dummy_var2                                   &
+                call RichardsFluxConductanceModel(    &
+                     this%aux_vars_in(cell_id ),      &
+                     this%aux_vars_bc(sum_conn ),     &
+                     this%aux_vars_conn_bc(sum_conn), &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     flux,                            &
+                     dummy_var1,                      &
+                     dummy_var2                       &
                      )
 
              case default
@@ -1809,51 +1746,30 @@ contains
 
           case (DARCY_FLUX_TYPE)
 
-             call RichardsFlux( &
-                  this%aux_vars_in(cell_id_up)%pressure, &
-                  this%aux_vars_in(cell_id_up)%kr,           &
-                  this%aux_vars_in(cell_id_up)%dkr_dP,       &
-                  this%aux_vars_in(cell_id_up)%den,          &
-                  this%aux_vars_in(cell_id_up)%dden_dP,      &
-                  this%aux_vars_in(cell_id_up)%vis,          &
-                  this%aux_vars_in(cell_id_up)%dvis_dP,      &
-                  this%aux_vars_in(cell_id_up)%perm,         &
-                  this%aux_vars_in(cell_id_dn)%pressure,     &
-                  this%aux_vars_in(cell_id_dn)%kr,           &
-                  this%aux_vars_in(cell_id_dn)%dkr_dP,       &
-                  this%aux_vars_in(cell_id_dn)%den,          &
-                  this%aux_vars_in(cell_id_dn)%dden_dP,      &
-                  this%aux_vars_in(cell_id_dn)%vis,          &
-                  this%aux_vars_in(cell_id_dn)%dvis_dP,      &
-                  this%aux_vars_in(cell_id_dn)%perm,         &
-                  cur_conn_set%conn(iconn),                  &
-                  compute_deriv,                             &
-                  internal_conn,                             &
-                  cond_type,                                 &
-                  dummy_var,                                 &
-                  Jup,                                       &
-                  Jdn                                        &
+             call RichardsFlux(                    &
+                  this%aux_vars_in(cell_id_up),    &
+                  this%aux_vars_in(cell_id_dn),    &
+                  cur_conn_set%conn(iconn),        &
+                  compute_deriv,                   &
+                  internal_conn,                   &
+                  cond_type,                       &
+                  dummy_var,                       &
+                  Jup,                             &
+                  Jdn                              &
                   )
 
           case (CONDUCTANCE_FLUX_TYPE)
-             call RichardsFluxConductanceModel(                &
-                  this%aux_vars_in(cell_id_up)%pressure,       &
-                  this%aux_vars_in(cell_id_up)%den,            &
-                  this%aux_vars_in(cell_id_up)%dden_dP,        &
-                  this%aux_vars_in(cell_id_dn)%pressure,       &
-                  this%aux_vars_in(cell_id_dn)%den,            &
-                  this%aux_vars_in(cell_id_dn)%dden_dP,        &
-                  this%aux_vars_conn_in(sum_conn)%conductance, &
-                  this%aux_vars_conn_in(sum_conn)%kr,          &
-                  this%aux_vars_conn_in(sum_conn)%dkr_dP_up,   &
-                  this%aux_vars_conn_in(sum_conn)%dkr_dP_dn,   &
-                  cur_conn_set%conn(iconn),                    &
-                  compute_deriv,                               &
-                  internal_conn,                               &
-                  cond_type,                                   &
-                  dummy_var,                                   &
-                  Jup,                                         &
-                  Jdn                                          &
+             call RichardsFluxConductanceModel(    &
+                  this%aux_vars_in(cell_id_up),    &
+                  this%aux_vars_in(cell_id_dn),    &
+                  this%aux_vars_conn_in(sum_conn), &
+                  cur_conn_set%conn(iconn),        &
+                  compute_deriv,                   &
+                  internal_conn,                   &
+                  cond_type,                       &
+                  dummy_var,                       &
+                  Jup,                             &
+                  Jdn                              &
                   )
 
           case default
@@ -1909,51 +1825,30 @@ contains
 
              case (DARCY_FLUX_TYPE)
 
-                call RichardsFlux( &
-                     this%aux_vars_bc(sum_conn)%pressure,       &
-                     this%aux_vars_bc(sum_conn)%kr,             &
-                     this%aux_vars_bc(sum_conn)%dkr_dP,         &
-                     this%aux_vars_bc(sum_conn)%den,            &
-                     this%aux_vars_bc(sum_conn)%dden_dP,        &
-                     this%aux_vars_bc(sum_conn)%vis,            &
-                     this%aux_vars_bc(sum_conn)%dvis_dP,        &
-                     this%aux_vars_bc(sum_conn)%perm,           &
-                     this%aux_vars_in(cell_id)%pressure,        &
-                     this%aux_vars_in(cell_id)%kr,              &
-                     this%aux_vars_in(cell_id)%dkr_dP,          &
-                     this%aux_vars_in(cell_id)%den,             &
-                     this%aux_vars_in(cell_id)%dden_dP,         &
-                     this%aux_vars_in(cell_id)%vis,             &
-                     this%aux_vars_in(cell_id)%dvis_dP,         &
-                     this%aux_vars_in(cell_id)%perm,            &
-                     cur_conn_set%conn(iconn),                  &
-                     compute_deriv,                             &
-                     internal_conn,                             &
-                     cond_type,                                 &
-                     dummy_var,                                 &
-                     Jup,                                       &
-                     Jdn                                        &
+                call RichardsFlux(                    &
+                     this%aux_vars_bc(sum_conn),      &
+                     this%aux_vars_in(cell_id),       &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     dummy_var,                       &
+                     Jup,                             &
+                     Jdn                              &
                      )
 
              case (CONDUCTANCE_FLUX_TYPE)
-                call RichardsFluxConductanceModel(                &
-                     this%aux_vars_bc(sum_conn )%pressure,        &
-                     this%aux_vars_bc(sum_conn )%den,             &
-                     this%aux_vars_bc(sum_conn )%dden_dP,         &
-                     this%aux_vars_in(cell_id )%pressure,         &
-                     this%aux_vars_in(cell_id  )%den,             &
-                     this%aux_vars_in(cell_id  )%dden_dP,         &
-                     this%aux_vars_conn_bc(sum_conn)%conductance, &
-                     this%aux_vars_conn_bc(sum_conn)%kr,          &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
-                     cur_conn_set%conn(iconn),                    &
-                     compute_deriv,                               &
-                     internal_conn,                               &
-                     cond_type,                                   &
-                     dummy_var,                                   &
-                     Jup,                                         &
-                     Jdn                                          &
+                call RichardsFluxConductanceModel(    &
+                     this%aux_vars_bc(sum_conn ),     &
+                     this%aux_vars_in(cell_id ),      &
+                     this%aux_vars_conn_bc(sum_conn), &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     dummy_var,                       &
+                     Jup,                             &
+                     Jdn                              &
                      )
 
              case default
@@ -1967,51 +1862,30 @@ contains
 
              case (DARCY_FLUX_TYPE)
 
-                call RichardsFlux(                               &
-                     this%aux_vars_in(cell_id )%pressure,        &
-                     this%aux_vars_in(cell_id )%kr,              &
-                     this%aux_vars_in(cell_id )%dkr_dP,          &
-                     this%aux_vars_in(cell_id )%den,             &
-                     this%aux_vars_in(cell_id )%dden_dP,         &
-                     this%aux_vars_in(cell_id )%vis,             &
-                     this%aux_vars_in(cell_id )%dvis_dP,         &
-                     this%aux_vars_in(cell_id )%perm,            &
-                     this%aux_vars_bc(sum_conn)%pressure,        &
-                     this%aux_vars_bc(sum_conn)%kr,              &
-                     this%aux_vars_bc(sum_conn)%dkr_dP,          &
-                     this%aux_vars_bc(sum_conn)%den,             &
-                     this%aux_vars_bc(sum_conn)%dden_dP,         &
-                     this%aux_vars_bc(sum_conn)%vis,             &
-                     this%aux_vars_bc(sum_conn)%dvis_dP,         &
-                     this%aux_vars_bc(sum_conn)%perm,            &
-                     cur_conn_set%conn(iconn),                   &
-                     compute_deriv,                              &
-                     internal_conn,                              &
-                     cond_type,                                  &
-                     dummy_var,                                  &
-                     Jup,                                        &
-                     Jdn                                         &
+                call RichardsFlux(                    &
+                     this%aux_vars_in(cell_id ),      &
+                     this%aux_vars_bc(sum_conn),      &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     dummy_var,                       &
+                     Jup,                             &
+                     Jdn                              &
                      )
 
              case (CONDUCTANCE_FLUX_TYPE)
-                call RichardsFluxConductanceModel(                &
-                     this%aux_vars_in(cell_id )%pressure,         &
-                     this%aux_vars_in(cell_id  )%den,             &
-                     this%aux_vars_in(cell_id  )%dden_dP,         &
-                     this%aux_vars_bc(sum_conn )%pressure,        &
-                     this%aux_vars_bc(sum_conn )%den,             &
-                     this%aux_vars_bc(sum_conn )%dden_dP,         &
-                     this%aux_vars_conn_bc(sum_conn)%conductance, &
-                     this%aux_vars_conn_bc(sum_conn)%kr,          &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
-                     this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
-                     cur_conn_set%conn(iconn),                    &
-                     compute_deriv,                               &
-                     internal_conn,                               &
-                     cond_type,                                   &
-                     dummy_var,                                   &
-                     Jup,                                         &
-                     Jdn                                          &
+                call RichardsFluxConductanceModel(    &
+                     this%aux_vars_in(cell_id ),      &
+                     this%aux_vars_bc(sum_conn ),     &
+                     this%aux_vars_conn_bc(sum_conn), &
+                     cur_conn_set%conn(iconn),        &
+                     compute_deriv,                   &
+                     internal_conn,                   &
+                     cond_type,                       &
+                     dummy_var,                       &
+                     Jup,                             &
+                     Jdn                              &
                      )
 
              case default
@@ -2152,51 +2026,30 @@ contains
 
                       case (DARCY_FLUX_TYPE)
 
-                         call RichardsFlux( &
-                              this%aux_vars_bc(sum_conn)%pressure,       &
-                              this%aux_vars_bc(sum_conn)%kr,             &
-                              this%aux_vars_bc(sum_conn)%dkr_dP,         &
-                              this%aux_vars_bc(sum_conn)%den,            &
-                              this%aux_vars_bc(sum_conn)%dden_dP,        &
-                              this%aux_vars_bc(sum_conn)%vis,            &
-                              this%aux_vars_bc(sum_conn)%dvis_dP,        &
-                              this%aux_vars_bc(sum_conn)%perm,           &
-                              this%aux_vars_in(cell_id)%pressure,        &
-                              this%aux_vars_in(cell_id)%kr,              &
-                              this%aux_vars_in(cell_id)%dkr_dP,          &
-                              this%aux_vars_in(cell_id)%den,             &
-                              this%aux_vars_in(cell_id)%dden_dP,         &
-                              this%aux_vars_in(cell_id)%vis,             &
-                              this%aux_vars_in(cell_id)%dvis_dP,         &
-                              this%aux_vars_in(cell_id)%perm,            &
-                              cur_conn_set%conn(iconn), &
-                              compute_deriv,                             &
-                              internal_conn,                             &
-                              cond_type,                                 &
-                              dummy_var,                                 &
-                              Jup,                                       &
-                              Jdn                                        &
+                         call RichardsFlux(                    &
+                              this%aux_vars_bc(sum_conn),      &
+                              this%aux_vars_in(cell_id),       &
+                              cur_conn_set%conn(iconn),        &
+                              compute_deriv,                   &
+                              internal_conn,                   &
+                              cond_type,                       &
+                              dummy_var,                       &
+                              Jup,                             &
+                              Jdn                              &
                               )
 
                       case (CONDUCTANCE_FLUX_TYPE)
-                         call RichardsFluxConductanceModel(                &
-                              this%aux_vars_bc(sum_conn )%pressure,        &
-                              this%aux_vars_bc(sum_conn )%den,             &
-                              this%aux_vars_bc(sum_conn )%dden_dP,         &
-                              this%aux_vars_in(cell_id )%pressure,         &
-                              this%aux_vars_in(cell_id  )%den,             &
-                              this%aux_vars_in(cell_id  )%dden_dP,         &
-                              this%aux_vars_conn_bc(sum_conn)%conductance, &
-                              this%aux_vars_conn_bc(sum_conn)%kr,          &
-                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
-                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
-                              cur_conn_set%conn(iconn),                    &
-                              compute_deriv,                               &
-                              internal_conn,                               &
-                              cond_type,                                   &
-                              dummy_var,                                   &
-                              Jup,                                         &
-                              Jdn                                          &
+                         call RichardsFluxConductanceModel(    &
+                              this%aux_vars_bc(sum_conn ),     &
+                              this%aux_vars_in(cell_id ),      &
+                              this%aux_vars_conn_bc(sum_conn), &
+                              cur_conn_set%conn(iconn),        &
+                              compute_deriv,                   &
+                              internal_conn,                   &
+                              cond_type,                       &
+                              dummy_var,                       &
+                              Jup,                             &
+                              Jdn                              &
                               )
 
                       case default
@@ -2212,51 +2065,30 @@ contains
 
                       case (DARCY_FLUX_TYPE)
 
-                         call RichardsFlux(                               &
-                              this%aux_vars_in(cell_id )%pressure,        &
-                              this%aux_vars_in(cell_id )%kr,              &
-                              this%aux_vars_in(cell_id )%dkr_dP,          &
-                              this%aux_vars_in(cell_id )%den,             &
-                              this%aux_vars_in(cell_id )%dden_dP,         &
-                              this%aux_vars_in(cell_id )%vis,             &
-                              this%aux_vars_in(cell_id )%dvis_dP,         &
-                              this%aux_vars_in(cell_id )%perm,            &
-                              this%aux_vars_bc(sum_conn)%pressure,        &
-                              this%aux_vars_bc(sum_conn)%kr,              &
-                              this%aux_vars_bc(sum_conn)%dkr_dP,          &
-                              this%aux_vars_bc(sum_conn)%den,             &
-                              this%aux_vars_bc(sum_conn)%dden_dP,         &
-                              this%aux_vars_bc(sum_conn)%vis,             &
-                              this%aux_vars_bc(sum_conn)%dvis_dP,         &
-                              this%aux_vars_bc(sum_conn)%perm,            &
-                              cur_conn_set%conn(iconn),                   &
-                              compute_deriv,                              &
-                              internal_conn,                              &
-                              cond_type,                                  &
-                              dummy_var,                                  &
-                              Jup,                                        &
-                              Jdn                                         &
+                         call RichardsFlux(                    &
+                              this%aux_vars_in(cell_id ),      &
+                              this%aux_vars_bc(sum_conn),      &
+                              cur_conn_set%conn(iconn),        &
+                              compute_deriv,                   &
+                              internal_conn,                   &
+                              cond_type,                       &
+                              dummy_var,                       &
+                              Jup,                             &
+                              Jdn                              &
                               )
 
                       case (CONDUCTANCE_FLUX_TYPE)
-                         call RichardsFluxConductanceModel(                &
-                              this%aux_vars_in(cell_id )%pressure,         &
-                              this%aux_vars_in(cell_id  )%den,             &
-                              this%aux_vars_in(cell_id  )%dden_dP,         &
-                              this%aux_vars_bc(sum_conn )%pressure,        &
-                              this%aux_vars_bc(sum_conn )%den,             &
-                              this%aux_vars_bc(sum_conn )%dden_dP,         &
-                              this%aux_vars_conn_bc(sum_conn)%conductance, &
-                              this%aux_vars_conn_bc(sum_conn)%kr,          &
-                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_up,   &
-                              this%aux_vars_conn_bc(sum_conn)%dkr_dP_dn,   &
-                              cur_conn_set%conn(iconn),                    &
-                              compute_deriv,                               &
-                              internal_conn,                               &
-                              cond_type,                                   &
-                              dummy_var,                                   &
-                              Jup,                                         &
-                              Jdn                                          &
+                         call RichardsFluxConductanceModel(    &
+                              this%aux_vars_in(cell_id ),      &
+                              this%aux_vars_bc(sum_conn ),     &
+                              this%aux_vars_conn_bc(sum_conn), &
+                              cur_conn_set%conn(iconn),        &
+                              compute_deriv,                   &
+                              internal_conn,                   &
+                              cond_type,                       &
+                              dummy_var,                       &
+                              Jup,                             &
+                              Jdn                              &
                               )
 
                       case default
@@ -2385,56 +2217,32 @@ contains
 
                    if (.not.cur_cond%swap_order) then
 
-                      call RichardsFluxDerivativeWrtTemperature(      &
-                           this%aux_vars_bc(sum_conn)%pressure,       &
-                           this%aux_vars_bc(sum_conn)%kr,             &
-                           this%aux_vars_bc(sum_conn)%den,            &
-                           this%aux_vars_bc(sum_conn)%dden_dT,        &
-                           this%aux_vars_bc(sum_conn)%vis,            &
-                           this%aux_vars_bc(sum_conn)%dvis_dT,        &
-                           this%aux_vars_bc(sum_conn)%perm,           &
-                           this%aux_vars_in(cell_id)%pressure,        &
-                           this%aux_vars_in(cell_id)%kr,              &
-                           this%aux_vars_in(cell_id)%den,             &
-                           this%aux_vars_in(cell_id)%dden_dT,         &
-                           this%aux_vars_in(cell_id)%vis,             &
-                           this%aux_vars_in(cell_id)%dvis_dT,         &
-                           this%aux_vars_in(cell_id)%perm,            &
-                           cur_conn_set%conn(iconn),                  &
-                           compute_deriv,                             &
-                           internal_conn,                             &
-                           cond_type,                                 &
-                           dummy_var,                                 &
-                           Jup,                                       &
-                           Jdn                                        &
+                      call RichardsFluxDerivativeWrtTemperature( &
+                           this%aux_vars_bc(sum_conn),           &
+                           this%aux_vars_in(cell_id),            &
+                           cur_conn_set%conn(iconn),             &
+                           compute_deriv,                        &
+                           internal_conn,                        &
+                           cond_type,                            &
+                           dummy_var,                            &
+                           Jup,                                  &
+                           Jdn                                   &
                            )
 
                       val = Jup
 
                    else
 
-                      call RichardsFluxDerivativeWrtTemperature(      &
-                           this%aux_vars_in(cell_id)%pressure,        &
-                           this%aux_vars_in(cell_id)%kr,              &
-                           this%aux_vars_in(cell_id)%den,             &
-                           this%aux_vars_in(cell_id)%dden_dT,         &
-                           this%aux_vars_in(cell_id)%vis,             &
-                           this%aux_vars_in(cell_id)%dvis_dT,         &
-                           this%aux_vars_in(cell_id)%perm,            &
-                           this%aux_vars_bc(sum_conn)%pressure,       &
-                           this%aux_vars_bc(sum_conn)%kr,             &
-                           this%aux_vars_bc(sum_conn)%den,            &
-                           this%aux_vars_bc(sum_conn)%dden_dT,        &
-                           this%aux_vars_bc(sum_conn)%vis,            &
-                           this%aux_vars_bc(sum_conn)%dvis_dT,        &
-                           this%aux_vars_bc(sum_conn)%perm,           &
-                           cur_conn_set%conn(iconn),                  &
-                           compute_deriv,                             &
-                           internal_conn,                             &
-                           cond_type,                                 &
-                           dummy_var,                                 &
-                           Jup,                                       &
-                           Jdn                                        &
+                      call RichardsFluxDerivativeWrtTemperature( &
+                           this%aux_vars_in(cell_id),            &
+                           this%aux_vars_bc(sum_conn),           &
+                           cur_conn_set%conn(iconn),             &
+                           compute_deriv,                        &
+                           internal_conn,                        &
+                           cond_type,                            &
+                           dummy_var,                            &
+                           Jup,                                  &
+                           Jdn                                   &
                            )
 
                       val = -Jdn
@@ -2509,20 +2317,8 @@ contains
                (.not. this%mesh%is_active(cell_id_dn)) ) cycle
 
           call RichardsFluxDerivativeWrtTemperature(      &
-               this%aux_vars_in(cell_id_up)%pressure,     &
-               this%aux_vars_in(cell_id_up)%kr,           &
-               this%aux_vars_in(cell_id_up)%den,          &
-               this%aux_vars_in(cell_id_up)%dden_dT,      &
-               this%aux_vars_in(cell_id_up)%vis,          &
-               this%aux_vars_in(cell_id_up)%dvis_dT,      &
-               this%aux_vars_in(cell_id_up)%perm,         &
-               this%aux_vars_in(cell_id_dn)%pressure,     &
-               this%aux_vars_in(cell_id_dn)%kr,           &
-               this%aux_vars_in(cell_id_dn)%den,          &
-               this%aux_vars_in(cell_id_dn)%dden_dT,      &
-               this%aux_vars_in(cell_id_dn)%vis,          &
-               this%aux_vars_in(cell_id_dn)%dvis_dT,      &
-               this%aux_vars_in(cell_id_dn)%perm,         &
+               this%aux_vars_in(cell_id_up),     &
+               this%aux_vars_in(cell_id_dn),     &
                cur_conn_set%conn(iconn),                  &
                compute_deriv,                             &
                internal_conn,                             &
@@ -2657,22 +2453,8 @@ contains
           case (DARCY_FLUX_TYPE)
 
              call RichardsFlux( &
-                  this%aux_vars_in(cell_id_up)%pressure,     &
-                  this%aux_vars_in(cell_id_up)%kr,           &
-                  this%aux_vars_in(cell_id_up)%dkr_dP,       &
-                  this%aux_vars_in(cell_id_up)%den,          &
-                  this%aux_vars_in(cell_id_up)%dden_dP,      &
-                  this%aux_vars_in(cell_id_up)%vis,          &
-                  this%aux_vars_in(cell_id_up)%dvis_dP,      &
-                  this%aux_vars_in(cell_id_up)%perm,         &
-                  this%aux_vars_in(cell_id_dn)%pressure,     &
-                  this%aux_vars_in(cell_id_dn)%kr,           &
-                  this%aux_vars_in(cell_id_dn)%dkr_dP,       &
-                  this%aux_vars_in(cell_id_dn)%den,          &
-                  this%aux_vars_in(cell_id_dn)%dden_dP,      &
-                  this%aux_vars_in(cell_id_dn)%vis,          &
-                  this%aux_vars_in(cell_id_dn)%dvis_dP,      &
-                  this%aux_vars_in(cell_id_dn)%perm,         &
+                  this%aux_vars_in(cell_id_up),     &
+                  this%aux_vars_in(cell_id_dn),     &
                   cur_conn_set%conn(iconn),                  &
                   compute_deriv,                             &
                   internal_conn,                             &
