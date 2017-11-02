@@ -40,10 +40,7 @@ contains
        vis_dn,                     &
        dvis_dP_dn,                 &
        perm_vec_dn,                &
-       area,                       &
-       dist_up,                    &
-       dist_dn,                    &
-       dist_unitvec,               &
+       conn_up2dn,                 &
        compute_deriv,              &
        internal_conn,              &
        cond_type,                  &
@@ -66,6 +63,7 @@ contains
     use MultiPhysicsProbConstants, only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
     use MultiPhysicsProbConstants, only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
     use MultiPhysicsProbConstants, only : FMWH2O
+    use ConnectionSetType        , only : connection_type
     !
     implicit none
     !
@@ -86,10 +84,7 @@ contains
     PetscReal, intent(in)  :: vis_dn
     PetscReal, intent(in)  :: dvis_dP_dn
     PetscReal, intent(in)  :: perm_vec_dn(3)
-    PetscReal, intent(in)  :: area
-    PetscReal, intent(in)  :: dist_up
-    PetscReal, intent(in)  :: dist_dn
-    PetscReal, intent(in)  :: dist_unitvec(3)
+    type(connection_type), intent(in) :: conn_up2dn
     PetscBool, intent(in)  :: compute_deriv
     PetscBool, intent(in)  :: internal_conn
     PetscInt,  intent(in)  :: cond_type
@@ -98,6 +93,10 @@ contains
     PetscReal, intent(out) :: dflux_dP_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: area
+    PetscReal :: dist_up
+    PetscReal :: dist_dn
+    PetscReal :: dist_unitvec(3)
     PetscReal :: upweight
     PetscReal :: Dq
     PetscReal :: grav_vec(3)
@@ -124,6 +123,13 @@ contains
     PetscReal :: dq_dP_dn
 
     PetscBool :: seepage_bc_update
+
+    area            = conn_up2dn%GetArea()
+    dist_up         = conn_up2dn%GetDistUp()
+    dist_dn         = conn_up2dn%GetDistDn()
+    dist_unitvec(1) = conn_up2dn%GetDistUnitVecX()
+    dist_unitvec(2) = conn_up2dn%GetDistUnitVecY()
+    dist_unitvec(3) = conn_up2dn%GetDistUnitVecZ()
 
     perm_up = dabs(dist_unitvec(1))*perm_vec_up(1) + &
          dabs(dist_unitvec(2))*perm_vec_up(2) + &
@@ -246,10 +252,7 @@ contains
        vis_dn,                     &
        dvis_dT_dn,                 &
        perm_vec_dn,                &
-       area,                       &
-       dist_up,                    &
-       dist_dn,                    &
-       dist_unitvec,               &
+       conn_up2dn,                 &
        compute_deriv,              &
        internal_conn,              &
        cond_type,                  &
@@ -271,6 +274,7 @@ contains
     use MultiPhysicsProbConstants, only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
     use MultiPhysicsProbConstants, only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
     use MultiPhysicsProbConstants, only : FMWH2O
+    use ConnectionSetType        , only : connection_type
     !
     implicit none
     !
@@ -289,10 +293,7 @@ contains
     PetscReal, intent(in)  :: vis_dn
     PetscReal, intent(in)  :: dvis_dT_dn
     PetscReal, intent(in)  :: perm_vec_dn(3)
-    PetscReal, intent(in)  :: area
-    PetscReal, intent(in)  :: dist_up
-    PetscReal, intent(in)  :: dist_dn
-    PetscReal, intent(in)  :: dist_unitvec(3)
+    type(connection_type), intent(in) :: conn_up2dn
     PetscBool, intent(in)  :: compute_deriv
     PetscBool, intent(in)  :: internal_conn
     PetscInt,  intent(in)  :: cond_type
@@ -301,6 +302,10 @@ contains
     PetscReal, intent(out) :: dflux_dT_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: area
+    PetscReal :: dist_up
+    PetscReal :: dist_dn
+    PetscReal :: dist_unitvec(3)
     PetscReal :: upweight
     PetscReal :: Dq
     PetscReal :: grav_vec(3)
@@ -327,6 +332,13 @@ contains
     PetscReal :: dq_dT_dn
 
     PetscBool :: seepage_bc_update
+
+    area            = conn_up2dn%GetArea()
+    dist_up         = conn_up2dn%GetDistUp()
+    dist_dn         = conn_up2dn%GetDistDn()
+    dist_unitvec(1) = conn_up2dn%GetDistUnitVecX()
+    dist_unitvec(2) = conn_up2dn%GetDistUnitVecY()
+    dist_unitvec(3) = conn_up2dn%GetDistUnitVecZ()
 
     perm_up = dabs(dist_unitvec(1))*perm_vec_up(1) + &
          dabs(dist_unitvec(2))*perm_vec_up(2) + &
@@ -447,7 +459,7 @@ contains
        kr,                                 &
        dkr_dP_up,                          &
        dkr_dP_dn,                          &
-       area,                               &
+       conn_up2dn,                         &
        compute_deriv,                      &
        internal_conn,                      &
        cond_type,                          &
@@ -470,6 +482,7 @@ contains
     use MultiPhysicsProbConstants, only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
     use MultiPhysicsProbConstants, only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
     use MultiPhysicsProbConstants, only : FMWH2O
+    use ConnectionSetType        , only : connection_type
     !
     implicit none
     !
@@ -481,7 +494,10 @@ contains
     PetscReal, intent(in)  :: den_dn
     PetscReal, intent(in)  :: dden_dP_dn
     PetscReal, intent(in)  :: conductance
-    PetscReal, intent(in)  :: area
+    PetscReal, intent(in)  :: kr
+    PetscReal, intent(in)  :: dkr_dP_up
+    PetscReal, intent(in)  :: dkr_dP_dn
+    type(connection_type), intent(in) :: conn_up2dn
     PetscBool, intent(in)  :: compute_deriv
     PetscBool, intent(in)  :: internal_conn
     PetscInt,  intent(in)  :: cond_type
@@ -490,15 +506,15 @@ contains
     PetscReal, intent(out) :: dflux_dP_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: area
     PetscReal :: den_ave
     PetscReal :: upweight
     PetscReal :: dphi
-    PetscReal :: kr
     PetscReal :: dden_ave_dP_up, dden_ave_dP_dn
-    PetscReal :: dkr_dP_up, dkr_dP_dn
     PetscReal :: dphi_dP_up, dphi_dP_dn
 
     upweight = 0.5d0
+    area     = conn_up2dn%GetArea()
 
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
     dphi = (Pres_up - Pres_dn)

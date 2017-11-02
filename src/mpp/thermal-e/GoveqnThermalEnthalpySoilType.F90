@@ -1336,10 +1336,7 @@ contains
                geq_soil%aux_vars_in(cell_id_dn)%vis,      &
                geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
                geq_soil%aux_vars_in(cell_id_dn)%perm,     &
-               cur_conn_set%conn(iconn)%GetArea(),        &
-               cur_conn_set%conn(iconn)%GetDistUp(),      &
-               cur_conn_set%conn(iconn)%GetDistDn(),      &
-               cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+               cur_conn_set%conn(iconn),                  &
                compute_deriv,                             &
                internal_conn,                             &
                cond_type,                                 &
@@ -1424,10 +1421,8 @@ contains
                   geq_soil%aux_vars_in(cell_id )%vis,        &
                   geq_soil%aux_vars_in(cell_id )%dvis_dP,    &
                   geq_soil%aux_vars_in(cell_id )%perm,       &
-                  cur_conn_set%conn(iconn)%GetArea(),        &
-                  cur_conn_set%conn(iconn)%GetDistUp(),      &
-                  cur_conn_set%conn(iconn)%GetDistDn(),      &
-                  cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+                  cur_conn_set%conn(iconn),                  &
+
                   compute_deriv,                             &
                   internal_conn,                             &
                   cond_type,                                 &
@@ -1593,10 +1588,7 @@ contains
                geq_soil%aux_vars_in(cell_id_dn)%vis,         &
                geq_soil%aux_vars_in(cell_id_dn)%dvis_dT,     &
                geq_soil%aux_vars_in(cell_id_dn)%perm,        &
-               cur_conn_set%conn(iconn)%GetArea(),           &
-               cur_conn_set%conn(iconn)%GetDistUp(),         &
-               cur_conn_set%conn(iconn)%GetDistDn(),         &
-               cur_conn_set%conn(iconn)%GetDistUnitVec(),    &
+               cur_conn_set%conn(iconn),                     &
                compute_deriv,                                &
                internal_conn,                                &
                cond_type,                                    &
@@ -1693,10 +1685,7 @@ contains
                   geq_soil%aux_vars_in(cell_id)%vis,         &
                   geq_soil%aux_vars_in(cell_id)%dvis_dT,     &
                   geq_soil%aux_vars_in(cell_id)%perm,        &
-                  cur_conn_set%conn(iconn)%GetArea(),        &
-                  cur_conn_set%conn(iconn)%GetDistUp(),      &
-                  cur_conn_set%conn(iconn)%GetDistDn(),      &
-                  cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+                  cur_conn_set%conn(iconn),                  &
                   compute_deriv,                             &
                   internal_conn,                             &
                   cond_type,                                 &
@@ -1873,10 +1862,7 @@ contains
                         geq_soil%aux_vars_in(cell_id)%vis,         &
                         geq_soil%aux_vars_in(cell_id)%dvis_dT,     &
                         geq_soil%aux_vars_in(cell_id)%perm,        &
-                        cur_conn_set%conn(iconn)%GetArea(),        &
-                        cur_conn_set%conn(iconn)%GetDistUp(),      &
-                        cur_conn_set%conn(iconn)%GetDistDn(),      &
-                        cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+                        cur_conn_set%conn(iconn),                  &
                         compute_deriv,                             &
                         internal_conn,                             &
                         cond_type,                                 &
@@ -2067,10 +2053,7 @@ contains
                            geq_soil%aux_vars_in(cell_id  )%vis,      &
                            geq_soil%aux_vars_in(cell_id  )%dvis_dP,  &
                            geq_soil%aux_vars_in(cell_id  )%perm,     &
-                           cur_conn_set%conn(iconn)%GetArea(),       &
-                           cur_conn_set%conn(iconn)%GetDistUp(),     &
-                           cur_conn_set%conn(iconn)%GetDistDn(),     &
-                           cur_conn_set%conn(iconn)%GetDistUnitVec(),&
+                           cur_conn_set%conn(iconn),                 &
                            compute_deriv,                            &
                            internal_conn,                            &
                            cond_type,                                &
@@ -2134,10 +2117,7 @@ contains
                            geq_soil%aux_vars_bc(sum_conn )%vis,      &
                            geq_soil%aux_vars_bc(sum_conn )%dvis_dP,  &
                            geq_soil%aux_vars_bc(sum_conn )%perm,     &
-                           cur_conn_set%conn(iconn)%GetArea(),       &
-                           cur_conn_set%conn(iconn)%GetDistUp(),     &
-                           cur_conn_set%conn(iconn)%GetDistDn(),     &
-                           -cur_conn_set%conn(iconn)%GetDistUnitVec(),&
+                           cur_conn_set%conn(iconn),                 &
                            compute_deriv,                            &
                            internal_conn,                            &
                            cond_type,                                &
@@ -2284,10 +2264,7 @@ contains
                geq_soil%aux_vars_in(cell_id_dn)%vis,      &
                geq_soil%aux_vars_in(cell_id_dn)%dvis_dP,  &
                geq_soil%aux_vars_in(cell_id_dn)%perm,     &
-               cur_conn_set%conn(iconn)%GetArea(),        &
-               cur_conn_set%conn(iconn)%GetDistUp(),      &
-               cur_conn_set%conn(iconn)%GetDistDn(),      &
-               cur_conn_set%conn(iconn)%GetDistUnitVec(), &
+               cur_conn_set%conn(iconn),                  &
                compute_deriv,                             &
                internal_conn,                             &
                cond_type,                                 &
