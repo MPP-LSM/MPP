@@ -3,9 +3,9 @@ module SaturationFunction
 #ifdef USE_PETSC_LIB
 
   ! !USES:
-  use mpp_varctl         , only : iulog
-  use mpp_abortutils         , only : endrun
-  use mpp_shr_log_mod        , only : errMsg => shr_log_errMsg
+  use mpp_varctl      , only : iulog
+  use mpp_abortutils  , only : endrun
+  use mpp_shr_log_mod , only : errMsg => shr_log_errMsg
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -21,9 +21,11 @@ module SaturationFunction
   PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY     = 1303
   PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2 = 1304
   PetscInt, parameter, public :: SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3 = 1305
-  PetscInt, parameter, public :: RELPERM_FUNC_MUALEM                = 1306
-  PetscInt, parameter, public :: RELPERM_FUNC_WEIBULL               = 1307
-  PetscInt, parameter, public :: RELPERM_FUNC_CAMPBELL              = 1308
+  PetscInt, parameter, public :: SAT_FUNC_FETCH2                    = 1306
+  PetscInt, parameter, public :: SAT_FUNC_CHUANG                    = 1307
+  PetscInt, parameter, public :: RELPERM_FUNC_MUALEM                = 1308
+  PetscInt, parameter, public :: RELPERM_FUNC_WEIBULL               = 1309
+  PetscInt, parameter, public :: RELPERM_FUNC_CAMPBELL              = 1310
 
 
   type, public :: saturation_params_type
@@ -36,6 +38,8 @@ module SaturationFunction
      PetscReal :: sbc_pu, sbc_ps, sbc_b2, sbc_b3  ! Specific to smoothed Brooks-Corey function.
      PetscReal :: w_c, w_d                        ! Specific to relative permeability using Weibull parameterization
      PetscReal :: campbell_he, campbell_n         ! Specific to relative permeability for Campbell parameterization
+     PetscReal :: fetch2_phi88, fetch2_phi50      ! Xylem shape parameters for water potential [Pa] at 88% and 50% saturation. Negative values.
+     PetscReal :: chuang_phi0, chuang_p           ! Empirical coefficients for xylem water content. chuang_phi0 is positive number
    contains
      procedure, public :: Copy    => SatFunc_Copy
      procedure, public :: Init    => SatFunc_Init
@@ -49,6 +53,8 @@ module SaturationFunction
        SatFunc_Set_SBC             , &
        SatFunc_Set_SBC_bz2         , &
        SatFunc_Set_SBC_bz3         , &
+       SatFunc_Set_FETCH2          , &
+       SatFunc_Set_Chuang          , &
        SatFunc_Set_Weibull_RelPerm , &
        SatFunc_Set_Campbell_RelPerm, &
        
@@ -61,6 +67,8 @@ module SaturationFunction
        SatFunc_PcToSat_VG          , &
        SatFunc_PcToSat_BC          , &
        SatFunc_PcToSat_SBC         , &
+       SatFunc_PcToSat_FETCH2      , &
+       SatFunc_PcToSat_Chuang      , &
        
        ! Find relative permeability for a specific function.
        SatFunc_PcToRelPerm_VG      , &
@@ -70,7 +78,9 @@ module SaturationFunction
        ! Find capillary pressure for a specific function.
        SatFunc_SatToPc_VG          , &
        SatFunc_SatToPc_BC          , &
-       SatFunc_SatToPc_SBC
+       SatFunc_SatToPc_SBC         , &
+       SatFunc_SatToPc_FETCH2      , &
+       SatFunc_SatToPc_Chuang
 
 
 contains
@@ -103,6 +113,10 @@ contains
     this%w_d               = 0.d0
     this%campbell_he       = 0.d0
     this%campbell_n        = 0.d0
+    this%fetch2_phi88      = 0.d0
+    this%fetch2_phi50      = 0.d0
+    this%chuang_phi0       = 0.d0
+    this%chuang_p          = 0.d0
 
   end subroutine SatFunc_Init
 
@@ -355,6 +369,43 @@ contains
 
   end subroutine SatFunc_Set_SBC_bz3
 
+  !------------------------------------------------------------------------
+  subroutine SatFunc_Set_FETCH2(satParams, phi88, phi50)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(out) :: satParams
+    PetscReal                    , intent(in)  :: phi88
+    PetscReal                    , intent(in)  :: phi50
+
+    satParams%sat_func_type     = SAT_FUNC_FETCH2
+    satParams%fetch2_phi88      = phi88
+    satParams%fetch2_phi50      = phi50
+
+  end subroutine SatFunc_Set_FETCH2
+  
+  !------------------------------------------------------------------------
+  subroutine SatFunc_Set_Chuang(satParams, phi0, p)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(out) :: satParams
+    PetscReal                    , intent(in)  :: phi0
+    PetscReal                    , intent(in)  :: p
+
+    satParams%sat_func_type     = SAT_FUNC_CHUANG
+    satParams%chuang_phi0       = phi0
+    satParams%chuang_p          = p
+
+  end subroutine SatFunc_Set_Chuang
 
   !------------------------------------------------------------------------
   ! Find `pu` that forces a coefficient of the smoothing cubic polynomial to zero.
@@ -535,6 +586,10 @@ contains
        call SatFunc_PcToSat_BC(satParams, pc, sat, dsat_dP)
     case (SAT_FUNC_SMOOTHED_BROOKS_COREY)
        call SatFunc_PcToSat_SBC(satParams, pc, sat, dsat_dP)
+    case (SAT_FUNC_FETCH2)
+       call SatFunc_PcToSat_FETCH2(satParams, pc, sat, dsat_dP)
+    case (SAT_FUNC_CHUANG)
+       call SatFunc_PcToSat_Chuang(satParams, pc, sat, dsat_dP)
     case default
        write(iulog,*) 'SatFunc_PressToSat: Unknown type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -672,6 +727,10 @@ contains
        call SatFunc_SatToPc_BC(satParams, sat, pc)
     case (SAT_FUNC_SMOOTHED_BROOKS_COREY)
        call SatFunc_SatToPc_SBC(satParams, sat, pc)
+    case (SAT_FUNC_FETCH2)
+       call SatFunc_SatToPc_FETCH2(satParams, sat, pc)
+    case (SAT_FUNC_CHUANG)
+       call SatFunc_SatToPc_Chuang(satParams, sat, pc)
     case default
        write(iulog,*) 'SatFunc_SatToPress: Unrecognized type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1197,6 +1256,135 @@ contains
 
   end subroutine SatFunc_SatToPc_SBC
 
+  !------------------------------------------------------------------------
+  subroutine SatFunc_PcToSat_FETCH2(satParams, pc, sat, dsat_dP)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(in)  :: satParams
+    PetscReal                    , intent(in)  :: pc
+    PetscReal                    , intent(out) :: sat
+    PetscReal                    , intent(out) :: dsat_dP
+    !
+    ! !LOCAL VARIABLES:
+    PetscReal                                  :: phi88
+    PetscReal                                  :: phi50
+    PetscReal                                  :: a
+    PetscReal                                  :: b
+
+    phi88 = satParams%fetch2_phi88
+    phi50 = satParams%fetch2_phi50
+    
+    if( pc < 0.d0 ) then
+       b = (phi88 - 0.24d0*phi50)/(0.12d0 * (phi50 - phi88))
+       a = phi50*(2.d0 + b)
+
+       sat     = 1.d0 + (pc)/( b*(pc) - a)
+       dsat_dP = -a         /( b*(pc) - a)**2.d0
+    else
+       ! Here, `pc >= 0`.
+       sat     = 1.d0
+       dsat_dP = 0.d0
+    endif
+
+  end subroutine SatFunc_PcToSat_FETCH2
+
+  !------------------------------------------------------------------------
+  subroutine SatFunc_SatToPc_FETCH2(satParams, sat, pc)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(in)  :: satParams
+    PetscReal                    , intent(in)  :: sat
+    PetscReal                    , intent(out) :: pc
+    !
+    ! !LOCAL VARIABLES:
+    PetscReal                                  :: phi88
+    PetscReal                                  :: phi50
+    PetscReal                                  :: a
+    PetscReal                                  :: b
+
+    phi88 = satParams%fetch2_phi88
+    phi50 = satParams%fetch2_phi50
+
+    if( sat < 1.d0 ) then
+       b = (phi88 - 0.24d0*phi50)/(0.12d0 * (phi50 - phi88))
+       a = phi50*(2.d0 + b)
+
+       pc = a*(sat - 1.d0) / ((sat - 1.d0)*b - 1.d0)
+    else
+       pc = 0.d0
+    endif
+
+  end subroutine SatFunc_SatToPc_FETCH2
+
+  !------------------------------------------------------------------------
+  subroutine SatFunc_PcToSat_Chuang(satParams, pc, sat, dsat_dP)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(in)  :: satParams
+    PetscReal                    , intent(in)  :: pc
+    PetscReal                    , intent(out) :: sat
+    PetscReal                    , intent(out) :: dsat_dP
+    !
+    ! !LOCAL VARIABLES:
+    PetscReal                                  :: phi0
+    PetscReal                                  :: p
+
+    phi0 = satParams%chuang_phi0
+    p    = satParams%chuang_p
+    
+    if( pc < 0.d0 ) then
+       sat     = (-phi0/(-phi0 + pc))**p
+       dsat_dP = -p/(-phi0) * (-phi0/(-phi0 + pc))**(p+1)
+    else
+       ! Here, `pc >= 0`.
+       sat     = 1.d0
+       dsat_dP = 0.d0
+    endif
+
+  end subroutine SatFunc_PcToSat_Chuang
+
+  !------------------------------------------------------------------------
+  subroutine SatFunc_SatToPc_Chuang(satParams, sat, pc)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(saturation_params_type) , intent(in)  :: satParams
+    PetscReal                    , intent(in)  :: sat
+    PetscReal                    , intent(out) :: pc
+    !
+    ! !LOCAL VARIABLES:
+    PetscReal                                  :: phi0
+    PetscReal                                  :: p
+
+    phi0 = satParams%chuang_phi0
+    p    = satParams%chuang_p
+
+    if( sat < 1.d0 ) then
+       pc = (1.d0/sat**(1.d0/p) - 1.d0) * (-phi0)
+    else
+       pc = 0.d0
+    endif
+
+  end subroutine SatFunc_SatToPc_Chuang
 
   !------------------------------------------------------------------------
   !
@@ -1212,38 +1400,32 @@ contains
     class(saturation_params_type)             :: this
     class(saturation_params_type), intent(in) :: satParams
 
-    ! Local variables.
-    logical :: smoothingRegimeSuperSat
+    this%sat_func_type     = satParams%sat_func_type
+    this%relperm_func_type = satParams%relperm_func_type
 
-    select case(satParams%sat_func_type)
-    case (SAT_FUNC_VAN_GENUCHTEN)
+    this%sat_res           = satParams%sat_res
+    this%alpha             = satParams%alpha
 
-       call SatFunc_Set_VG(this,  &
-            satParams%sat_res,    &
-            satParams%alpha,      &
-            satParams%vg_m)
+    this%vg_m              = satParams%vg_m
+    this%vg_n              = satParams%vg_n
 
-    case (SAT_FUNC_BROOKS_COREY)
+    this%bc_lambda         = satParams%bc_lambda
+    this%sbc_pu            = satParams%sbc_pu
+    this%sbc_ps            = satParams%sbc_ps
+    this%sbc_b2            = satParams%sbc_b2
+    this%sbc_b3            = satParams%sbc_b3
 
-       call SatFunc_Set_BC(this,  &
-            satParams%sat_res,    &
-            satParams%alpha,      &
-            satParams%bc_lambda)
+    this%w_c               = satParams%w_c
+    this%w_d               = satParams%w_d
 
-    case (SAT_FUNC_SMOOTHED_BROOKS_COREY)
+    this%campbell_he       = satParams%campbell_he
+    this%campbell_n        = satParams%campbell_n
 
-       call SatFunc_Set_SBC(this, &
-            satParams%sat_res,    &
-            satParams%alpha,      &
-            satParams%bc_lambda,  &
-            satParams%sbc_ps,     &
-            satParams%sbc_pu,     &
-            smoothingRegimeSuperSat)
+    this%fetch2_phi88      = satParams%fetch2_phi88
+    this%fetch2_phi50      = satParams%fetch2_phi50
 
-    case default
-       write(iulog,*) 'SaturationPressToSatSaturationFunctionCopy: Unknown type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
+    this%chuang_phi0       = satParams%chuang_phi0
+    this%chuang_p          = satParams%chuang_p
 
   end subroutine SatFunc_Copy
 
