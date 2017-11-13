@@ -740,7 +740,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_SS
     use MultiPhysicsProbConstants , only : COND_DIRICHLET
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use MultiPhysicsProbConstants , only : COND_DOWNREGULATE_POT_MASS_RATE
+    use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_CAMPBELL
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
     use ConnectionSetType         , only : ConnectionSetDestroy
@@ -768,7 +768,7 @@ contains
 
     ieqn       = 1
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &
-         'Potential Mass_Flux', 'kg/s', COND_DOWNREGULATE_POT_MASS_RATE, &
+         'Potential Mass_Flux', 'kg/s', COND_DOWNREG_MASS_RATE_CAMPBELL, &
          SOIL_BOTTOM_CELLS)
 
     if (.not.multi_goveqns_formulation) return

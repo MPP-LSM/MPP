@@ -721,7 +721,8 @@ contains
     use ConditionType                , only : condition_type
     use ConnectionSetType            , only : connection_set_type
     use MultiPhysicsProbConstants    , only : COND_MASS_RATE
-    use MultiPhysicsProbConstants    , only : COND_DOWNREGULATE_POT_MASS_RATE
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_CAMPBELL
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_FETCH2
     use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
     use SystemOfEquationsVSFMAuxType , only : sysofeqns_vsfm_auxvar_type
     !
@@ -789,7 +790,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
              select case(cur_cond%itype)
-             case (COND_MASS_RATE, COND_DOWNREGULATE_POT_MASS_RATE)
+             case (COND_MASS_RATE, COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
                 var_value = soe_avars(iconn + iauxvar_off)%condition_value
                 ge_avars(sum_conn)%condition_value = var_value
                 cur_cond%value(iconn) = var_value
@@ -875,7 +876,8 @@ contains
     use MultiPhysicsProbConstants    , only : CONN_HORIZONTAL
     use MultiPhysicsProbConstants    , only : COND_BC
     use MultiPhysicsProbConstants    , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use MultiPhysicsProbConstants    , only : COND_DOWNREGULATE_POT_MASS_RATE
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_CAMPBELL
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_FETCH2
     use SystemOfEquationsVSFMAuxType , only : sysofeqns_vsfm_auxvar_type
     use ConditionType                , only : condition_type
     use ConnectionSetType            , only : connection_set_type
@@ -1035,8 +1037,8 @@ contains
                 sum_conn = sum_conn + 1
                 select case(cur_cond%itype)
                 case (COND_MASS_RATE)
-                   soe_avars(iauxvar + iauxvar_off)%condition_value = cur_cond%value(iconn)
-                   soe_avars(iauxvar + iauxvar_off)%mass_flux       = this%ss_flux(sum_conn)
+                   soe_avars(iconn + iauxvar_off)%condition_value = cur_cond%value(iconn)
+                   soe_avars(iconn + iauxvar_off)%mass_flux       = this%ss_flux(sum_conn)
 
                 case default
                    write(string,*) cur_cond%itype
@@ -1053,10 +1055,10 @@ contains
                 sum_conn = sum_conn + 1
                 select case(cur_cond%itype)
                 case (COND_MASS_RATE)
-                   soe_avars(iauxvar + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+                   soe_avars(iconn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
 
-                case (COND_DOWNREGULATE_POT_MASS_RATE)
-                   soe_avars(iauxvar + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+                case (COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
+                   soe_avars(iconn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
 
                 case default
                    write(string,*) cur_cond%itype
@@ -1432,7 +1434,8 @@ contains
     use MultiPhysicsProbConstants   , only : DARCY_FLUX_TYPE
     use MultiPhysicsProbConstants   , only : CONDUCTANCE_FLUX_TYPE
     use MultiPhysicsProbConstants   , only : PRESSURE_REF
-    use MultiPhysicsProbConstants   , only : COND_DOWNREGULATE_POT_MASS_RATE
+    use MultiPhysicsProbConstants   , only : COND_DOWNREG_MASS_RATE_CAMPBELL
+    use MultiPhysicsProbConstants   , only : COND_DOWNREG_MASS_RATE_FETCH2
     !
     implicit none
     !
@@ -1647,7 +1650,7 @@ contains
 
              this%ss_flux(sum_conn) = cur_cond%value(iconn)
 
-          case (COND_DOWNREGULATE_POT_MASS_RATE)
+          case (COND_DOWNREG_MASS_RATE_CAMPBELL)
              dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
              Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
              n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
@@ -1659,8 +1662,21 @@ contains
              endif
 
              ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)/factor/FMWH2O
-
              this%ss_flux(sum_conn) = cur_cond%value(iconn)/factor
+
+          case (COND_DOWNREG_MASS_RATE_FETCH2)
+             dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
+             Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
+             n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
+
+             if (dP <= 0.d0) then
+                factor = exp( -(dP/Pc)**n )
+             else
+                factor = 1.d0
+             endif
+
+             ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)*factor/FMWH2O
+             this%ss_flux(sum_conn) = cur_cond%value(iconn)*factor
 
           case default
             write(iulog,*)'RichardsODEPressureDivergence: Unknown cond_type in SS.'
@@ -1689,7 +1705,8 @@ contains
     use MultiPhysicsProbConstants , only : COND_MASS_RATE
     use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
     use MultiPhysicsProbConstants , only : CONDUCTANCE_FLUX_TYPE
-    use MultiPhysicsProbConstants , only : COND_DOWNREGULATE_POT_MASS_RATE
+    use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_CAMPBELL
+    use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_FETCH2
     use MultiPhysicsProbConstants , only : FMWH2O
     use MultiPhysicsProbConstants , only : PRESSURE_REF
     !
@@ -1922,16 +1939,32 @@ contains
           select case(cur_cond%itype)
           case (COND_MASS_RATE)
 
-          case (COND_DOWNREGULATE_POT_MASS_RATE)
+          case (COND_DOWNREG_MASS_RATE_CAMPBELL)
              dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
              Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
              n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
 
              if (dP <= 0.d0) then
-                factor = 1.d0 + (dP/Pc)**n
                 cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
+                factor = 1.d0 + (dP/Pc)**n
                 val = (cur_cond%value(iconn)/FMWH2O) * ( n * (dP/Pc)**n) / ( dP * ( factor**2.d0))
+
+                row = cell_id - 1
+                col = cell_id - 1
+                call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
+             endif
+
+          case (COND_DOWNREG_MASS_RATE_FETCH2)
+             dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
+             Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
+             n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
+
+             if (dP <= 0.d0) then
+                cell_id = cur_conn_set%conn(iconn)%GetIDDn()
+
+                factor = exp( -(dP/Pc)**n )
+                val = (cur_cond%value(iconn)/FMWH2O) * (n * (dP/Pc)**n) * factor/dP
 
                 row = cell_id - 1
                 col = cell_id - 1

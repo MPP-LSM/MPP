@@ -73,7 +73,8 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: COND_DARCY_RATE                   = 508
   PetscInt, parameter, public :: COND_SEEPAGE_BC                   = 509
   PetscInt, parameter, public :: COND_HEAT_RATE                    = 511
-  PetscInt, parameter, public :: COND_DOWNREGULATE_POT_MASS_RATE   = 512
+  PetscInt, parameter, public :: COND_DOWNREG_MASS_RATE_CAMPBELL   = 512
+  PetscInt, parameter, public :: COND_DOWNREG_MASS_RATE_FETCH2     = 513
 
   !
   PetscInt, parameter, public :: VAR_XI                            = 601

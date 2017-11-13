@@ -42,6 +42,7 @@ module MultiPhysicsProbVSFM
   public :: VSFMMPPSetSoils
   public :: VSFMMPPSetSoilPorosity
   public :: VSFMMPPSetSoilPermeability
+  public :: VSFMMPPSetRelativePermeability
   public :: VSFMMPPSetSaturationFunction
   public :: VSFMMPPSetAuxVarConnRealValue
   public :: VSFMMPPSetAuxVarConnIntValue
@@ -632,7 +633,7 @@ contains
     class is (sysofeqns_vsfm_type)
        vsfm_soe => base_soe
     class default
-       write(*,*)'SoE is not of sysofeqns_vsfm_type'
+       write(iulog,*)'SoE is not of sysofeqns_vsfm_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
     
@@ -1173,6 +1174,151 @@ contains
   end subroutine VSFMMPPSetSoilPermeability
 
   !------------------------------------------------------------------------
+  subroutine VSFMMPPSetRelativePermeability(this, igoveqn, relperm_type, param_1, param_2)
+    !
+    ! !DESCRIPTION:
+    ! Set soil permeability values
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use SaturationFunction            , only : RELPERM_FUNC_MUALEM
+    use SaturationFunction            , only : RELPERM_FUNC_WEIBULL
+    use SaturationFunction            , only : RELPERM_FUNC_CAMPBELL
+    use SaturationFunction            , only : SatFunc_Set_Weibull_RelPerm
+    use SaturationFunction            , only : SatFunc_Set_Campbell_RelPerm
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)                      , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: igoveqn
+    PetscInt                                  , pointer, intent(in) :: relperm_type(:)
+    PetscReal                                 , pointer, intent(in) :: param_1(:)
+    PetscReal                                 , pointer, intent(in) :: param_2(:)
+    !
+    ! !LOCAL VARIABLES:
+    class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
+    class(goveqn_base_type)                   , pointer             :: cur_goveq
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
+    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
+    PetscInt                                                        :: icell
+    PetscInt                                                        :: igov
+    type(condition_type)                      , pointer             :: cur_cond
+    type(connection_set_type)                 , pointer             :: cur_conn_set
+    PetscInt                                                        :: ghosted_id
+    PetscInt                                                        :: sum_conn
+    PetscInt                                                        :: iconn
+
+    if (igoveqn > this%soe%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%soe%goveqns
+    do igov = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_ode_pres => cur_goveq
+       class default
+          write(iulog,*)'Only goveqn_richards_ode_pressure_type supported'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+    if (goveq_richards_ode_pres%mesh%ncells_local /= size(relperm_type)) then
+       write(iulog,*) 'No. of values for relative permeability is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of rel. perm. values = ',size(relperm_type)
+       write(iulog,*) 'No. of grid cells        = ',goveq_richards_ode_pres%mesh%ncells_local
+    endif
+
+    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
+
+    ! Set soil properties for internal auxvars
+    do icell = 1, size(param_1)
+
+       select case (relperm_type(icell))
+       case (RELPERM_FUNC_MUALEM)
+
+       case (RELPERM_FUNC_WEIBULL)
+          call SatFunc_Set_Weibull_RelPerm(      &
+               ode_aux_vars_in(icell)%satParams, &
+               param_1(icell),                   &
+               param_2(icell))
+
+       case (RELPERM_FUNC_CAMPBELL)
+          call SatFunc_Set_Campbell_RelPerm(              &
+               ode_aux_vars_in(icell)%satParams, &
+               param_1(icell),                   &
+               param_2(icell))
+
+       case default
+          call endrun(msg='ERROR:: Unknown relperm_type ' // &
+               errMsg(__FILE__, __LINE__))
+       end select
+    end do
+
+    ! Set soil properties for boundary-condition auxvars
+    sum_conn = 0
+    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
+    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          cur_conn_set => cur_cond%conn_set
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
+
+             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+
+          enddo
+       else
+          cur_conn_set => cur_cond%conn_set
+
+          ghosted_id = 1
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+          enddo
+
+       endif
+       cur_cond => cur_cond%next
+    enddo
+
+    ! Set satParams for source-sink auxvars
+    sum_conn = 0
+
+    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
+    cur_cond        => goveq_richards_ode_pres%source_sinks%first
+
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
+          call ode_aux_vars_ss(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine VSFMMPPSetRelativePermeability
+
+  !------------------------------------------------------------------------
   subroutine VSFMMPPSetSoilPorosity(this, igoveqn, por)
     !
     ! !DESCRIPTION:
@@ -1326,10 +1472,14 @@ contains
     use SaturationFunction            , only : SatFunc_Set_SBC_bz2
     use SaturationFunction            , only : SatFunc_Set_SBC_bz3
     use SaturationFunction            , only : SatFunc_Set_VG
+    use SaturationFunction            , only : SatFunc_Set_FETCH2
+    use SaturationFunction            , only : SatFunc_Set_Chuang
     use SaturationFunction            , only : SAT_FUNC_VAN_GENUCHTEN
     use SaturationFunction            , only : SAT_FUNC_BROOKS_COREY
     use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2
     use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3
+    use SaturationFunction            , only : SAT_FUNC_FETCH2
+    use SaturationFunction            , only : SAT_FUNC_CHUANG
     use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     !
     implicit none
@@ -1425,6 +1575,18 @@ contains
           call SatFunc_Set_VG(                   &
                ode_aux_vars_in(icell)%satParams, &
                sat_res(icell),                   &
+               alpha(icell),                     &
+               lambda(icell))
+
+       case (SAT_FUNC_FETCH2)
+          call SatFunc_Set_FETCH2(               &
+               ode_aux_vars_in(icell)%satParams, &
+               alpha(icell),                     &
+               lambda(icell))
+
+       case (SAT_FUNC_CHUANG)
+          call SatFunc_Set_Chuang(               &
+               ode_aux_vars_in(icell)%satParams, &
                alpha(icell),                     &
                lambda(icell))
 
