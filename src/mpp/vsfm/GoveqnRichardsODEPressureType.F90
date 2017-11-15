@@ -1162,7 +1162,9 @@ contains
 
     ! Update aux vars for internal cells
     do ghosted_id = 1, this%mesh%ncells_all
-       call this%aux_vars_in(ghosted_id)%AuxVarCompute()
+       if (this%mesh%is_active(ghosted_id)) then
+          call this%aux_vars_in(ghosted_id)%AuxVarCompute()
+       end if
     enddo
 
     ! Interior cells
@@ -1298,6 +1300,8 @@ contains
     PetscInt                                 :: sum_conn
     type(condition_type),pointer             :: cur_cond
     type(connection_set_type), pointer       :: cur_conn_set
+
+    return
 
     ! Update aux vars for source/sink cells
     sum_conn = 0
