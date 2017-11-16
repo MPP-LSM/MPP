@@ -525,17 +525,20 @@ contains
     endif
 
     do iauxvar = 1, nauxvar
-       ! Copy temperature.
-       ge_avars(iauxvar)%temperature =  &
-            soe_avars(iauxvar+offset)%temperature
 
-       ! Copy frac_liq_sat.
-       ge_avars(iauxvar)%frac_liq_sat =  &
-            soe_avars(iauxvar+offset)%frac_liq_sat
+       if (this%mesh%is_active(iauxvar)) then
+          ! Copy temperature.
+          ge_avars(iauxvar)%temperature =  &
+               soe_avars(iauxvar+offset)%temperature
 
-       ! Copy pressure.
-       ge_avars(iauxvar)%pressure =  &
-            soe_avars(iauxvar+offset)%pressure
+          ! Copy frac_liq_sat.
+          ge_avars(iauxvar)%frac_liq_sat =  &
+               soe_avars(iauxvar+offset)%frac_liq_sat
+
+          ! Copy pressure.
+          ge_avars(iauxvar)%pressure =  &
+               soe_avars(iauxvar+offset)%pressure
+       endif
     enddo
 
   end subroutine RichardsODEPressureGetFromSOEAuxVarsIntrn
@@ -576,17 +579,23 @@ contains
     select case (var_type)
     case (VAR_TEMPERATURE)
        do iauxvar = 1, nauxvar
-          ge_avars(iauxvar)%temperature = data(iauxvar)
+          if (this%mesh%is_active(iauxvar)) then
+             ge_avars(iauxvar)%temperature = data(iauxvar)
+          end if
        enddo
 
        case (VAR_FRAC_LIQ_SAT)
           do iauxvar = 1, nauxvar
-             ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
+             if (this%mesh%is_active(iauxvar)) then
+                ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
+             end if
           enddo
 
        case (VAR_PRESSURE)
           do iauxvar = 1, nauxvar
-             ge_avars(iauxvar)%pressure = data(iauxvar)
+             if (this%mesh%is_active(iauxvar)) then
+                ge_avars(iauxvar)%pressure = data(iauxvar)
+             end if
           enddo
 
        case default
@@ -738,6 +747,7 @@ contains
     integer                                                    :: iconn
     integer                                                    :: auxVarCt_ge, auxVarCt_soe
     integer                                                    :: condition_id, sum_conn
+    integer                                                    :: cell_id_dn
     PetscReal                                                  :: var_value
     type(rich_ode_pres_auxvar_type), dimension(:), pointer     :: ge_avars
     type(condition_type), pointer                              :: cur_cond
@@ -789,6 +799,10 @@ contains
           cur_conn_set => cur_cond%conn_set
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
+
+             cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
+             if ( (.not. this%mesh%is_active(cell_id_dn))) cycle
+
              select case(cur_cond%itype)
              case (COND_MASS_RATE, COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
                 var_value = soe_avars(iconn + iauxvar_off)%condition_value
