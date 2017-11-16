@@ -510,7 +510,9 @@ contains
 
     call VecGetArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
     do iauxvar = 1, nvar
-       call avars(iauxvar + iauxvar_off)%SetValue(var_type, var_p(iauxvar))
+       if (avars(iauxvar + iauxvar_off)%is_active) then
+          call avars(iauxvar + iauxvar_off)%SetValue(var_type, var_p(iauxvar))
+       end if
     enddo
 
     call VecRestoreArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
@@ -743,7 +745,9 @@ contains
     endif
 
     do iauxvar = 1, nauxvar
-       call auxvars(iauxvar + iauxvar_off)%SetValue(var_type, data_1d(iauxvar))
+       if (auxvars(iauxvar + iauxvar_off)%is_active) then
+          call auxvars(iauxvar + iauxvar_off)%SetValue(var_type, data_1d(iauxvar))
+       end if
     enddo
 
   end subroutine VSFMSOESetDataFromCLM

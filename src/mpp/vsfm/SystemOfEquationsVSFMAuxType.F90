@@ -38,7 +38,7 @@ module SystemOfEquationsVSFMAuxType
      PetscBool :: is_in                  ! [True/False] T = auxvar is for an internal control volume
      PetscBool :: is_bc                  ! [True/False] T = auxvar is for a boundary condition
      PetscBool :: is_ss                  ! [True/False] T = auxvar is for a source/sink condition
-
+     PetscBool :: is_active              ! [True/False] T = auxvar is for a grid cell that is active
 
    contains
      procedure, public :: Init     => VSFMSOEAuxVarInit
@@ -77,6 +77,7 @@ contains
     this%is_in                   = PETSC_FALSE
     this%is_bc                   = PETSC_FALSE
     this%is_ss                   = PETSC_FALSE
+    this%is_active               = PETSC_TRUE
 
   end subroutine VSFMSOEAuxVarInit
 

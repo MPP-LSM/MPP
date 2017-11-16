@@ -40,24 +40,26 @@ module GoverningEquationBaseType
 
      class(goveqn_base_type), pointer :: next
    contains
-     procedure, public :: Create                         => GoveqnBaseCreate
-     procedure, public :: Destroy                        => GoveqnBaseDestroy
-     procedure, public :: PrintInfo                      => GoveqnBasePrintInfo
-     procedure, public :: PreSolve                       => GoveqnBasePreSolve
-     procedure, public :: ComputeResidual                => GoveqnBaseComputeResidual
-     procedure, public :: ComputeJacobian                => GoveqnBaseComputeJacobian
-     procedure, public :: ComputeOffDiagJacobian         => GoveqnBaseComputeOffDiagJacobian
-     procedure, public :: ComputeRHS                     => GoveqnBaseComputeRHS
-     procedure, public :: ComputeOperatorsDiag           => GoveqnBaseComputeOperatorsDiag
-     procedure, public :: ComputeOperatorsOffDiag        => GoveqnBaseComputeOperatorsOffDiag
-     procedure, public :: SetDtime                       => GoveqnBaseSetDtime
-     procedure, public :: GetNConditionsExcptCondItype   => GoveqnBaseGetNConditionsExcptCondItype
-     procedure, public :: GetNCellsInCondsExcptCondItype => GoveqnBaseGetNCellsInCondsExcptCondItype
-     procedure, public :: GetCondNamesExcptCondItype     => GoveqnBaseGetCondNamesExcptCondItype
-     procedure, public :: AddCondition                   => GoveqnBaseAddCondition
-     procedure, public :: AddCouplingBC                  => GoveqnBaseAddCouplingBC
-     procedure, public :: UpdateConditionConnSet         => GoveqnBaseUpdateConditionConnSet
-     procedure, public :: GetMeshIType                   => GoveqnBaseGetMeshIType
+     procedure, public :: Create                            => GoveqnBaseCreate
+     procedure, public :: Destroy                           => GoveqnBaseDestroy
+     procedure, public :: PrintInfo                         => GoveqnBasePrintInfo
+     procedure, public :: PreSolve                          => GoveqnBasePreSolve
+     procedure, public :: ComputeResidual                   => GoveqnBaseComputeResidual
+     procedure, public :: ComputeJacobian                   => GoveqnBaseComputeJacobian
+     procedure, public :: ComputeOffDiagJacobian            => GoveqnBaseComputeOffDiagJacobian
+     procedure, public :: ComputeRHS                        => GoveqnBaseComputeRHS
+     procedure, public :: ComputeOperatorsDiag              => GoveqnBaseComputeOperatorsDiag
+     procedure, public :: ComputeOperatorsOffDiag           => GoveqnBaseComputeOperatorsOffDiag
+     procedure, public :: SetDtime                          => GoveqnBaseSetDtime
+     procedure, public :: GetNConditionsExcptCondItype      => GoveqnBaseGetNConditionsExcptCondItype
+     procedure, public :: GetNCellsInCondsExcptCondItype    => GoveqnBaseGetNCellsInCondsExcptCondItype
+     procedure, public :: GetCondNamesExcptCondItype        => GoveqnBaseGetCondNamesExcptCondItype
+     procedure, public :: AddCondition                      => GoveqnBaseAddCondition
+     procedure, public :: AddCouplingBC                     => GoveqnBaseAddCouplingBC
+     procedure, public :: UpdateConditionConnSet            => GoveqnBaseUpdateConditionConnSet
+     procedure, public :: GetMeshIType                      => GoveqnBaseGetMeshIType
+     procedure, public :: GetMeshGridCellIsActive           => GoveqnBaseGetMeshGridCellIsActive
+     procedure, public :: GetConnIDDnForCondsExcptCondItype => GoveqnBaseGetConnIDDnForCondsExcptCondItype
   end type goveqn_base_type
   !------------------------------------------------------------------------
 
@@ -693,6 +695,76 @@ contains
     GoveqnBaseGetMeshIType = this%mesh%itype
 
   end function GoveqnBaseGetMeshIType
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetMeshGridCellIsActive(this, grid_cell_active)
+    !
+    ! !DESCRIPTION:
+    ! Returns an array identifying if a grid cell is active
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type) :: this
+    PetscBool, pointer      :: grid_cell_active(:)
+    !
+    PetscInt                :: icell
+
+    allocate(grid_cell_active(this%mesh%ncells_all))
+
+    do icell = 1, this%mesh%ncells_all
+       if (this%mesh%is_active(icell)) then
+          grid_cell_active(icell) = PETSC_TRUE
+       else
+          grid_cell_active(icell) = PETSC_FALSE
+       end if
+    end do
+
+  end subroutine GoveqnBaseGetMeshGridCellIsActive
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetConnIDDnForCondsExcptCondItype(this, cond_type, &
+              cond_itype_to_exclude, num_cells, cell_id_dn)
+    !
+    ! !DESCRIPTION:
+    ! Returns an array with downwind cell ids associated with all conditions
+    ! excluding conditions of itype = cond_type_to_exclude
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : CondListGetConnIDDnForCondsExcptCondItype
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)                     :: this
+    PetscInt             , intent(in)           :: cond_type
+    PetscInt             , intent(in)           :: cond_itype_to_exclude
+    PetscInt             , intent(out)          :: num_cells
+    PetscInt             , intent(out), pointer :: cell_id_dn(:)
+    !
+    ! !LOCAL VARIABLES:
+    character(len=256)                          :: string
+
+    ! Choose the condition type
+    select case (cond_type)
+    case (COND_BC)
+       call CondListGetConnIDDnForCondsExcptCondItype( &
+            this%boundary_conditions, cond_itype_to_exclude, num_cells, cell_id_dn)
+
+    case (COND_SS)
+       call CondListGetConnIDDnForCondsExcptCondItype( &
+            this%source_sinks, cond_itype_to_exclude, num_cells, cell_id_dn)
+
+    case default
+       write(string,*) cond_type
+       write(iulog,*) 'Unknown cond_type = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine GoveqnBaseGetConnIDDnForCondsExcptCondItype
 
 #endif
 
