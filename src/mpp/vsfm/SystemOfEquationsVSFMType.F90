@@ -183,15 +183,17 @@ contains
        enddo
     enddo
 
-    cur_goveq => this%goveqns
-    do
-       if (.not.associated(cur_goveq)) exit
-       select type(cur_goveq)
-       class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%UpdateAuxVars()
-       end select
-       cur_goveq => cur_goveq%next
-    enddo
+    if (nDM > 1) then
+       cur_goveq => this%goveqns
+       do
+          if (.not.associated(cur_goveq)) exit
+          select type(cur_goveq)
+             class is (goveqn_richards_ode_pressure_type)
+             call cur_goveq%UpdateAuxVars()
+          end select
+          cur_goveq => cur_goveq%next
+       enddo
+    end if
 
     ! Call Residual
     dm_id = 0
