@@ -1782,7 +1782,6 @@ subroutine set_initial_conditions()
   PetscBool          :: wtd_for_column_unset
   PetscReal, pointer :: press_ic(:)
   PetscErrorCode     :: ierr
-  PetscViewer :: viewer
 
   call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
 
@@ -1806,11 +1805,6 @@ subroutine set_initial_conditions()
   call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
   call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
   call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
-
-  call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'bin_files/x.bin', FILE_MODE_READ, viewer, ierr)
-  !call VecLoad(vsfm_mpp%soe%solver%soln, viewer, ierr)
-  call PetscViewerDestroy(viewer, ierr)
-
 
 end subroutine set_initial_conditions
 
