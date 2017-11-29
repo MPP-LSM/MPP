@@ -125,6 +125,7 @@ module overstory_parameters
   PetscReal , pointer :: overstory_root_vol_profile(:)
   PetscInt  , pointer :: overstory_branch_2_xylem_index(:)
 
+  PetscInt  , pointer :: overstory_root_id(:,:,:)
   PetscReal , pointer :: overstory_root_xc(:)                          !
   PetscReal , pointer :: overstory_root_yc(:)                          !
   PetscReal , pointer :: overstory_root_zc(:)                          !
@@ -143,6 +144,7 @@ module overstory_parameters
   PetscReal , pointer :: overstory_root_relperm_param_1(:)
   PetscReal , pointer :: overstory_root_relperm_param_2(:)
 
+  PetscInt  , pointer :: overstory_xylem_id(:,:,:)
   PetscReal , pointer :: overstory_xylem_xc(:)                          !
   PetscReal , pointer :: overstory_xylem_yc(:)                          !
   PetscReal , pointer :: overstory_xylem_zc(:)                          !
@@ -161,6 +163,7 @@ module overstory_parameters
   PetscReal , pointer :: overstory_xylem_relperm_param_1(:)
   PetscReal , pointer :: overstory_xylem_relperm_param_2(:)
 
+  PetscInt  , pointer :: overstory_leaf_id(:,:,:)
   PetscReal , pointer :: overstory_leaf_xc(:)                          !
   PetscReal , pointer :: overstory_leaf_yc(:)                          !
   PetscReal , pointer :: overstory_leaf_zc(:)                          !
@@ -227,6 +230,7 @@ module understory_parameters
   PetscReal , pointer :: understory_root_vol_profile(:)                 !
   PetscInt  , pointer :: understory_branch_2_xylem_index(:)
 
+  PetscInt  , pointer :: understory_root_id(:,:,:)
   PetscReal , pointer :: understory_root_xc(:)                          !
   PetscReal , pointer :: understory_root_yc(:)                          !
   PetscReal , pointer :: understory_root_zc(:)                          !
@@ -245,6 +249,7 @@ module understory_parameters
   PetscReal , pointer :: understory_root_relperm_param_1(:)
   PetscReal , pointer :: understory_root_relperm_param_2(:)
 
+  PetscInt  , pointer :: understory_xylem_id(:,:,:)
   PetscReal , pointer :: understory_xylem_xc(:)                          !
   PetscReal , pointer :: understory_xylem_yc(:)                          !
   PetscReal , pointer :: understory_xylem_zc(:)                          !
@@ -263,6 +268,7 @@ module understory_parameters
   PetscReal , pointer :: understory_xylem_relperm_param_1(:)
   PetscReal , pointer :: understory_xylem_relperm_param_2(:)
 
+  PetscInt  , pointer :: understory_leaf_id(:,:,:)
   PetscReal , pointer :: understory_leaf_xc(:)                          !
   PetscReal , pointer :: understory_leaf_yc(:)                          !
   PetscReal , pointer :: understory_leaf_zc(:)                          !
@@ -281,11 +287,9 @@ module understory_parameters
   PetscReal , pointer :: understory_leaf_relperm_param_1(:)
   PetscReal , pointer :: understory_leaf_relperm_param_2(:)
 
-
 end module understory_parameters
 
 module problem_parameters
-
 
   use soil_parameters
   use overstory_parameters
@@ -298,41 +302,43 @@ module problem_parameters
 
   PetscReal , parameter :: init_wtd = 3.d0             ! Initial water table depth below surface [m]
   
-  PetscInt :: ncells
+  PetscInt              :: ncells
 
-  PetscReal , pointer :: vsfm_por(:)
-  PetscReal , pointer :: vsfm_perm(:)
-  PetscReal , pointer :: vsfm_lambda(:)
-  PetscReal , pointer :: vsfm_alpha(:)
-  PetscReal , pointer :: vsfm_eff_porosity(:)
-  PetscReal , pointer :: vsfm_residual_sat(:)
-  PetscInt  , pointer :: vsfm_satfunc_type(:)
-  PetscInt  , pointer :: vsfm_relperm_type(:)
-  PetscReal , pointer :: vsfm_relperm_param_1(:)
-  PetscReal , pointer :: vsfm_relperm_param_2(:)
+  PetscBool             :: multi_goveqns_formulation
 
-  PetscInt  , pointer :: conn_flux_type(:)    !
-  PetscInt  , pointer :: conn_cond_type(:)    !
-  PetscReal , pointer :: conn_cond     (:)    !
-  PetscReal , pointer :: conn_cond_up  (:)    !
-  PetscReal , pointer :: conn_cond_dn  (:)    !
+  PetscReal , pointer   :: vsfm_por(:)
+  PetscReal , pointer   :: vsfm_perm(:)
+  PetscReal , pointer   :: vsfm_lambda(:)
+  PetscReal , pointer   :: vsfm_alpha(:)
+  PetscReal , pointer   :: vsfm_eff_porosity(:)
+  PetscReal , pointer   :: vsfm_residual_sat(:)
+  PetscInt  , pointer   :: vsfm_satfunc_type(:)
+  PetscInt  , pointer   :: vsfm_relperm_type(:)
+  PetscReal , pointer   :: vsfm_relperm_param_1(:)
+  PetscReal , pointer   :: vsfm_relperm_param_2(:)
+
+  PetscInt  , pointer   :: conn_flux_type(:)    !
+  PetscInt  , pointer   :: conn_cond_type(:)    !
+  PetscReal , pointer   :: conn_cond     (:)    !
+  PetscReal , pointer   :: conn_cond_up  (:)    !
+  PetscReal , pointer   :: conn_cond_dn  (:)    !
   
-  PetscInt  , pointer :: conn_satparam_up_itype(:)
-  PetscReal , pointer :: conn_satparam_up_param_1(:)
-  PetscReal , pointer :: conn_satparam_up_param_2(:)
-  PetscReal , pointer :: conn_satparam_up_param_3(:)
-  PetscInt  , pointer :: conn_relperm_up_itype(:)
-  PetscReal , pointer :: conn_relperm_up_param_1(:)
-  PetscReal , pointer :: conn_relperm_up_param_2(:)
+  PetscInt  , pointer   :: conn_satparam_up_itype(:)
+  PetscReal , pointer   :: conn_satparam_up_param_1(:)
+  PetscReal , pointer   :: conn_satparam_up_param_2(:)
+  PetscReal , pointer   :: conn_satparam_up_param_3(:)
+  PetscInt  , pointer   :: conn_relperm_up_itype(:)
+  PetscReal , pointer   :: conn_relperm_up_param_1(:)
+  PetscReal , pointer   :: conn_relperm_up_param_2(:)
 
-  PetscInt  , pointer :: conn_satparam_dn_itype(:)
-  PetscReal , pointer :: conn_satparam_dn_param_1(:)
-  PetscReal , pointer :: conn_satparam_dn_param_2(:)
-  PetscReal , pointer :: conn_satparam_dn_param_3(:)
-  PetscInt  , pointer :: conn_relperm_dn_itype(:)
-  PetscReal , pointer :: conn_relperm_dn_param_1(:)
-  PetscReal , pointer :: conn_relperm_dn_param_2(:)
-  PetscReal , pointer :: conn_relperm_dn_param_3(:)
+  PetscInt  , pointer   :: conn_satparam_dn_itype(:)
+  PetscReal , pointer   :: conn_satparam_dn_param_1(:)
+  PetscReal , pointer   :: conn_satparam_dn_param_2(:)
+  PetscReal , pointer   :: conn_satparam_dn_param_3(:)
+  PetscInt  , pointer   :: conn_relperm_dn_itype(:)
+  PetscReal , pointer   :: conn_relperm_dn_param_1(:)
+  PetscReal , pointer   :: conn_relperm_dn_param_2(:)
+  PetscReal , pointer   :: conn_relperm_dn_param_3(:)
 
 end module problem_parameters
 
@@ -389,10 +395,11 @@ subroutine run_vsfm_spac_on_hillslope()
   time  = 0.d0
 
   ! Set default settings
-  dtime                          = 180.d0
-  nstep                          = 1
-  slope                          = 0.05d0
+  dtime                             = 180.d0
+  nstep                             = 1
+  slope                             = 0.05d0
   is_soil_horizontally_disconnected = PETSC_FALSE
+  multi_goveqns_formulation         = PETSC_FALSE
   
   call PetscOptionsGetInt (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
   call PetscOptionsGetReal(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-slope',slope,flg,ierr)
@@ -573,13 +580,6 @@ subroutine add_mesh()
   PetscReal , pointer :: conn_area(:)    !
   PetscInt  , pointer :: conn_type(:)    !
 
-  PetscInt  , pointer :: overstory_root_id(:,:,:)
-  PetscInt  , pointer :: overstory_xylem_id(:,:,:)
-  PetscInt  , pointer :: overstory_leaf_id(:,:,:)
-  PetscInt  , pointer :: understory_root_id(:,:,:)
-  PetscInt  , pointer :: understory_xylem_id(:,:,:)
-  PetscInt  , pointer :: understory_leaf_id(:,:,:)
-
   PetscReal , pointer :: xc(:)                ! x-position of grid cell [m]
   PetscReal , pointer :: yc(:)                ! y-position of grid cell [m]
   PetscReal , pointer :: zc(:)                ! y-position of grid cell [m]
@@ -596,78 +596,12 @@ subroutine add_mesh()
   PetscErrorCode      :: ierr
 
   call setup_soil_mesh()
-
   call setup_overstory_mesh()
   call setup_understory_mesh()
 
-  allocate(overstory_root_id   (soil_nx, soil_ny, overstory_root_nz   ))
-  allocate(overstory_xylem_id  (soil_nx, soil_ny, overstory_xylem_nz  ))
-  allocate(overstory_leaf_id   (soil_nx, soil_ny, overstory_leaf_nz   ))
-  allocate(understory_root_id  (soil_nx, soil_ny, understory_root_nz  ))
-  allocate(understory_xylem_id (soil_nx, soil_ny, understory_xylem_nz ))
-  allocate(understory_leaf_id  (soil_nx, soil_ny, understory_leaf_nz  ))
-  
-  ncells = soil_ncells
-
-  ! Add overstory root grid cells
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-        do kk = 1, overstory_root_nz
-           ncells                      = ncells + 1
-           overstory_root_id(ii,jj,kk) = ncells
-        end do
-     end do
-  end do
-
-  ! Add overstory xylem grid cells
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-        do kk = 1, overstory_xylem_nz
-           ncells                       = ncells + 1
-           overstory_xylem_id(ii,jj,kk) = ncells
-        end do
-     end do
-  end do
-
-  ! Add overstory leaf grid cells
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-        do kk = 1, overstory_leaf_nz
-           ncells                       = ncells + 1
-           overstory_leaf_id(ii,jj,kk)  = ncells
-        end do
-     end do
-  end do
-  
-  ! Add understory root grid cells
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-        do kk = 1, understory_root_nz
-           ncells                      = ncells + 1
-           understory_root_id(ii,jj,kk) = ncells
-        end do
-     end do
-  end do
-
-  ! Add understory xylem grid cells
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-        do kk = 1, understory_xylem_nz
-           ncells                       = ncells + 1
-           understory_xylem_id(ii,jj,kk) = ncells
-        end do
-     end do
-  end do
-
-  ! Add understory leaf grid cells
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-        do kk = 1, understory_leaf_nz
-           ncells                       = ncells + 1
-           understory_leaf_id(ii,jj,kk)  = ncells
-        end do
-     end do
-  end do
+  ncells = soil_ncells + &
+       soil_nx * soil_ny *( overstory_root_nz  + overstory_xylem_nz  + overstory_leaf_nz) + &
+       soil_nx * soil_ny *( understory_root_nz + understory_xylem_nz + understory_leaf_nz)
 
   allocate(xc     (ncells))
   allocate(yc     (ncells))
@@ -1320,6 +1254,7 @@ subroutine setup_overstory_mesh()
   !
   PetscInt  :: ii,jj,kk
   PetscInt  :: idx
+  PetscInt  :: id_value
   PetscInt  :: count
   PetscReal :: zz
   PetscReal :: soil_volume
@@ -1419,13 +1354,28 @@ subroutine setup_overstory_mesh()
   allocate(overstory_leaf_vol              (soil_nx*soil_ny*overstory_leaf_nz))
   allocate(overstory_leaf_filter           (soil_nx*soil_ny*overstory_leaf_nz))
 
+  allocate(overstory_root_id               (soil_nx, soil_ny, overstory_root_nz ))
+  allocate(overstory_xylem_id              (soil_nx, soil_ny, overstory_xylem_nz))
+  allocate(overstory_leaf_id               (soil_nx, soil_ny, overstory_leaf_nz ))
+
+  if (multi_goveqns_formulation) then
+     id_value = 0
+  else
+     id_value = soil_ncells
+  end if
+  
   ! Add root grid cells
   count = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
         do kk = 1, overstory_root_nz
+
+           id_value                               = id_value + 1
+           overstory_root_id           (ii,jj,kk) = id_value
+
            count                                  = count + 1
+
            overstory_root_xc              (count) = soil_xc3d(ii,jj,1)
            overstory_root_yc              (count) = soil_yc3d(ii,jj,1)
            overstory_root_zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
@@ -1448,10 +1398,15 @@ subroutine setup_overstory_mesh()
 
   ! Add xylem grid cells
   count = 0
+  if (multi_goveqns_formulation) id_value = 0
+
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
         do kk = 1, overstory_xylem_nz
+           id_value                                = id_value + 1
+           overstory_xylem_id           (ii,jj,kk) = id_value
+
            count                                   = count + 1
            overstory_xylem_xc              (count) = soil_xc3d(ii,jj,1)
            overstory_xylem_yc              (count) = soil_yc3d(ii,jj,1)
@@ -1475,10 +1430,15 @@ subroutine setup_overstory_mesh()
 
   ! Add leaf grid cells
   count = 0
+  if (multi_goveqns_formulation) id_value = 0
+
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
         do kk = 1, overstory_leaf_nz
+           id_value                               = id_value + 1
+           overstory_leaf_id           (ii,jj,kk) = id_value
+
            count                                  = count + 1
            idx                                    = overstory_branch_2_xylem_index(kk)
 
@@ -1521,6 +1481,7 @@ subroutine setup_understory_mesh()
   !
   PetscInt  :: ii,jj,kk
   PetscInt  :: idx
+  PetscInt  :: id_value
   PetscInt  :: count
   PetscReal :: zz
   PetscReal :: soil_volume
@@ -1621,19 +1582,32 @@ subroutine setup_understory_mesh()
   allocate(understory_leaf_vol              (soil_nx*soil_ny*understory_leaf_nz))
   allocate(understory_leaf_filter           (soil_nx*soil_ny*understory_leaf_nz))
 
+  allocate(understory_root_id  (soil_nx, soil_ny, understory_root_nz  ))
+  allocate(understory_xylem_id (soil_nx, soil_ny, understory_xylem_nz ))
+  allocate(understory_leaf_id  (soil_nx, soil_ny, understory_leaf_nz  ))
+  
+  if (multi_goveqns_formulation) then
+     id_value = 0
+  else
+     id_value = soil_ncells + soil_nx * soil_ny *( overstory_root_nz  + overstory_xylem_nz  + overstory_leaf_nz)
+  end if
+
   ! Add root grid cells
   count = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
         do kk = 1, understory_root_nz
-           count                        = count + 1
-           understory_root_xc                   (count) = soil_xc3d(ii,jj,1)
-           understory_root_yc                   (count) = soil_yc3d(ii,jj,1)
-           understory_root_zc                   (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
-           understory_root_area                 (count) = understory_root_area_profile(kk)
-           understory_root_vol                  (count) = understory_root_vol_profile(kk)
-           understory_root_filter               (count) = 1
+           id_value                                = id_value + 1
+           understory_root_id           (ii,jj,kk) = id_value
+
+           count                                   = count + 1
+           understory_root_xc              (count) = soil_xc3d(ii,jj,1)
+           understory_root_yc              (count) = soil_yc3d(ii,jj,1)
+           understory_root_zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
+           understory_root_area            (count) = understory_root_area_profile(kk)
+           understory_root_vol             (count) = understory_root_vol_profile(kk)
+           understory_root_filter          (count) = 1
 
            understory_root_por             (count) = 0.d0
            understory_root_perm            (count) = 0.d0
@@ -1650,16 +1624,21 @@ subroutine setup_understory_mesh()
 
   ! Add xylem grid cells
   count = 0
+  if (multi_goveqns_formulation) id_value = 0
+
   do ii = 1, soil_nx
      do jj = 1, soil_ny
         do kk = 1, understory_xylem_nz
-           count                        = count + 1
-           understory_xylem_xc                   (count) = soil_xc3d(ii,jj,1)
-           understory_xylem_yc                   (count) = soil_yc3d(ii,jj,1)
-           understory_xylem_zc                   (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
-           understory_xylem_area                 (count) = understory_xylem_area_profile(kk)
-           understory_xylem_vol                  (count) = understory_xylem_area_profile(kk) * soil_dz
-           understory_xylem_filter               (count) = 1
+           id_value                                 = id_value + 1
+           understory_xylem_id           (ii,jj,kk) = id_value
+
+           count                                         = count + 1
+           understory_xylem_xc              (count) = soil_xc3d(ii,jj,1)
+           understory_xylem_yc              (count) = soil_yc3d(ii,jj,1)
+           understory_xylem_zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
+           understory_xylem_area            (count) = understory_xylem_area_profile(kk)
+           understory_xylem_vol             (count) = understory_xylem_area_profile(kk) * soil_dz
+           understory_xylem_filter          (count) = 1
 
            understory_xylem_por             (count) = understory_xylem_porosity
            understory_xylem_perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
@@ -1676,19 +1655,24 @@ subroutine setup_understory_mesh()
 
   ! Add branch grid cells
   count = 0
+  if (multi_goveqns_formulation) id_value = 0
+
   do ii = 1, soil_nx
      do jj = 1, soil_ny
         do kk = 1, understory_leaf_nz
-           count                        = count + 1
-           idx                           = understory_branch_2_xylem_index(kk)
+           id_value                                = id_value + 1
+           understory_leaf_id           (ii,jj,kk) = id_value
 
-           understory_leaf_xc                   (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
-           understory_leaf_yc                   (count) = soil_yc3d(ii,jj,1)
-           understory_leaf_zc                   (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
-           understory_leaf_area                 (count) = understory_xylem_area_profile(kk) * understory_branch_area_ratio
+           count                                   = count + 1
+           idx                                     = understory_branch_2_xylem_index(kk)
 
-           understory_leaf_vol                  (count) = understory_leaf_area(count) * understory_branch_length_profile(idx)
-           understory_leaf_filter               (count) = 1
+           understory_leaf_xc              (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
+           understory_leaf_yc              (count) = soil_yc3d(ii,jj,1)
+           understory_leaf_zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
+           understory_leaf_area            (count) = understory_xylem_area_profile(kk) * understory_branch_area_ratio
+
+           understory_leaf_vol             (count) = understory_leaf_area(count) * understory_branch_length_profile(idx)
+           understory_leaf_filter          (count) = 1
 
            understory_leaf_por             (count) = 0.d0
            understory_leaf_perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
