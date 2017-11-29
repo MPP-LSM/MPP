@@ -1,3 +1,34 @@
+module spac_component
+  
+#include <petsc/finclude/petsc.h>
+  
+  implicit none
+
+  type, public :: spac_component_mesh_type
+     PetscInt  , pointer :: id(:,:,:)
+     PetscReal , pointer :: xc(:)                          !
+     PetscReal , pointer :: yc(:)                          !
+     PetscReal , pointer :: zc(:)                          !
+     PetscReal , pointer :: area(:)                        !
+     PetscReal , pointer :: vol(:)                         !
+     PetscInt  , pointer :: filter(:)                      !
+  end type spac_component_mesh_type
+
+  type, public :: spac_component_pp_type
+     PetscReal , pointer :: por(:)
+     PetscReal , pointer :: perm(:)
+     PetscReal , pointer :: lambda(:)
+     PetscReal , pointer :: alpha(:)
+     PetscReal , pointer :: eff_porosity(:)
+     PetscReal , pointer :: residual_sat(:)
+     PetscInt  , pointer :: satfunc_type(:)
+     PetscInt  , pointer :: relperm_type(:)
+     PetscReal , pointer :: relperm_param_1(:)
+     PetscReal , pointer :: relperm_param_2(:)
+  end type spac_component_pp_type
+
+end module spac_component
+
 module soil_parameters
 
 #include <petsc/finclude/petsc.h>
@@ -72,6 +103,8 @@ end module soil_parameters
 module overstory_parameters
   
 #include <petsc/finclude/petsc.h>
+
+  use spac_component
   
   implicit none
 
@@ -125,68 +158,21 @@ module overstory_parameters
   PetscReal , pointer :: overstory_root_vol_profile(:)
   PetscInt  , pointer :: overstory_branch_2_xylem_index(:)
 
-  PetscInt  , pointer :: overstory_root_id(:,:,:)
-  PetscReal , pointer :: overstory_root_xc(:)                          !
-  PetscReal , pointer :: overstory_root_yc(:)                          !
-  PetscReal , pointer :: overstory_root_zc(:)                          !
-  PetscReal , pointer :: overstory_root_area(:)                        !
-  PetscReal , pointer :: overstory_root_vol(:)                         !
-  PetscInt  , pointer :: overstory_root_filter(:)                      !
+  type (spac_component_mesh_type) :: overstory_root_mesh
+  type (spac_component_mesh_type) :: overstory_xylem_mesh
+  type (spac_component_mesh_type) :: overstory_leaf_mesh
 
-  PetscReal , pointer :: overstory_root_por(:)
-  PetscReal , pointer :: overstory_root_perm(:)
-  PetscReal , pointer :: overstory_root_lambda(:)
-  PetscReal , pointer :: overstory_root_alpha(:)
-  PetscReal , pointer :: overstory_root_eff_porosity(:)
-  PetscReal , pointer :: overstory_root_residual_sat(:)
-  PetscInt  , pointer :: overstory_root_satfunc_type(:)
-  PetscInt  , pointer :: overstory_root_relperm_type(:)
-  PetscReal , pointer :: overstory_root_relperm_param_1(:)
-  PetscReal , pointer :: overstory_root_relperm_param_2(:)
-
-  PetscInt  , pointer :: overstory_xylem_id(:,:,:)
-  PetscReal , pointer :: overstory_xylem_xc(:)                          !
-  PetscReal , pointer :: overstory_xylem_yc(:)                          !
-  PetscReal , pointer :: overstory_xylem_zc(:)                          !
-  PetscReal , pointer :: overstory_xylem_area(:)                        !
-  PetscReal , pointer :: overstory_xylem_vol(:)                         !
-  PetscInt  , pointer :: overstory_xylem_filter(:)                      !
-
-  PetscReal , pointer :: overstory_xylem_por(:)
-  PetscReal , pointer :: overstory_xylem_perm(:)
-  PetscReal , pointer :: overstory_xylem_lambda(:)
-  PetscReal , pointer :: overstory_xylem_alpha(:)
-  PetscReal , pointer :: overstory_xylem_eff_porosity(:)
-  PetscReal , pointer :: overstory_xylem_residual_sat(:)
-  PetscInt  , pointer :: overstory_xylem_satfunc_type(:)
-  PetscInt  , pointer :: overstory_xylem_relperm_type(:)
-  PetscReal , pointer :: overstory_xylem_relperm_param_1(:)
-  PetscReal , pointer :: overstory_xylem_relperm_param_2(:)
-
-  PetscInt  , pointer :: overstory_leaf_id(:,:,:)
-  PetscReal , pointer :: overstory_leaf_xc(:)                          !
-  PetscReal , pointer :: overstory_leaf_yc(:)                          !
-  PetscReal , pointer :: overstory_leaf_zc(:)                          !
-  PetscReal , pointer :: overstory_leaf_area(:)                        !
-  PetscReal , pointer :: overstory_leaf_vol(:)                         !
-  PetscInt  , pointer :: overstory_leaf_filter(:)                      !
-
-  PetscReal , pointer :: overstory_leaf_por(:)
-  PetscReal , pointer :: overstory_leaf_perm(:)
-  PetscReal , pointer :: overstory_leaf_lambda(:)
-  PetscReal , pointer :: overstory_leaf_alpha(:)
-  PetscReal , pointer :: overstory_leaf_eff_porosity(:)
-  PetscReal , pointer :: overstory_leaf_residual_sat(:)
-  PetscInt  , pointer :: overstory_leaf_satfunc_type(:)
-  PetscInt  , pointer :: overstory_leaf_relperm_type(:)
-  PetscReal , pointer :: overstory_leaf_relperm_param_1(:)
-  PetscReal , pointer :: overstory_leaf_relperm_param_2(:)
+  type (spac_component_pp_type) :: overstory_root_pp
+  type (spac_component_pp_type) :: overstory_xylem_pp
+  type (spac_component_pp_type) :: overstory_leaf_pp
 
 end module overstory_parameters
 
 module understory_parameters
   !
 #include <petsc/finclude/petsc.h>
+  !
+  use spac_component
   !
   implicit none
   !
@@ -230,62 +216,13 @@ module understory_parameters
   PetscReal , pointer :: understory_root_vol_profile(:)                 !
   PetscInt  , pointer :: understory_branch_2_xylem_index(:)
 
-  PetscInt  , pointer :: understory_root_id(:,:,:)
-  PetscReal , pointer :: understory_root_xc(:)                          !
-  PetscReal , pointer :: understory_root_yc(:)                          !
-  PetscReal , pointer :: understory_root_zc(:)                          !
-  PetscReal , pointer :: understory_root_area(:)                        !
-  PetscReal , pointer :: understory_root_vol(:)                         !
-  PetscInt  , pointer :: understory_root_filter(:)                      !
+  type (spac_component_mesh_type) :: understory_root_mesh
+  type (spac_component_mesh_type) :: understory_xylem_mesh
+  type (spac_component_mesh_type) :: understory_leaf_mesh
 
-  PetscReal , pointer :: understory_root_por(:)
-  PetscReal , pointer :: understory_root_perm(:)
-  PetscReal , pointer :: understory_root_lambda(:)
-  PetscReal , pointer :: understory_root_alpha(:)
-  PetscReal , pointer :: understory_root_eff_porosity(:)
-  PetscReal , pointer :: understory_root_residual_sat(:)
-  PetscInt  , pointer :: understory_root_satfunc_type(:)
-  PetscInt  , pointer :: understory_root_relperm_type(:)
-  PetscReal , pointer :: understory_root_relperm_param_1(:)
-  PetscReal , pointer :: understory_root_relperm_param_2(:)
-
-  PetscInt  , pointer :: understory_xylem_id(:,:,:)
-  PetscReal , pointer :: understory_xylem_xc(:)                          !
-  PetscReal , pointer :: understory_xylem_yc(:)                          !
-  PetscReal , pointer :: understory_xylem_zc(:)                          !
-  PetscReal , pointer :: understory_xylem_area(:)                        !
-  PetscReal , pointer :: understory_xylem_vol(:)                         !
-  PetscInt  , pointer :: understory_xylem_filter(:)                      !
-
-  PetscReal , pointer :: understory_xylem_por(:)
-  PetscReal , pointer :: understory_xylem_perm(:)
-  PetscReal , pointer :: understory_xylem_lambda(:)
-  PetscReal , pointer :: understory_xylem_alpha(:)
-  PetscReal , pointer :: understory_xylem_eff_porosity(:)
-  PetscReal , pointer :: understory_xylem_residual_sat(:)
-  PetscInt  , pointer :: understory_xylem_satfunc_type(:)
-  PetscInt  , pointer :: understory_xylem_relperm_type(:)
-  PetscReal , pointer :: understory_xylem_relperm_param_1(:)
-  PetscReal , pointer :: understory_xylem_relperm_param_2(:)
-
-  PetscInt  , pointer :: understory_leaf_id(:,:,:)
-  PetscReal , pointer :: understory_leaf_xc(:)                          !
-  PetscReal , pointer :: understory_leaf_yc(:)                          !
-  PetscReal , pointer :: understory_leaf_zc(:)                          !
-  PetscReal , pointer :: understory_leaf_area(:)                        !
-  PetscReal , pointer :: understory_leaf_vol(:)                         !
-  PetscInt  , pointer :: understory_leaf_filter(:)                      !
-
-  PetscReal , pointer :: understory_leaf_por(:)
-  PetscReal , pointer :: understory_leaf_perm(:)
-  PetscReal , pointer :: understory_leaf_lambda(:)
-  PetscReal , pointer :: understory_leaf_alpha(:)
-  PetscReal , pointer :: understory_leaf_eff_porosity(:)
-  PetscReal , pointer :: understory_leaf_residual_sat(:)
-  PetscInt  , pointer :: understory_leaf_satfunc_type(:)
-  PetscInt  , pointer :: understory_leaf_relperm_type(:)
-  PetscReal , pointer :: understory_leaf_relperm_param_1(:)
-  PetscReal , pointer :: understory_leaf_relperm_param_2(:)
+  type (spac_component_pp_type) :: understory_root_pp
+  type (spac_component_pp_type) :: understory_xylem_pp
+  type (spac_component_pp_type) :: understory_leaf_pp
 
 end module understory_parameters
 
@@ -658,66 +595,66 @@ subroutine add_mesh()
   idx_end = ncells + soil_nx*soil_ny*overstory_root_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = overstory_root_xc              (1:soil_nx*soil_ny*overstory_root_nz)
-  yc                   (idx_beg:idx_end) = overstory_root_yc              (1:soil_nx*soil_ny*overstory_root_nz)
-  zc                   (idx_beg:idx_end) = overstory_root_zc              (1:soil_nx*soil_ny*overstory_root_nz)
-  area                 (idx_beg:idx_end) = overstory_root_area            (1:soil_nx*soil_ny*overstory_root_nz)
-  vol                  (idx_beg:idx_end) = overstory_root_vol             (1:soil_nx*soil_ny*overstory_root_nz)
-  filter               (idx_beg:idx_end) = overstory_root_filter          (1:soil_nx*soil_ny*overstory_root_nz)
+  xc                   (idx_beg:idx_end) = overstory_root_mesh%xc              (1:soil_nx*soil_ny*overstory_root_nz)
+  yc                   (idx_beg:idx_end) = overstory_root_mesh%yc              (1:soil_nx*soil_ny*overstory_root_nz)
+  zc                   (idx_beg:idx_end) = overstory_root_mesh%zc              (1:soil_nx*soil_ny*overstory_root_nz)
+  area                 (idx_beg:idx_end) = overstory_root_mesh%area            (1:soil_nx*soil_ny*overstory_root_nz)
+  vol                  (idx_beg:idx_end) = overstory_root_mesh%vol             (1:soil_nx*soil_ny*overstory_root_nz)
+  filter               (idx_beg:idx_end) = overstory_root_mesh%filter          (1:soil_nx*soil_ny*overstory_root_nz)
 
-  vsfm_por             (idx_beg:idx_end) = overstory_root_por             (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_perm            (idx_beg:idx_end) = overstory_root_perm            (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_alpha           (idx_beg:idx_end) = overstory_root_alpha           (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_lambda          (idx_beg:idx_end) = overstory_root_lambda          (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = overstory_root_relperm_type    (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_root_relperm_param_1 (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_root_relperm_param_2 (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = overstory_root_residual_sat    (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_root_satfunc_type    (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_por             (idx_beg:idx_end) = overstory_root_pp%por             (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_perm            (idx_beg:idx_end) = overstory_root_pp%perm            (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_alpha           (idx_beg:idx_end) = overstory_root_pp%alpha           (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_lambda          (idx_beg:idx_end) = overstory_root_pp%lambda          (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_relperm_type    (idx_beg:idx_end) = overstory_root_pp%relperm_type    (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_root_pp%relperm_param_1 (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_root_pp%relperm_param_2 (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_residual_sat    (idx_beg:idx_end) = overstory_root_pp%residual_sat    (1:soil_nx*soil_ny*overstory_root_nz)
+  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_root_pp%satfunc_type    (1:soil_nx*soil_ny*overstory_root_nz)
 
   ! Add xylem grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*overstory_xylem_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = overstory_xylem_xc              (1:soil_nx*soil_ny*overstory_xylem_nz)
-  yc                   (idx_beg:idx_end) = overstory_xylem_yc              (1:soil_nx*soil_ny*overstory_xylem_nz)
-  zc                   (idx_beg:idx_end) = overstory_xylem_zc              (1:soil_nx*soil_ny*overstory_xylem_nz)
-  area                 (idx_beg:idx_end) = overstory_xylem_area            (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vol                  (idx_beg:idx_end) = overstory_xylem_vol             (1:soil_nx*soil_ny*overstory_xylem_nz)
-  filter               (idx_beg:idx_end) = overstory_xylem_filter          (1:soil_nx*soil_ny*overstory_xylem_nz)
+  xc                   (idx_beg:idx_end) = overstory_xylem_mesh%xc              (1:soil_nx*soil_ny*overstory_xylem_nz)
+  yc                   (idx_beg:idx_end) = overstory_xylem_mesh%yc              (1:soil_nx*soil_ny*overstory_xylem_nz)
+  zc                   (idx_beg:idx_end) = overstory_xylem_mesh%zc              (1:soil_nx*soil_ny*overstory_xylem_nz)
+  area                 (idx_beg:idx_end) = overstory_xylem_mesh%area            (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vol                  (idx_beg:idx_end) = overstory_xylem_mesh%vol             (1:soil_nx*soil_ny*overstory_xylem_nz)
+  filter               (idx_beg:idx_end) = overstory_xylem_mesh%filter          (1:soil_nx*soil_ny*overstory_xylem_nz)
 
-  vsfm_por             (idx_beg:idx_end) = overstory_xylem_por             (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_perm            (idx_beg:idx_end) = overstory_xylem_perm            (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_alpha           (idx_beg:idx_end) = overstory_xylem_alpha           (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_lambda          (idx_beg:idx_end) = overstory_xylem_lambda          (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = overstory_xylem_relperm_type    (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_xylem_relperm_param_1 (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_xylem_relperm_param_2 (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = overstory_xylem_residual_sat    (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_xylem_satfunc_type    (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_por             (idx_beg:idx_end) = overstory_xylem_pp%por             (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_perm            (idx_beg:idx_end) = overstory_xylem_pp%perm            (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_alpha           (idx_beg:idx_end) = overstory_xylem_pp%alpha           (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_lambda          (idx_beg:idx_end) = overstory_xylem_pp%lambda          (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_relperm_type    (idx_beg:idx_end) = overstory_xylem_pp%relperm_type    (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_xylem_pp%relperm_param_1 (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_xylem_pp%relperm_param_2 (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_residual_sat    (idx_beg:idx_end) = overstory_xylem_pp%residual_sat    (1:soil_nx*soil_ny*overstory_xylem_nz)
+  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_xylem_pp%satfunc_type    (1:soil_nx*soil_ny*overstory_xylem_nz)
 
   ! Add leaf grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*overstory_leaf_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = overstory_leaf_xc              (1:soil_nx*soil_ny*overstory_leaf_nz)
-  yc                   (idx_beg:idx_end) = overstory_leaf_yc              (1:soil_nx*soil_ny*overstory_leaf_nz)
-  zc                   (idx_beg:idx_end) = overstory_leaf_zc              (1:soil_nx*soil_ny*overstory_leaf_nz)
-  area                 (idx_beg:idx_end) = overstory_leaf_area            (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vol                  (idx_beg:idx_end) = overstory_leaf_vol             (1:soil_nx*soil_ny*overstory_leaf_nz)
-  filter               (idx_beg:idx_end) = overstory_leaf_filter          (1:soil_nx*soil_ny*overstory_leaf_nz)
+  xc                   (idx_beg:idx_end) = overstory_leaf_mesh%xc              (1:soil_nx*soil_ny*overstory_leaf_nz)
+  yc                   (idx_beg:idx_end) = overstory_leaf_mesh%yc              (1:soil_nx*soil_ny*overstory_leaf_nz)
+  zc                   (idx_beg:idx_end) = overstory_leaf_mesh%zc              (1:soil_nx*soil_ny*overstory_leaf_nz)
+  area                 (idx_beg:idx_end) = overstory_leaf_mesh%area            (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vol                  (idx_beg:idx_end) = overstory_leaf_mesh%vol             (1:soil_nx*soil_ny*overstory_leaf_nz)
+  filter               (idx_beg:idx_end) = overstory_leaf_mesh%filter          (1:soil_nx*soil_ny*overstory_leaf_nz)
 
-  vsfm_por             (idx_beg:idx_end) = overstory_leaf_por             (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_perm            (idx_beg:idx_end) = overstory_leaf_perm            (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_alpha           (idx_beg:idx_end) = overstory_leaf_alpha           (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_lambda          (idx_beg:idx_end) = overstory_leaf_lambda          (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = overstory_leaf_relperm_type    (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_leaf_relperm_param_1 (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_leaf_relperm_param_2 (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = overstory_leaf_residual_sat    (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_leaf_satfunc_type    (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_por             (idx_beg:idx_end) = overstory_leaf_pp%por             (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_perm            (idx_beg:idx_end) = overstory_leaf_pp%perm            (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_alpha           (idx_beg:idx_end) = overstory_leaf_pp%alpha           (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_lambda          (idx_beg:idx_end) = overstory_leaf_pp%lambda          (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_relperm_type    (idx_beg:idx_end) = overstory_leaf_pp%relperm_type    (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_leaf_pp%relperm_param_1 (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_leaf_pp%relperm_param_2 (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_residual_sat    (idx_beg:idx_end) = overstory_leaf_pp%residual_sat    (1:soil_nx*soil_ny*overstory_leaf_nz)
+  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_leaf_pp%satfunc_type    (1:soil_nx*soil_ny*overstory_leaf_nz)
 
   !
   ! Understory
@@ -729,66 +666,66 @@ subroutine add_mesh()
   idx_end = ncells + soil_nx*soil_ny*understory_root_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = understory_root_xc              (1:soil_nx*soil_ny*understory_root_nz)
-  yc                   (idx_beg:idx_end) = understory_root_yc              (1:soil_nx*soil_ny*understory_root_nz)
-  zc                   (idx_beg:idx_end) = understory_root_zc              (1:soil_nx*soil_ny*understory_root_nz)
-  area                 (idx_beg:idx_end) = understory_root_area            (1:soil_nx*soil_ny*understory_root_nz)
-  vol                  (idx_beg:idx_end) = understory_root_vol             (1:soil_nx*soil_ny*understory_root_nz)
-  filter               (idx_beg:idx_end) = understory_root_filter          (1:soil_nx*soil_ny*understory_root_nz)
+  xc                   (idx_beg:idx_end) = understory_root_mesh%xc              (1:soil_nx*soil_ny*understory_root_nz)
+  yc                   (idx_beg:idx_end) = understory_root_mesh%yc              (1:soil_nx*soil_ny*understory_root_nz)
+  zc                   (idx_beg:idx_end) = understory_root_mesh%zc              (1:soil_nx*soil_ny*understory_root_nz)
+  area                 (idx_beg:idx_end) = understory_root_mesh%area            (1:soil_nx*soil_ny*understory_root_nz)
+  vol                  (idx_beg:idx_end) = understory_root_mesh%vol             (1:soil_nx*soil_ny*understory_root_nz)
+  filter               (idx_beg:idx_end) = understory_root_mesh%filter          (1:soil_nx*soil_ny*understory_root_nz)
 
-  vsfm_por             (idx_beg:idx_end) = understory_root_por             (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_perm            (idx_beg:idx_end) = understory_root_perm            (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_alpha           (idx_beg:idx_end) = understory_root_alpha           (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_lambda          (idx_beg:idx_end) = understory_root_lambda          (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = understory_root_relperm_type    (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_root_relperm_param_1 (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_root_relperm_param_2 (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = understory_root_residual_sat    (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = understory_root_satfunc_type    (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_por             (idx_beg:idx_end) = understory_root_pp%por             (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_perm            (idx_beg:idx_end) = understory_root_pp%perm            (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_alpha           (idx_beg:idx_end) = understory_root_pp%alpha           (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_lambda          (idx_beg:idx_end) = understory_root_pp%lambda          (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_relperm_type    (idx_beg:idx_end) = understory_root_pp%relperm_type    (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_root_pp%relperm_param_1 (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_root_pp%relperm_param_2 (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_residual_sat    (idx_beg:idx_end) = understory_root_pp%residual_sat    (1:soil_nx*soil_ny*understory_root_nz)
+  vsfm_satfunc_type    (idx_beg:idx_end) = understory_root_pp%satfunc_type    (1:soil_nx*soil_ny*understory_root_nz)
 
   ! Add xylem grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*understory_xylem_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = understory_xylem_xc              (1:soil_nx*soil_ny*understory_xylem_nz)
-  yc                   (idx_beg:idx_end) = understory_xylem_yc              (1:soil_nx*soil_ny*understory_xylem_nz)
-  zc                   (idx_beg:idx_end) = understory_xylem_zc              (1:soil_nx*soil_ny*understory_xylem_nz)
-  area                 (idx_beg:idx_end) = understory_xylem_area            (1:soil_nx*soil_ny*understory_xylem_nz)
-  vol                  (idx_beg:idx_end) = understory_xylem_vol             (1:soil_nx*soil_ny*understory_xylem_nz)
-  filter               (idx_beg:idx_end) = understory_xylem_filter          (1:soil_nx*soil_ny*understory_xylem_nz)
+  xc                   (idx_beg:idx_end) = understory_xylem_mesh%xc              (1:soil_nx*soil_ny*understory_xylem_nz)
+  yc                   (idx_beg:idx_end) = understory_xylem_mesh%yc              (1:soil_nx*soil_ny*understory_xylem_nz)
+  zc                   (idx_beg:idx_end) = understory_xylem_mesh%zc              (1:soil_nx*soil_ny*understory_xylem_nz)
+  area                 (idx_beg:idx_end) = understory_xylem_mesh%area            (1:soil_nx*soil_ny*understory_xylem_nz)
+  vol                  (idx_beg:idx_end) = understory_xylem_mesh%vol             (1:soil_nx*soil_ny*understory_xylem_nz)
+  filter               (idx_beg:idx_end) = understory_xylem_mesh%filter          (1:soil_nx*soil_ny*understory_xylem_nz)
 
-  vsfm_por             (idx_beg:idx_end) = understory_xylem_por             (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_perm            (idx_beg:idx_end) = understory_xylem_perm            (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_alpha           (idx_beg:idx_end) = understory_xylem_alpha           (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_lambda          (idx_beg:idx_end) = understory_xylem_lambda          (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = understory_xylem_relperm_type    (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_xylem_relperm_param_1 (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_xylem_relperm_param_2 (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = understory_xylem_residual_sat    (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = understory_xylem_satfunc_type    (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_por             (idx_beg:idx_end) = understory_xylem_pp%por             (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_perm            (idx_beg:idx_end) = understory_xylem_pp%perm            (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_alpha           (idx_beg:idx_end) = understory_xylem_pp%alpha           (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_lambda          (idx_beg:idx_end) = understory_xylem_pp%lambda          (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_relperm_type    (idx_beg:idx_end) = understory_xylem_pp%relperm_type    (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_xylem_pp%relperm_param_1 (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_xylem_pp%relperm_param_2 (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_residual_sat    (idx_beg:idx_end) = understory_xylem_pp%residual_sat    (1:soil_nx*soil_ny*understory_xylem_nz)
+  vsfm_satfunc_type    (idx_beg:idx_end) = understory_xylem_pp%satfunc_type    (1:soil_nx*soil_ny*understory_xylem_nz)
 
   ! Add leaf grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*understory_leaf_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = understory_leaf_xc              (1:soil_nx*soil_ny*understory_leaf_nz)
-  yc                   (idx_beg:idx_end) = understory_leaf_yc              (1:soil_nx*soil_ny*understory_leaf_nz)
-  zc                   (idx_beg:idx_end) = understory_leaf_zc              (1:soil_nx*soil_ny*understory_leaf_nz)
-  area                 (idx_beg:idx_end) = understory_leaf_area            (1:soil_nx*soil_ny*understory_leaf_nz)
-  vol                  (idx_beg:idx_end) = understory_leaf_vol             (1:soil_nx*soil_ny*understory_leaf_nz)
-  filter               (idx_beg:idx_end) = understory_leaf_filter          (1:soil_nx*soil_ny*understory_leaf_nz)
+  xc                   (idx_beg:idx_end) = understory_leaf_mesh%xc              (1:soil_nx*soil_ny*understory_leaf_nz)
+  yc                   (idx_beg:idx_end) = understory_leaf_mesh%yc              (1:soil_nx*soil_ny*understory_leaf_nz)
+  zc                   (idx_beg:idx_end) = understory_leaf_mesh%zc              (1:soil_nx*soil_ny*understory_leaf_nz)
+  area                 (idx_beg:idx_end) = understory_leaf_mesh%area            (1:soil_nx*soil_ny*understory_leaf_nz)
+  vol                  (idx_beg:idx_end) = understory_leaf_mesh%vol             (1:soil_nx*soil_ny*understory_leaf_nz)
+  filter               (idx_beg:idx_end) = understory_leaf_mesh%filter          (1:soil_nx*soil_ny*understory_leaf_nz)
 
-  vsfm_por             (idx_beg:idx_end) = understory_leaf_por             (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_perm            (idx_beg:idx_end) = understory_leaf_perm            (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_alpha           (idx_beg:idx_end) = understory_leaf_alpha           (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_lambda          (idx_beg:idx_end) = understory_leaf_lambda          (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = understory_leaf_relperm_type    (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_leaf_relperm_param_1 (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_leaf_relperm_param_2 (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = understory_leaf_residual_sat    (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = understory_leaf_satfunc_type    (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_por             (idx_beg:idx_end) = understory_leaf_pp%por             (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_perm            (idx_beg:idx_end) = understory_leaf_pp%perm            (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_alpha           (idx_beg:idx_end) = understory_leaf_pp%alpha           (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_lambda          (idx_beg:idx_end) = understory_leaf_pp%lambda          (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_relperm_type    (idx_beg:idx_end) = understory_leaf_pp%relperm_type    (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_leaf_pp%relperm_param_1 (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_leaf_pp%relperm_param_2 (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_residual_sat    (idx_beg:idx_end) = understory_leaf_pp%residual_sat    (1:soil_nx*soil_ny*understory_leaf_nz)
+  vsfm_satfunc_type    (idx_beg:idx_end) = understory_leaf_pp%satfunc_type    (1:soil_nx*soil_ny*understory_leaf_nz)
 
   !
   ! Set up the meshes
@@ -919,7 +856,7 @@ subroutine add_mesh()
         ! Root-to-Soil: Condunctance flux type
         do kk = 1, overstory_root_nz
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_root_id(ii,jj,kk)
+           conn_id_up(iconn)     = overstory_root_mesh%id(ii,jj,kk)
            conn_id_dn(iconn)     = soil_id          (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
 
            conn_dist_up(iconn)   = 0.d0
@@ -958,8 +895,8 @@ subroutine add_mesh()
         ! Xylem-to-Root: Conductance flux type
         do kk = 1, overstory_root_nz
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_xylem_id(ii,jj,1)
-           conn_id_dn(iconn)     = overstory_root_id (ii,jj,kk)
+           conn_id_up(iconn)     = overstory_xylem_mesh%id(ii,jj,1)
+           conn_id_dn(iconn)     = overstory_root_mesh%id (ii,jj,kk)
            conn_dist_up(iconn)   = 0.1d0
            conn_dist_dn(iconn)   = 0.1d0
            conn_area(iconn)      = overstory_area_sapwood
@@ -994,8 +931,8 @@ subroutine add_mesh()
         ! Xylem-to-Xylem: Darcy flux
         do kk = 1, overstory_xylem_nz-1
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_xylem_id(ii,jj,kk  )
-           conn_id_dn(iconn)     = overstory_xylem_id(ii,jj,kk+1)
+           conn_id_up(iconn)     = overstory_xylem_mesh%id(ii,jj,kk  )
+           conn_id_dn(iconn)     = overstory_xylem_mesh%id(ii,jj,kk+1)
            conn_dist_up(iconn)   = 0.5d0*soil_dz
            conn_dist_dn(iconn)   = 0.5d0*soil_dz
            conn_area(iconn)      = overstory_area_sapwood
@@ -1008,8 +945,8 @@ subroutine add_mesh()
            idx                   = overstory_branch_2_xylem_index(kk)
            
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_xylem_id(ii,jj,idx)
-           conn_id_dn(iconn)     = overstory_leaf_id (ii,jj,kk )
+           conn_id_up(iconn)     = overstory_xylem_mesh%id(ii,jj,idx)
+           conn_id_dn(iconn)     = overstory_leaf_mesh%id (ii,jj,kk )
            conn_dist_up(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
            conn_dist_dn(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
            conn_area(iconn)      = overstory_xylem_area_profile(idx)*overstory_branch_area_ratio
@@ -1030,7 +967,7 @@ subroutine add_mesh()
         ! Root-to-Soil: Condunctance flux type
         do kk = 1, understory_root_nz
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_root_id(ii,jj,kk)
+           conn_id_up(iconn)     = understory_root_mesh%id(ii,jj,kk)
            conn_id_dn(iconn)     = soil_id           (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
            conn_dist_up(iconn)   = 0.d0
            conn_dist_dn(iconn)   = understory_root_length_profile(kk)
@@ -1067,8 +1004,8 @@ subroutine add_mesh()
         ! Xylem-to-Root: Conductance flux type
         do kk                    = 1, understory_root_nz
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_xylem_id(ii,jj,1)
-           conn_id_dn(iconn)     = understory_root_id (ii,jj,kk)
+           conn_id_up(iconn)     = understory_xylem_mesh%id(ii,jj,1)
+           conn_id_dn(iconn)     = understory_root_mesh%id (ii,jj,kk)
            conn_dist_up(iconn)   = 0.1d0
            conn_dist_dn(iconn)   = 0.1d0
            conn_area(iconn)      = understory_area_sapwood
@@ -1103,8 +1040,8 @@ subroutine add_mesh()
         ! Xylem-to-Xylem: Darcy flux
         do kk                    = 1, understory_xylem_nz-1
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_xylem_id(ii,jj,kk  )
-           conn_id_dn(iconn)     = understory_xylem_id(ii,jj,kk+1)
+           conn_id_up(iconn)     = understory_xylem_mesh%id(ii,jj,kk  )
+           conn_id_dn(iconn)     = understory_xylem_mesh%id(ii,jj,kk+1)
            conn_dist_up(iconn)   = 0.5d0*soil_dz
            conn_dist_dn(iconn)   = 0.5d0*soil_dz
            conn_area(iconn)      = understory_area_sapwood
@@ -1117,8 +1054,8 @@ subroutine add_mesh()
            idx                   = understory_branch_2_xylem_index(kk)
            
            iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_xylem_id(ii,jj,idx)
-           conn_id_dn(iconn)     = understory_leaf_id (ii,jj,kk )
+           conn_id_up(iconn)     = understory_xylem_mesh%id(ii,jj,idx)
+           conn_id_dn(iconn)     = understory_leaf_mesh%id (ii,jj,kk )
            conn_dist_up(iconn)   = 0.5d0*understory_branch_length_profile(idx)
            conn_dist_dn(iconn)   = 0.5d0*understory_branch_length_profile(idx)
            conn_area(iconn)      = understory_xylem_area_profile(idx)*understory_branch_area_ratio
@@ -1300,63 +1237,63 @@ subroutine setup_overstory_mesh()
      overstory_root_vol_profile(kk)    = PI*(overstory_root_radius**2.d0)*root_length
   end do
 
-  allocate(overstory_root_por              (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_perm             (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_lambda           (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_alpha            (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_eff_porosity     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_residual_sat     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_satfunc_type     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_relperm_type     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_relperm_param_1  (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_relperm_param_2  (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%por              (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%perm             (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%lambda           (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%alpha            (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%eff_porosity     (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%residual_sat     (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%satfunc_type     (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%relperm_type     (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%relperm_param_1  (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_pp%relperm_param_2  (soil_nx*soil_ny*overstory_root_nz))
 
-  allocate(overstory_root_xc               (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_yc               (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_zc               (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_area             (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_vol              (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_filter           (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_mesh%xc               (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_mesh%yc               (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_mesh%zc               (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_mesh%area             (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_mesh%vol              (soil_nx*soil_ny*overstory_root_nz))
+  allocate(overstory_root_mesh%filter           (soil_nx*soil_ny*overstory_root_nz))
 
-  allocate(overstory_xylem_por             (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_perm            (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_lambda          (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_alpha           (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_eff_porosity    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_residual_sat    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_satfunc_type    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_relperm_type    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_relperm_param_1 (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_relperm_param_2 (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%por             (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%perm            (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%lambda          (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%alpha           (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%eff_porosity    (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%residual_sat    (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%satfunc_type    (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%relperm_type    (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%relperm_param_1 (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_pp%relperm_param_2 (soil_nx*soil_ny*overstory_xylem_nz))
 
-  allocate(overstory_xylem_xc              (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_yc              (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_zc              (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_area            (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_vol             (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_filter          (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_mesh%xc              (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_mesh%yc              (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_mesh%zc              (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_mesh%area            (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_mesh%vol             (soil_nx*soil_ny*overstory_xylem_nz))
+  allocate(overstory_xylem_mesh%filter          (soil_nx*soil_ny*overstory_xylem_nz))
 
-  allocate(overstory_leaf_por              (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_perm             (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_lambda           (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_alpha            (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_eff_porosity     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_residual_sat     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_satfunc_type     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_relperm_type     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_relperm_param_1  (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_relperm_param_2  (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%por              (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%perm             (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%lambda           (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%alpha            (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%eff_porosity     (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%residual_sat     (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%satfunc_type     (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%relperm_type     (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%relperm_param_1  (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_pp%relperm_param_2  (soil_nx*soil_ny*overstory_leaf_nz))
 
-  allocate(overstory_leaf_xc               (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_yc               (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_zc               (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_area             (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_vol              (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_filter           (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_mesh%xc               (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_mesh%yc               (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_mesh%zc               (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_mesh%area             (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_mesh%vol              (soil_nx*soil_ny*overstory_leaf_nz))
+  allocate(overstory_leaf_mesh%filter           (soil_nx*soil_ny*overstory_leaf_nz))
 
-  allocate(overstory_root_id               (soil_nx, soil_ny, overstory_root_nz ))
-  allocate(overstory_xylem_id              (soil_nx, soil_ny, overstory_xylem_nz))
-  allocate(overstory_leaf_id               (soil_nx, soil_ny, overstory_leaf_nz ))
+  allocate(overstory_root_mesh%id               (soil_nx, soil_ny, overstory_root_nz ))
+  allocate(overstory_xylem_mesh%id              (soil_nx, soil_ny, overstory_xylem_nz))
+  allocate(overstory_leaf_mesh%id               (soil_nx, soil_ny, overstory_leaf_nz ))
 
   if (multi_goveqns_formulation) then
      id_value = 0
@@ -1372,26 +1309,26 @@ subroutine setup_overstory_mesh()
         do kk = 1, overstory_root_nz
 
            id_value                               = id_value + 1
-           overstory_root_id           (ii,jj,kk) = id_value
+           overstory_root_mesh%id           (ii,jj,kk) = id_value
 
            count                                  = count + 1
 
-           overstory_root_xc              (count) = soil_xc3d(ii,jj,1)
-           overstory_root_yc              (count) = soil_yc3d(ii,jj,1)
-           overstory_root_zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
-           overstory_root_area            (count) = overstory_root_area_profile(kk)
-           overstory_root_vol             (count) = overstory_root_vol_profile(kk)
-           overstory_root_filter          (count) = 1
+           overstory_root_mesh%xc              (count) = soil_xc3d(ii,jj,1)
+           overstory_root_mesh%yc              (count) = soil_yc3d(ii,jj,1)
+           overstory_root_mesh%zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
+           overstory_root_mesh%area            (count) = overstory_root_area_profile(kk)
+           overstory_root_mesh%vol             (count) = overstory_root_vol_profile(kk)
+           overstory_root_mesh%filter          (count) = 1
 
-           overstory_root_por             (count) = 0.d0
-           overstory_root_perm            (count) = 0.d0
-           overstory_root_alpha           (count) = overstory_xylem_phi0
-           overstory_root_lambda          (count) = overstory_xylem_p
-           overstory_root_relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           overstory_root_relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
-           overstory_root_relperm_param_2 (count) = overstory_xylem_vulnerability_c
-           overstory_root_residual_sat    (count) = 0.d0
-           overstory_root_satfunc_type    (count) = SAT_FUNC_CHUANG
+           overstory_root_pp%por             (count) = 0.d0
+           overstory_root_pp%perm            (count) = 0.d0
+           overstory_root_pp%alpha           (count) = overstory_xylem_phi0
+           overstory_root_pp%lambda          (count) = overstory_xylem_p
+           overstory_root_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           overstory_root_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
+           overstory_root_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
+           overstory_root_pp%residual_sat    (count) = 0.d0
+           overstory_root_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1405,25 +1342,25 @@ subroutine setup_overstory_mesh()
 
         do kk = 1, overstory_xylem_nz
            id_value                                = id_value + 1
-           overstory_xylem_id           (ii,jj,kk) = id_value
+           overstory_xylem_mesh%id           (ii,jj,kk) = id_value
 
            count                                   = count + 1
-           overstory_xylem_xc              (count) = soil_xc3d(ii,jj,1)
-           overstory_xylem_yc              (count) = soil_yc3d(ii,jj,1)
-           overstory_xylem_zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
-           overstory_xylem_area            (count) = overstory_xylem_area_profile(kk)
-           overstory_xylem_vol             (count) = overstory_xylem_area_profile(kk) * soil_dz
-           overstory_xylem_filter          (count) = 1
+           overstory_xylem_mesh%xc              (count) = soil_xc3d(ii,jj,1)
+           overstory_xylem_mesh%yc              (count) = soil_yc3d(ii,jj,1)
+           overstory_xylem_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
+           overstory_xylem_mesh%area            (count) = overstory_xylem_area_profile(kk)
+           overstory_xylem_mesh%vol             (count) = overstory_xylem_area_profile(kk) * soil_dz
+           overstory_xylem_mesh%filter          (count) = 1
 
-           overstory_xylem_por             (count) = overstory_xylem_porosity
-           overstory_xylem_perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
-           overstory_xylem_alpha           (count) = overstory_xylem_phi0
-           overstory_xylem_lambda          (count) = overstory_xylem_p
-           overstory_xylem_relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           overstory_xylem_relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
-           overstory_xylem_relperm_param_2 (count) = overstory_xylem_vulnerability_c
-           overstory_xylem_residual_sat    (count) = 0.d0
-           overstory_xylem_satfunc_type    (count) = SAT_FUNC_CHUANG
+           overstory_xylem_pp%por             (count) = overstory_xylem_porosity
+           overstory_xylem_pp%perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
+           overstory_xylem_pp%alpha           (count) = overstory_xylem_phi0
+           overstory_xylem_pp%lambda          (count) = overstory_xylem_p
+           overstory_xylem_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           overstory_xylem_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
+           overstory_xylem_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
+           overstory_xylem_pp%residual_sat    (count) = 0.d0
+           overstory_xylem_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1437,28 +1374,28 @@ subroutine setup_overstory_mesh()
 
         do kk = 1, overstory_leaf_nz
            id_value                               = id_value + 1
-           overstory_leaf_id           (ii,jj,kk) = id_value
+           overstory_leaf_mesh%id           (ii,jj,kk) = id_value
 
            count                                  = count + 1
            idx                                    = overstory_branch_2_xylem_index(kk)
 
-           overstory_leaf_xc              (count) = soil_xc3d(ii,jj,1)-overstory_branch_length_profile(idx)
-           overstory_leaf_yc              (count) = soil_yc3d(ii,jj,1)
-           overstory_leaf_zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (overstory_xylem_nz-overstory_leaf_nz)*soil_dz
-           overstory_leaf_area            (count) = overstory_xylem_area_profile(kk) * overstory_branch_area_ratio
+           overstory_leaf_mesh%xc              (count) = soil_xc3d(ii,jj,1)-overstory_branch_length_profile(idx)
+           overstory_leaf_mesh%yc              (count) = soil_yc3d(ii,jj,1)
+           overstory_leaf_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (overstory_xylem_nz-overstory_leaf_nz)*soil_dz
+           overstory_leaf_mesh%area            (count) = overstory_xylem_area_profile(kk) * overstory_branch_area_ratio
 
-           overstory_leaf_vol             (count) = overstory_leaf_area(count) * overstory_branch_length_profile(idx)
-           overstory_leaf_filter          (count) = 1
+           overstory_leaf_mesh%vol             (count) = overstory_leaf_mesh%area(count) * overstory_branch_length_profile(idx)
+           overstory_leaf_mesh%filter          (count) = 1
 
-           overstory_leaf_por             (count) = 0.d0
-           overstory_leaf_perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
-           overstory_leaf_alpha           (count) = overstory_xylem_phi0
-           overstory_leaf_lambda          (count) = overstory_xylem_p
-           overstory_leaf_relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           overstory_leaf_relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
-           overstory_leaf_relperm_param_2 (count) = overstory_xylem_vulnerability_c
-           overstory_leaf_residual_sat    (count) = 0.d0
-           overstory_leaf_satfunc_type    (count) = SAT_FUNC_CHUANG
+           overstory_leaf_pp%por             (count) = 0.d0
+           overstory_leaf_pp%perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
+           overstory_leaf_pp%alpha           (count) = overstory_xylem_phi0
+           overstory_leaf_pp%lambda          (count) = overstory_xylem_p
+           overstory_leaf_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           overstory_leaf_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
+           overstory_leaf_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
+           overstory_leaf_pp%residual_sat    (count) = 0.d0
+           overstory_leaf_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1528,63 +1465,63 @@ subroutine setup_understory_mesh()
      understory_root_vol_profile(kk)    = PI*(overstory_root_radius**2.d0)*root_length
   end do
 
-  allocate(understory_root_por              (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_perm             (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_lambda           (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_alpha            (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_eff_porosity     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_residual_sat     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_satfunc_type     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_relperm_type     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_relperm_param_1  (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_relperm_param_2  (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%por              (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%perm             (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%lambda           (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%alpha            (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%eff_porosity     (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%residual_sat     (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%satfunc_type     (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%relperm_type     (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%relperm_param_1  (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_pp%relperm_param_2  (soil_nx*soil_ny*understory_root_nz))
 
-  allocate(understory_root_xc               (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_yc               (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_zc               (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_area             (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_vol              (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_filter           (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_mesh%xc               (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_mesh%yc               (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_mesh%zc               (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_mesh%area             (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_mesh%vol              (soil_nx*soil_ny*understory_root_nz))
+  allocate(understory_root_mesh%filter           (soil_nx*soil_ny*understory_root_nz))
 
-  allocate(understory_xylem_por             (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_perm            (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_lambda          (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_alpha           (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_eff_porosity    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_residual_sat    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_satfunc_type    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_relperm_type    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_relperm_param_1 (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_relperm_param_2 (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%por             (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%perm            (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%lambda          (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%alpha           (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%eff_porosity    (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%residual_sat    (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%satfunc_type    (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%relperm_type    (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%relperm_param_1 (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_pp%relperm_param_2 (soil_nx*soil_ny*understory_xylem_nz))
 
-  allocate(understory_xylem_xc              (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_yc              (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_zc              (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_area            (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_vol             (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_filter          (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_mesh%xc              (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_mesh%yc              (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_mesh%zc              (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_mesh%area            (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_mesh%vol             (soil_nx*soil_ny*understory_xylem_nz))
+  allocate(understory_xylem_mesh%filter          (soil_nx*soil_ny*understory_xylem_nz))
 
-  allocate(understory_leaf_por              (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_perm             (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_lambda           (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_alpha            (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_eff_porosity     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_residual_sat     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_satfunc_type     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_relperm_type     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_relperm_param_1  (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_relperm_param_2  (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%por              (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%perm             (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%lambda           (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%alpha            (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%eff_porosity     (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%residual_sat     (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%satfunc_type     (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%relperm_type     (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%relperm_param_1  (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_pp%relperm_param_2  (soil_nx*soil_ny*understory_leaf_nz))
 
-  allocate(understory_leaf_xc               (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_yc               (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_zc               (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_area             (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_vol              (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_filter           (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_mesh%xc               (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_mesh%yc               (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_mesh%zc               (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_mesh%area             (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_mesh%vol              (soil_nx*soil_ny*understory_leaf_nz))
+  allocate(understory_leaf_mesh%filter           (soil_nx*soil_ny*understory_leaf_nz))
 
-  allocate(understory_root_id  (soil_nx, soil_ny, understory_root_nz  ))
-  allocate(understory_xylem_id (soil_nx, soil_ny, understory_xylem_nz ))
-  allocate(understory_leaf_id  (soil_nx, soil_ny, understory_leaf_nz  ))
+  allocate(understory_root_mesh%id  (soil_nx, soil_ny, understory_root_nz  ))
+  allocate(understory_xylem_mesh%id (soil_nx, soil_ny, understory_xylem_nz ))
+  allocate(understory_leaf_mesh%id  (soil_nx, soil_ny, understory_leaf_nz  ))
   
   if (multi_goveqns_formulation) then
      id_value = 0
@@ -1599,25 +1536,25 @@ subroutine setup_understory_mesh()
 
         do kk = 1, understory_root_nz
            id_value                                = id_value + 1
-           understory_root_id           (ii,jj,kk) = id_value
+           understory_root_mesh%id           (ii,jj,kk) = id_value
 
            count                                   = count + 1
-           understory_root_xc              (count) = soil_xc3d(ii,jj,1)
-           understory_root_yc              (count) = soil_yc3d(ii,jj,1)
-           understory_root_zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
-           understory_root_area            (count) = understory_root_area_profile(kk)
-           understory_root_vol             (count) = understory_root_vol_profile(kk)
-           understory_root_filter          (count) = 1
+           understory_root_mesh%xc              (count) = soil_xc3d(ii,jj,1)
+           understory_root_mesh%yc              (count) = soil_yc3d(ii,jj,1)
+           understory_root_mesh%zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
+           understory_root_mesh%area            (count) = understory_root_area_profile(kk)
+           understory_root_mesh%vol             (count) = understory_root_vol_profile(kk)
+           understory_root_mesh%filter          (count) = 1
 
-           understory_root_por             (count) = 0.d0
-           understory_root_perm            (count) = 0.d0
-           understory_root_alpha           (count) = understory_xylem_phi0
-           understory_root_lambda          (count) = understory_xylem_p
-           understory_root_relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           understory_root_relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
-           understory_root_relperm_param_2 (count) = understory_xylem_vulnerability_c
-           understory_root_residual_sat    (count) = 0.d0
-           understory_root_satfunc_type    (count) = SAT_FUNC_CHUANG
+           understory_root_pp%por             (count) = 0.d0
+           understory_root_pp%perm            (count) = 0.d0
+           understory_root_pp%alpha           (count) = understory_xylem_phi0
+           understory_root_pp%lambda          (count) = understory_xylem_p
+           understory_root_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           understory_root_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
+           understory_root_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
+           understory_root_pp%residual_sat    (count) = 0.d0
+           understory_root_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1630,25 +1567,25 @@ subroutine setup_understory_mesh()
      do jj = 1, soil_ny
         do kk = 1, understory_xylem_nz
            id_value                                 = id_value + 1
-           understory_xylem_id           (ii,jj,kk) = id_value
+           understory_xylem_mesh%id           (ii,jj,kk) = id_value
 
            count                                         = count + 1
-           understory_xylem_xc              (count) = soil_xc3d(ii,jj,1)
-           understory_xylem_yc              (count) = soil_yc3d(ii,jj,1)
-           understory_xylem_zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
-           understory_xylem_area            (count) = understory_xylem_area_profile(kk)
-           understory_xylem_vol             (count) = understory_xylem_area_profile(kk) * soil_dz
-           understory_xylem_filter          (count) = 1
+           understory_xylem_mesh%xc              (count) = soil_xc3d(ii,jj,1)
+           understory_xylem_mesh%yc              (count) = soil_yc3d(ii,jj,1)
+           understory_xylem_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
+           understory_xylem_mesh%area            (count) = understory_xylem_area_profile(kk)
+           understory_xylem_mesh%vol             (count) = understory_xylem_area_profile(kk) * soil_dz
+           understory_xylem_mesh%filter          (count) = 1
 
-           understory_xylem_por             (count) = understory_xylem_porosity
-           understory_xylem_perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
-           understory_xylem_alpha           (count) = understory_xylem_phi0
-           understory_xylem_lambda          (count) = understory_xylem_p
-           understory_xylem_relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           understory_xylem_relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
-           understory_xylem_relperm_param_2 (count) = understory_xylem_vulnerability_c
-           understory_xylem_residual_sat    (count) = 0.d0
-           understory_xylem_satfunc_type    (count) = SAT_FUNC_CHUANG
+           understory_xylem_pp%por             (count) = understory_xylem_porosity
+           understory_xylem_pp%perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
+           understory_xylem_pp%alpha           (count) = understory_xylem_phi0
+           understory_xylem_pp%lambda          (count) = understory_xylem_p
+           understory_xylem_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           understory_xylem_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
+           understory_xylem_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
+           understory_xylem_pp%residual_sat    (count) = 0.d0
+           understory_xylem_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1661,28 +1598,28 @@ subroutine setup_understory_mesh()
      do jj = 1, soil_ny
         do kk = 1, understory_leaf_nz
            id_value                                = id_value + 1
-           understory_leaf_id           (ii,jj,kk) = id_value
+           understory_leaf_mesh%id           (ii,jj,kk) = id_value
 
            count                                   = count + 1
            idx                                     = understory_branch_2_xylem_index(kk)
 
-           understory_leaf_xc              (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
-           understory_leaf_yc              (count) = soil_yc3d(ii,jj,1)
-           understory_leaf_zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
-           understory_leaf_area            (count) = understory_xylem_area_profile(kk) * understory_branch_area_ratio
+           understory_leaf_mesh%xc              (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
+           understory_leaf_mesh%yc              (count) = soil_yc3d(ii,jj,1)
+           understory_leaf_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
+           understory_leaf_mesh%area            (count) = understory_xylem_area_profile(kk) * understory_branch_area_ratio
 
-           understory_leaf_vol             (count) = understory_leaf_area(count) * understory_branch_length_profile(idx)
-           understory_leaf_filter          (count) = 1
+           understory_leaf_mesh%vol             (count) = understory_leaf_mesh%area(count) * understory_branch_length_profile(idx)
+           understory_leaf_mesh%filter          (count) = 1
 
-           understory_leaf_por             (count) = 0.d0
-           understory_leaf_perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
-           understory_leaf_alpha           (count) = understory_xylem_phi0
-           understory_leaf_lambda          (count) = understory_xylem_p
-           understory_leaf_relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           understory_leaf_relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
-           understory_leaf_relperm_param_2 (count) = understory_xylem_vulnerability_c
-           understory_leaf_residual_sat    (count) = 0.d0
-           understory_leaf_satfunc_type    (count) = SAT_FUNC_CHUANG
+           understory_leaf_pp%por             (count) = 0.d0
+           understory_leaf_pp%perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
+           understory_leaf_pp%alpha           (count) = understory_xylem_phi0
+           understory_leaf_pp%lambda          (count) = understory_xylem_p
+           understory_leaf_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           understory_leaf_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
+           understory_leaf_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
+           understory_leaf_pp%residual_sat    (count) = 0.d0
+           understory_leaf_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
