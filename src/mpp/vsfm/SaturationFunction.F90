@@ -1348,8 +1348,8 @@ contains
     p    = satParams%chuang_p
     
     if( pc < 0.d0 ) then
-       sat     = (-phi0/(-phi0 + pc))**p
-       dsat_dP = -p/(-phi0) * (-phi0/(-phi0 + pc))**(p+1)
+       sat     = (-phi0/(-phi0 - pc))**p
+       dsat_dP = p/(-phi0) * (-phi0/(-phi0 - pc))**(p+1)
     else
        ! Here, `pc >= 0`.
        sat     = 1.d0

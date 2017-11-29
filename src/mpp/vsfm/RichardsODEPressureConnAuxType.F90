@@ -19,9 +19,15 @@ module RichardsODEPressureConnAuxType
      PetscReal :: kr
 
      PetscInt  :: flux_type
+     PetscInt  :: conductance_type
      PetscReal :: conductance
+     PetscReal :: conductance_up
+     PetscReal :: conductance_dn
      PetscReal :: dkr_dP_up
      PetscReal :: dkr_dP_dn
+     PetscReal :: krg
+     PetscReal :: dkrg_dP_up
+     PetscReal :: dkrg_dP_dn
      PetscReal :: conductance_upwind_weight
 
      type(saturation_params_type) :: satParams_up
@@ -44,6 +50,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : DARCY_FLUX_TYPE
+    use MultiPhysicsProbConstants, only : CONDUCTANCE_CAMPBELL_TYPE
     use petscsys
     !
     implicit none
@@ -53,11 +60,17 @@ contains
     this%pressure_up               = 0.d0
     this%pressure_dn               = 0.d0
     this%conductance               = 0.d0
+    this%conductance_up            = 0.d0
+    this%conductance_dn            = 0.d0
 
     this%flux_type                 = DARCY_FLUX_TYPE
+    this%conductance_type          = CONDUCTANCE_CAMPBELL_TYPE
     this%dkr_dP_up                 = 0.d0
     this%dkr_dP_dn                 = 0.d0
     this%kr                        = 0.d0
+    this%krg                       = 0.d0
+    this%dkrg_dP_up                = 0.d0
+    this%dkrg_dP_dn                = 0.d0
     this%conductance_upwind_weight = 0.d0
 
     call this%satParams_up%Init()
@@ -75,6 +88,8 @@ contains
     use MultiPhysicsProbConstants, only : VAR_CONDUCTANCE
     use MultiPhysicsProbConstants, only : VAR_PRESSURE_UP
     use MultiPhysicsProbConstants, only : VAR_PRESSURE_DN
+    use MultiPhysicsProbConstants, only : VAR_CONDUCTANCE_UP
+    use MultiPhysicsProbConstants, only : VAR_CONDUCTANCE_DN
     use MultiPhysicsProbConstants, only : VAR_CAMPBELL_HE
     use MultiPhysicsProbConstants, only : VAR_CAMPBELL_N
     !
@@ -94,6 +109,12 @@ contains
     case (VAR_PRESSURE_DN)
        this%pressure_dn = variable_value
 
+    case (VAR_CONDUCTANCE_UP)
+       this%conductance_up = variable_value
+
+    case (VAR_CONDUCTANCE_DN)
+       this%conductance_dn = variable_value
+
     case default
        write(iulog,*) 'In RichODEPressureConnAuxSetRealValue: unknown type ',var_type
        call endrun(msg=errMsg(__FILE__,__LINE__))
@@ -109,8 +130,11 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : VAR_FLUX_TYPE
+    use MultiPhysicsProbConstants, only : VAR_CONDUCTANCE_TYPE
     use MultiPhysicsProbConstants, only : DARCY_FLUX_TYPE
     use MultiPhysicsProbConstants, only : CONDUCTANCE_FLUX_TYPE
+    use MultiPhysicsProbConstants, only : CONDUCTANCE_CAMPBELL_TYPE
+    use MultiPhysicsProbConstants, only : CONDUCTANCE_MANOLI_TYPE
     !
     implicit none
     !
@@ -131,7 +155,24 @@ contains
           write(iulog,*)'Unknown value for VAR_FLUX_TYPE = ',variable_value
           call endrun(msg=errMsg(__FILE__,__LINE__))
        end select
+
+    case (VAR_CONDUCTANCE_TYPE)
+       select case(variable_value)
+       case (CONDUCTANCE_CAMPBELL_TYPE)
+          this%conductance_type = CONDUCTANCE_CAMPBELL_TYPE
+
+       case (CONDUCTANCE_MANOLI_TYPE)
+          this%conductance_type = CONDUCTANCE_MANOLI_TYPE
+
+       case (0)
+          ! Do nothing
+
        case default
+          write(iulog,*)'Unknown value for VAR_CONDUCTANCE_TYPE = ',variable_value
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+       end select
+
+    case default
        write(iulog,*) 'In RichODEPressureConnAuxSetIntValue: unknown type ',var_type
        call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
@@ -147,7 +188,9 @@ contains
     ! the primary quantity (pressure).
     !
     ! !USES:
-    use SaturationFunction    , only      : SatFunc_PressToRelPerm
+    use SaturationFunction       , only : SatFunc_PressToRelPerm
+    use MultiPhysicsProbConstants, only : CONDUCTANCE_CAMPBELL_TYPE
+    use MultiPhysicsProbConstants, only : CONDUCTANCE_MANOLI_TYPE
     !
     implicit none
     !
@@ -155,62 +198,102 @@ contains
     class(rich_ode_pres_conn_auxvar_type) :: this
     PetscReal                             :: frac_liq_sat
     PetscReal                             :: kr_up, kr_dn
+    PetscReal                             :: krg_up, krg_dn
+    PetscReal                             :: denom
     PetscReal                             :: dkr_up_dP_up, dkr_dn_dP_dn
-    
-    if (this%satParams_up%relperm_func_type == 0 .and. &
-        this%satParams_dn%relperm_func_type == 0  ) then
 
-       this%kr        = 1.d0
-       this%dkr_dP_up = 0.d0
-       this%dkr_dP_dn = 0.d0
+    select case(this%conductance_type)
+    case(CONDUCTANCE_CAMPBELL_TYPE)
+       if (this%satParams_up%relperm_func_type == 0 .and. &
+            this%satParams_dn%relperm_func_type == 0  ) then
 
-    else
-
-       if (this%satParams_up%relperm_func_type == 0) then
-
-          frac_liq_sat = 1.d0
-
-          call SatFunc_PressToRelPerm( &
-               this%satParams_dn, this%pressure_dn, &
-               frac_liq_sat, kr_dn, dkr_dn_dP_dn)
-
-          this%kr        = kr_dn
-          this%dkr_dP_up = 0.d0
-          this%dkr_dP_dn = dkr_dn_dP_dn
-
-       elseif (this%satParams_dn%relperm_func_type == 0) then
-
-          call SatFunc_PressToRelPerm( &
-               this%satParams_up, this%pressure_up, &
-               frac_liq_sat, kr_up, dkr_up_dP_up)
-
-          this%kr        = kr_up
-          this%dkr_dP_up = dkr_up_dP_up
-          this%dkr_dP_dn = 0.d0
+          this%kr         = 1.d0
+          this%dkr_dP_up  = 0.d0
+          this%dkr_dP_dn  = 0.d0
+          this%krg        = this%kr        * this%conductance
+          this%dkrg_dP_up = this%dkr_dP_up * this%conductance
+          this%dkrg_dP_dn = this%dkr_dP_dn * this%conductance
 
        else
 
-          call SatFunc_PressToRelPerm( &
-               this%satParams_up, this%pressure_up, &
-               frac_liq_sat, kr_up, dkr_up_dP_up)
+          if (this%satParams_up%relperm_func_type == 0) then
 
-          call SatFunc_PressToRelPerm( &
-               this%satParams_dn, this%pressure_dn, &
-               frac_liq_sat, kr_dn, dkr_dn_dP_dn)
+             frac_liq_sat = 1.d0
 
-          this%kr = &
-               (       this%conductance_upwind_weight  * kr_up + &
-               (1.d0 - this%conductance_upwind_weight) * kr_dn)
+             call SatFunc_PressToRelPerm( &
+                  this%satParams_dn, this%pressure_dn, &
+                  frac_liq_sat, kr_dn, dkr_dn_dP_dn)
 
-          this%dkr_dP_up =  &
-               this%conductance_upwind_weight          * dkr_up_dP_up
+             this%kr         = kr_dn
+             this%dkr_dP_up  = 0.d0
+             this%dkr_dP_dn  = dkr_dn_dP_dn
+             this%krg        = this%kr        * this%conductance
+             this%dkrg_dP_up = this%dkr_dP_up * this%conductance
+             this%dkrg_dP_dn = this%dkr_dP_dn * this%conductance
 
-          this%dkr_dP_dn = &
-               (1.d0 - this%conductance_upwind_weight) * dkr_dn_dP_dn
+          elseif (this%satParams_dn%relperm_func_type == 0) then
 
-       end if
+             call SatFunc_PressToRelPerm( &
+                  this%satParams_up, this%pressure_up, &
+                  frac_liq_sat, kr_up, dkr_up_dP_up)
 
-    endif
+             this%kr         = kr_up
+             this%dkr_dP_up  = dkr_up_dP_up
+             this%dkr_dP_dn  = 0.d0
+             this%krg        = this%kr        * this%conductance
+             this%krg        = this%kr        * this%conductance
+             this%dkrg_dP_up = this%dkr_dP_up * this%conductance
+             this%dkrg_dP_dn = this%dkr_dP_dn * this%conductance
+
+          else
+
+             call SatFunc_PressToRelPerm( &
+                  this%satParams_up, this%pressure_up, &
+                  frac_liq_sat, kr_up, dkr_up_dP_up)
+
+             call SatFunc_PressToRelPerm( &
+                  this%satParams_dn, this%pressure_dn, &
+                  frac_liq_sat, kr_dn, dkr_dn_dP_dn)
+
+             this%kr = &
+                  (       this%conductance_upwind_weight  * kr_up + &
+                  (1.d0 - this%conductance_upwind_weight) * kr_dn)
+
+             this%dkr_dP_up =  &
+                  this%conductance_upwind_weight          * dkr_up_dP_up
+
+             this%dkr_dP_dn = &
+                  (1.d0 - this%conductance_upwind_weight) * dkr_dn_dP_dn
+
+             this%krg        = this%kr        * this%conductance
+             this%dkrg_dP_up = this%dkr_dP_up * this%conductance
+             this%dkrg_dP_dn = this%dkr_dP_dn * this%conductance
+          end if
+
+       endif
+
+    case (CONDUCTANCE_MANOLI_TYPE)
+
+       call SatFunc_PressToRelPerm(              &
+            this%satParams_up, this%pressure_up, &
+            frac_liq_sat, kr_up, dkr_up_dP_up)
+
+       call SatFunc_PressToRelPerm(              &
+            this%satParams_dn, this%pressure_dn, &
+            frac_liq_sat, kr_dn, dkr_dn_dP_dn)
+
+       krg_up          = kr_up * this%conductance_up
+       krg_dn          = kr_dn * this%conductance_dn
+       denom           = krg_up + krg_dn
+
+       this%krg        = krg_up * krg_dn / denom
+       this%dkrg_dP_up = (krg_dn/denom)**2.d0 * dkr_up_dP_up * this%conductance_up
+       this%dkrg_dP_dn = (krg_up/denom)**2.d0 * dkr_dn_dP_dn * this%conductance_dn
+
+    case default
+       write(iulog,*) 'Unknown conductance_type ', this%conductance_type
+       call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
 
   end subroutine RichODEPressureConnAuxVarCompute
 

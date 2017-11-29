@@ -5,6 +5,7 @@ set(VSFM_DRIVER_SOURCES
   vsfm_spac.F90
   vsfm_spac_campbell.F90
   vsfm_spac_fetch2.F90
+  vsfm_spac_on_hillslope.F90
   vsfm_vchannel.F90
   vsfm_vchannel_operator_split.F90
   vsfm_manoli2014.F90
@@ -47,6 +48,7 @@ add_mpp_executable(vsfm_sy1991 vsfm_sy1991.F90)
 add_mpp_executable(vsfm_spac vsfm_spac.F90)
 add_mpp_executable(vsfm_spac_campbell vsfm_spac_campbell.F90)
 add_mpp_executable(vsfm_spac_fetch2 vsfm_spac_fetch2.F90)
+add_mpp_executable(vsfm_spac_on_hillslope vsfm_spac_on_hillslope.F90)
 add_mpp_executable(vsfm_vchannel vsfm_vchannel.F90)
 add_mpp_executable(vsfm_vchannel_operator_split vsfm_vchannel_operator_split.F90)
 add_mpp_executable(vsfm_manoli2014 vsfm_manoli2014.F90)
@@ -60,6 +62,7 @@ if (NOT CMAKE_INSTALL_PREFIX STREQUAL "INSTALL_DISABLED")
   install(TARGETS vsfm_spac DESTINATION bin)
   install(TARGETS vsfm_spac_campbell DESTINATION bin)
   install(TARGETS vsfm_spac_fetch2 DESTINATION bin)
+  install(TARGETS vsfm_spac_on_hillslope DESTINATION bin)
   install(TARGETS vsfm_vchannel DESTINATION bin)
   install(TARGETS vsfm_vchannel_operator_split DESTINATION bin)
   install(TARGETS vsfm_manoli2014 DESTINATION bin)

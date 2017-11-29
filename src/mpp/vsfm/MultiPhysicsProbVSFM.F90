@@ -40,6 +40,7 @@ module MultiPhysicsProbVSFM
 
   type(mpp_vsfm_type), public, target :: vsfm_mpp
   public :: VSFMMPPSetSoils
+  public :: VSFMMPPSetDensityType
   public :: VSFMMPPSetSoilPorosity
   public :: VSFMMPPSetSoilPermeability
   public :: VSFMMPPSetRelativePermeability
@@ -1028,13 +1029,13 @@ contains
     enddo
 
     select type(cur_goveq)
-       class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%SetAuxVarConnIntValue(auxvar_type, var_type, var_value)
+    class is (goveqn_richards_ode_pressure_type)
+       call cur_goveq%SetAuxVarConnIntValue(auxvar_type, var_type, var_value)
 
-       class default
-          write(iulog,*) 'VSFMMPPSetAuxVarConnRealValue only supports ' // &
-               'goveqn_richards_ode_pressure_type'
-          call endrun(msg=errMsg(__FILE__,__LINE__))
+    class default
+       write(iulog,*) 'VSFMMPPSetAuxVarConnRealValue only supports ' // &
+            'goveqn_richards_ode_pressure_type'
+       call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
 
 
@@ -1317,6 +1318,54 @@ contains
     enddo
 
   end subroutine VSFMMPPSetRelativePermeability
+
+  !------------------------------------------------------------------------
+  subroutine VSFMMPPSetDensityType(this, igoveqn, density_type)
+    !
+    ! !DESCRIPTION:
+    ! Set density type
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    use PorosityFunctionMod           , only : PorosityFunctionSetConstantModel
+    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(mpp_vsfm_type)                      , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: igoveqn
+    PetscInt                                  , intent(in)          :: density_type
+    !
+    ! !LOCAL VARIABLES:
+    class(goveqn_base_type)                   , pointer             :: cur_goveq
+    PetscInt                                                        :: ii
+
+    if (igoveqn > this%soe%ngoveqns) then
+       write(iulog,*) 'Attempting to add condition for governing equation ' // &
+            'that is not in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    cur_goveq => this%soe%goveqns
+    do ii = 1, igoveqn-1
+       cur_goveq => cur_goveq%next
+    enddo
+
+    select type(cur_goveq)
+    class is (goveqn_richards_ode_pressure_type)
+       call cur_goveq%SetDensityType(density_type)
+    class default
+       write(iulog,*)'Only goveqn_richards_ode_pressure_type supported'
+       call endrun(msg=errMsg(__FILE__,__LINE__))
+    end select
+
+  end subroutine VSFMMPPSetDensityType
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetSoilPorosity(this, igoveqn, por)
@@ -1737,7 +1786,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetSaturationFunctionAuxVarConn(this, igoveqn, &
-       auxvar_conn_type, set_upwind_auxvar, satfunc_itype, campbell_he, campbell_n)
+       auxvar_conn_type, set_upwind_auxvar, satfunc_itype, param_1, param_2, param_3)
     !
     ! !DESCRIPTION:
     !
@@ -1749,7 +1798,14 @@ contains
     use ConditionType                  , only : condition_type
     use ConnectionSetType              , only : connection_set_type
     use SaturationFunction             , only : SatFunc_Set_Campbell_RelPerm
+    use SaturationFunction             , only : SatFunc_Set_Weibull_RelPerm
+    use SaturationFunction             , only : SatFunc_Set_Chuang
+    use SaturationFunction             , only : SatFunc_Set_VG
     use SaturationFunction             , only : RELPERM_FUNC_CAMPBELL
+    use SaturationFunction             , only : RELPERM_FUNC_WEIBULL
+    use SaturationFunction             , only : RELPERM_FUNC_MUALEM
+    use SaturationFunction             , only : SAT_FUNC_CHUANG
+    use SaturationFunction             , only : SAT_FUNC_VAN_GENUCHTEN
     use MultiPhysicsProbConstants      , only : AUXVAR_CONN_BC
     use MultiPhysicsProbConstants      , only : AUXVAR_CONN_INTERNAL
     !
@@ -1762,8 +1818,9 @@ contains
     PetscInt                                  , intent(in)          :: auxvar_conn_type
     PetscBool                                 , intent(in)          :: set_upwind_auxvar(:)
     PetscInt                                  , pointer, intent(in) :: satfunc_itype(:)
-    PetscReal                                 , pointer, intent(in) :: campbell_he(:)
-    PetscReal                                 , pointer, intent(in) :: campbell_n(:)
+    PetscReal                                 , pointer, intent(in) :: param_1(:)
+    PetscReal                                 , pointer, intent(in) :: param_2(:)
+    PetscReal                      , optional , pointer, intent(in) :: param_3(:)
     !
     ! !LOCAL VARIABLES:
     class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
@@ -1816,27 +1873,70 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
 
-             if (sum_conn > size(campbell_he)) then
+             if (sum_conn > size(param_1)) then
                 write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              end if
 
              select case(satfunc_itype(sum_conn))
+             case (0)
+                ! Do nothing
+
+             case (RELPERM_FUNC_MUALEM)
+                if (set_upwind_auxvar(sum_conn)) then
+                   conn_aux_vars(sum_conn)%satParams_up%relperm_func_type = RELPERM_FUNC_MUALEM
+                   conn_aux_vars(sum_conn)%satParams_up%alpha   = param_1(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_up%vg_m    = param_2(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_up%sat_res = param_3(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_up%vg_n    = 1.d0/(1.d0 - param_2(sum_conn))
+                else
+                   conn_aux_vars(sum_conn)%satParams_dn%relperm_func_type = RELPERM_FUNC_MUALEM
+                   conn_aux_vars(sum_conn)%satParams_dn%alpha             = param_1(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_dn%vg_m              = param_2(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_dn%sat_res           = param_3(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_dn%vg_n              = 1.d0/(1.d0 - param_2(sum_conn))
+                end if
              case (RELPERM_FUNC_CAMPBELL)
 
                 if (set_upwind_auxvar(sum_conn)) then
                    call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
-                        campbell_he(sum_conn), campbell_n(sum_conn))
+                        param_1(sum_conn), param_2(sum_conn))
                 else
                    call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_dn, &
-                        campbell_he(sum_conn), campbell_n(sum_conn))
+                        param_1(sum_conn), param_2(sum_conn))
                 endif
 
-             case (0)
-                ! Do nothing
+             case (RELPERM_FUNC_WEIBULL)
+
+                if (set_upwind_auxvar(sum_conn)) then
+                   call SatFunc_Set_Weibull_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
+                        param_1(sum_conn), param_2(sum_conn))
+                else
+                   call SatFunc_Set_Weibull_RelPerm(conn_aux_vars(sum_conn)%satParams_dn, &
+                        param_1(sum_conn), param_2(sum_conn))
+                endif
+
+             case (SAT_FUNC_CHUANG)
+
+                if (set_upwind_auxvar(sum_conn)) then
+                   call SatFunc_Set_Chuang(conn_aux_vars(sum_conn)%satParams_up, &
+                        param_1(sum_conn), param_2(sum_conn))
+                else
+                   call SatFunc_Set_Chuang(conn_aux_vars(sum_conn)%satParams_dn, &
+                        param_1(sum_conn), param_2(sum_conn))
+                endif
+
+             case (SAT_FUNC_VAN_GENUCHTEN)
+                if (set_upwind_auxvar(sum_conn)) then
+                   call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_up, &
+                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                else
+                   call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_dn, &
+                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                endif
 
              case default
-                write(iulog,*)'Only supports RELPERM_FUNC_CAMPBELL type'
+                write(iulog,*)'Unknown satfunc_itype_variable ', satfunc_itype(sum_conn)
                 call endrun(msg=errMsg(__FILE__,__LINE__))
              end select
 
@@ -1861,7 +1961,7 @@ contains
              sum_conn   = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-             if (sum_conn> size(campbell_he)) then
+             if (sum_conn> size(param_1)) then
                 write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              endif
@@ -1871,10 +1971,10 @@ contains
 
                 if (set_upwind_auxvar(sum_conn)) then
                    call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
-                        campbell_he(sum_conn), campbell_n(sum_conn))
+                        param_1(sum_conn), param_2(sum_conn))
                 else
                    call SatFunc_Set_Campbell_RelPerm(conn_aux_vars(sum_conn)%satParams_dn, &
-                        campbell_he(sum_conn), campbell_n(sum_conn))
+                        param_1(sum_conn), param_2(sum_conn))
                 endif
 
              case (0)
