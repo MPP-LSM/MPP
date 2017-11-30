@@ -1081,7 +1081,7 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    base_soe => vsfm_mpp%soe
+    base_soe => this%soe
     
     select type(base_soe)
     class is (sysofeqns_vsfm_type)
@@ -1406,7 +1406,7 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    base_soe => vsfm_mpp%soe
+    base_soe => this%soe
     
     select type(base_soe)
     class is (sysofeqns_vsfm_type)
@@ -1558,7 +1558,7 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    base_soe => vsfm_mpp%soe
+    base_soe => this%soe
     
     select type(base_soe)
     class is (sysofeqns_vsfm_type)
@@ -1835,7 +1835,7 @@ contains
     PetscInt                                                        :: sum_conn
     PetscInt                                                        :: iconn
 
-    base_soe => vsfm_mpp%soe
+    base_soe => this%soe
     
     select type(base_soe)
     class is (sysofeqns_vsfm_type)
