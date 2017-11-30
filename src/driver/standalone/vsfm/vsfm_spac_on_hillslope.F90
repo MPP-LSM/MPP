@@ -93,6 +93,8 @@ module soil_parameters
 
 #include <petsc/finclude/petsc.h>
   
+  use spac_component
+
   implicit none
 
   PetscInt  , parameter :: soil_nx                          = 2          !
@@ -129,15 +131,8 @@ module soil_parameters
 
   PetscBool             :: is_soil_horizontally_disconnected             ! Are soil grid cells horizontally disconnected?
 
-  PetscReal , pointer   :: soil_xc(:)                                    ! x-position of grid cell [m]
-  PetscReal , pointer   :: soil_yc(:)                                    ! y-position of grid cell [m]
-  PetscReal , pointer   :: soil_zc(:)                                    ! y-position of grid cell [m]
-  PetscReal , pointer   :: soil_soil_dx(:)                               ! x-position of grid cell [m]
-  PetscReal , pointer   :: soil_soil_dy(:)                               ! y-position of grid cell [m
-  PetscReal , pointer   :: soil_soil_dz(:)                               ! y-position of grid cell [m]
-  PetscReal , pointer   :: soil_area(:)                                  ! area of grid cell [m^2]
-  PetscReal , pointer   :: soil_vol(:)                                   ! volume of grid cell [m^3]
-  PetscInt  , pointer   :: soil_filter(:)                                ! 
+  type (spac_component_mesh_type) :: soil_mesh
+  type (spac_component_pp_type)   :: soil_pp
 
   PetscInt  , pointer   :: soil_id(:,:,:)                                ! [-] Id > 0 indicates active grid cell, otherwise inactive
   PetscReal , pointer   :: soil_xc3d(:,:,:)                              ! [m]
@@ -146,17 +141,6 @@ module soil_parameters
 
   PetscInt  , pointer   :: top_active_layer_kk_index(:,:)                ! [-] Index of the first active grid cell in z-dimension
   PetscReal , pointer   :: elevation(:,:)                                ! [m]
-
-  PetscReal , pointer :: soil_por(:)
-  PetscReal , pointer :: soil_perm(:)
-  PetscReal , pointer :: soil_lambda(:)
-  PetscReal , pointer :: soil_alpha(:)
-  PetscReal , pointer :: soil_eff_porosity(:)
-  PetscReal , pointer :: soil_residual_sat(:)
-  PetscInt  , pointer :: soil_satfunc_type(:)
-  PetscInt  , pointer :: soil_relperm_type(:)
-  PetscReal , pointer :: soil_relperm_param_1(:)
-  PetscReal , pointer :: soil_relperm_param_2(:)
 
 end module soil_parameters
 
@@ -639,26 +623,17 @@ subroutine add_single_mesh()
   allocate(vsfm_relperm_param_2 (ncells)); vsfm_relperm_param_2 (:) = 0.d0
 
   ! Soil properties
-  vsfm_por          (1:soil_ncells) = por_top
-  vsfm_perm         (1:soil_ncells) = perm_z_top
-  vsfm_lambda       (1:soil_ncells) = vg_m_top
-  vsfm_alpha        (1:soil_ncells) = alpha_top
-  vsfm_residual_sat (1:soil_ncells) = sat_res_top
-  vsfm_satfunc_type (1:soil_ncells) = SAT_FUNC_VAN_GENUCHTEN
-  vsfm_relperm_type (1:soil_ncells) = RELPERM_FUNC_MUALEM
 
   !
   ! Add soil grid cells
   !
-  xc(1:soil_ncells)     = soil_xc(1:soil_ncells)
-  yc(1:soil_ncells)     = soil_yc(1:soil_ncells)
-  zc(1:soil_ncells)     = soil_zc(1:soil_ncells)
-  dx(1:soil_ncells)     = soil_soil_dx(1:soil_ncells)
-  dy(1:soil_ncells)     = soil_soil_dy(1:soil_ncells)
-  dz(1:soil_ncells)     = soil_soil_dz(1:soil_ncells)
-  area(1:soil_ncells)   = soil_area(1:soil_ncells)
-  vol(1:soil_ncells)    = soil_vol(1:soil_ncells)
-  filter(1:soil_ncells) = soil_filter(1:soil_ncells)
+  idx_beg = 1
+  idx_end = soil_ncells
+  call soil_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+
+  call soil_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
+       vsfm_residual_sat, vsfm_satfunc_type)
 
   ncells = soil_ncells
 
@@ -1110,6 +1085,8 @@ end subroutine add_multiple_meshes
 !------------------------------------------------------------------------
 subroutine setup_soil_mesh()
   !
+  use SaturationFunction , only : RELPERM_FUNC_MUALEM
+  use SaturationFunction , only : SAT_FUNC_VAN_GENUCHTEN
   use problem_parameters
   !
   implicit none
@@ -1147,15 +1124,23 @@ subroutine setup_soil_mesh()
 
   soil_ncells       = count
 
-  allocate (soil_xc      (soil_ncells))
-  allocate (soil_yc      (soil_ncells))
-  allocate (soil_zc      (soil_ncells))
-  allocate (soil_soil_dx (soil_ncells))
-  allocate (soil_soil_dy (soil_ncells))
-  allocate (soil_soil_dz (soil_ncells))
-  allocate (soil_area    (soil_ncells))
-  allocate (soil_filter  (soil_ncells))
-  allocate (soil_vol     (soil_ncells))
+  allocate (soil_mesh%xc      (soil_ncells))
+  allocate (soil_mesh%yc      (soil_ncells))
+  allocate (soil_mesh%zc      (soil_ncells))
+  allocate (soil_mesh%area    (soil_ncells))
+  allocate (soil_mesh%filter  (soil_ncells))
+  allocate (soil_mesh%vol     (soil_ncells))
+
+  allocate(soil_pp%por              (soil_ncells))
+  allocate(soil_pp%perm             (soil_ncells))
+  allocate(soil_pp%lambda           (soil_ncells))
+  allocate(soil_pp%alpha            (soil_ncells))
+  allocate(soil_pp%eff_porosity     (soil_ncells))
+  allocate(soil_pp%residual_sat     (soil_ncells))
+  allocate(soil_pp%satfunc_type     (soil_ncells))
+  allocate(soil_pp%relperm_type     (soil_ncells))
+  allocate(soil_pp%relperm_param_1  (soil_ncells))
+  allocate(soil_pp%relperm_param_2  (soil_ncells))
 
   count           = 0
   soil_mesh_nconn = 0
@@ -1169,15 +1154,12 @@ subroutine setup_soil_mesh()
 
               count = count + 1
 
-              soil_xc(count)      = soil_xc3d(ii,jj,kk)
-              soil_yc(count)      = soil_yc3d(ii,jj,kk)
-              soil_zc(count)      = soil_zc3d(ii,jj,kk)
-              soil_soil_dx(count) = soil_dx
-              soil_soil_dy(count) = soil_dy
-              soil_soil_dz(count) = soil_dz
-              soil_area(count)    = soil_dx*soil_dy
-              soil_vol(count)     = soil_dx*soil_dy*soil_dz
-              soil_filter(count)  = 1
+              soil_mesh%xc(count)      = soil_xc3d(ii,jj,kk)
+              soil_mesh%yc(count)      = soil_yc3d(ii,jj,kk)
+              soil_mesh%zc(count)      = soil_zc3d(ii,jj,kk)
+              soil_mesh%area(count)    = soil_dx*soil_dy
+              soil_mesh%vol(count)     = soil_dx*soil_dy*soil_dz
+              soil_mesh%filter(count)  = 1
 
               ! add vertical connection except if the grid cell is last in the z-dir
               if (kk < soil_nz) soil_mesh_nconn = soil_mesh_nconn + 1
@@ -1198,6 +1180,16 @@ subroutine setup_soil_mesh()
         end do
      end do
   end do
+
+  soil_pp%por             (1:soil_ncells) = por_top
+  soil_pp%perm            (1:soil_ncells) = perm_z_top
+  soil_pp%alpha           (1:soil_ncells) = alpha_top
+  soil_pp%lambda          (1:soil_ncells) = vg_m_top
+  soil_pp%relperm_type    (1:soil_ncells) = RELPERM_FUNC_MUALEM
+  soil_pp%relperm_param_1 (1:soil_ncells) = 0.d0
+  soil_pp%relperm_param_2 (1:soil_ncells) = 0.d0
+  soil_pp%residual_sat    (1:soil_ncells) = sat_res_top
+  soil_pp%satfunc_type    (1:soil_ncells) = SAT_FUNC_VAN_GENUCHTEN
 
 end subroutine setup_soil_mesh
 
