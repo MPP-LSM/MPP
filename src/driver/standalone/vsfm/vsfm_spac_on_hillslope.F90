@@ -1,3 +1,4 @@
+!------------------------------------------------------------------------
 module spac_component
   
 #include <petsc/finclude/petsc.h>
@@ -143,6 +144,7 @@ contains
     PetscInt                         :: ncells_ghost
     PetscInt                         :: nz
     
+    write(*,*)'Adding following mesh to MPP: ' // trim(mesh_name)
     call vsfm_mpp%MeshSetName                (imesh, trim(mesh_name)          )
     call vsfm_mpp%MeshSetOrientation         (imesh, MESH_ALONG_GRAVITY       )
     call vsfm_mpp%MeshSetID                  (imesh, MESH_CLM_SOIL_COL        )
@@ -216,6 +218,7 @@ contains
 
 end module spac_component
 
+!------------------------------------------------------------------------
 module soil_parameters
 
 #include <petsc/finclude/petsc.h>
@@ -271,6 +274,7 @@ module soil_parameters
 
 end module soil_parameters
 
+!------------------------------------------------------------------------
 module overstory_parameters
   
 #include <petsc/finclude/petsc.h>
@@ -339,6 +343,7 @@ module overstory_parameters
 
 end module overstory_parameters
 
+!------------------------------------------------------------------------
 module understory_parameters
   !
 #include <petsc/finclude/petsc.h>
@@ -397,6 +402,7 @@ module understory_parameters
 
 end module understory_parameters
 
+!------------------------------------------------------------------------
 module problem_parameters
 
   use soil_parameters
@@ -1190,11 +1196,70 @@ end subroutine add_single_mesh
 !------------------------------------------------------------------------
 subroutine add_multiple_meshes()
   !
+#include <petsc/finclude/petsc.h>
+  !
+  use MultiPhysicsProbVSFM      , only : vsfm_mpp
   use problem_parameters
   !
   implicit none
   !
-#include <petsc/finclude/petsc.h>
+  PetscInt :: num_cells
+  PetscInt :: ncells_ghost
+  PetscInt :: nz
+  PetscInt :: imesh
+
+  ! Create memory for 7 meshes
+  call vsfm_mpp%SetNumMeshes(7)
+
+  ! All meshes have no ghost cells
+  ncells_ghost = 0
+
+  ! 1. Add mesh for soil
+  imesh = 1
+  call soil_mesh%AddToMPP(vsfm_mpp, imesh, 'Soil mesh', &
+       soil_ncells, ncells_ghost, soil_nz)
+
+  ! 2. Add mesh for overstory root
+  imesh     = imesh + 1
+  nz        = overstory_root_nz
+  num_cells = soil_nx*soil_ny*nz
+  call overstory_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory root mesh', &
+       num_cells, ncells_ghost, nz)
+
+  ! 3. Add mesh for overstory xylem
+  imesh     = imesh + 1
+  nz        = overstory_xylem_nz
+  num_cells = soil_nx*soil_ny*nz
+  call overstory_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory xylem mesh', &
+       num_cells, ncells_ghost, nz)
+
+  ! 4. Add mesh for overstory leaf
+  imesh     = imesh + 1
+  nz        = overstory_leaf_nz
+  num_cells = soil_nx*soil_ny*nz
+  call overstory_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory leaf mesh', &
+       num_cells, ncells_ghost, nz)
+
+  ! 5. Add mesh for understory root
+  imesh     = imesh + 1
+  nz        = understory_root_nz
+  num_cells = soil_nx*soil_ny*nz
+  call understory_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory root mesh', &
+       num_cells, ncells_ghost, nz)
+
+  ! 6. Add mesh for understory xylem
+  imesh     = imesh + 1
+  nz        = understory_xylem_nz
+  num_cells = soil_nx*soil_ny*nz
+  call understory_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory xylem mesh', &
+       num_cells, ncells_ghost, nz)
+
+  ! 7. Add mesh for understory leaf
+  imesh     = imesh + 1
+  nz        = understory_leaf_nz
+  num_cells = soil_nx*soil_ny*nz
+  call understory_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory leaf mesh', &
+       num_cells, ncells_ghost, nz)
 
   write(*,*)'Add code to support addition of multiple meshes'
   stop
