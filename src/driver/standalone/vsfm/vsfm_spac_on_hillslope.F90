@@ -401,6 +401,7 @@ subroutine run_vsfm_spac_on_hillslope()
   call PetscOptionsGetInt (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
   call PetscOptionsGetReal(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-slope',slope,flg,ierr)
   call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-soil_horizontally_disconnected',is_soil_horizontally_disconnected,flg,ierr)
+  call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-multi_goveqns_formulation',multi_goveqns_formulation,flg,ierr)
 
   call initialize_problem()
 
@@ -533,7 +534,7 @@ subroutine add_mesh()
   if (.not. multi_goveqns_formulation) then
      call add_single_mesh()
   else
-     !call add_mulitple_meshes()
+     call add_multiple_meshes()
   end if
 
 end subroutine add_mesh
@@ -1091,6 +1092,20 @@ subroutine add_single_mesh()
   deallocate (conn_type    )
 
 end subroutine add_single_mesh
+
+!------------------------------------------------------------------------
+subroutine add_multiple_meshes()
+  !
+  use problem_parameters
+  !
+  implicit none
+  !
+#include <petsc/finclude/petsc.h>
+
+  write(*,*)'Add code to support addition of multiple meshes'
+  stop
+
+end subroutine add_multiple_meshes
 
 !------------------------------------------------------------------------
 subroutine setup_soil_mesh()
