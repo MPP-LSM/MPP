@@ -9,12 +9,17 @@ module spac_component
      PetscReal , pointer :: xc(:)                          !
      PetscReal , pointer :: yc(:)                          !
      PetscReal , pointer :: zc(:)                          !
+     PetscReal , pointer :: dx(:)                          !
+     PetscReal , pointer :: dy(:)                          !
+     PetscReal , pointer :: dz(:)                          !
      PetscReal , pointer :: area(:)                        !
      PetscReal , pointer :: vol(:)                         !
      PetscInt  , pointer :: filter(:)                      !
    contains
-     procedure, public :: Init => MeshInit
-     procedure, public :: Copy => MeshCopy
+     procedure, public :: Init     => MeshInit
+     procedure, public :: CopyTo   => MeshCopyTo
+     procedure, public :: CopyFrom => MeshCopyFrom
+     procedure, public :: AddToMPP => MeshAddToMPP
   end type spac_component_mesh_type
 
   type, public :: spac_component_pp_type
@@ -29,12 +34,13 @@ module spac_component
      PetscReal , pointer :: relperm_param_1(:)
      PetscReal , pointer :: relperm_param_2(:)
    contains
-     procedure, public :: Init => PPInit
-     procedure, public :: Copy => PPCopy
+     procedure, public :: Init   => PPInit
+     procedure, public :: CopyTo => PPCopyTo
   end type spac_component_pp_type
 
 contains
 
+  !------------------------------------------------------------------------
   subroutine MeshInit(this, ncells)
     !
     implicit none
@@ -45,13 +51,17 @@ contains
     allocate (this%xc     (ncells)); this%xc     (:) = 0.d0
     allocate (this%yc     (ncells)); this%yc     (:) = 0.d0
     allocate (this%zc     (ncells)); this%zc     (:) = 0.d0
+    allocate (this%dx     (ncells)); this%dx     (:) = 0.d0
+    allocate (this%dy     (ncells)); this%dy     (:) = 0.d0
+    allocate (this%dz     (ncells)); this%dz     (:) = 0.d0
     allocate (this%area   (ncells)); this%area   (:) = 0.d0
     allocate (this%filter (ncells)); this%filter (:) = 0
     allocate (this%vol    (ncells)); this%vol    (:) = 0.d0
 
   end subroutine MeshInit
 
-  subroutine MeshCopy(this, idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  !------------------------------------------------------------------------
+  subroutine MeshCopyTo(this, idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
     !
     implicit none
     !
@@ -61,6 +71,9 @@ contains
     PetscReal , pointer              :: xc(:)
     PetscReal , pointer              :: yc(:)
     PetscReal , pointer              :: zc(:)
+    PetscReal , pointer              :: dx(:)
+    PetscReal , pointer              :: dy(:)
+    PetscReal , pointer              :: dz(:)
     PetscReal , pointer              :: area(:)
     PetscReal , pointer              :: vol(:)
     PetscInt  , pointer              :: filter(:)
@@ -68,12 +81,87 @@ contains
     xc     (idx_beg:idx_end) = this%xc     (:)
     yc     (idx_beg:idx_end) = this%yc     (:)
     zc     (idx_beg:idx_end) = this%zc     (:)
+    dx     (idx_beg:idx_end) = this%dx     (:)
+    dy     (idx_beg:idx_end) = this%dy     (:)
+    dz     (idx_beg:idx_end) = this%dz     (:)
     area   (idx_beg:idx_end) = this%area   (:)
     vol    (idx_beg:idx_end) = this%vol    (:)
     filter (idx_beg:idx_end) = this%filter (:)
 
-  end subroutine MeshCopy
+  end subroutine MeshCopyTo
 
+  !------------------------------------------------------------------------
+  subroutine MeshCopyFrom(this, xc, yc, zc, dx, dy, dz, area, vol, filter)
+    !
+    implicit none
+    !
+    class (spac_component_mesh_type) :: this
+    PetscReal , pointer              :: xc(:)
+    PetscReal , pointer              :: yc(:)
+    PetscReal , pointer              :: zc(:)
+    PetscReal , pointer              :: dx(:)
+    PetscReal , pointer              :: dy(:)
+    PetscReal , pointer              :: dz(:)
+    PetscReal , pointer              :: area(:)
+    PetscReal , pointer              :: vol(:)
+    PetscInt  , pointer              :: filter(:)
+
+    this%xc     (:) = xc     (:)
+    this%yc     (:) = yc     (:)
+    this%zc     (:) = zc     (:)
+    this%dx     (:) = dx     (:)
+    this%dy     (:) = dy     (:)
+    this%dz     (:) = dz     (:)
+    this%area   (:) = area   (:)
+    this%vol    (:) = vol    (:)
+    this%filter (:) = filter (:)
+
+  end subroutine MeshCopyFrom
+
+  !------------------------------------------------------------------------
+  subroutine MeshAddToMPP(this, vsfm_mpp, imesh, mesh_name, ncells, ncells_ghost, nz)
+    !
+    use MultiPhysicsProbVSFM      , only : mpp_vsfm_type
+    use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
+    use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
+    use MultiPhysicsProbConstants , only : VAR_XC
+    use MultiPhysicsProbConstants , only : VAR_YC
+    use MultiPhysicsProbConstants , only : VAR_ZC
+    use MultiPhysicsProbConstants , only : VAR_DX
+    use MultiPhysicsProbConstants , only : VAR_DY
+    use MultiPhysicsProbConstants , only : VAR_DZ
+    use MultiPhysicsProbConstants , only : VAR_AREA
+    use MultiPhysicsProbConstants , only : VAR_VOLUME
+    !
+    implicit none
+    !
+    class (spac_component_mesh_type) :: this
+    class (mpp_vsfm_type)            :: vsfm_mpp
+    PetscInt                         :: imesh
+    character(len =*)                :: mesh_name
+    PetscInt                         :: ncells
+    PetscInt                         :: ncells_ghost
+    PetscInt                         :: nz
+    
+    call vsfm_mpp%MeshSetName                (imesh, trim(mesh_name)          )
+    call vsfm_mpp%MeshSetOrientation         (imesh, MESH_ALONG_GRAVITY       )
+    call vsfm_mpp%MeshSetID                  (imesh, MESH_CLM_SOIL_COL        )
+    call vsfm_mpp%MeshSetDimensions          (imesh, ncells, ncells_ghost, nz )
+
+    call vsfm_mpp%MeshSetGridCellFilter      (imesh, this%filter              )
+
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_XC     , this%xc     )
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_YC     , this%yc     )
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC     , this%zc     )
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DX     , this%dx     )
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DY     , this%dy     )
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ     , this%dz     )
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA   , this%area   )
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_VOLUME , this%vol    )
+
+  end subroutine MeshAddToMPP
+
+  !------------------------------------------------------------------------
   subroutine PPInit(this, ncells)
     !
     implicit none
@@ -94,7 +182,8 @@ contains
 
   end subroutine PPInit
 
-  subroutine PPCopy(this, idx_beg, idx_end, por, perm, alpha, lambda, &
+  !------------------------------------------------------------------------
+  subroutine PPCopyTo(this, idx_beg, idx_end, por, perm, alpha, lambda, &
        relperm_type, relperm_param_1, relperm_param_2, residual_sat, &
        satfunc_type)
     !
@@ -123,7 +212,7 @@ contains
     residual_sat    (idx_beg:idx_end) = this%residual_sat    (:)
     satfunc_type    (idx_beg:idx_end) = this%satfunc_type    (:)
 
-  end subroutine PPCopy
+  end subroutine PPCopyTo
 
 end module spac_component
 
@@ -634,6 +723,7 @@ subroutine add_single_mesh()
   PetscInt :: idx_beg, idx_end
   
   PetscErrorCode      :: ierr
+  type(spac_component_mesh_type) :: combined_mesh
 
   ncells = soil_ncells + &
        soil_nx * soil_ny *( overstory_root_nz  + overstory_xylem_nz  + overstory_leaf_nz) + &
@@ -667,9 +757,9 @@ subroutine add_single_mesh()
   !
   idx_beg = 1
   idx_end = soil_ncells
-  call soil_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  call soil_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
 
-  call soil_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+  call soil_pp%CopyTo(idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
        vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
        vsfm_residual_sat, vsfm_satfunc_type)
 
@@ -685,9 +775,9 @@ subroutine add_single_mesh()
   idx_end = ncells + soil_nx*soil_ny*overstory_root_nz
   ncells  = idx_end
 
-  call overstory_root_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  call overstory_root_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
 
-  call overstory_root_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+  call overstory_root_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
        vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
        vsfm_residual_sat, vsfm_satfunc_type)
 
@@ -696,9 +786,9 @@ subroutine add_single_mesh()
   idx_end = ncells + soil_nx*soil_ny*overstory_xylem_nz
   ncells  = idx_end
 
-  call overstory_xylem_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  call overstory_xylem_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
 
-  call overstory_xylem_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+  call overstory_xylem_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
        vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
        vsfm_residual_sat, vsfm_satfunc_type)
 
@@ -707,9 +797,9 @@ subroutine add_single_mesh()
   idx_end = ncells + soil_nx*soil_ny*overstory_leaf_nz
   ncells  = idx_end
 
-  call overstory_leaf_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  call overstory_leaf_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
 
-  call overstory_leaf_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+  call overstory_leaf_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
        vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
        vsfm_residual_sat, vsfm_satfunc_type)
 
@@ -723,9 +813,9 @@ subroutine add_single_mesh()
   idx_end = ncells + soil_nx*soil_ny*understory_root_nz
   ncells  = idx_end
 
-  call understory_root_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  call understory_root_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
 
-  call understory_root_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+  call understory_root_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
        vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
        vsfm_residual_sat, vsfm_satfunc_type)
 
@@ -735,9 +825,9 @@ subroutine add_single_mesh()
   idx_end = ncells + soil_nx*soil_ny*understory_xylem_nz
   ncells  = idx_end
 
-  call understory_xylem_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  call understory_xylem_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
 
-  call understory_xylem_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+  call understory_xylem_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
        vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
        vsfm_residual_sat, vsfm_satfunc_type)
 
@@ -746,36 +836,27 @@ subroutine add_single_mesh()
   idx_end = ncells + soil_nx*soil_ny*understory_leaf_nz
   ncells  = idx_end
 
-  call understory_leaf_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+  call understory_leaf_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
 
-  call understory_leaf_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+  call understory_leaf_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
        vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
        vsfm_residual_sat, vsfm_satfunc_type)
 
   !
   ! Set up the meshes
   !    
+
+  call combined_mesh%Init(ncells)
+  call combined_mesh%CopyFrom(xc, yc, zc, dx, dy, dz, area, vol, filter)
+
   call vsfm_mpp%SetNumMeshes(1)
 
   ! Soil Mesh
   imesh             = 1
   soil_ncells_ghost = 0
 
-  call vsfm_mpp%MeshSetName                (imesh, 'Soil mesh'                             )
-  call vsfm_mpp%MeshSetOrientation         (imesh, MESH_ALONG_GRAVITY                      )
-  call vsfm_mpp%MeshSetID                  (imesh, MESH_CLM_SOIL_COL                       )
-  call vsfm_mpp%MeshSetDimensions          (imesh, ncells, soil_ncells_ghost, soil_nz )
-
-  call vsfm_mpp%MeshSetGridCellFilter      (imesh, filter                             )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_XC     , xc                    )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_YC     , yc                    )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC     , zc                    )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DX     , dx               )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DY     , dy               )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ     , dz               )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA   , area                  )
-  call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_VOLUME , vol                   )
-
+  call combined_mesh%AddToMPP(vsfm_mpp, imesh, 'Combined mesh for Soil-Understory-Overstory', &
+       ncells, soil_ncells_ghost, soil_nz)
 
   !
   ! Add connections
@@ -1180,6 +1261,9 @@ subroutine setup_soil_mesh()
               soil_mesh%xc(count)      = soil_xc3d(ii,jj,kk)
               soil_mesh%yc(count)      = soil_yc3d(ii,jj,kk)
               soil_mesh%zc(count)      = soil_zc3d(ii,jj,kk)
+              soil_mesh%dx(count)      = soil_dx
+              soil_mesh%dy(count)      = soil_dy
+              soil_mesh%dz(count)      = soil_dz
               soil_mesh%area(count)    = soil_dx*soil_dy
               soil_mesh%vol(count)     = soil_dx*soil_dy*soil_dz
               soil_mesh%filter(count)  = 1
@@ -1313,6 +1397,9 @@ subroutine setup_overstory_mesh()
            overstory_root_mesh%xc              (count) = soil_xc3d(ii,jj,1)
            overstory_root_mesh%yc              (count) = soil_yc3d(ii,jj,1)
            overstory_root_mesh%zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
+           overstory_root_mesh%dx              (count) = soil_dx
+           overstory_root_mesh%dy              (count) = soil_dy
+           overstory_root_mesh%dz              (count) = soil_dz
            overstory_root_mesh%area            (count) = overstory_root_area_profile(kk)
            overstory_root_mesh%vol             (count) = overstory_root_vol_profile(kk)
            overstory_root_mesh%filter          (count) = 1
@@ -1345,6 +1432,9 @@ subroutine setup_overstory_mesh()
            overstory_xylem_mesh%xc              (count) = soil_xc3d(ii,jj,1)
            overstory_xylem_mesh%yc              (count) = soil_yc3d(ii,jj,1)
            overstory_xylem_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
+           overstory_xylem_mesh%dx              (count) = soil_dx
+           overstory_xylem_mesh%dy              (count) = soil_dy
+           overstory_xylem_mesh%dz              (count) = soil_dz
            overstory_xylem_mesh%area            (count) = overstory_xylem_area_profile(kk)
            overstory_xylem_mesh%vol             (count) = overstory_xylem_area_profile(kk) * soil_dz
            overstory_xylem_mesh%filter          (count) = 1
@@ -1379,6 +1469,9 @@ subroutine setup_overstory_mesh()
            overstory_leaf_mesh%xc              (count) = soil_xc3d(ii,jj,1)-overstory_branch_length_profile(idx)
            overstory_leaf_mesh%yc              (count) = soil_yc3d(ii,jj,1)
            overstory_leaf_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (overstory_xylem_nz-overstory_leaf_nz)*soil_dz
+           overstory_leaf_mesh%dx              (count) = soil_dx
+           overstory_leaf_mesh%dy              (count) = soil_dy
+           overstory_leaf_mesh%dz              (count) = soil_dz
            overstory_leaf_mesh%area            (count) = overstory_xylem_area_profile(kk) * overstory_branch_area_ratio
 
            overstory_leaf_mesh%vol             (count) = overstory_leaf_mesh%area(count) * overstory_branch_length_profile(idx)
@@ -1494,6 +1587,9 @@ subroutine setup_understory_mesh()
            understory_root_mesh%xc              (count) = soil_xc3d(ii,jj,1)
            understory_root_mesh%yc              (count) = soil_yc3d(ii,jj,1)
            understory_root_mesh%zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
+           understory_root_mesh%dx              (count) = soil_dx
+           understory_root_mesh%dy              (count) = soil_dy
+           understory_root_mesh%dz              (count) = soil_dz
            understory_root_mesh%area            (count) = understory_root_area_profile(kk)
            understory_root_mesh%vol             (count) = understory_root_vol_profile(kk)
            understory_root_mesh%filter          (count) = 1
@@ -1525,6 +1621,9 @@ subroutine setup_understory_mesh()
            understory_xylem_mesh%xc              (count) = soil_xc3d(ii,jj,1)
            understory_xylem_mesh%yc              (count) = soil_yc3d(ii,jj,1)
            understory_xylem_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
+           understory_xylem_mesh%dx              (count) = soil_dx
+           understory_xylem_mesh%dy              (count) = soil_dy
+           understory_xylem_mesh%dz              (count) = soil_dz
            understory_xylem_mesh%area            (count) = understory_xylem_area_profile(kk)
            understory_xylem_mesh%vol             (count) = understory_xylem_area_profile(kk) * soil_dz
            understory_xylem_mesh%filter          (count) = 1
@@ -1558,6 +1657,9 @@ subroutine setup_understory_mesh()
            understory_leaf_mesh%xc              (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
            understory_leaf_mesh%yc              (count) = soil_yc3d(ii,jj,1)
            understory_leaf_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
+           understory_leaf_mesh%dx              (count) = soil_dx
+           understory_leaf_mesh%dy              (count) = soil_dy
+           understory_leaf_mesh%dz              (count) = soil_dz
            understory_leaf_mesh%area            (count) = understory_xylem_area_profile(kk) * understory_branch_area_ratio
 
            understory_leaf_mesh%vol             (count) = understory_leaf_mesh%area(count) * understory_branch_length_profile(idx)
