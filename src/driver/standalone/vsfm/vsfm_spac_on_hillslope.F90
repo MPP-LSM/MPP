@@ -12,7 +12,8 @@ module spac_component
      PetscReal , pointer :: area(:)                        !
      PetscReal , pointer :: vol(:)                         !
      PetscInt  , pointer :: filter(:)                      !
-  contains
+   contains
+     procedure, public :: Init => MeshInit
      procedure, public :: Copy => MeshCopy
   end type spac_component_mesh_type
 
@@ -28,10 +29,27 @@ module spac_component
      PetscReal , pointer :: relperm_param_1(:)
      PetscReal , pointer :: relperm_param_2(:)
    contains
+     procedure, public :: Init => PPInit
      procedure, public :: Copy => PPCopy
   end type spac_component_pp_type
 
 contains
+
+  subroutine MeshInit(this, ncells)
+    !
+    implicit none
+    !
+    class (spac_component_mesh_type) :: this
+    PetscInt                         :: ncells
+
+    allocate (this%xc     (ncells)); this%xc     (:) = 0.d0
+    allocate (this%yc     (ncells)); this%yc     (:) = 0.d0
+    allocate (this%zc     (ncells)); this%zc     (:) = 0.d0
+    allocate (this%area   (ncells)); this%area   (:) = 0.d0
+    allocate (this%filter (ncells)); this%filter (:) = 0
+    allocate (this%vol    (ncells)); this%vol    (:) = 0.d0
+
+  end subroutine MeshInit
 
   subroutine MeshCopy(this, idx_beg, idx_end, xc, yc, zc, area, vol, filter)
     !
@@ -55,6 +73,26 @@ contains
     filter (idx_beg:idx_end) = this%filter (:)
 
   end subroutine MeshCopy
+
+  subroutine PPInit(this, ncells)
+    !
+    implicit none
+    !
+    class (spac_component_pp_type) :: this
+    PetscInt                       :: ncells
+
+    allocate(this%por              (ncells)); this%por             (:) = 0.d0
+    allocate(this%perm             (ncells)); this%perm            (:) = 0.d0
+    allocate(this%alpha            (ncells)); this%alpha           (:) = 0.d0
+    allocate(this%lambda           (ncells)); this%lambda          (:) = 0.d0
+    allocate(this%eff_porosity     (ncells)); this%eff_porosity    (:) = 0.d0
+    allocate(this%residual_sat     (ncells)); this%residual_sat    (:) = 0.d0
+    allocate(this%satfunc_type     (ncells)); this%satfunc_type    (:) = 0
+    allocate(this%relperm_type     (ncells)); this%relperm_type    (:) = 0
+    allocate(this%relperm_param_1  (ncells)); this%relperm_param_1 (:) = 0.d0
+    allocate(this%relperm_param_2  (ncells)); this%relperm_param_2 (:) = 0.d0
+
+  end subroutine PPInit
 
   subroutine PPCopy(this, idx_beg, idx_end, por, perm, alpha, lambda, &
        relperm_type, relperm_param_1, relperm_param_2, residual_sat, &
@@ -1124,23 +1162,8 @@ subroutine setup_soil_mesh()
 
   soil_ncells       = count
 
-  allocate (soil_mesh%xc      (soil_ncells))
-  allocate (soil_mesh%yc      (soil_ncells))
-  allocate (soil_mesh%zc      (soil_ncells))
-  allocate (soil_mesh%area    (soil_ncells))
-  allocate (soil_mesh%filter  (soil_ncells))
-  allocate (soil_mesh%vol     (soil_ncells))
-
-  allocate(soil_pp%por              (soil_ncells))
-  allocate(soil_pp%perm             (soil_ncells))
-  allocate(soil_pp%lambda           (soil_ncells))
-  allocate(soil_pp%alpha            (soil_ncells))
-  allocate(soil_pp%eff_porosity     (soil_ncells))
-  allocate(soil_pp%residual_sat     (soil_ncells))
-  allocate(soil_pp%satfunc_type     (soil_ncells))
-  allocate(soil_pp%relperm_type     (soil_ncells))
-  allocate(soil_pp%relperm_param_1  (soil_ncells))
-  allocate(soil_pp%relperm_param_2  (soil_ncells))
+  call soil_mesh%Init(soil_ncells)
+  call soil_pp%Init(  soil_ncells)
 
   count           = 0
   soil_mesh_nconn = 0
@@ -1255,59 +1278,15 @@ subroutine setup_overstory_mesh()
      overstory_root_vol_profile(kk)    = PI*(overstory_root_radius**2.d0)*root_length
   end do
 
-  allocate(overstory_root_pp%por              (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%perm             (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%lambda           (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%alpha            (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%eff_porosity     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%residual_sat     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%satfunc_type     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%relperm_type     (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%relperm_param_1  (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_pp%relperm_param_2  (soil_nx*soil_ny*overstory_root_nz))
 
-  allocate(overstory_root_mesh%xc               (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_mesh%yc               (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_mesh%zc               (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_mesh%area             (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_mesh%vol              (soil_nx*soil_ny*overstory_root_nz))
-  allocate(overstory_root_mesh%filter           (soil_nx*soil_ny*overstory_root_nz))
+  call overstory_root_mesh%Init(soil_nx*soil_ny*overstory_root_nz)
+  call overstory_root_pp%Init(  soil_nx*soil_ny*overstory_root_nz)
 
-  allocate(overstory_xylem_pp%por             (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%perm            (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%lambda          (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%alpha           (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%eff_porosity    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%residual_sat    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%satfunc_type    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%relperm_type    (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%relperm_param_1 (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_pp%relperm_param_2 (soil_nx*soil_ny*overstory_xylem_nz))
+  call overstory_xylem_mesh%Init(soil_nx*soil_ny*overstory_xylem_nz)
+  call overstory_xylem_pp%Init(  soil_nx*soil_ny*overstory_xylem_nz)
 
-  allocate(overstory_xylem_mesh%xc              (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_mesh%yc              (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_mesh%zc              (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_mesh%area            (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_mesh%vol             (soil_nx*soil_ny*overstory_xylem_nz))
-  allocate(overstory_xylem_mesh%filter          (soil_nx*soil_ny*overstory_xylem_nz))
-
-  allocate(overstory_leaf_pp%por              (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%perm             (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%lambda           (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%alpha            (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%eff_porosity     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%residual_sat     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%satfunc_type     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%relperm_type     (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%relperm_param_1  (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_pp%relperm_param_2  (soil_nx*soil_ny*overstory_leaf_nz))
-
-  allocate(overstory_leaf_mesh%xc               (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_mesh%yc               (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_mesh%zc               (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_mesh%area             (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_mesh%vol              (soil_nx*soil_ny*overstory_leaf_nz))
-  allocate(overstory_leaf_mesh%filter           (soil_nx*soil_ny*overstory_leaf_nz))
+  call overstory_leaf_mesh%Init(soil_nx*soil_ny*overstory_leaf_nz)
+  call overstory_leaf_pp%Init(  soil_nx*soil_ny*overstory_leaf_nz)
 
   allocate(overstory_root_mesh%id               (soil_nx, soil_ny, overstory_root_nz ))
   allocate(overstory_xylem_mesh%id              (soil_nx, soil_ny, overstory_xylem_nz))
@@ -1483,59 +1462,14 @@ subroutine setup_understory_mesh()
      understory_root_vol_profile(kk)    = PI*(overstory_root_radius**2.d0)*root_length
   end do
 
-  allocate(understory_root_pp%por              (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%perm             (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%lambda           (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%alpha            (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%eff_porosity     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%residual_sat     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%satfunc_type     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%relperm_type     (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%relperm_param_1  (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_pp%relperm_param_2  (soil_nx*soil_ny*understory_root_nz))
+  call understory_root_mesh%Init(soil_nx*soil_ny*understory_root_nz)
+  call understory_root_pp%Init(  soil_nx*soil_ny*understory_root_nz)
 
-  allocate(understory_root_mesh%xc               (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_mesh%yc               (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_mesh%zc               (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_mesh%area             (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_mesh%vol              (soil_nx*soil_ny*understory_root_nz))
-  allocate(understory_root_mesh%filter           (soil_nx*soil_ny*understory_root_nz))
+  call understory_xylem_mesh%Init(soil_nx*soil_ny*understory_xylem_nz)
+  call understory_xylem_pp%Init(  soil_nx*soil_ny*understory_xylem_nz)
 
-  allocate(understory_xylem_pp%por             (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%perm            (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%lambda          (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%alpha           (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%eff_porosity    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%residual_sat    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%satfunc_type    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%relperm_type    (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%relperm_param_1 (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_pp%relperm_param_2 (soil_nx*soil_ny*understory_xylem_nz))
-
-  allocate(understory_xylem_mesh%xc              (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_mesh%yc              (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_mesh%zc              (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_mesh%area            (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_mesh%vol             (soil_nx*soil_ny*understory_xylem_nz))
-  allocate(understory_xylem_mesh%filter          (soil_nx*soil_ny*understory_xylem_nz))
-
-  allocate(understory_leaf_pp%por              (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%perm             (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%lambda           (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%alpha            (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%eff_porosity     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%residual_sat     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%satfunc_type     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%relperm_type     (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%relperm_param_1  (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_pp%relperm_param_2  (soil_nx*soil_ny*understory_leaf_nz))
-
-  allocate(understory_leaf_mesh%xc               (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_mesh%yc               (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_mesh%zc               (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_mesh%area             (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_mesh%vol              (soil_nx*soil_ny*understory_leaf_nz))
-  allocate(understory_leaf_mesh%filter           (soil_nx*soil_ny*understory_leaf_nz))
+  call understory_leaf_mesh%Init(soil_nx*soil_ny*understory_leaf_nz)
+  call understory_leaf_pp%Init(  soil_nx*soil_ny*understory_leaf_nz)
 
   allocate(understory_root_mesh%id  (soil_nx, soil_ny, understory_root_nz  ))
   allocate(understory_xylem_mesh%id (soil_nx, soil_ny, understory_xylem_nz ))
