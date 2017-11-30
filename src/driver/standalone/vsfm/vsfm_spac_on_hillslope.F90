@@ -12,6 +12,8 @@ module spac_component
      PetscReal , pointer :: area(:)                        !
      PetscReal , pointer :: vol(:)                         !
      PetscInt  , pointer :: filter(:)                      !
+  contains
+     procedure, public :: Copy => MeshCopy
   end type spac_component_mesh_type
 
   type, public :: spac_component_pp_type
@@ -25,7 +27,65 @@ module spac_component
      PetscInt  , pointer :: relperm_type(:)
      PetscReal , pointer :: relperm_param_1(:)
      PetscReal , pointer :: relperm_param_2(:)
+   contains
+     procedure, public :: Copy => PPCopy
   end type spac_component_pp_type
+
+contains
+
+  subroutine MeshCopy(this, idx_beg, idx_end, xc, yc, zc, area, vol, filter)
+    !
+    implicit none
+    !
+    class (spac_component_mesh_type) :: this
+    PetscInt                         :: idx_beg
+    PetscInt                         :: idx_end
+    PetscReal , pointer              :: xc(:)
+    PetscReal , pointer              :: yc(:)
+    PetscReal , pointer              :: zc(:)
+    PetscReal , pointer              :: area(:)
+    PetscReal , pointer              :: vol(:)
+    PetscInt  , pointer              :: filter(:)
+
+    xc     (idx_beg:idx_end) = this%xc     (:)
+    yc     (idx_beg:idx_end) = this%yc     (:)
+    zc     (idx_beg:idx_end) = this%zc     (:)
+    area   (idx_beg:idx_end) = this%area   (:)
+    vol    (idx_beg:idx_end) = this%vol    (:)
+    filter (idx_beg:idx_end) = this%filter (:)
+
+  end subroutine MeshCopy
+
+  subroutine PPCopy(this, idx_beg, idx_end, por, perm, alpha, lambda, &
+       relperm_type, relperm_param_1, relperm_param_2, residual_sat, &
+       satfunc_type)
+    !
+    implicit none
+    !
+    class (spac_component_pp_type) :: this
+    PetscInt                       :: idx_beg
+    PetscInt                       :: idx_end
+    PetscReal , pointer            :: por(:)
+    PetscReal , pointer            :: perm(:)
+    PetscReal , pointer            :: alpha(:)
+    PetscReal , pointer            :: lambda(:)
+    PetscInt  , pointer            :: relperm_type(:)
+    PetscReal , pointer            :: relperm_param_1(:)
+    PetscReal , pointer            :: relperm_param_2(:)
+    PetscReal , pointer            :: residual_sat(:)
+    PetscInt  , pointer            :: satfunc_type(:)
+
+    por             (idx_beg:idx_end) = this%por             (:)
+    perm            (idx_beg:idx_end) = this%perm            (:)
+    alpha           (idx_beg:idx_end) = this%alpha           (:)
+    lambda          (idx_beg:idx_end) = this%lambda          (:)
+    relperm_type    (idx_beg:idx_end) = this%relperm_type    (:)
+    relperm_param_1 (idx_beg:idx_end) = this%relperm_param_1 (:)
+    relperm_param_2 (idx_beg:idx_end) = this%relperm_param_2 (:)
+    residual_sat    (idx_beg:idx_end) = this%residual_sat    (:)
+    satfunc_type    (idx_beg:idx_end) = this%satfunc_type    (:)
+
+  end subroutine PPCopy
 
 end module spac_component
 
@@ -461,6 +521,26 @@ end subroutine initialize_mpp
 !------------------------------------------------------------------------
 subroutine add_mesh()
   !
+  use problem_parameters
+  !
+  implicit none
+  !
+
+  call setup_soil_mesh()
+  call setup_overstory_mesh()
+  call setup_understory_mesh()
+
+  if (.not. multi_goveqns_formulation) then
+     call add_single_mesh()
+  else
+     !call add_mulitple_meshes()
+  end if
+
+end subroutine add_mesh
+
+!------------------------------------------------------------------------
+subroutine add_single_mesh()
+  !
   use MultiPhysicsProbVSFM      , only : vsfm_mpp
   use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnRealValue 
   use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnIntValue
@@ -532,10 +612,6 @@ subroutine add_mesh()
   
   PetscErrorCode      :: ierr
 
-  call setup_soil_mesh()
-  call setup_overstory_mesh()
-  call setup_understory_mesh()
-
   ncells = soil_ncells + &
        soil_nx * soil_ny *( overstory_root_nz  + overstory_xylem_nz  + overstory_leaf_nz) + &
        soil_nx * soil_ny *( understory_root_nz + understory_xylem_nz + understory_leaf_nz)
@@ -595,66 +671,33 @@ subroutine add_mesh()
   idx_end = ncells + soil_nx*soil_ny*overstory_root_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = overstory_root_mesh%xc              (1:soil_nx*soil_ny*overstory_root_nz)
-  yc                   (idx_beg:idx_end) = overstory_root_mesh%yc              (1:soil_nx*soil_ny*overstory_root_nz)
-  zc                   (idx_beg:idx_end) = overstory_root_mesh%zc              (1:soil_nx*soil_ny*overstory_root_nz)
-  area                 (idx_beg:idx_end) = overstory_root_mesh%area            (1:soil_nx*soil_ny*overstory_root_nz)
-  vol                  (idx_beg:idx_end) = overstory_root_mesh%vol             (1:soil_nx*soil_ny*overstory_root_nz)
-  filter               (idx_beg:idx_end) = overstory_root_mesh%filter          (1:soil_nx*soil_ny*overstory_root_nz)
+  call overstory_root_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
 
-  vsfm_por             (idx_beg:idx_end) = overstory_root_pp%por             (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_perm            (idx_beg:idx_end) = overstory_root_pp%perm            (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_alpha           (idx_beg:idx_end) = overstory_root_pp%alpha           (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_lambda          (idx_beg:idx_end) = overstory_root_pp%lambda          (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = overstory_root_pp%relperm_type    (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_root_pp%relperm_param_1 (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_root_pp%relperm_param_2 (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = overstory_root_pp%residual_sat    (1:soil_nx*soil_ny*overstory_root_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_root_pp%satfunc_type    (1:soil_nx*soil_ny*overstory_root_nz)
+  call overstory_root_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
+       vsfm_residual_sat, vsfm_satfunc_type)
 
   ! Add xylem grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*overstory_xylem_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = overstory_xylem_mesh%xc              (1:soil_nx*soil_ny*overstory_xylem_nz)
-  yc                   (idx_beg:idx_end) = overstory_xylem_mesh%yc              (1:soil_nx*soil_ny*overstory_xylem_nz)
-  zc                   (idx_beg:idx_end) = overstory_xylem_mesh%zc              (1:soil_nx*soil_ny*overstory_xylem_nz)
-  area                 (idx_beg:idx_end) = overstory_xylem_mesh%area            (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vol                  (idx_beg:idx_end) = overstory_xylem_mesh%vol             (1:soil_nx*soil_ny*overstory_xylem_nz)
-  filter               (idx_beg:idx_end) = overstory_xylem_mesh%filter          (1:soil_nx*soil_ny*overstory_xylem_nz)
+  call overstory_xylem_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
 
-  vsfm_por             (idx_beg:idx_end) = overstory_xylem_pp%por             (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_perm            (idx_beg:idx_end) = overstory_xylem_pp%perm            (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_alpha           (idx_beg:idx_end) = overstory_xylem_pp%alpha           (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_lambda          (idx_beg:idx_end) = overstory_xylem_pp%lambda          (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = overstory_xylem_pp%relperm_type    (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_xylem_pp%relperm_param_1 (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_xylem_pp%relperm_param_2 (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = overstory_xylem_pp%residual_sat    (1:soil_nx*soil_ny*overstory_xylem_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_xylem_pp%satfunc_type    (1:soil_nx*soil_ny*overstory_xylem_nz)
+  call overstory_xylem_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
+       vsfm_residual_sat, vsfm_satfunc_type)
 
   ! Add leaf grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*overstory_leaf_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = overstory_leaf_mesh%xc              (1:soil_nx*soil_ny*overstory_leaf_nz)
-  yc                   (idx_beg:idx_end) = overstory_leaf_mesh%yc              (1:soil_nx*soil_ny*overstory_leaf_nz)
-  zc                   (idx_beg:idx_end) = overstory_leaf_mesh%zc              (1:soil_nx*soil_ny*overstory_leaf_nz)
-  area                 (idx_beg:idx_end) = overstory_leaf_mesh%area            (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vol                  (idx_beg:idx_end) = overstory_leaf_mesh%vol             (1:soil_nx*soil_ny*overstory_leaf_nz)
-  filter               (idx_beg:idx_end) = overstory_leaf_mesh%filter          (1:soil_nx*soil_ny*overstory_leaf_nz)
+  call overstory_leaf_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
 
-  vsfm_por             (idx_beg:idx_end) = overstory_leaf_pp%por             (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_perm            (idx_beg:idx_end) = overstory_leaf_pp%perm            (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_alpha           (idx_beg:idx_end) = overstory_leaf_pp%alpha           (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_lambda          (idx_beg:idx_end) = overstory_leaf_pp%lambda          (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = overstory_leaf_pp%relperm_type    (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = overstory_leaf_pp%relperm_param_1 (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = overstory_leaf_pp%relperm_param_2 (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = overstory_leaf_pp%residual_sat    (1:soil_nx*soil_ny*overstory_leaf_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = overstory_leaf_pp%satfunc_type    (1:soil_nx*soil_ny*overstory_leaf_nz)
+  call overstory_leaf_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
+       vsfm_residual_sat, vsfm_satfunc_type)
 
   !
   ! Understory
@@ -666,66 +709,34 @@ subroutine add_mesh()
   idx_end = ncells + soil_nx*soil_ny*understory_root_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = understory_root_mesh%xc              (1:soil_nx*soil_ny*understory_root_nz)
-  yc                   (idx_beg:idx_end) = understory_root_mesh%yc              (1:soil_nx*soil_ny*understory_root_nz)
-  zc                   (idx_beg:idx_end) = understory_root_mesh%zc              (1:soil_nx*soil_ny*understory_root_nz)
-  area                 (idx_beg:idx_end) = understory_root_mesh%area            (1:soil_nx*soil_ny*understory_root_nz)
-  vol                  (idx_beg:idx_end) = understory_root_mesh%vol             (1:soil_nx*soil_ny*understory_root_nz)
-  filter               (idx_beg:idx_end) = understory_root_mesh%filter          (1:soil_nx*soil_ny*understory_root_nz)
+  call understory_root_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
 
-  vsfm_por             (idx_beg:idx_end) = understory_root_pp%por             (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_perm            (idx_beg:idx_end) = understory_root_pp%perm            (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_alpha           (idx_beg:idx_end) = understory_root_pp%alpha           (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_lambda          (idx_beg:idx_end) = understory_root_pp%lambda          (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = understory_root_pp%relperm_type    (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_root_pp%relperm_param_1 (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_root_pp%relperm_param_2 (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = understory_root_pp%residual_sat    (1:soil_nx*soil_ny*understory_root_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = understory_root_pp%satfunc_type    (1:soil_nx*soil_ny*understory_root_nz)
+  call understory_root_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
+       vsfm_residual_sat, vsfm_satfunc_type)
+
 
   ! Add xylem grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*understory_xylem_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = understory_xylem_mesh%xc              (1:soil_nx*soil_ny*understory_xylem_nz)
-  yc                   (idx_beg:idx_end) = understory_xylem_mesh%yc              (1:soil_nx*soil_ny*understory_xylem_nz)
-  zc                   (idx_beg:idx_end) = understory_xylem_mesh%zc              (1:soil_nx*soil_ny*understory_xylem_nz)
-  area                 (idx_beg:idx_end) = understory_xylem_mesh%area            (1:soil_nx*soil_ny*understory_xylem_nz)
-  vol                  (idx_beg:idx_end) = understory_xylem_mesh%vol             (1:soil_nx*soil_ny*understory_xylem_nz)
-  filter               (idx_beg:idx_end) = understory_xylem_mesh%filter          (1:soil_nx*soil_ny*understory_xylem_nz)
+  call understory_xylem_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
 
-  vsfm_por             (idx_beg:idx_end) = understory_xylem_pp%por             (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_perm            (idx_beg:idx_end) = understory_xylem_pp%perm            (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_alpha           (idx_beg:idx_end) = understory_xylem_pp%alpha           (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_lambda          (idx_beg:idx_end) = understory_xylem_pp%lambda          (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = understory_xylem_pp%relperm_type    (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_xylem_pp%relperm_param_1 (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_xylem_pp%relperm_param_2 (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = understory_xylem_pp%residual_sat    (1:soil_nx*soil_ny*understory_xylem_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = understory_xylem_pp%satfunc_type    (1:soil_nx*soil_ny*understory_xylem_nz)
+  call understory_xylem_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
+       vsfm_residual_sat, vsfm_satfunc_type)
 
   ! Add leaf grid cells
   idx_beg = ncells + 1
   idx_end = ncells + soil_nx*soil_ny*understory_leaf_nz
   ncells  = idx_end
 
-  xc                   (idx_beg:idx_end) = understory_leaf_mesh%xc              (1:soil_nx*soil_ny*understory_leaf_nz)
-  yc                   (idx_beg:idx_end) = understory_leaf_mesh%yc              (1:soil_nx*soil_ny*understory_leaf_nz)
-  zc                   (idx_beg:idx_end) = understory_leaf_mesh%zc              (1:soil_nx*soil_ny*understory_leaf_nz)
-  area                 (idx_beg:idx_end) = understory_leaf_mesh%area            (1:soil_nx*soil_ny*understory_leaf_nz)
-  vol                  (idx_beg:idx_end) = understory_leaf_mesh%vol             (1:soil_nx*soil_ny*understory_leaf_nz)
-  filter               (idx_beg:idx_end) = understory_leaf_mesh%filter          (1:soil_nx*soil_ny*understory_leaf_nz)
+  call understory_leaf_mesh%copy(idx_beg, idx_end, xc, yc, zc, area, vol, filter)
 
-  vsfm_por             (idx_beg:idx_end) = understory_leaf_pp%por             (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_perm            (idx_beg:idx_end) = understory_leaf_pp%perm            (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_alpha           (idx_beg:idx_end) = understory_leaf_pp%alpha           (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_lambda          (idx_beg:idx_end) = understory_leaf_pp%lambda          (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_relperm_type    (idx_beg:idx_end) = understory_leaf_pp%relperm_type    (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_relperm_param_1 (idx_beg:idx_end) = understory_leaf_pp%relperm_param_1 (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_relperm_param_2 (idx_beg:idx_end) = understory_leaf_pp%relperm_param_2 (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_residual_sat    (idx_beg:idx_end) = understory_leaf_pp%residual_sat    (1:soil_nx*soil_ny*understory_leaf_nz)
-  vsfm_satfunc_type    (idx_beg:idx_end) = understory_leaf_pp%satfunc_type    (1:soil_nx*soil_ny*understory_leaf_nz)
+  call understory_leaf_pp%copy  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
+       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
+       vsfm_residual_sat, vsfm_satfunc_type)
 
   !
   ! Set up the meshes
@@ -1079,7 +1090,7 @@ subroutine add_mesh()
   deallocate (conn_area    )
   deallocate (conn_type    )
 
-end subroutine add_mesh
+end subroutine add_single_mesh
 
 !------------------------------------------------------------------------
 subroutine setup_soil_mesh()
