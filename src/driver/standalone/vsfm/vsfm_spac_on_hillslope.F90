@@ -663,17 +663,33 @@ end subroutine run_vsfm_spac_on_hillslope
 subroutine initialize_problem()
   !
   use MultiPhysicsProbVSFM      , only : vsfm_mpp
+  use problem_parameters
   !
   implicit none
 
   ! 1. Initialize the multi-physics-problem (MPP)
   call initialize_mpp()
   
-  ! 2. Add all meshes needed for the MPP
-  call add_mesh()
+  ! 2. Setup meshes
+  call setup_soil_mesh()
+  call setup_overstory_mesh()
+  call setup_understory_mesh()
 
-  ! 3. Add all governing equations
-  call add_goveqn()
+  if (.not. multi_goveqns_formulation) then
+     ! 2.1 Add the combined mesh
+     call add_single_mesh()
+
+     ! 3. Add all governing equations
+     call add_single_goveqn()
+
+  else
+     ! 2.1 Add all meshes
+     call add_multiple_meshes()
+
+     ! 3. Add all governing equations
+     call add_multiple_goveqns()
+  end if
+
 
   ! 4. Add boundary and source-sink conditions to all governing equations
   call add_conditions_to_goveqns()
@@ -725,26 +741,6 @@ subroutine initialize_mpp()
   call vsfm_mpp%SetMPIRank (iam)
 
 end subroutine initialize_mpp
-
-!------------------------------------------------------------------------
-subroutine add_mesh()
-  !
-  use problem_parameters
-  !
-  implicit none
-  !
-
-  call setup_soil_mesh()
-  call setup_overstory_mesh()
-  call setup_understory_mesh()
-
-  if (.not. multi_goveqns_formulation) then
-     call add_single_mesh()
-  else
-     call add_multiple_meshes()
-  end if
-
-end subroutine add_mesh
 
 !------------------------------------------------------------------------
 subroutine add_single_mesh()
@@ -906,7 +902,6 @@ subroutine add_multiple_meshes()
   imesh     = imesh + 1
   nz        = overstory_root_nz
   call o_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory root mesh', nz)
-  call s2s_conn%AddToMPPAsInternalConn(vsfm_mpp, imesh)
 
   ! 3. Add mesh for overstory xylem
   imesh     = imesh + 1
@@ -933,9 +928,18 @@ subroutine add_multiple_meshes()
   nz        = understory_leaf_nz
   call u_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory leaf mesh', nz)
 
-  write(*,*)'Add code to support addition of multiple meshes'
-  stop
+  !
+  ! Add connections
+  !
+  imesh = 1
+  call s2s_conn%AddToMPPAsInternalConn(vsfm_mpp, imesh)
 
+  imesh = 3
+  call o_x2x_conn%AddToMPPAsInternalConn(vsfm_mpp, imesh)
+  
+  imesh = 6
+  call u_x2x_conn%AddToMPPAsInternalConn(vsfm_mpp, imesh)
+  
 end subroutine add_multiple_meshes
 
 !------------------------------------------------------------------------
@@ -1756,7 +1760,7 @@ subroutine setup_understory_mesh()
 end subroutine setup_understory_mesh
 
 !------------------------------------------------------------------------
-subroutine add_goveqn()
+subroutine add_single_goveqn()
   !
   ! !DESCRIPTION:
   !
@@ -1773,7 +1777,28 @@ subroutine add_goveqn()
 
   call vsfm_mpp%SetMeshesOfGoveqns()
 
-end subroutine add_goveqn
+end subroutine add_single_goveqn
+
+!------------------------------------------------------------------------
+subroutine add_multiple_goveqns()
+  !
+  ! !DESCRIPTION:
+  !
+  !
+  ! !USES:
+  use MultiPhysicsProbVSFM , only : vsfm_mpp
+  use MultiPhysicsProbConstants , only : GE_RE
+  use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
+  !
+  ! !ARGUMENTS
+  implicit none
+
+  call vsfm_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE', MESH_CLM_SOIL_COL)
+
+  write(*,*)'Add code to support addition of multiple goveqns'
+  stop
+
+end subroutine add_multiple_goveqns
 
 !------------------------------------------------------------------------
 subroutine add_conditions_to_goveqns()
