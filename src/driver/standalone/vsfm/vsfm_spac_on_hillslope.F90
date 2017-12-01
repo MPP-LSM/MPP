@@ -6,6 +6,7 @@ module spac_component
   implicit none
 
   type, public :: spac_component_mesh_type
+     PetscInt            :: ncells
      PetscInt  , pointer :: id(:,:,:)
      PetscReal , pointer :: xc(:)                          !
      PetscReal , pointer :: yc(:)                          !
@@ -18,12 +19,12 @@ module spac_component
      PetscInt  , pointer :: filter(:)                      !
    contains
      procedure, public :: Init     => MeshInit
-     procedure, public :: CopyTo   => MeshCopyTo
-     procedure, public :: CopyFrom => MeshCopyFrom
+     procedure, public :: Copy     => MeshCopy
      procedure, public :: AddToMPP => MeshAddToMPP
   end type spac_component_mesh_type
 
   type, public :: spac_component_pp_type
+     PetscInt            :: ncells
      PetscReal , pointer :: por(:)
      PetscReal , pointer :: perm(:)
      PetscReal , pointer :: lambda(:)
@@ -35,9 +36,49 @@ module spac_component
      PetscReal , pointer :: relperm_param_1(:)
      PetscReal , pointer :: relperm_param_2(:)
    contains
-     procedure, public :: Init   => PPInit
-     procedure, public :: CopyTo => PPCopyTo
+     procedure, public :: Init => PPInit
+     procedure, public :: Copy => PPCopy
   end type spac_component_pp_type
+
+  type, public :: spac_component_conn_type
+     PetscInt            :: nconn
+     PetscInt  , pointer :: conn_id_up(:)   !
+     PetscInt  , pointer :: conn_id_dn(:)   !
+     PetscReal , pointer :: conn_dist_up(:) !
+     PetscReal , pointer :: conn_dist_dn(:) !
+     PetscReal , pointer :: conn_area(:)    !
+     PetscInt  , pointer :: conn_type(:)    !
+
+     PetscInt  , pointer :: conn_flux_type(:)    !
+     PetscInt  , pointer :: conn_cond_type(:)    !
+     PetscReal , pointer :: conn_cond     (:)    !
+     PetscReal , pointer :: conn_cond_up  (:)    !
+     PetscReal , pointer :: conn_cond_dn  (:)    !
+
+     PetscInt  , pointer :: conn_satparam_up_itype(:)
+     PetscReal , pointer :: conn_satparam_up_param_1(:)
+     PetscReal , pointer :: conn_satparam_up_param_2(:)
+     PetscReal , pointer :: conn_satparam_up_param_3(:)
+     PetscInt  , pointer :: conn_relperm_up_itype(:)
+     PetscReal , pointer :: conn_relperm_up_param_1(:)
+     PetscReal , pointer :: conn_relperm_up_param_2(:)
+
+     PetscInt  , pointer :: conn_satparam_dn_itype(:)
+     PetscReal , pointer :: conn_satparam_dn_param_1(:)
+     PetscReal , pointer :: conn_satparam_dn_param_2(:)
+     PetscReal , pointer :: conn_satparam_dn_param_3(:)
+     PetscInt  , pointer :: conn_relperm_dn_itype(:)
+     PetscReal , pointer :: conn_relperm_dn_param_1(:)
+     PetscReal , pointer :: conn_relperm_dn_param_2(:)
+     PetscReal , pointer :: conn_relperm_dn_param_3(:)
+
+   contains
+     
+     procedure, public :: Init => ConnInit
+     procedure, public :: Copy => ConnCopy
+     
+  end type spac_component_conn_type
+
 
 contains
 
@@ -48,6 +89,8 @@ contains
     !
     class (spac_component_mesh_type) :: this
     PetscInt                         :: ncells
+
+    this%ncells = ncells
 
     allocate (this%xc     (ncells)); this%xc     (:) = 0.d0
     allocate (this%yc     (ncells)); this%yc     (:) = 0.d0
@@ -62,62 +105,26 @@ contains
   end subroutine MeshInit
 
   !------------------------------------------------------------------------
-  subroutine MeshCopyTo(this, idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
+  subroutine MeshCopy(this, idx_beg, idx_end, mesh)
     !
     implicit none
     !
     class (spac_component_mesh_type) :: this
+    class (spac_component_mesh_type) :: mesh
     PetscInt                         :: idx_beg
     PetscInt                         :: idx_end
-    PetscReal , pointer              :: xc(:)
-    PetscReal , pointer              :: yc(:)
-    PetscReal , pointer              :: zc(:)
-    PetscReal , pointer              :: dx(:)
-    PetscReal , pointer              :: dy(:)
-    PetscReal , pointer              :: dz(:)
-    PetscReal , pointer              :: area(:)
-    PetscReal , pointer              :: vol(:)
-    PetscInt  , pointer              :: filter(:)
 
-    xc     (idx_beg:idx_end) = this%xc     (:)
-    yc     (idx_beg:idx_end) = this%yc     (:)
-    zc     (idx_beg:idx_end) = this%zc     (:)
-    dx     (idx_beg:idx_end) = this%dx     (:)
-    dy     (idx_beg:idx_end) = this%dy     (:)
-    dz     (idx_beg:idx_end) = this%dz     (:)
-    area   (idx_beg:idx_end) = this%area   (:)
-    vol    (idx_beg:idx_end) = this%vol    (:)
-    filter (idx_beg:idx_end) = this%filter (:)
+    this%xc     (idx_beg:idx_end) = mesh%xc     (:)
+    this%yc     (idx_beg:idx_end) = mesh%yc     (:)
+    this%zc     (idx_beg:idx_end) = mesh%zc     (:)
+    this%dx     (idx_beg:idx_end) = mesh%dx     (:)
+    this%dy     (idx_beg:idx_end) = mesh%dy     (:)
+    this%dz     (idx_beg:idx_end) = mesh%dz     (:)
+    this%area   (idx_beg:idx_end) = mesh%area   (:)
+    this%vol    (idx_beg:idx_end) = mesh%vol    (:)
+    this%filter (idx_beg:idx_end) = mesh%filter (:)
 
-  end subroutine MeshCopyTo
-
-  !------------------------------------------------------------------------
-  subroutine MeshCopyFrom(this, xc, yc, zc, dx, dy, dz, area, vol, filter)
-    !
-    implicit none
-    !
-    class (spac_component_mesh_type) :: this
-    PetscReal , pointer              :: xc(:)
-    PetscReal , pointer              :: yc(:)
-    PetscReal , pointer              :: zc(:)
-    PetscReal , pointer              :: dx(:)
-    PetscReal , pointer              :: dy(:)
-    PetscReal , pointer              :: dz(:)
-    PetscReal , pointer              :: area(:)
-    PetscReal , pointer              :: vol(:)
-    PetscInt  , pointer              :: filter(:)
-
-    this%xc     (:) = xc     (:)
-    this%yc     (:) = yc     (:)
-    this%zc     (:) = zc     (:)
-    this%dx     (:) = dx     (:)
-    this%dy     (:) = dy     (:)
-    this%dz     (:) = dz     (:)
-    this%area   (:) = area   (:)
-    this%vol    (:) = vol    (:)
-    this%filter (:) = filter (:)
-
-  end subroutine MeshCopyFrom
+  end subroutine MeshCopy
 
   !------------------------------------------------------------------------
   subroutine MeshAddToMPP(this, vsfm_mpp, imesh, mesh_name, ncells, ncells_ghost, nz)
@@ -171,6 +178,8 @@ contains
     class (spac_component_pp_type) :: this
     PetscInt                       :: ncells
 
+    this%ncells = ncells
+
     allocate(this%por              (ncells)); this%por             (:) = 0.d0
     allocate(this%perm             (ncells)); this%perm            (:) = 0.d0
     allocate(this%alpha            (ncells)); this%alpha           (:) = 0.d0
@@ -185,36 +194,110 @@ contains
   end subroutine PPInit
 
   !------------------------------------------------------------------------
-  subroutine PPCopyTo(this, idx_beg, idx_end, por, perm, alpha, lambda, &
-       relperm_type, relperm_param_1, relperm_param_2, residual_sat, &
-       satfunc_type)
+  subroutine PPCopy(this, idx_beg, idx_end, pp)
     !
     implicit none
     !
     class (spac_component_pp_type) :: this
     PetscInt                       :: idx_beg
     PetscInt                       :: idx_end
-    PetscReal , pointer            :: por(:)
-    PetscReal , pointer            :: perm(:)
-    PetscReal , pointer            :: alpha(:)
-    PetscReal , pointer            :: lambda(:)
-    PetscInt  , pointer            :: relperm_type(:)
-    PetscReal , pointer            :: relperm_param_1(:)
-    PetscReal , pointer            :: relperm_param_2(:)
-    PetscReal , pointer            :: residual_sat(:)
-    PetscInt  , pointer            :: satfunc_type(:)
+    class (spac_component_pp_type) :: pp
 
-    por             (idx_beg:idx_end) = this%por             (:)
-    perm            (idx_beg:idx_end) = this%perm            (:)
-    alpha           (idx_beg:idx_end) = this%alpha           (:)
-    lambda          (idx_beg:idx_end) = this%lambda          (:)
-    relperm_type    (idx_beg:idx_end) = this%relperm_type    (:)
-    relperm_param_1 (idx_beg:idx_end) = this%relperm_param_1 (:)
-    relperm_param_2 (idx_beg:idx_end) = this%relperm_param_2 (:)
-    residual_sat    (idx_beg:idx_end) = this%residual_sat    (:)
-    satfunc_type    (idx_beg:idx_end) = this%satfunc_type    (:)
+    this%por             (idx_beg:idx_end) = pp%por             (:)
+    this%perm            (idx_beg:idx_end) = pp%perm            (:)
+    this%alpha           (idx_beg:idx_end) = pp%alpha           (:)
+    this%lambda          (idx_beg:idx_end) = pp%lambda          (:)
+    this%relperm_type    (idx_beg:idx_end) = pp%relperm_type    (:)
+    this%relperm_param_1 (idx_beg:idx_end) = pp%relperm_param_1 (:)
+    this%relperm_param_2 (idx_beg:idx_end) = pp%relperm_param_2 (:)
+    this%residual_sat    (idx_beg:idx_end) = pp%residual_sat    (:)
+    this%satfunc_type    (idx_beg:idx_end) = pp%satfunc_type    (:)
 
-  end subroutine PPCopyTo
+  end subroutine PPCopy
+
+  !------------------------------------------------------------------------
+  subroutine ConnInit(this, nconn)
+    !
+    implicit none
+    !
+    class (spac_component_conn_type) :: this
+    PetscInt                         :: nconn
+
+    this%nconn = nconn
+
+    allocate (this%conn_id_up               (nconn)); this%conn_id_up               (:) = 0
+    allocate (this%conn_id_dn               (nconn)); this%conn_id_dn               (:) = 0
+    allocate (this%conn_dist_up             (nconn)); this%conn_dist_up             (:) = 0.d0
+    allocate (this%conn_dist_dn             (nconn)); this%conn_dist_dn             (:) = 0.d0
+    allocate (this%conn_area                (nconn)); this%conn_area                (:) = 0.d0
+    allocate (this%conn_type                (nconn)); this%conn_type                (:) = 0
+
+    allocate (this%conn_flux_type           (nconn)); this%conn_flux_type           (:) = 0
+    allocate (this%conn_cond_type           (nconn)); this%conn_cond_type           (:) = 0
+    allocate (this%conn_cond                (nconn)); this%conn_cond                (:) = 0.d0
+    allocate (this%conn_cond_up             (nconn)); this%conn_cond_up             (:) = 0.d0
+    allocate (this%conn_cond_dn             (nconn)); this%conn_cond_dn             (:) = 0.d0
+
+    allocate (this%conn_satparam_up_itype   (nconn)); this%conn_satparam_up_itype   (:) = 0
+    allocate (this%conn_satparam_up_param_1 (nconn)); this%conn_satparam_up_param_1 (:) = 0.d0
+    allocate (this%conn_satparam_up_param_2 (nconn)); this%conn_satparam_up_param_2 (:) = 0.d0
+    allocate (this%conn_satparam_up_param_3 (nconn)); this%conn_satparam_up_param_3 (:) = 0.d0
+    allocate (this%conn_relperm_up_itype    (nconn)); this%conn_relperm_up_itype    (:) = 0
+    allocate (this%conn_relperm_up_param_1  (nconn)); this%conn_relperm_up_param_1  (:) = 0.d0
+    allocate (this%conn_relperm_up_param_2  (nconn)); this%conn_relperm_up_param_2  (:) = 0.d0
+
+    allocate (this%conn_satparam_dn_itype   (nconn)); this%conn_satparam_dn_itype   (:) = 0
+    allocate (this%conn_satparam_dn_param_1 (nconn)); this%conn_satparam_dn_param_1 (:) = 0.d0
+    allocate (this%conn_satparam_dn_param_2 (nconn)); this%conn_satparam_dn_param_2 (:) = 0.d0
+    allocate (this%conn_satparam_dn_param_3 (nconn)); this%conn_satparam_dn_param_3 (:) = 0.d0
+    allocate (this%conn_relperm_dn_itype    (nconn)); this%conn_relperm_dn_itype    (:) = 0
+    allocate (this%conn_relperm_dn_param_1  (nconn)); this%conn_relperm_dn_param_1  (:) = 0.d0
+    allocate (this%conn_relperm_dn_param_2  (nconn)); this%conn_relperm_dn_param_2  (:) = 0.d0
+    allocate (this%conn_relperm_dn_param_3  (nconn)); this%conn_relperm_dn_param_3  (:) = 0.d0
+
+  end subroutine ConnInit
+
+  !------------------------------------------------------------------------
+  subroutine ConnCopy(this, idx_beg, idx_end, conn)
+    !
+    implicit none
+    !
+    class (spac_component_conn_type) :: this
+    class (spac_component_conn_type) :: conn
+    PetscInt                         :: idx_beg
+    PetscInt                         :: idx_end
+
+    this%conn_id_up               (idx_beg:idx_end) = conn%conn_id_up               (:)
+    this%conn_id_dn               (idx_beg:idx_end) = conn%conn_id_dn               (:)
+    this%conn_dist_up             (idx_beg:idx_end) = conn%conn_dist_up             (:)
+    this%conn_dist_dn             (idx_beg:idx_end) = conn%conn_dist_dn             (:)
+    this%conn_area                (idx_beg:idx_end) = conn%conn_area                (:)
+    this%conn_type                (idx_beg:idx_end) = conn%conn_type                (:)
+
+    this%conn_flux_type           (idx_beg:idx_end) = conn%conn_flux_type           (:)
+    this%conn_cond_type           (idx_beg:idx_end) = conn%conn_cond_type           (:)
+    this%conn_cond                (idx_beg:idx_end) = conn%conn_cond                (:)
+    this%conn_cond_up             (idx_beg:idx_end) = conn%conn_cond_up             (:)
+    this%conn_cond_dn             (idx_beg:idx_end) = conn%conn_cond_dn             (:)
+
+    this%conn_satparam_up_itype   (idx_beg:idx_end) = conn%conn_satparam_up_itype   (:)
+    this%conn_satparam_up_param_1 (idx_beg:idx_end) = conn%conn_satparam_up_param_1 (:)
+    this%conn_satparam_up_param_2 (idx_beg:idx_end) = conn%conn_satparam_up_param_2 (:)
+    this%conn_satparam_up_param_3 (idx_beg:idx_end) = conn%conn_satparam_up_param_3 (:)
+    this%conn_relperm_up_itype    (idx_beg:idx_end) = conn%conn_relperm_up_itype    (:)
+    this%conn_relperm_up_param_1  (idx_beg:idx_end) = conn%conn_relperm_up_param_1  (:)
+    this%conn_relperm_up_param_2  (idx_beg:idx_end) = conn%conn_relperm_up_param_2  (:)
+
+    this%conn_satparam_dn_itype   (idx_beg:idx_end) = conn%conn_satparam_dn_itype   (:)
+    this%conn_satparam_dn_param_1 (idx_beg:idx_end) = conn%conn_satparam_dn_param_1 (:)
+    this%conn_satparam_dn_param_2 (idx_beg:idx_end) = conn%conn_satparam_dn_param_2 (:)
+    this%conn_satparam_dn_param_3 (idx_beg:idx_end) = conn%conn_satparam_dn_param_3 (:)
+    this%conn_relperm_dn_itype    (idx_beg:idx_end) = conn%conn_relperm_dn_itype    (:)
+    this%conn_relperm_dn_param_1  (idx_beg:idx_end) = conn%conn_relperm_dn_param_1  (:)
+    this%conn_relperm_dn_param_2  (idx_beg:idx_end) = conn%conn_relperm_dn_param_2  (:)
+    this%conn_relperm_dn_param_3  (idx_beg:idx_end) = conn%conn_relperm_dn_param_3  (:)
+
+  end subroutine ConnCopy
 
 end module spac_component
 
@@ -263,6 +346,7 @@ module soil_parameters
 
   type (spac_component_mesh_type) :: soil_mesh
   type (spac_component_pp_type)   :: soil_pp
+  type (spac_component_conn_type) :: s2s_conn
 
   PetscInt  , pointer   :: soil_id(:,:,:)                                ! [-] Id > 0 indicates active grid cell, otherwise inactive
   PetscReal , pointer   :: soil_xc3d(:,:,:)                              ! [m]
@@ -320,26 +404,31 @@ module overstory_parameters
        36.52d0, 21.94d0, 22.83d0  &
        /)
 
-  PetscInt :: overstory_xylem_nz                                        !
-  PetscInt :: overstory_leaf_nz                                         !
-  PetscInt :: overstory_root_nz                                         !
-  PetscInt :: overstory_nconn
+  PetscInt                        :: overstory_xylem_nz                 !
+  PetscInt                        :: overstory_leaf_nz                  !
+  PetscInt                        :: overstory_root_nz                  !
+  PetscInt                        :: overstory_nconn
 
-  PetscReal , pointer :: overstory_xylem_area_profile(:)                !
-  PetscReal , pointer :: overstory_branch_length_profile(:)             !
-  PetscBool , pointer :: overstory_xylem_has_branches(:)                !
-  PetscReal , pointer :: overstory_root_length_profile(:)
-  PetscReal , pointer :: overstory_root_area_profile(:)
-  PetscReal , pointer :: overstory_root_vol_profile(:)
-  PetscInt  , pointer :: overstory_branch_2_xylem_index(:)
+  PetscReal , pointer             :: overstory_xylem_area_profile(:)    !
+  PetscReal , pointer             :: overstory_branch_length_profile(:) !
+  PetscBool , pointer             :: overstory_xylem_has_branches(:)    !
+  PetscReal , pointer             :: overstory_root_length_profile(:)
+  PetscReal , pointer             :: overstory_root_area_profile(:)
+  PetscReal , pointer             :: overstory_root_vol_profile(:)
+  PetscInt  , pointer             :: overstory_branch_2_xylem_index(:)
 
-  type (spac_component_mesh_type) :: overstory_root_mesh
-  type (spac_component_mesh_type) :: overstory_xylem_mesh
-  type (spac_component_mesh_type) :: overstory_leaf_mesh
+  type (spac_component_mesh_type) :: o_root_mesh
+  type (spac_component_mesh_type) :: o_xylem_mesh
+  type (spac_component_mesh_type) :: o_leaf_mesh
 
-  type (spac_component_pp_type) :: overstory_root_pp
-  type (spac_component_pp_type) :: overstory_xylem_pp
-  type (spac_component_pp_type) :: overstory_leaf_pp
+  type (spac_component_pp_type)   :: o_root_pp
+  type (spac_component_pp_type)   :: o_xylem_pp
+  type (spac_component_pp_type)   :: o_leaf_pp
+
+  type (spac_component_conn_type) :: o_r2s_conn
+  type (spac_component_conn_type) :: o_x2r_conn
+  type (spac_component_conn_type) :: o_x2x_conn
+  type (spac_component_conn_type) :: o_x2l_conn
 
 end module overstory_parameters
 
@@ -379,32 +468,38 @@ module understory_parameters
        0.76d0, 0.16d0  &
        /)
 
-  PetscInt :: understory_xylem_nz                                       !
-  PetscInt :: understory_leaf_nz                                        !
-  PetscInt :: understory_root_nz                                        !
-  PetscInt :: understory_nconn
+  PetscInt                        :: understory_xylem_nz                 !
+  PetscInt                        :: understory_leaf_nz                  !
+  PetscInt                        :: understory_root_nz                  !
+  PetscInt                        :: understory_nconn
   
-  PetscReal , pointer :: understory_xylem_area_profile(:)               !
-  PetscReal , pointer :: understory_branch_length_profile(:)            !
-  PetscBool , pointer :: understory_xylem_has_branches(:)               !
-  PetscReal , pointer :: understory_root_length_profile(:)              !
-  PetscReal , pointer :: understory_root_area_profile(:)                !
-  PetscReal , pointer :: understory_root_vol_profile(:)                 !
-  PetscInt  , pointer :: understory_branch_2_xylem_index(:)
+  PetscReal , pointer             :: understory_xylem_area_profile(:)    !
+  PetscReal , pointer             :: understory_branch_length_profile(:) !
+  PetscBool , pointer             :: understory_xylem_has_branches(:)    !
+  PetscReal , pointer             :: understory_root_length_profile(:)   !
+  PetscReal , pointer             :: understory_root_area_profile(:)     !
+  PetscReal , pointer             :: understory_root_vol_profile(:)      !
+  PetscInt  , pointer             :: understory_branch_2_xylem_index(:)
 
-  type (spac_component_mesh_type) :: understory_root_mesh
-  type (spac_component_mesh_type) :: understory_xylem_mesh
-  type (spac_component_mesh_type) :: understory_leaf_mesh
+  type (spac_component_mesh_type) :: u_root_mesh
+  type (spac_component_mesh_type) :: u_xylem_mesh
+  type (spac_component_mesh_type) :: u_leaf_mesh
 
-  type (spac_component_pp_type) :: understory_root_pp
-  type (spac_component_pp_type) :: understory_xylem_pp
-  type (spac_component_pp_type) :: understory_leaf_pp
+  type (spac_component_pp_type)   :: u_root_pp
+  type (spac_component_pp_type)   :: u_xylem_pp
+  type (spac_component_pp_type)   :: u_leaf_pp
+
+  type (spac_component_conn_type) :: u_r2s_conn
+  type (spac_component_conn_type) :: u_x2r_conn
+  type (spac_component_conn_type) :: u_x2x_conn
+  type (spac_component_conn_type) :: u_x2l_conn
 
 end module understory_parameters
 
 !------------------------------------------------------------------------
 module problem_parameters
 
+  use spac_component
   use soil_parameters
   use overstory_parameters
   use understory_parameters
@@ -420,39 +515,9 @@ module problem_parameters
 
   PetscBool             :: multi_goveqns_formulation
 
-  PetscReal , pointer   :: vsfm_por(:)
-  PetscReal , pointer   :: vsfm_perm(:)
-  PetscReal , pointer   :: vsfm_lambda(:)
-  PetscReal , pointer   :: vsfm_alpha(:)
-  PetscReal , pointer   :: vsfm_eff_porosity(:)
-  PetscReal , pointer   :: vsfm_residual_sat(:)
-  PetscInt  , pointer   :: vsfm_satfunc_type(:)
-  PetscInt  , pointer   :: vsfm_relperm_type(:)
-  PetscReal , pointer   :: vsfm_relperm_param_1(:)
-  PetscReal , pointer   :: vsfm_relperm_param_2(:)
-
-  PetscInt  , pointer   :: conn_flux_type(:)    !
-  PetscInt  , pointer   :: conn_cond_type(:)    !
-  PetscReal , pointer   :: conn_cond     (:)    !
-  PetscReal , pointer   :: conn_cond_up  (:)    !
-  PetscReal , pointer   :: conn_cond_dn  (:)    !
-  
-  PetscInt  , pointer   :: conn_satparam_up_itype(:)
-  PetscReal , pointer   :: conn_satparam_up_param_1(:)
-  PetscReal , pointer   :: conn_satparam_up_param_2(:)
-  PetscReal , pointer   :: conn_satparam_up_param_3(:)
-  PetscInt  , pointer   :: conn_relperm_up_itype(:)
-  PetscReal , pointer   :: conn_relperm_up_param_1(:)
-  PetscReal , pointer   :: conn_relperm_up_param_2(:)
-
-  PetscInt  , pointer   :: conn_satparam_dn_itype(:)
-  PetscReal , pointer   :: conn_satparam_dn_param_1(:)
-  PetscReal , pointer   :: conn_satparam_dn_param_2(:)
-  PetscReal , pointer   :: conn_satparam_dn_param_3(:)
-  PetscInt  , pointer   :: conn_relperm_dn_itype(:)
-  PetscReal , pointer   :: conn_relperm_dn_param_1(:)
-  PetscReal , pointer   :: conn_relperm_dn_param_2(:)
-  PetscReal , pointer   :: conn_relperm_dn_param_3(:)
+  type(spac_component_mesh_type) :: combined_mesh
+  type(spac_component_pp_type)   :: combined_pp
+  type(spac_component_conn_type) :: combined_conn
 
 end module problem_parameters
 
@@ -660,38 +725,7 @@ end subroutine add_mesh
 subroutine add_single_mesh()
   !
   use MultiPhysicsProbVSFM      , only : vsfm_mpp
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnRealValue 
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnIntValue
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
-  use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
-  use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
-  use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
-  use MultiPhysicsProbConstants , only : VAR_XC
-  use MultiPhysicsProbConstants , only : VAR_YC
-  use MultiPhysicsProbConstants , only : VAR_ZC
-  use MultiPhysicsProbConstants , only : VAR_DX
-  use MultiPhysicsProbConstants , only : VAR_DY
-  use MultiPhysicsProbConstants , only : VAR_DZ
-  use MultiPhysicsProbConstants , only : VAR_AREA
-  use MultiPhysicsProbConstants , only : VAR_VOLUME
   use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
-  use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
-  use MultiPhysicsProbConstants , only : CONN_VERTICAL
-  use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
-  use MultiPhysicsProbConstants , only : CONDUCTANCE_FLUX_TYPE
-  use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
-  use MultiPhysicsProbConstants , only : VAR_FLUX_TYPE
-  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE
-  use MultiPhysicsProbConstants , only : AUXVAR_CONN_INTERNAL
-  use MultiPhysicsProbConstants , only : CONDUCTANCE_CAMPBELL_TYPE    
-  use MultiPhysicsProbConstants , only : CONDUCTANCE_MANOLI_TYPE    
-  use SaturationFunction        , only : SAT_FUNC_VAN_GENUCHTEN
-  use SaturationFunction        , only : SAT_FUNC_CHUANG
-  use SaturationFunction        , only : RELPERM_FUNC_WEIBULL
-  use SaturationFunction        , only : RELPERM_FUNC_MUALEM
-  use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
-  use mpp_varcon                , only : denh2o
-  use mpp_varcon                , only : grav
   use problem_parameters
   !
   implicit none
@@ -699,497 +733,128 @@ subroutine add_single_mesh()
 #include <petsc/finclude/petsc.h>
   !
   PetscInt            :: imesh
-  PetscInt            :: ii
-  PetscInt            :: jj
-  PetscInt            :: kk
-  PetscInt            :: idx
-  PetscInt            :: count
-  PetscInt            :: nlev
-  PetscInt            :: iconn
   PetscInt            :: soil_ncells_ghost
-
-  PetscInt  , pointer :: conn_id_up(:)   !
-  PetscInt  , pointer :: conn_id_dn(:)   !
-  PetscReal , pointer :: conn_dist_up(:) !
-  PetscReal , pointer :: conn_dist_dn(:) !
-  PetscReal , pointer :: conn_area(:)    !
-  PetscInt  , pointer :: conn_type(:)    !
-
-  PetscReal , pointer :: xc(:)                ! x-position of grid cell [m]
-  PetscReal , pointer :: yc(:)                ! y-position of grid cell [m]
-  PetscReal , pointer :: zc(:)                ! y-position of grid cell [m]
-  PetscReal , pointer :: dx(:)                ! [m]
-  PetscReal , pointer :: dy(:)                ! [m]
-  PetscReal , pointer :: dz(:)                ! [m]
-  PetscReal , pointer :: area(:)              ! area of grid cell [m^2]
-  PetscReal , pointer :: vol(:)               ! volume of grid cell [m^3]
-  PetscInt  , pointer :: filter(:)            ! 
-
-  PetscInt :: nconn
-  PetscInt :: idx_beg, idx_end
-  
+  PetscInt            :: nconn
+  PetscInt            :: idx_beg, idx_end  
   PetscErrorCode      :: ierr
-  type(spac_component_mesh_type) :: combined_mesh
-
-  ncells = soil_ncells + &
-       soil_nx * soil_ny *( overstory_root_nz  + overstory_xylem_nz  + overstory_leaf_nz) + &
-       soil_nx * soil_ny *( understory_root_nz + understory_xylem_nz + understory_leaf_nz)
-
-  allocate(xc     (ncells))
-  allocate(yc     (ncells))
-  allocate(zc     (ncells))
-  allocate(dx     (ncells))
-  allocate(dy     (ncells))
-  allocate(dz     (ncells))
-  allocate(area   (ncells))
-  allocate(vol    (ncells))
-  allocate(filter (ncells))
-
-  allocate(vsfm_por             (ncells)); vsfm_por             (:) = 0.d0
-  allocate(vsfm_perm            (ncells)); vsfm_perm            (:) = 0.d0
-  allocate(vsfm_lambda          (ncells)); vsfm_lambda          (:) = 0.d0
-  allocate(vsfm_alpha           (ncells)); vsfm_alpha           (:) = 0.d0
-  allocate(vsfm_eff_porosity    (ncells)); vsfm_eff_porosity    (:) = 0.d0
-  allocate(vsfm_residual_sat    (ncells)); vsfm_residual_sat    (:) = 0.d0
-  allocate(vsfm_satfunc_type    (ncells)); vsfm_satfunc_type    (:) = 0
-  allocate(vsfm_relperm_type    (ncells)); vsfm_relperm_type    (:) = 0
-  allocate(vsfm_relperm_param_1 (ncells)); vsfm_relperm_param_1 (:) = 0.d0
-  allocate(vsfm_relperm_param_2 (ncells)); vsfm_relperm_param_2 (:) = 0.d0
-
-  ! Soil properties
 
   !
+  ! Meshes
+  !
+  ncells = soil_mesh%ncells             + &
+           o_root_mesh%ncells   + &
+           o_xylem_mesh%ncells  + &
+           o_leaf_mesh%ncells   + &
+           u_root_mesh%ncells  + &
+           u_xylem_mesh%ncells + &
+           u_leaf_mesh%ncells 
+
+  call combined_mesh%Init(ncells)
+  call combined_pp%Init(  ncells)
+
   ! Add soil grid cells
-  !
-  idx_beg = 1
-  idx_end = soil_ncells
-  call soil_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
+  idx_beg = 1;  idx_end = idx_beg + soil_mesh%ncells - 1
+  call combined_mesh%Copy(idx_beg, idx_end, soil_mesh)
+  call combined_pp%Copy(  idx_beg, idx_end, soil_pp  )
 
-  call soil_pp%CopyTo(idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
-       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
-       vsfm_residual_sat, vsfm_satfunc_type)
+  ! Overstory: Add root grid cells
+  idx_beg = idx_end + 1; idx_end = idx_beg + o_root_mesh%ncells - 1
+  call combined_mesh%Copy(idx_beg, idx_end, o_root_mesh)
+  call combined_pp%Copy(  idx_beg, idx_end, o_root_pp  )
 
-  ncells = soil_ncells
+  ! Overstory: Add xylem grid cells
+  idx_beg = idx_end + 1; idx_end = idx_beg + o_xylem_mesh%ncells - 1
+  call combined_mesh%Copy(idx_beg, idx_end, o_xylem_mesh)
+  call combined_pp%Copy(  idx_beg, idx_end, o_xylem_pp  )
 
-  !
-  ! Overstory
-  !
+  ! Overstory: Add leaf grid cells
+  idx_beg = idx_end + 1; idx_end = idx_beg + o_leaf_mesh%ncells - 1
+  call combined_mesh%Copy(idx_beg, idx_end, o_leaf_mesh)
+  call combined_pp%Copy(  idx_beg, idx_end, o_leaf_pp  )
 
-  ! Add root grid cells
+  ! Understory: Add root grid cells
+  idx_beg = idx_end + 1; idx_end = idx_beg + u_root_mesh%ncells - 1
+  call combined_mesh%Copy(idx_beg, idx_end, u_root_mesh)
+  call combined_pp%Copy(  idx_beg, idx_end, u_root_pp  )
 
-  idx_beg = ncells + 1
-  idx_end = ncells + soil_nx*soil_ny*overstory_root_nz
-  ncells  = idx_end
+  ! Understory: Add xylem grid cells
+  idx_beg = idx_end + 1; idx_end = idx_beg + u_xylem_mesh%ncells - 1
+  call combined_mesh%Copy(idx_beg, idx_end, u_xylem_mesh)
+  call combined_pp%Copy(  idx_beg, idx_end, u_xylem_pp  )
 
-  call overstory_root_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
-
-  call overstory_root_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
-       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
-       vsfm_residual_sat, vsfm_satfunc_type)
-
-  ! Add xylem grid cells
-  idx_beg = ncells + 1
-  idx_end = ncells + soil_nx*soil_ny*overstory_xylem_nz
-  ncells  = idx_end
-
-  call overstory_xylem_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
-
-  call overstory_xylem_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
-       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
-       vsfm_residual_sat, vsfm_satfunc_type)
-
-  ! Add leaf grid cells
-  idx_beg = ncells + 1
-  idx_end = ncells + soil_nx*soil_ny*overstory_leaf_nz
-  ncells  = idx_end
-
-  call overstory_leaf_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
-
-  call overstory_leaf_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
-       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
-       vsfm_residual_sat, vsfm_satfunc_type)
-
-  !
-  ! Understory
-  !
-
-  ! Add root grid cells
-
-  idx_beg = ncells + 1
-  idx_end = ncells + soil_nx*soil_ny*understory_root_nz
-  ncells  = idx_end
-
-  call understory_root_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
-
-  call understory_root_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
-       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
-       vsfm_residual_sat, vsfm_satfunc_type)
-
-
-  ! Add xylem grid cells
-  idx_beg = ncells + 1
-  idx_end = ncells + soil_nx*soil_ny*understory_xylem_nz
-  ncells  = idx_end
-
-  call understory_xylem_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
-
-  call understory_xylem_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
-       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
-       vsfm_residual_sat, vsfm_satfunc_type)
-
-  ! Add leaf grid cells
-  idx_beg = ncells + 1
-  idx_end = ncells + soil_nx*soil_ny*understory_leaf_nz
-  ncells  = idx_end
-
-  call understory_leaf_mesh%CopyTo(idx_beg, idx_end, xc, yc, zc, dx, dy, dz, area, vol, filter)
-
-  call understory_leaf_pp%CopyTo  (idx_beg, idx_end, vsfm_por, vsfm_perm, vsfm_alpha, &
-       vsfm_lambda, vsfm_relperm_type, vsfm_relperm_param_1, vsfm_relperm_param_2, &
-       vsfm_residual_sat, vsfm_satfunc_type)
+  ! Understory: Add leaf grid cells
+  idx_beg = idx_end + 1; idx_end = idx_beg + u_leaf_mesh%ncells - 1
+  call combined_mesh%Copy(idx_beg, idx_end, u_leaf_mesh)
+  call combined_pp%Copy(  idx_beg, idx_end, u_leaf_pp  )
 
   !
   ! Set up the meshes
   !    
-
-  call combined_mesh%Init(ncells)
-  call combined_mesh%CopyFrom(xc, yc, zc, dx, dy, dz, area, vol, filter)
-
   call vsfm_mpp%SetNumMeshes(1)
 
-  ! Soil Mesh
   imesh             = 1
   soil_ncells_ghost = 0
 
-  call combined_mesh%AddToMPP(vsfm_mpp, imesh, 'Combined mesh for Soil-Understory-Overstory', &
+  call combined_mesh%AddToMPP(vsfm_mpp, imesh, 'Combined mesh for Soil-Overstory-Understory', &
        ncells, soil_ncells_ghost, soil_nz)
 
   !
   ! Add connections
   !
+  nconn = s2s_conn%nconn   + &
+          o_r2s_conn%nconn + &
+          o_x2r_conn%nconn + &
+          o_x2x_conn%nconn + &
+          o_x2l_conn%nconn + &
+          u_r2s_conn%nconn + &
+          u_x2r_conn%nconn + &
+          u_x2x_conn%nconn + &
+          u_x2l_conn%nconn
 
-  overstory_nconn   = (2*overstory_root_nz    +   & ! root-to-root and root-to-soil
-                       overstory_xylem_nz - 1 +   & ! xylem-to-xylem
-                       overstory_leaf_nz      ) * & ! xylem-to-leaf
-                       soil_nx * soil_ny
-  
-  understory_nconn  = (2*understory_root_nz    +   & ! root-to-root and root-to-soil
-                       understory_xylem_nz - 1 +   & ! xylem-to-xylem
-                       understory_leaf_nz      ) * & ! xylem-to-leaf
-                       soil_nx * soil_ny
+  call combined_conn%Init(nconn)
 
-  nconn = soil_mesh_nconn + overstory_nconn + understory_nconn
-  
-  allocate (conn_id_up               (nconn))
-  allocate (conn_id_dn               (nconn))
-  allocate (conn_dist_up             (nconn))
-  allocate (conn_dist_dn             (nconn))
-  allocate (conn_area                (nconn))
-  allocate (conn_type                (nconn))
-  allocate (conn_flux_type           (nconn)); conn_flux_type(:) = 0
-  allocate (conn_cond_type           (nconn)); conn_cond_type(:) = 0
-  allocate (conn_cond                (nconn)); conn_cond     (:) = 0.d0
-  allocate (conn_cond_up             (nconn)); conn_cond_up  (:) = 0.d0
-  allocate (conn_cond_dn             (nconn)); conn_cond_dn  (:) = 0.d0
+  ! Add soil-2-soil connections
+  idx_beg = 1; idx_end = idx_beg + s2s_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, s2s_conn)
 
-  allocate (conn_satparam_up_itype   (nconn)); conn_satparam_up_itype   (:) = 0
-  allocate (conn_satparam_up_param_1 (nconn)); conn_satparam_up_param_1 (:) = 0.d0
-  allocate (conn_satparam_up_param_2 (nconn)); conn_satparam_up_param_2 (:) = 0.d0
-  allocate (conn_satparam_up_param_3 (nconn)); conn_satparam_up_param_3 (:) = 0.d0
-  allocate (conn_relperm_up_itype    (nconn)); conn_relperm_up_itype    (:) = 0
-  allocate (conn_relperm_up_param_1  (nconn)); conn_relperm_up_param_1  (:) = 0.d0
-  allocate (conn_relperm_up_param_2  (nconn)); conn_relperm_up_param_2  (:) = 0.d0
+  ! Add overstory root-2-soil connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + o_r2s_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, o_r2s_conn)
 
-  allocate (conn_satparam_dn_itype   (nconn)); conn_satparam_dn_itype   (:) = 0
-  allocate (conn_satparam_dn_param_1 (nconn)); conn_satparam_dn_param_1 (:) = 0.d0
-  allocate (conn_satparam_dn_param_2 (nconn)); conn_satparam_dn_param_2 (:) = 0.d0
-  allocate (conn_satparam_dn_param_3 (nconn)); conn_satparam_dn_param_3 (:) = 0.d0
-  allocate (conn_relperm_dn_itype    (nconn)); conn_relperm_dn_itype    (:) = 0
-  allocate (conn_relperm_dn_param_1  (nconn)); conn_relperm_dn_param_1  (:) = 0.d0
-  allocate (conn_relperm_dn_param_2  (nconn)); conn_relperm_dn_param_2  (:) = 0.d0
-  allocate (conn_relperm_dn_param_3  (nconn)); conn_relperm_dn_param_3  (:) = 0.d0
-  
-  iconn = 0
+  ! Add overstory xylem-2-root connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + o_x2r_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, o_x2r_conn)
 
-  !  
-  ! Soil-to-Soil Connections: Add vertical connections
-  !
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-        do kk = 1, soil_nz-1
-           if (soil_id(ii,jj,kk) > 0 .and. soil_id(ii,jj,kk+1) > 0) then
-              iconn                 = iconn + 1
-              conn_id_up(iconn)     = soil_id(ii,jj,kk  )
-              conn_id_dn(iconn)     = soil_id(ii,jj,kk+1)
-              conn_dist_up(iconn)   = 0.5d0*soil_dz
-              conn_dist_dn(iconn)   = 0.5d0*soil_dz
-              conn_area(iconn)      = soil_dx*soil_dy
-              conn_type(iconn)      = CONN_VERTICAL
-              conn_flux_type(iconn) = DARCY_FLUX_TYPE
-           end if
-        end do
-     end do
-  end do
-  
-  !  
-  ! Soil-to-Soil Connections: Add horizontal connections in x-direction
-  !
-  if (.not.is_soil_horizontally_disconnected) then
-     do ii = 1, soil_nx-1
-        do jj = 1, soil_ny
-           do kk = 1, soil_nz
-              if (soil_id(ii,jj,kk) > 0 .and. soil_id(ii+1,jj,kk) > 0) then
-                 iconn                 = iconn + 1
-                 conn_id_up(iconn)     = soil_id(ii  ,jj,kk)
-                 conn_id_dn(iconn)     = soil_id(ii+1,jj,kk)
-                 conn_dist_up(iconn)   = 0.5d0*soil_dx
-                 conn_dist_dn(iconn)   = 0.5d0*soil_dx
-                 conn_area(iconn)      = soil_dy*soil_dz
-                 conn_type(iconn)      = CONN_HORIZONTAL
-                 conn_flux_type(iconn) = DARCY_FLUX_TYPE
-              end if
-           end do
-        end do
-     end do
+  ! Add overstory xylem-2-xylem connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + o_x2x_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, o_x2x_conn)
 
-     if (soil_ny > 1) then
-        write(*,*)'Add code to for horizontal connections in y-direciton'
-        stop
-     endif
-  endif
+  ! Add overstory xylem-2-leaf connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + o_x2l_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, o_x2l_conn)
 
-  !  
-  ! Overstory Connections
-  !
+  ! Add understory root-2-soil connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + u_r2s_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, u_r2s_conn)
 
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
+  ! Add understory xylem-2-root connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + u_x2r_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, u_x2r_conn)
 
-        ! Root-to-Soil: Condunctance flux type
-        do kk = 1, overstory_root_nz
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_root_mesh%id(ii,jj,kk)
-           conn_id_dn(iconn)     = soil_id          (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
+  ! Add understory xylem-2-xylem connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + u_x2x_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, u_x2x_conn)
 
-           conn_dist_up(iconn)   = 0.d0
-           conn_dist_dn(iconn)   = overstory_root_length_profile(kk)
-           conn_area(iconn)      = overstory_root_area_profile  (kk)
-           conn_type(iconn)      = CONN_HORIZONTAL
-           conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           conn_cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
-           conn_cond_up(iconn)   = overstory_root_conductance
-           conn_cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
-                                   overstory_root_length_profile(kk)        ! [m]
-
-           ! Saturation up: CHUANG
-           conn_satparam_up_itype   (iconn) = vsfm_satfunc_type    (conn_id_up(iconn) )
-           conn_satparam_up_param_1 (iconn) = vsfm_alpha           (conn_id_up(iconn) )
-           conn_satparam_up_param_2 (iconn) = vsfm_lambda          (conn_id_up(iconn) )
-           conn_satparam_up_param_3 (iconn) = vsfm_residual_sat    (conn_id_up(iconn) )
-           ! Relative Perm. up: WEIBULL
-           conn_relperm_up_itype    (iconn) = vsfm_relperm_type    (conn_id_up(iconn) )
-           conn_relperm_up_param_1  (iconn) = vsfm_relperm_param_1 (conn_id_up(iconn) )
-           conn_relperm_up_param_2  (iconn) = vsfm_relperm_param_2 (conn_id_up(iconn) )
-
-           ! Saturation dn: CHUANG
-           conn_satparam_dn_itype   (iconn) = vsfm_satfunc_type    (conn_id_dn(iconn) )
-           conn_satparam_dn_param_1 (iconn) = vsfm_alpha           (conn_id_dn(iconn) )
-           conn_satparam_dn_param_2 (iconn) = vsfm_lambda          (conn_id_dn(iconn) )
-           conn_satparam_dn_param_3 (iconn) = vsfm_residual_sat    (conn_id_dn(iconn) )
-           ! Relative Perm. dn: MUALEM
-           conn_relperm_dn_itype    (iconn) = vsfm_relperm_type    (conn_id_dn(iconn) )
-           conn_relperm_dn_param_1  (iconn) = vsfm_alpha           (conn_id_dn(iconn) )
-           conn_relperm_dn_param_2  (iconn) = vsfm_lambda          (conn_id_dn(iconn) )
-           conn_relperm_dn_param_3  (iconn) = vsfm_residual_sat    (conn_id_dn(iconn) )
-
-        end do
-
-        ! Xylem-to-Root: Conductance flux type
-        do kk = 1, overstory_root_nz
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_xylem_mesh%id(ii,jj,1)
-           conn_id_dn(iconn)     = overstory_root_mesh%id (ii,jj,kk)
-           conn_dist_up(iconn)   = 0.1d0
-           conn_dist_dn(iconn)   = 0.1d0
-           conn_area(iconn)      = overstory_area_sapwood
-           conn_type(iconn)      = CONN_VERTICAL
-           conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           conn_cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
-           conn_cond(iconn)      = overstory_root_conductance
-           conn_cond_up(iconn)   = overstory_root_conductance
-           conn_cond_dn(iconn)   = overstory_root_conductance
-
-           ! Saturation up: CHUANG
-           conn_satparam_up_itype   (iconn) = vsfm_satfunc_type    (conn_id_up(iconn) )
-           conn_satparam_up_param_1 (iconn) = vsfm_alpha           (conn_id_up(iconn) )
-           conn_satparam_up_param_2 (iconn) = vsfm_lambda          (conn_id_up(iconn) )
-           conn_satparam_up_param_3 (iconn) = vsfm_residual_sat    (conn_id_up(iconn) )
-           ! Relative Perm. up: WEIBULL
-           conn_relperm_up_itype    (iconn) = vsfm_relperm_type    (conn_id_up(iconn) )
-           conn_relperm_up_param_1  (iconn) = vsfm_relperm_param_1 (conn_id_up(iconn) )
-           conn_relperm_up_param_2  (iconn) = vsfm_relperm_param_2 (conn_id_up(iconn) )
-
-           ! Saturation dn: CHUANG
-           conn_satparam_dn_itype   (iconn) = vsfm_satfunc_type    (conn_id_dn(iconn) )
-           conn_satparam_dn_param_1 (iconn) = vsfm_alpha           (conn_id_dn(iconn) )
-           conn_satparam_dn_param_2 (iconn) = vsfm_lambda          (conn_id_dn(iconn) )
-           conn_satparam_dn_param_3 (iconn) = vsfm_residual_sat    (conn_id_dn(iconn) )
-           ! Relative Perm. dn: WEIBULL
-           conn_relperm_dn_itype    (iconn) = vsfm_relperm_type    (conn_id_dn(iconn) )
-           conn_relperm_dn_param_1  (iconn) = vsfm_relperm_param_1 (conn_id_dn(iconn) )
-           conn_relperm_dn_param_2  (iconn) = vsfm_relperm_param_2 (conn_id_dn(iconn) )
-        end do
-
-        ! Xylem-to-Xylem: Darcy flux
-        do kk = 1, overstory_xylem_nz-1
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_xylem_mesh%id(ii,jj,kk  )
-           conn_id_dn(iconn)     = overstory_xylem_mesh%id(ii,jj,kk+1)
-           conn_dist_up(iconn)   = 0.5d0*soil_dz
-           conn_dist_dn(iconn)   = 0.5d0*soil_dz
-           conn_area(iconn)      = overstory_area_sapwood
-           conn_type(iconn)      = CONN_VERTICAL
-           conn_flux_type(iconn) = DARCY_FLUX_TYPE
-        end do
-
-        ! Xylem-to-Leaf
-        do kk = 1, overstory_leaf_nz
-           idx                   = overstory_branch_2_xylem_index(kk)
-           
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = overstory_xylem_mesh%id(ii,jj,idx)
-           conn_id_dn(iconn)     = overstory_leaf_mesh%id (ii,jj,kk )
-           conn_dist_up(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
-           conn_dist_dn(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
-           conn_area(iconn)      = overstory_xylem_area_profile(idx)*overstory_branch_area_ratio
-           conn_type(iconn)      = CONN_HORIZONTAL
-           conn_flux_type(iconn) = DARCY_FLUX_TYPE
-        end do
-
-     end do
-  end do
-
-  !  
-  ! Understory Connections
-  !
-
-  do ii = 1, soil_nx
-     do jj = 1, soil_ny
-
-        ! Root-to-Soil: Condunctance flux type
-        do kk = 1, understory_root_nz
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_root_mesh%id(ii,jj,kk)
-           conn_id_dn(iconn)     = soil_id           (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
-           conn_dist_up(iconn)   = 0.d0
-           conn_dist_dn(iconn)   = understory_root_length_profile(kk)
-           conn_area(iconn)      = understory_root_area_profile  (kk)
-           conn_type(iconn)      = CONN_HORIZONTAL
-           conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           conn_cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
-           conn_cond_up(iconn)   = understory_root_conductance
-           conn_cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
-                understory_root_length_profile(kk)       ! [m]
-
-           ! Saturation up: CHUANG
-           conn_satparam_up_itype   (iconn) = vsfm_satfunc_type    (conn_id_up(iconn) )
-           conn_satparam_up_param_1 (iconn) = vsfm_alpha           (conn_id_up(iconn) )
-           conn_satparam_up_param_2 (iconn) = vsfm_lambda          (conn_id_up(iconn) )
-           conn_satparam_up_param_3 (iconn) = vsfm_residual_sat    (conn_id_up(iconn) )
-           ! Relative Perm. up: MUALEM
-           conn_relperm_up_itype    (iconn) = vsfm_relperm_type    (conn_id_up(iconn) )
-           conn_relperm_up_param_1  (iconn) = vsfm_relperm_param_1 (conn_id_up(iconn) )
-           conn_relperm_up_param_2  (iconn) = vsfm_relperm_param_2 (conn_id_up(iconn) )
-
-           ! Saturation dn: CHUANG
-           conn_satparam_dn_itype   (iconn) = vsfm_satfunc_type    (conn_id_dn(iconn) )
-           conn_satparam_dn_param_1 (iconn) = vsfm_alpha           (conn_id_dn(iconn) )
-           conn_satparam_dn_param_2 (iconn) = vsfm_lambda          (conn_id_dn(iconn) )
-           conn_satparam_dn_param_3 (iconn) = vsfm_residual_sat    (conn_id_dn(iconn) )
-           ! Relative Perm. dn: MUALEM
-           conn_relperm_dn_itype    (iconn) = vsfm_relperm_type    (conn_id_dn(iconn) )
-           conn_relperm_dn_param_1  (iconn) = vsfm_alpha           (conn_id_dn(iconn) )
-           conn_relperm_dn_param_2  (iconn) = vsfm_lambda          (conn_id_dn(iconn) )
-           conn_relperm_dn_param_3  (iconn) = vsfm_residual_sat    (conn_id_dn(iconn) )
-        end do
-
-        ! Xylem-to-Root: Conductance flux type
-        do kk                    = 1, understory_root_nz
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_xylem_mesh%id(ii,jj,1)
-           conn_id_dn(iconn)     = understory_root_mesh%id (ii,jj,kk)
-           conn_dist_up(iconn)   = 0.1d0
-           conn_dist_dn(iconn)   = 0.1d0
-           conn_area(iconn)      = understory_area_sapwood
-           conn_type(iconn)      = CONN_VERTICAL
-           conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           conn_cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
-           conn_cond_up          = understory_root_conductance
-           conn_cond_up(iconn)   = understory_root_conductance
-           conn_cond_dn(iconn)   = understory_root_conductance
-
-           ! Saturation up: CHUANG
-           conn_satparam_up_itype   (iconn) = vsfm_satfunc_type    (conn_id_up(iconn) )
-           conn_satparam_up_param_1 (iconn) = vsfm_alpha           (conn_id_up(iconn) )
-           conn_satparam_up_param_2 (iconn) = vsfm_lambda          (conn_id_up(iconn) )
-           conn_satparam_up_param_3 (iconn) = vsfm_residual_sat    (conn_id_up(iconn) )
-           ! Relative Perm. up: WEIBULL
-           conn_relperm_up_itype    (iconn) = vsfm_relperm_type    (conn_id_up(iconn) )
-           conn_relperm_up_param_1  (iconn) = vsfm_relperm_param_1 (conn_id_up(iconn) )
-           conn_relperm_up_param_2  (iconn) = vsfm_relperm_param_2 (conn_id_up(iconn) )
-
-           ! Saturation dn: CHUANG
-           conn_satparam_dn_itype   (iconn) = vsfm_satfunc_type    (conn_id_dn(iconn) )
-           conn_satparam_dn_param_1 (iconn) = vsfm_alpha           (conn_id_dn(iconn) )
-           conn_satparam_dn_param_2 (iconn) = vsfm_lambda          (conn_id_dn(iconn) )
-           conn_satparam_dn_param_3 (iconn) = vsfm_residual_sat    (conn_id_dn(iconn) )
-           ! Relative Perm. dn: WEIBULL
-           conn_relperm_dn_itype    (iconn) = vsfm_relperm_type    (conn_id_dn(iconn) )
-           conn_relperm_dn_param_1  (iconn) = vsfm_relperm_param_1 (conn_id_dn(iconn) )
-           conn_relperm_dn_param_2  (iconn) = vsfm_relperm_param_2 (conn_id_dn(iconn) )
-        end do
-
-        ! Xylem-to-Xylem: Darcy flux
-        do kk                    = 1, understory_xylem_nz-1
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_xylem_mesh%id(ii,jj,kk  )
-           conn_id_dn(iconn)     = understory_xylem_mesh%id(ii,jj,kk+1)
-           conn_dist_up(iconn)   = 0.5d0*soil_dz
-           conn_dist_dn(iconn)   = 0.5d0*soil_dz
-           conn_area(iconn)      = understory_area_sapwood
-           conn_type(iconn)      = CONN_VERTICAL
-           conn_flux_type(iconn) = DARCY_FLUX_TYPE
-        end do
-
-        ! Xylem-to-Leaf
-        do kk = 1, understory_leaf_nz
-           idx                   = understory_branch_2_xylem_index(kk)
-           
-           iconn                 = iconn + 1
-           conn_id_up(iconn)     = understory_xylem_mesh%id(ii,jj,idx)
-           conn_id_dn(iconn)     = understory_leaf_mesh%id (ii,jj,kk )
-           conn_dist_up(iconn)   = 0.5d0*understory_branch_length_profile(idx)
-           conn_dist_dn(iconn)   = 0.5d0*understory_branch_length_profile(idx)
-           conn_area(iconn)      = understory_xylem_area_profile(idx)*understory_branch_area_ratio
-           conn_type(iconn)      = CONN_HORIZONTAL
-           conn_flux_type(iconn) = DARCY_FLUX_TYPE
-        end do
-
-     end do
-  end do
+  ! Add understory xylem-2-leaf connections
+  idx_beg = idx_end + 1; idx_end = idx_beg + u_x2l_conn%nconn - 1
+  call combined_conn%Copy(idx_beg, idx_end, u_x2l_conn)
 
   imesh = 1
   call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-       iconn,  conn_id_up, conn_id_dn,          &
-       conn_dist_up, conn_dist_dn,  &
-       conn_area,  conn_type)
+       nconn,  combined_conn%conn_id_up, combined_conn%conn_id_dn,          &
+       combined_conn%conn_dist_up, combined_conn%conn_dist_dn,  &
+       combined_conn%conn_area,  combined_conn%conn_type)
 
-  deallocate (conn_id_up   )
-  deallocate (conn_id_dn   )
-  deallocate (conn_dist_up )
-  deallocate (conn_dist_dn )
-  deallocate (conn_area    )
-  deallocate (conn_type    )
 
 end subroutine add_single_mesh
 
@@ -1223,42 +888,42 @@ subroutine add_multiple_meshes()
   imesh     = imesh + 1
   nz        = overstory_root_nz
   num_cells = soil_nx*soil_ny*nz
-  call overstory_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory root mesh', &
+  call o_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory root mesh', &
        num_cells, ncells_ghost, nz)
 
   ! 3. Add mesh for overstory xylem
   imesh     = imesh + 1
   nz        = overstory_xylem_nz
   num_cells = soil_nx*soil_ny*nz
-  call overstory_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory xylem mesh', &
+  call o_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory xylem mesh', &
        num_cells, ncells_ghost, nz)
 
   ! 4. Add mesh for overstory leaf
   imesh     = imesh + 1
   nz        = overstory_leaf_nz
   num_cells = soil_nx*soil_ny*nz
-  call overstory_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory leaf mesh', &
+  call o_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory leaf mesh', &
        num_cells, ncells_ghost, nz)
 
   ! 5. Add mesh for understory root
   imesh     = imesh + 1
   nz        = understory_root_nz
   num_cells = soil_nx*soil_ny*nz
-  call understory_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory root mesh', &
+  call u_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory root mesh', &
        num_cells, ncells_ghost, nz)
 
   ! 6. Add mesh for understory xylem
   imesh     = imesh + 1
   nz        = understory_xylem_nz
   num_cells = soil_nx*soil_ny*nz
-  call understory_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory xylem mesh', &
+  call u_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory xylem mesh', &
        num_cells, ncells_ghost, nz)
 
   ! 7. Add mesh for understory leaf
   imesh     = imesh + 1
   nz        = understory_leaf_nz
   num_cells = soil_nx*soil_ny*nz
-  call understory_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory leaf mesh', &
+  call u_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory leaf mesh', &
        num_cells, ncells_ghost, nz)
 
   write(*,*)'Add code to support addition of multiple meshes'
@@ -1271,16 +936,20 @@ subroutine setup_soil_mesh()
   !
   use SaturationFunction , only : RELPERM_FUNC_MUALEM
   use SaturationFunction , only : SAT_FUNC_VAN_GENUCHTEN
+  use MultiPhysicsProbConstants , only : CONN_VERTICAL
+  use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
+  use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
   use problem_parameters
   !
   implicit none
   !
 #include <petsc/finclude/petsc.h>
   !
-  PetscInt            :: count
-  PetscInt            :: ii
-  PetscInt            :: jj
-  PetscInt            :: kk
+  PetscInt :: count
+  PetscInt :: ii
+  PetscInt :: jj
+  PetscInt :: kk
+  PetscInt :: iconn
   
   allocate(soil_id                   (soil_nx,soil_ny,soil_nz ))
   allocate(soil_xc3d                 (soil_nx,soil_ny,soil_nz ))
@@ -1363,6 +1032,56 @@ subroutine setup_soil_mesh()
   soil_pp%residual_sat    (1:soil_ncells) = sat_res_top
   soil_pp%satfunc_type    (1:soil_ncells) = SAT_FUNC_VAN_GENUCHTEN
 
+  call s2s_conn%Init(soil_mesh_nconn)
+
+  !  
+  ! Soil-to-Soil Connections: Add vertical connections
+  !
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+        do kk = 1, soil_nz-1
+           if (soil_id(ii,jj,kk) > 0 .and. soil_id(ii,jj,kk+1) > 0) then
+              iconn                                  = iconn + 1
+              s2s_conn%conn_id_up(iconn)     = soil_id(ii,jj,kk  )
+              s2s_conn%conn_id_dn(iconn)     = soil_id(ii,jj,kk+1)
+              s2s_conn%conn_dist_up(iconn)   = 0.5d0*soil_dz
+              s2s_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dz
+              s2s_conn%conn_area(iconn)      = soil_dx*soil_dy
+              s2s_conn%conn_type(iconn)      = CONN_VERTICAL
+              s2s_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+           end if
+        end do
+     end do
+  end do
+  
+  !  
+  ! Soil-to-Soil Connections: Add horizontal connections in x-direction
+  !
+  if (.not.is_soil_horizontally_disconnected) then
+     do ii = 1, soil_nx-1
+        do jj = 1, soil_ny
+           do kk = 1, soil_nz
+              if (soil_id(ii,jj,kk) > 0 .and. soil_id(ii+1,jj,kk) > 0) then
+                 iconn                                  = iconn + 1
+                 s2s_conn%conn_id_up(iconn)     = soil_id(ii  ,jj,kk)
+                 s2s_conn%conn_id_dn(iconn)     = soil_id(ii+1,jj,kk)
+                 s2s_conn%conn_dist_up(iconn)   = 0.5d0*soil_dx
+                 s2s_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dx
+                 s2s_conn%conn_area(iconn)      = soil_dy*soil_dz
+                 s2s_conn%conn_type(iconn)      = CONN_HORIZONTAL
+                 s2s_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+              end if
+           end do
+        end do
+     end do
+
+     if (soil_ny > 1) then
+        write(*,*)'Add code to for horizontal connections in y-direciton'
+        stop
+     endif
+  endif
+
 end subroutine setup_soil_mesh
 
 !------------------------------------------------------------------------
@@ -1374,6 +1093,12 @@ subroutine setup_overstory_mesh()
   use mpp_varcon         , only : denh2o
   use SaturationFunction , only : RELPERM_FUNC_WEIBULL
   use SaturationFunction , only : SAT_FUNC_CHUANG
+  use MultiPhysicsProbConstants , only : CONN_VERTICAL
+  use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
+  use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
+  use MultiPhysicsProbConstants , only : CONDUCTANCE_CAMPBELL_TYPE
+  use MultiPhysicsProbConstants , only : CONDUCTANCE_MANOLI_TYPE
+  use MultiPhysicsProbConstants , only : CONDUCTANCE_FLUX_TYPE
   use petscsys
   use problem_parameters
   !
@@ -1383,9 +1108,13 @@ subroutine setup_overstory_mesh()
   PetscInt  :: idx
   PetscInt  :: id_value
   PetscInt  :: count
+  PetscInt  :: iconn
   PetscReal :: zz
   PetscReal :: soil_volume
   PetscReal :: root_length
+  PetscInt  :: root_id_offset
+  PetscInt  :: xylem_id_offset
+  PetscInt  :: leaf_id_offset
 
   overstory_leaf_nz  = 0
   overstory_xylem_nz = int(overstory_canopy_height/soil_dz)
@@ -1428,24 +1157,25 @@ subroutine setup_overstory_mesh()
   end do
 
 
-  call overstory_root_mesh%Init(soil_nx*soil_ny*overstory_root_nz)
-  call overstory_root_pp%Init(  soil_nx*soil_ny*overstory_root_nz)
+  call o_root_mesh%Init(soil_nx*soil_ny*overstory_root_nz)
+  call o_root_pp%Init(  soil_nx*soil_ny*overstory_root_nz)
 
-  call overstory_xylem_mesh%Init(soil_nx*soil_ny*overstory_xylem_nz)
-  call overstory_xylem_pp%Init(  soil_nx*soil_ny*overstory_xylem_nz)
+  call o_xylem_mesh%Init(soil_nx*soil_ny*overstory_xylem_nz)
+  call o_xylem_pp%Init(  soil_nx*soil_ny*overstory_xylem_nz)
 
-  call overstory_leaf_mesh%Init(soil_nx*soil_ny*overstory_leaf_nz)
-  call overstory_leaf_pp%Init(  soil_nx*soil_ny*overstory_leaf_nz)
+  call o_leaf_mesh%Init(soil_nx*soil_ny*overstory_leaf_nz)
+  call o_leaf_pp%Init(  soil_nx*soil_ny*overstory_leaf_nz)
 
-  allocate(overstory_root_mesh%id               (soil_nx, soil_ny, overstory_root_nz ))
-  allocate(overstory_xylem_mesh%id              (soil_nx, soil_ny, overstory_xylem_nz))
-  allocate(overstory_leaf_mesh%id               (soil_nx, soil_ny, overstory_leaf_nz ))
+  allocate(o_root_mesh%id               (soil_nx, soil_ny, overstory_root_nz ))
+  allocate(o_xylem_mesh%id              (soil_nx, soil_ny, overstory_xylem_nz))
+  allocate(o_leaf_mesh%id               (soil_nx, soil_ny, overstory_leaf_nz ))
 
   if (multi_goveqns_formulation) then
      id_value = 0
   else
      id_value = soil_ncells
   end if
+  root_id_offset = id_value
   
   ! Add root grid cells
   count = 0
@@ -1454,30 +1184,30 @@ subroutine setup_overstory_mesh()
 
         do kk = 1, overstory_root_nz
 
-           id_value                               = id_value + 1
-           overstory_root_mesh%id           (ii,jj,kk) = id_value
+           id_value                                  = id_value + 1
+           o_root_mesh%id(ii,jj,kk)          = id_value
 
-           count                                  = count + 1
+           count                                     = count + 1
 
-           overstory_root_mesh%xc              (count) = soil_xc3d(ii,jj,1)
-           overstory_root_mesh%yc              (count) = soil_yc3d(ii,jj,1)
-           overstory_root_mesh%zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
-           overstory_root_mesh%dx              (count) = soil_dx
-           overstory_root_mesh%dy              (count) = soil_dy
-           overstory_root_mesh%dz              (count) = soil_dz
-           overstory_root_mesh%area            (count) = overstory_root_area_profile(kk)
-           overstory_root_mesh%vol             (count) = overstory_root_vol_profile(kk)
-           overstory_root_mesh%filter          (count) = 1
+           o_root_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           o_root_mesh%yc            (count) = soil_yc3d(ii,jj,1)
+           o_root_mesh%zc            (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
+           o_root_mesh%dx            (count) = soil_dx
+           o_root_mesh%dy            (count) = soil_dy
+           o_root_mesh%dz            (count) = soil_dz
+           o_root_mesh%area          (count) = overstory_root_area_profile(kk)
+           o_root_mesh%vol           (count) = overstory_root_vol_profile(kk)
+           o_root_mesh%filter        (count) = 1
 
-           overstory_root_pp%por             (count) = 0.d0
-           overstory_root_pp%perm            (count) = 0.d0
-           overstory_root_pp%alpha           (count) = overstory_xylem_phi0
-           overstory_root_pp%lambda          (count) = overstory_xylem_p
-           overstory_root_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           overstory_root_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
-           overstory_root_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
-           overstory_root_pp%residual_sat    (count) = 0.d0
-           overstory_root_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
+           o_root_pp%por             (count) = 0.d0
+           o_root_pp%perm            (count) = 0.d0
+           o_root_pp%alpha           (count) = overstory_xylem_phi0
+           o_root_pp%lambda          (count) = overstory_xylem_p
+           o_root_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           o_root_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
+           o_root_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
+           o_root_pp%residual_sat    (count) = 0.d0
+           o_root_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1485,34 +1215,35 @@ subroutine setup_overstory_mesh()
   ! Add xylem grid cells
   count = 0
   if (multi_goveqns_formulation) id_value = 0
+  xylem_id_offset = id_value
 
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
         do kk = 1, overstory_xylem_nz
-           id_value                                = id_value + 1
-           overstory_xylem_mesh%id           (ii,jj,kk) = id_value
+           id_value                                   = id_value + 1
+           o_xylem_mesh%id        (ii,jj,kk)  = id_value
 
-           count                                   = count + 1
-           overstory_xylem_mesh%xc              (count) = soil_xc3d(ii,jj,1)
-           overstory_xylem_mesh%yc              (count) = soil_yc3d(ii,jj,1)
-           overstory_xylem_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
-           overstory_xylem_mesh%dx              (count) = soil_dx
-           overstory_xylem_mesh%dy              (count) = soil_dy
-           overstory_xylem_mesh%dz              (count) = soil_dz
-           overstory_xylem_mesh%area            (count) = overstory_xylem_area_profile(kk)
-           overstory_xylem_mesh%vol             (count) = overstory_xylem_area_profile(kk) * soil_dz
-           overstory_xylem_mesh%filter          (count) = 1
+           count                                      = count + 1
+           o_xylem_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           o_xylem_mesh%yc            (count) = soil_yc3d(ii,jj,1)
+           o_xylem_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
+           o_xylem_mesh%dx            (count) = soil_dx
+           o_xylem_mesh%dy            (count) = soil_dy
+           o_xylem_mesh%dz            (count) = soil_dz
+           o_xylem_mesh%area          (count) = overstory_xylem_area_profile(kk)
+           o_xylem_mesh%vol           (count) = overstory_xylem_area_profile(kk) * soil_dz
+           o_xylem_mesh%filter        (count) = 1
 
-           overstory_xylem_pp%por             (count) = overstory_xylem_porosity
-           overstory_xylem_pp%perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
-           overstory_xylem_pp%alpha           (count) = overstory_xylem_phi0
-           overstory_xylem_pp%lambda          (count) = overstory_xylem_p
-           overstory_xylem_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           overstory_xylem_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
-           overstory_xylem_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
-           overstory_xylem_pp%residual_sat    (count) = 0.d0
-           overstory_xylem_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
+           o_xylem_pp%por             (count) = overstory_xylem_porosity
+           o_xylem_pp%perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
+           o_xylem_pp%alpha           (count) = overstory_xylem_phi0
+           o_xylem_pp%lambda          (count) = overstory_xylem_p
+           o_xylem_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           o_xylem_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
+           o_xylem_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
+           o_xylem_pp%residual_sat    (count) = 0.d0
+           o_xylem_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1520,38 +1251,168 @@ subroutine setup_overstory_mesh()
   ! Add leaf grid cells
   count = 0
   if (multi_goveqns_formulation) id_value = 0
+  leaf_id_offset = id_value
 
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
         do kk = 1, overstory_leaf_nz
-           id_value                               = id_value + 1
-           overstory_leaf_mesh%id           (ii,jj,kk) = id_value
+           id_value                                  = id_value + 1
+           o_leaf_mesh%id        (ii,jj,kk)  = id_value
 
-           count                                  = count + 1
-           idx                                    = overstory_branch_2_xylem_index(kk)
+           count                                     = count + 1
+           idx                                       = overstory_branch_2_xylem_index(kk)
 
-           overstory_leaf_mesh%xc              (count) = soil_xc3d(ii,jj,1)-overstory_branch_length_profile(idx)
-           overstory_leaf_mesh%yc              (count) = soil_yc3d(ii,jj,1)
-           overstory_leaf_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (overstory_xylem_nz-overstory_leaf_nz)*soil_dz
-           overstory_leaf_mesh%dx              (count) = soil_dx
-           overstory_leaf_mesh%dy              (count) = soil_dy
-           overstory_leaf_mesh%dz              (count) = soil_dz
-           overstory_leaf_mesh%area            (count) = overstory_xylem_area_profile(kk) * overstory_branch_area_ratio
+           o_leaf_mesh%xc            (count) = soil_xc3d(ii,jj,1)-overstory_branch_length_profile(idx)
+           o_leaf_mesh%yc            (count) = soil_yc3d(ii,jj,1)
+           o_leaf_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (overstory_xylem_nz-overstory_leaf_nz)*soil_dz
+           o_leaf_mesh%dx            (count) = soil_dx
+           o_leaf_mesh%dy            (count) = soil_dy
+           o_leaf_mesh%dz            (count) = soil_dz
+           o_leaf_mesh%area          (count) = overstory_xylem_area_profile(kk) * overstory_branch_area_ratio
 
-           overstory_leaf_mesh%vol             (count) = overstory_leaf_mesh%area(count) * overstory_branch_length_profile(idx)
-           overstory_leaf_mesh%filter          (count) = 1
+           o_leaf_mesh%vol           (count) = o_leaf_mesh%area(count) * overstory_branch_length_profile(idx)
+           o_leaf_mesh%filter        (count) = 1
 
-           overstory_leaf_pp%por             (count) = 0.d0
-           overstory_leaf_pp%perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
-           overstory_leaf_pp%alpha           (count) = overstory_xylem_phi0
-           overstory_leaf_pp%lambda          (count) = overstory_xylem_p
-           overstory_leaf_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           overstory_leaf_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
-           overstory_leaf_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
-           overstory_leaf_pp%residual_sat    (count) = 0.d0
-           overstory_leaf_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
+           o_leaf_pp%por             (count) = 0.d0
+           o_leaf_pp%perm            (count) = overstory_xylem_Kmax * vish2o / (denh2o * grav)
+           o_leaf_pp%alpha           (count) = overstory_xylem_phi0
+           o_leaf_pp%lambda          (count) = overstory_xylem_p
+           o_leaf_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           o_leaf_pp%relperm_param_1 (count) = overstory_xylem_vulnerability_d * grav * denh2o
+           o_leaf_pp%relperm_param_2 (count) = overstory_xylem_vulnerability_c
+           o_leaf_pp%residual_sat    (count) = 0.d0
+           o_leaf_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
+     end do
+  end do
+
+  call o_r2s_conn%Init (overstory_root_nz*        soil_nx * soil_ny)
+  call o_x2r_conn%Init (overstory_root_nz*        soil_nx * soil_ny)
+  call o_x2x_conn%Init ((overstory_xylem_nz - 1)* soil_nx * soil_ny)
+  call o_x2l_conn%Init (overstory_leaf_nz*        soil_nx * soil_ny)
+
+  ! Root-to-Soil: Condunctance flux type
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+
+        do kk = 1, overstory_root_nz
+           iconn                                            = iconn + 1
+           o_r2s_conn%conn_id_up(iconn)     = o_root_mesh%id(ii,jj,kk)
+           o_r2s_conn%conn_id_dn(iconn)     = soil_id          (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
+
+           o_r2s_conn%conn_dist_up(iconn)   = 0.d0
+           o_r2s_conn%conn_dist_dn(iconn)   = overstory_root_length_profile(kk)
+           o_r2s_conn%conn_area(iconn)      = overstory_root_area_profile  (kk)
+           o_r2s_conn%conn_type(iconn)      = CONN_HORIZONTAL
+           o_r2s_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           o_r2s_conn%conn_cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
+           o_r2s_conn%conn_cond_up(iconn)   = overstory_root_conductance
+           o_r2s_conn%conn_cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
+                                                              overstory_root_length_profile(kk)        ! [m]
+
+           ! Saturation up: CHUANG
+           o_r2s_conn%conn_satparam_up_itype   (iconn) = o_root_pp%satfunc_type    (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           o_r2s_conn%conn_satparam_up_param_1 (iconn) = o_root_pp%alpha           (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           o_r2s_conn%conn_satparam_up_param_2 (iconn) = o_root_pp%lambda          (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           o_r2s_conn%conn_satparam_up_param_3 (iconn) = o_root_pp%residual_sat    (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           ! Relative Perm. up: WEIBULL
+           o_r2s_conn%conn_relperm_up_itype    (iconn) = o_root_pp%relperm_type    (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           o_r2s_conn%conn_relperm_up_param_1  (iconn) = o_root_pp%relperm_param_1 (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           o_r2s_conn%conn_relperm_up_param_2  (iconn) = o_root_pp%relperm_param_2 (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+
+           ! Saturation dn: CHUANG
+           o_r2s_conn%conn_satparam_dn_itype   (iconn) = soil_pp%satfunc_type    (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%conn_satparam_dn_param_1 (iconn) = soil_pp%alpha           (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%conn_satparam_dn_param_2 (iconn) = soil_pp%lambda          (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%conn_satparam_dn_param_3 (iconn) = soil_pp%residual_sat    (o_r2s_conn%conn_id_dn(iconn) )
+           ! Relative Perm. dn: MUALEM
+           o_r2s_conn%conn_relperm_dn_itype    (iconn) = soil_pp%relperm_type    (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%conn_relperm_dn_param_1  (iconn) = soil_pp%alpha           (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%conn_relperm_dn_param_2  (iconn) = soil_pp%lambda          (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%conn_relperm_dn_param_3  (iconn) = soil_pp%residual_sat    (o_r2s_conn%conn_id_dn(iconn) )
+        end do
+     end do
+  end do
+
+  ! Xylem-to-Root: Conductance flux type
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+
+        do kk = 1, overstory_root_nz
+           iconn                 = iconn + 1
+           o_x2r_conn%conn_id_up(iconn)     = o_xylem_mesh%id(ii,jj,1)
+           o_x2r_conn%conn_id_dn(iconn)     = o_root_mesh%id (ii,jj,kk)
+           o_x2r_conn%conn_dist_up(iconn)   = 0.1d0
+           o_x2r_conn%conn_dist_dn(iconn)   = 0.1d0
+           o_x2r_conn%conn_area(iconn)      = overstory_area_sapwood
+           o_x2r_conn%conn_type(iconn)      = CONN_VERTICAL
+           o_x2r_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           o_x2r_conn%conn_cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
+           o_x2r_conn%conn_cond(iconn)      = overstory_root_conductance
+           o_x2r_conn%conn_cond_up(iconn)   = overstory_root_conductance
+           o_x2r_conn%conn_cond_dn(iconn)   = overstory_root_conductance
+
+           ! Saturation up: CHUANG
+           o_x2r_conn%conn_satparam_up_itype   (iconn) = o_xylem_pp%satfunc_type    (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%conn_satparam_up_param_1 (iconn) = o_xylem_pp%alpha           (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%conn_satparam_up_param_2 (iconn) = o_xylem_pp%lambda          (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%conn_satparam_up_param_3 (iconn) = o_xylem_pp%residual_sat    (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           ! Relative Perm. up: WEIBULL
+           o_x2r_conn%conn_relperm_up_itype    (iconn) = o_xylem_pp%relperm_type    (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%conn_relperm_up_param_1  (iconn) = o_xylem_pp%relperm_param_1 (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%conn_relperm_up_param_2  (iconn) = o_xylem_pp%relperm_param_2 (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+
+           ! Saturation dn: CHUANG
+           o_x2r_conn%conn_satparam_dn_itype   (iconn) = o_root_pp%satfunc_type    (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           o_x2r_conn%conn_satparam_dn_param_1 (iconn) = o_root_pp%alpha           (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           o_x2r_conn%conn_satparam_dn_param_2 (iconn) = o_root_pp%lambda          (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           o_x2r_conn%conn_satparam_dn_param_3 (iconn) = o_root_pp%residual_sat    (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           ! Relative Perm. dn: WEIBULL
+           o_x2r_conn%conn_relperm_dn_itype    (iconn) = o_root_pp%relperm_type    (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           o_x2r_conn%conn_relperm_dn_param_1  (iconn) = o_root_pp%relperm_param_1 (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           o_x2r_conn%conn_relperm_dn_param_2  (iconn) = o_root_pp%relperm_param_2 (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+        end do
+     end do
+  end do
+
+  ! Xylem-to-Xylem: Darcy flux
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+        
+        do kk = 1, overstory_xylem_nz-1
+           iconn                 = iconn + 1
+           o_x2x_conn%conn_id_up(iconn)     = o_xylem_mesh%id(ii,jj,kk  )
+           o_x2x_conn%conn_id_dn(iconn)     = o_xylem_mesh%id(ii,jj,kk+1)
+           o_x2x_conn%conn_dist_up(iconn)   = 0.5d0*soil_dz
+           o_x2x_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dz
+           o_x2x_conn%conn_area(iconn)      = overstory_area_sapwood
+           o_x2x_conn%conn_type(iconn)      = CONN_VERTICAL
+           o_x2x_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+        end do
+     end do
+  end do
+
+  ! Xylem-to-Leaf
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+        do kk = 1, overstory_leaf_nz
+           idx                   = overstory_branch_2_xylem_index(kk)
+           
+           iconn                 = iconn + 1
+           o_x2l_conn%conn_id_up(iconn)     = o_xylem_mesh%id(ii,jj,idx)
+           o_x2l_conn%conn_id_dn(iconn)     = o_leaf_mesh%id (ii,jj,kk )
+           o_x2l_conn%conn_dist_up(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
+           o_x2l_conn%conn_dist_dn(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
+           o_x2l_conn%conn_area(iconn)      = overstory_xylem_area_profile(idx)*overstory_branch_area_ratio
+           o_x2l_conn%conn_type(iconn)      = CONN_HORIZONTAL
+           o_x2l_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+        end do
+
      end do
   end do
 
@@ -1562,10 +1423,16 @@ subroutine setup_understory_mesh()
   !
 #include <petsc/finclude/petsc.h>
   !
-  use mpp_varcon         , only : grav
-  use mpp_varcon         , only : denh2o
-  use SaturationFunction , only : RELPERM_FUNC_WEIBULL
-  use SaturationFunction , only : SAT_FUNC_CHUANG
+  use mpp_varcon                , only : grav
+  use mpp_varcon                , only : denh2o
+  use SaturationFunction        , only : RELPERM_FUNC_WEIBULL
+  use SaturationFunction        , only : SAT_FUNC_CHUANG
+  use MultiPhysicsProbConstants , only : CONN_VERTICAL
+  use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
+  use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
+  use MultiPhysicsProbConstants , only : CONDUCTANCE_CAMPBELL_TYPE
+  use MultiPhysicsProbConstants , only : CONDUCTANCE_MANOLI_TYPE
+  use MultiPhysicsProbConstants , only : CONDUCTANCE_FLUX_TYPE
   use petscsys
   use problem_parameters
   !
@@ -1575,9 +1442,13 @@ subroutine setup_understory_mesh()
   PetscInt  :: idx
   PetscInt  :: id_value
   PetscInt  :: count
+  PetscInt  :: iconn
   PetscReal :: zz
   PetscReal :: soil_volume
   PetscReal :: root_length
+  PetscInt  :: root_id_offset
+  PetscInt  :: xylem_id_offset
+  PetscInt  :: leaf_id_offset
 
   understory_leaf_nz  = 0
   understory_xylem_nz = int(understory_canopy_height/soil_dz)
@@ -1620,24 +1491,25 @@ subroutine setup_understory_mesh()
      understory_root_vol_profile(kk)    = PI*(overstory_root_radius**2.d0)*root_length
   end do
 
-  call understory_root_mesh%Init(soil_nx*soil_ny*understory_root_nz)
-  call understory_root_pp%Init(  soil_nx*soil_ny*understory_root_nz)
+  call u_root_mesh%Init(soil_nx*soil_ny*understory_root_nz)
+  call u_root_pp%Init(  soil_nx*soil_ny*understory_root_nz)
 
-  call understory_xylem_mesh%Init(soil_nx*soil_ny*understory_xylem_nz)
-  call understory_xylem_pp%Init(  soil_nx*soil_ny*understory_xylem_nz)
+  call u_xylem_mesh%Init(soil_nx*soil_ny*understory_xylem_nz)
+  call u_xylem_pp%Init(  soil_nx*soil_ny*understory_xylem_nz)
 
-  call understory_leaf_mesh%Init(soil_nx*soil_ny*understory_leaf_nz)
-  call understory_leaf_pp%Init(  soil_nx*soil_ny*understory_leaf_nz)
+  call u_leaf_mesh%Init(soil_nx*soil_ny*understory_leaf_nz)
+  call u_leaf_pp%Init(  soil_nx*soil_ny*understory_leaf_nz)
 
-  allocate(understory_root_mesh%id  (soil_nx, soil_ny, understory_root_nz  ))
-  allocate(understory_xylem_mesh%id (soil_nx, soil_ny, understory_xylem_nz ))
-  allocate(understory_leaf_mesh%id  (soil_nx, soil_ny, understory_leaf_nz  ))
+  allocate(u_root_mesh%id  (soil_nx, soil_ny, understory_root_nz  ))
+  allocate(u_xylem_mesh%id (soil_nx, soil_ny, understory_xylem_nz ))
+  allocate(u_leaf_mesh%id  (soil_nx, soil_ny, understory_leaf_nz  ))
   
   if (multi_goveqns_formulation) then
      id_value = 0
   else
      id_value = soil_ncells + soil_nx * soil_ny *( overstory_root_nz  + overstory_xylem_nz  + overstory_leaf_nz)
   end if
+  root_id_offset = id_value
 
   ! Add root grid cells
   count = 0
@@ -1645,29 +1517,29 @@ subroutine setup_understory_mesh()
      do jj = 1, soil_ny
 
         do kk = 1, understory_root_nz
-           id_value                                = id_value + 1
-           understory_root_mesh%id           (ii,jj,kk) = id_value
+           id_value                                   = id_value + 1
+           u_root_mesh%id        (ii,jj,kk)  = id_value
 
-           count                                   = count + 1
-           understory_root_mesh%xc              (count) = soil_xc3d(ii,jj,1)
-           understory_root_mesh%yc              (count) = soil_yc3d(ii,jj,1)
-           understory_root_mesh%zc              (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
-           understory_root_mesh%dx              (count) = soil_dx
-           understory_root_mesh%dy              (count) = soil_dy
-           understory_root_mesh%dz              (count) = soil_dz
-           understory_root_mesh%area            (count) = understory_root_area_profile(kk)
-           understory_root_mesh%vol             (count) = understory_root_vol_profile(kk)
-           understory_root_mesh%filter          (count) = 1
+           count                                      = count + 1
+           u_root_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           u_root_mesh%yc            (count) = soil_yc3d(ii,jj,1)
+           u_root_mesh%zc            (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
+           u_root_mesh%dx            (count) = soil_dx
+           u_root_mesh%dy            (count) = soil_dy
+           u_root_mesh%dz            (count) = soil_dz
+           u_root_mesh%area          (count) = understory_root_area_profile(kk)
+           u_root_mesh%vol           (count) = understory_root_vol_profile(kk)
+           u_root_mesh%filter        (count) = 1
 
-           understory_root_pp%por             (count) = 0.d0
-           understory_root_pp%perm            (count) = 0.d0
-           understory_root_pp%alpha           (count) = understory_xylem_phi0
-           understory_root_pp%lambda          (count) = understory_xylem_p
-           understory_root_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           understory_root_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
-           understory_root_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
-           understory_root_pp%residual_sat    (count) = 0.d0
-           understory_root_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
+           u_root_pp%por             (count) = 0.d0
+           u_root_pp%perm            (count) = 0.d0
+           u_root_pp%alpha           (count) = understory_xylem_phi0
+           u_root_pp%lambda          (count) = understory_xylem_p
+           u_root_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           u_root_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
+           u_root_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
+           u_root_pp%residual_sat    (count) = 0.d0
+           u_root_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1675,33 +1547,34 @@ subroutine setup_understory_mesh()
   ! Add xylem grid cells
   count = 0
   if (multi_goveqns_formulation) id_value = 0
+  xylem_id_offset = id_value
 
   do ii = 1, soil_nx
      do jj = 1, soil_ny
         do kk = 1, understory_xylem_nz
-           id_value                                 = id_value + 1
-           understory_xylem_mesh%id           (ii,jj,kk) = id_value
+           id_value                                    = id_value + 1
+           u_xylem_mesh%id         (ii,jj,kk) = id_value
 
-           count                                         = count + 1
-           understory_xylem_mesh%xc              (count) = soil_xc3d(ii,jj,1)
-           understory_xylem_mesh%yc              (count) = soil_yc3d(ii,jj,1)
-           understory_xylem_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
-           understory_xylem_mesh%dx              (count) = soil_dx
-           understory_xylem_mesh%dy              (count) = soil_dy
-           understory_xylem_mesh%dz              (count) = soil_dz
-           understory_xylem_mesh%area            (count) = understory_xylem_area_profile(kk)
-           understory_xylem_mesh%vol             (count) = understory_xylem_area_profile(kk) * soil_dz
-           understory_xylem_mesh%filter          (count) = 1
+           count                                       = count + 1
+           u_xylem_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           u_xylem_mesh%yc            (count) = soil_yc3d(ii,jj,1)
+           u_xylem_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
+           u_xylem_mesh%dx            (count) = soil_dx
+           u_xylem_mesh%dy            (count) = soil_dy
+           u_xylem_mesh%dz            (count) = soil_dz
+           u_xylem_mesh%area          (count) = understory_xylem_area_profile(kk)
+           u_xylem_mesh%vol           (count) = understory_xylem_area_profile(kk) * soil_dz
+           u_xylem_mesh%filter        (count) = 1
 
-           understory_xylem_pp%por             (count) = understory_xylem_porosity
-           understory_xylem_pp%perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
-           understory_xylem_pp%alpha           (count) = understory_xylem_phi0
-           understory_xylem_pp%lambda          (count) = understory_xylem_p
-           understory_xylem_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           understory_xylem_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
-           understory_xylem_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
-           understory_xylem_pp%residual_sat    (count) = 0.d0
-           understory_xylem_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
+           u_xylem_pp%por             (count) = understory_xylem_porosity
+           u_xylem_pp%perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
+           u_xylem_pp%alpha           (count) = understory_xylem_phi0
+           u_xylem_pp%lambda          (count) = understory_xylem_p
+           u_xylem_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           u_xylem_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
+           u_xylem_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
+           u_xylem_pp%residual_sat    (count) = 0.d0
+           u_xylem_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
      end do
   end do
@@ -1709,37 +1582,167 @@ subroutine setup_understory_mesh()
   ! Add branch grid cells
   count = 0
   if (multi_goveqns_formulation) id_value = 0
+  leaf_id_offset = id_value
 
   do ii = 1, soil_nx
      do jj = 1, soil_ny
         do kk = 1, understory_leaf_nz
-           id_value                                = id_value + 1
-           understory_leaf_mesh%id           (ii,jj,kk) = id_value
+           id_value                                   = id_value + 1
+           u_leaf_mesh%id        (ii,jj,kk)  = id_value
 
-           count                                   = count + 1
-           idx                                     = understory_branch_2_xylem_index(kk)
+           count                                      = count + 1
+           idx                                        = understory_branch_2_xylem_index(kk)
 
-           understory_leaf_mesh%xc              (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
-           understory_leaf_mesh%yc              (count) = soil_yc3d(ii,jj,1)
-           understory_leaf_mesh%zc              (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
-           understory_leaf_mesh%dx              (count) = soil_dx
-           understory_leaf_mesh%dy              (count) = soil_dy
-           understory_leaf_mesh%dz              (count) = soil_dz
-           understory_leaf_mesh%area            (count) = understory_xylem_area_profile(kk) * understory_branch_area_ratio
+           u_leaf_mesh%xc            (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
+           u_leaf_mesh%yc            (count) = soil_yc3d(ii,jj,1)
+           u_leaf_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
+           u_leaf_mesh%dx            (count) = soil_dx
+           u_leaf_mesh%dy            (count) = soil_dy
+           u_leaf_mesh%dz            (count) = soil_dz
+           u_leaf_mesh%area          (count) = understory_xylem_area_profile(kk) * understory_branch_area_ratio
 
-           understory_leaf_mesh%vol             (count) = understory_leaf_mesh%area(count) * understory_branch_length_profile(idx)
-           understory_leaf_mesh%filter          (count) = 1
+           u_leaf_mesh%vol           (count) = u_leaf_mesh%area(count) * understory_branch_length_profile(idx)
+           u_leaf_mesh%filter        (count) = 1
 
-           understory_leaf_pp%por             (count) = 0.d0
-           understory_leaf_pp%perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
-           understory_leaf_pp%alpha           (count) = understory_xylem_phi0
-           understory_leaf_pp%lambda          (count) = understory_xylem_p
-           understory_leaf_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
-           understory_leaf_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
-           understory_leaf_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
-           understory_leaf_pp%residual_sat    (count) = 0.d0
-           understory_leaf_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
+           u_leaf_pp%por             (count) = 0.d0
+           u_leaf_pp%perm            (count) = understory_xylem_Kmax * vish2o / (denh2o * grav)
+           u_leaf_pp%alpha           (count) = understory_xylem_phi0
+           u_leaf_pp%lambda          (count) = understory_xylem_p
+           u_leaf_pp%relperm_type    (count) = RELPERM_FUNC_WEIBULL
+           u_leaf_pp%relperm_param_1 (count) = understory_xylem_vulnerability_d * grav * denh2o
+           u_leaf_pp%relperm_param_2 (count) = understory_xylem_vulnerability_c
+           u_leaf_pp%residual_sat    (count) = 0.d0
+           u_leaf_pp%satfunc_type    (count) = SAT_FUNC_CHUANG
         end do
+     end do
+  end do
+
+  call u_r2s_conn%Init   (understory_root_nz*        soil_nx * soil_ny)
+  call u_x2r_conn%Init  (understory_root_nz*        soil_nx * soil_ny)
+  call u_x2x_conn%Init ((understory_xylem_nz - 1)* soil_nx * soil_ny)
+  call u_x2l_conn%Init  (understory_leaf_nz*        soil_nx * soil_ny)
+
+  ! Root-to-Soil: Condunctance flux type
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+
+        do kk = 1, understory_root_nz
+           iconn                 = iconn + 1
+           u_r2s_conn%conn_id_up(iconn)     = u_root_mesh%id(ii,jj,kk)
+           u_r2s_conn%conn_id_dn(iconn)     = soil_id(ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
+           u_r2s_conn%conn_dist_up(iconn)   = 0.d0
+           u_r2s_conn%conn_dist_dn(iconn)   = understory_root_length_profile(kk)
+           u_r2s_conn%conn_area(iconn)      = understory_root_area_profile  (kk)
+           u_r2s_conn%conn_type(iconn)      = CONN_HORIZONTAL
+           u_r2s_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           u_r2s_conn%conn_cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
+           u_r2s_conn%conn_cond_up(iconn)   = understory_root_conductance
+           u_r2s_conn%conn_cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
+                understory_root_length_profile(kk)       ! [m]
+
+           ! Saturation up: CHUANG
+           u_r2s_conn%conn_satparam_up_itype   (iconn) = u_root_pp%satfunc_type    (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           u_r2s_conn%conn_satparam_up_param_1 (iconn) = u_root_pp%alpha           (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           u_r2s_conn%conn_satparam_up_param_2 (iconn) = u_root_pp%lambda          (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           u_r2s_conn%conn_satparam_up_param_3 (iconn) = u_root_pp%residual_sat    (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           ! Relative Perm. up: MUALEM
+           u_r2s_conn%conn_relperm_up_itype    (iconn) = u_root_pp%relperm_type    (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           u_r2s_conn%conn_relperm_up_param_1  (iconn) = u_root_pp%relperm_param_1 (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           u_r2s_conn%conn_relperm_up_param_2  (iconn) = u_root_pp%relperm_param_2 (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+
+           ! Saturation dn: CHUANG
+           u_r2s_conn%conn_satparam_dn_itype   (iconn) = soil_pp%satfunc_type    (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%conn_satparam_dn_param_1 (iconn) = soil_pp%alpha           (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%conn_satparam_dn_param_2 (iconn) = soil_pp%lambda          (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%conn_satparam_dn_param_3 (iconn) = soil_pp%residual_sat    (u_r2s_conn%conn_id_dn(iconn) )
+           ! Relative Perm. dn: MUALEM
+           u_r2s_conn%conn_relperm_dn_itype    (iconn) = soil_pp%relperm_type    (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%conn_relperm_dn_param_1  (iconn) = soil_pp%alpha           (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%conn_relperm_dn_param_2  (iconn) = soil_pp%lambda          (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%conn_relperm_dn_param_3  (iconn) = soil_pp%residual_sat    (u_r2s_conn%conn_id_dn(iconn) )
+        end do
+     end do
+  end do
+
+  ! Xylem-to-Root: Conductance flux type
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+
+      do kk = 1, understory_root_nz
+           iconn                 = iconn + 1
+           u_x2r_conn%conn_id_up(iconn)     = u_xylem_mesh%id(ii,jj,1)
+           u_x2r_conn%conn_id_dn(iconn)     = u_root_mesh%id (ii,jj,kk)
+           u_x2r_conn%conn_dist_up(iconn)   = 0.1d0
+           u_x2r_conn%conn_dist_dn(iconn)   = 0.1d0
+           u_x2r_conn%conn_area(iconn)      = understory_area_sapwood
+           u_x2r_conn%conn_type(iconn)      = CONN_VERTICAL
+           u_x2r_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           u_x2r_conn%conn_cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
+           u_x2r_conn%conn_cond_up          = understory_root_conductance
+           u_x2r_conn%conn_cond_up(iconn)   = understory_root_conductance
+           u_x2r_conn%conn_cond_dn(iconn)   = understory_root_conductance
+
+           ! Saturation up: CHUANG
+           u_x2r_conn%conn_satparam_up_itype   (iconn) = u_xylem_pp%satfunc_type    (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%conn_satparam_up_param_1 (iconn) = u_xylem_pp%alpha           (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%conn_satparam_up_param_2 (iconn) = u_xylem_pp%lambda          (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%conn_satparam_up_param_3 (iconn) = u_xylem_pp%residual_sat    (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           ! Relative Perm. up: WEIBULL
+           u_x2r_conn%conn_relperm_up_itype    (iconn) = u_xylem_pp%relperm_type    (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%conn_relperm_up_param_1  (iconn) = u_xylem_pp%relperm_param_1 (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%conn_relperm_up_param_2  (iconn) = u_xylem_pp%relperm_param_2 (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+
+           ! Saturation dn: CHUANG
+           u_x2r_conn%conn_satparam_dn_itype   (iconn) = u_root_pp%satfunc_type    (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           u_x2r_conn%conn_satparam_dn_param_1 (iconn) = u_root_pp%alpha           (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           u_x2r_conn%conn_satparam_dn_param_2 (iconn) = u_root_pp%lambda          (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           u_x2r_conn%conn_satparam_dn_param_3 (iconn) = u_root_pp%residual_sat    (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           ! Relative Perm. dn: WEIBULL
+           u_x2r_conn%conn_relperm_dn_itype    (iconn) = u_root_pp%relperm_type    (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           u_x2r_conn%conn_relperm_dn_param_1  (iconn) = u_root_pp%relperm_param_1 (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           u_x2r_conn%conn_relperm_dn_param_2  (iconn) = u_root_pp%relperm_param_2 (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+        end do
+     end do
+  end do
+
+  ! Xylem-to-Xylem: Darcy flux
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+
+        do kk                    = 1, understory_xylem_nz-1
+           iconn                 = iconn + 1
+           u_x2x_conn%conn_id_up(iconn)     = u_xylem_mesh%id(ii,jj,kk  )
+           u_x2x_conn%conn_id_dn(iconn)     = u_xylem_mesh%id(ii,jj,kk+1)
+           u_x2x_conn%conn_dist_up(iconn)   = 0.5d0*soil_dz
+           u_x2x_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dz
+           u_x2x_conn%conn_area(iconn)      = understory_area_sapwood
+           u_x2x_conn%conn_type(iconn)      = CONN_VERTICAL
+           u_x2x_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+        end do
+     end do
+  end do
+
+  ! Xylem-to-Leaf
+  iconn = 0
+  do ii = 1, soil_nx
+     do jj = 1, soil_ny
+
+        do kk = 1, understory_leaf_nz
+           idx                   = understory_branch_2_xylem_index(kk)
+           
+           iconn                 = iconn + 1
+           u_x2l_conn%conn_id_up(iconn)     = u_xylem_mesh%id(ii,jj,idx)
+           u_x2l_conn%conn_id_dn(iconn)     = u_leaf_mesh%id (ii,jj,kk )
+           u_x2l_conn%conn_dist_up(iconn)   = 0.5d0*understory_branch_length_profile(idx)
+           u_x2l_conn%conn_dist_dn(iconn)   = 0.5d0*understory_branch_length_profile(idx)
+           u_x2l_conn%conn_area(iconn)      = understory_xylem_area_profile(idx)*understory_branch_area_ratio
+           u_x2l_conn%conn_type(iconn)      = CONN_HORIZONTAL
+           u_x2l_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+        end do
+
      end do
   end do
 
@@ -1840,41 +1843,37 @@ subroutine set_material_properties()
 
   igoveqn = 1
 
-  call VSFMMPPSetSoilPorosity(vsfm_mpp, igoveqn, vsfm_por)
+  call VSFMMPPSetSoilPorosity(vsfm_mpp, igoveqn, combined_pp%por)
 
-  call VSFMMPPSetSaturationFunction(vsfm_mpp, igoveqn, vsfm_satfunc_type, &
-         vsfm_alpha, vsfm_lambda, vsfm_residual_sat)
+  call VSFMMPPSetSaturationFunction(vsfm_mpp, igoveqn, combined_pp%satfunc_type, &
+         combined_pp%alpha, combined_pp%lambda, combined_pp%residual_sat)
 
-  call VSFMMPPSetSoilPermeability(vsfm_mpp, igoveqn, vsfm_perm, vsfm_perm, vsfm_perm)
+  call VSFMMPPSetSoilPermeability(vsfm_mpp, igoveqn, combined_pp%perm, combined_pp%perm, combined_pp%perm)
   call VSFMMPPSetDensityType(vsfm_mpp, 1, DENSITY_IFC67)
 
-  allocate(set_upwind_auxvar(soil_mesh_nconn + overstory_nconn + understory_nconn))
+  allocate(set_upwind_auxvar(combined_conn%nconn))
 
   set_upwind_auxvar(:) = PETSC_TRUE
+  ! For upwind cells, set saturation parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, conn_satparam_up_itype, conn_satparam_up_param_1, &
-       conn_satparam_up_param_2, conn_satparam_up_param_3)
+       set_upwind_auxvar, combined_conn%conn_satparam_up_itype, combined_conn%conn_satparam_up_param_1, &
+       combined_conn%conn_satparam_up_param_2, combined_conn%conn_satparam_up_param_3)
 
+  ! For upwind cells, set relative permeability parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, conn_relperm_up_itype, conn_relperm_up_param_1, &
-       conn_relperm_up_param_2, conn_relperm_up_param_2)
+       set_upwind_auxvar, combined_conn%conn_relperm_up_itype, combined_conn%conn_relperm_up_param_1, &
+       combined_conn%conn_relperm_up_param_2, combined_conn%conn_relperm_up_param_2)
 
   set_upwind_auxvar(:) = PETSC_FALSE
+  ! For downwind cells, set saturation parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, conn_satparam_dn_itype, conn_satparam_dn_param_1, &
-       conn_satparam_dn_param_2, conn_satparam_dn_param_3)
+       set_upwind_auxvar, combined_conn%conn_satparam_dn_itype, combined_conn%conn_satparam_dn_param_1, &
+       combined_conn%conn_satparam_dn_param_2, combined_conn%conn_satparam_dn_param_3)
 
+  ! For downwind cells, set relative permeability parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, conn_relperm_dn_itype, conn_relperm_dn_param_1, &
-       conn_relperm_dn_param_2, conn_relperm_dn_param_3)
-
-  deallocate(vsfm_por          )
-  deallocate(vsfm_perm         )
-  deallocate(vsfm_lambda       )
-  deallocate(vsfm_alpha        )
-  deallocate(vsfm_eff_porosity )
-  deallocate(vsfm_residual_sat )
-  deallocate(vsfm_satfunc_type      )
+       set_upwind_auxvar, combined_conn%conn_relperm_dn_itype, combined_conn%conn_relperm_dn_param_1, &
+       combined_conn%conn_relperm_dn_param_2, combined_conn%conn_relperm_dn_param_3)
 
 end subroutine set_material_properties
 
@@ -1960,24 +1959,24 @@ subroutine set_conn_flux_type()
 
   igoveqn = 1
 
-  call VSFMMPPSetRelativePermeability(vsfm_mpp, igoveqn, vsfm_relperm_type, &
-       vsfm_relperm_param_1, vsfm_relperm_param_2)
+  call VSFMMPPSetRelativePermeability(vsfm_mpp, igoveqn, combined_pp%relperm_type, &
+       combined_pp%relperm_param_1, combined_pp%relperm_param_2)
 
   ! Set connection flux type
   call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_FLUX_TYPE, conn_flux_type)
+       VAR_FLUX_TYPE, combined_conn%conn_flux_type)
 
   ! Set conductance type
   call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_TYPE, conn_cond_type)
+       VAR_CONDUCTANCE_TYPE, combined_conn%conn_cond_type)
 
   call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE, conn_cond)
+       VAR_CONDUCTANCE, combined_conn%conn_cond)
 
   call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_UP, conn_cond_up)
+       VAR_CONDUCTANCE_UP, combined_conn%conn_cond_up)
 
   call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_DN, conn_cond_dn)
+       VAR_CONDUCTANCE_DN, combined_conn%conn_cond_dn)
 
 end subroutine set_conn_flux_type
