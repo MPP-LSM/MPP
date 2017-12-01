@@ -48,27 +48,29 @@ module SystemOfEquationsBaseType
      type(solver_type)               :: solver
 
    contains
-     procedure, public :: Init                   => SOEBaseInit
-     procedure, public :: Clean                  => SOEBaseClean
-     procedure, public :: Residual               => SOEBaseResidual
-     procedure, public :: Jacobian               => SOEBaseJacobian
-     procedure, public :: ComputeRHS             => SOEComputeRHS
-     procedure, public :: ComputeOperators       => SOEComputeOperators
-     procedure, public :: StepDT                 => SOEBaseStepDT
-     procedure, public :: PreSolve               => SOEBasePreSolve
-     procedure, public :: PostSolve              => SOEBasePostSolve
-     procedure, public :: PreStepDT              => SOEBasePreStepDT
-     procedure, public :: PostStepDT             => SOEBasePostStepDT
-     procedure, public :: PrintInfo              => SOEBasePrintInfo
-     procedure, public :: SetPointerToIthGovEqn  => SOEBaseSetPointerToIthGovEqn
-     procedure, public :: SetDtime               => SOEBaseSetDtime
-     procedure, public :: SetDataFromCLM         => SOEBaseSetDataFromCLM
-     procedure, public :: GetDataForCLM          => SOEBaseGetDataForCLM
-     procedure, public :: AddGovEqn              => SOEBaseAddGovEqn
-     procedure, public :: SetMeshesOfGoveqns     => SOESetMeshesOfGoveqns
-     procedure, public :: AddCouplingBCsInGovEqn => SOEBaseAddCouplingBCsInGovEqn
-     procedure, public :: AddConditionInGovEqn   => SOEBaseAddConditionInGovEqn
-     procedure, public :: CreateVectorsForGovEqn => SOBCreateVectorsForGovEqn
+     procedure, public :: Init                         => SOEBaseInit
+     procedure, public :: Clean                        => SOEBaseClean
+     procedure, public :: Residual                     => SOEBaseResidual
+     procedure, public :: Jacobian                     => SOEBaseJacobian
+     procedure, public :: ComputeRHS                   => SOEComputeRHS
+     procedure, public :: ComputeOperators             => SOEComputeOperators
+     procedure, public :: StepDT                       => SOEBaseStepDT
+     procedure, public :: PreSolve                     => SOEBasePreSolve
+     procedure, public :: PostSolve                    => SOEBasePostSolve
+     procedure, public :: PreStepDT                    => SOEBasePreStepDT
+     procedure, public :: PostStepDT                   => SOEBasePostStepDT
+     procedure, public :: PrintInfo                    => SOEBasePrintInfo
+     procedure, public :: SetPointerToIthGovEqn        => SOEBaseSetPointerToIthGovEqn
+     procedure, public :: SetDtime                     => SOEBaseSetDtime
+     procedure, public :: SetDataFromCLM               => SOEBaseSetDataFromCLM
+     procedure, public :: GetDataForCLM                => SOEBaseGetDataForCLM
+     procedure, public :: AddGovEqn                    => SOEBaseAddGovEqn
+     procedure, public :: AddGovEqnWithMeshRank        => SOEBaseAddGovEqnWithMeshRank
+     procedure, public :: SetMeshesOfGoveqns           => SOESetMeshesOfGoveqns
+     procedure, public :: SetMeshesOfGoveqnsByMeshRank => SOESetMeshesOfGoveqnsByMeshRank
+     procedure, public :: AddCouplingBCsInGovEqn       => SOEBaseAddCouplingBCsInGovEqn
+     procedure, public :: AddConditionInGovEqn         => SOEBaseAddConditionInGovEqn
+     procedure, public :: CreateVectorsForGovEqn       => SOBCreateVectorsForGovEqn
   end type sysofeqns_base_type
 
   public :: SOEBaseInit
@@ -631,6 +633,50 @@ contains
   end subroutine SOESetMeshesOfGoveqns
 
   !------------------------------------------------------------------------
+  subroutine SOESetMeshesOfGoveqnsByMeshRank(soe, meshes, nmesh)
+    !
+    ! !DESCRIPTION:
+    ! Match the meshes in `meshes` with the governing equations in `soe`.
+    !
+    ! !USES
+    use MeshType                     , only : mesh_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_base_type) , intent(inout)       :: soe
+    class(mesh_type)           , pointer, intent(in) :: meshes(:)
+    PetscInt                   , intent(in)          :: nmesh
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                                         :: imesh
+    PetscInt                                         :: mesh_rank
+    class(mesh_type)           , pointer             :: cur_mesh
+    class(goveqn_base_type)    , pointer             :: cur_goveqn
+
+    cur_goveqn => soe%goveqns
+    do
+       if (.not.associated(cur_goveqn)) exit
+       mesh_rank = cur_goveqn%mesh_rank
+       if (mesh_rank > nmesh) then
+          call endrun(msg='ERROR SystemOfEquationsBaseType: '// &
+               'Rank of mesh associated with governing equation ' // &
+               'exceeds no. of meshes in the list')
+       endif
+
+       do imesh = 1, mesh_rank
+          cur_mesh => meshes(imesh)
+       enddo
+
+       cur_goveqn%mesh => cur_mesh
+       cur_goveqn%mesh_itype = cur_mesh%itype
+
+       cur_goveqn => cur_goveqn%next
+    enddo
+
+  end subroutine SOESetMeshesOfGoveqnsByMeshRank
+
+  !------------------------------------------------------------------------
   subroutine SOEBaseSetPointerToIthGovEqn(this, igoveqn, goveqn_ptr)
     !
     ! !DESCRIPTION:
@@ -773,6 +819,25 @@ contains
     call endrun(msg=errMsg(__FILE__, __LINE__))
 
   end subroutine SOEBaseAddGovEqn
+
+  !------------------------------------------------------------------------
+  subroutine SOEBaseAddGovEqnWithMeshRank(this, geq_type, name, mesh_rank)
+    !
+    ! !DESCRIPTION:
+    ! Adds a governing equation
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_base_type) :: this
+    PetscInt                   :: geq_type
+    character(len =*)          :: name
+    PetscInt                   :: mesh_rank
+
+    write(iulog,*) 'SOEBaseAddGovEqnWithMeshRank must be extended'
+    call endrun(msg=errMsg(__FILE__, __LINE__))
+
+  end subroutine SOEBaseAddGovEqnWithMeshRank
 
   !------------------------------------------------------------------------
   subroutine SOEBaseAddCouplingBCsInGovEqn(this, igoveq, name, unit, &

@@ -1788,12 +1788,19 @@ subroutine add_multiple_goveqns()
   ! !USES:
   use MultiPhysicsProbVSFM , only : vsfm_mpp
   use MultiPhysicsProbConstants , only : GE_RE
-  use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
   !
   ! !ARGUMENTS
   implicit none
 
-  call vsfm_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE', MESH_CLM_SOIL_COL)
+  call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE for soil'             , 1)
+  call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE for overstory root'   , 2)
+  call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE for overstory xylem'  , 3)
+  call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE for overstory leaf'   , 4)
+  call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE for understory root'  , 5)
+  call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE for understory xylem' , 6)
+  call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE for understory leaf'  , 7)
+
+  call vsfm_mpp%SetMeshesOfGoveqnsByMeshRank()
 
   write(*,*)'Add code to support addition of multiple goveqns'
   stop

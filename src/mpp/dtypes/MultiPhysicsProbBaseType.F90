@@ -52,7 +52,9 @@ module MultiPhysicsProbBaseType
      procedure, public :: MeshComputeVolume             => MPPMeshComputeVolume
      procedure, public :: MeshSetConnectionSet          => MPPMeshSetConnectionSet
      procedure, public :: AddGovEqn                     => MPPAddGovEqn
+     procedure, public :: AddGovEqnWithMeshRank         => MPPAddGovEqnWithMeshRank
      procedure, public :: SetMeshesOfGoveqns            => MPPSetMeshesOfGoveqns
+     procedure, public :: SetMeshesOfGoveqnsByMeshRank  => MPPSetMeshesOfGoveqnsByMeshRank
      procedure, public :: SetMPIRank                    => MPPSetMPIRank
      procedure, public :: GetMPIRank                    => MPPGetMPIRank
      procedure, public :: GovEqnUpdateBCConnectionSet   => MPPGovEqnUpdateBCConnectionSet
@@ -427,6 +429,24 @@ contains
   end subroutine MPPAddGovEqn
 
   !------------------------------------------------------------------------
+  subroutine MPPAddGovEqnWithMeshRank(this, geq_type, name, mesh_rank)
+    !
+    ! !DESCRIPTION:
+    ! Adds a governing equation to the MPP
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+    PetscInt                          :: geq_type
+    character(len =*)                 :: name
+    PetscInt                          :: mesh_rank
+
+    call this%soe%AddGovEqnWithMeshRank(geq_type, name, mesh_rank)
+
+  end subroutine MPPAddGovEqnWithMeshRank
+
+  !------------------------------------------------------------------------
   subroutine MPPSetMeshesOfGoveqns(this)
     !
     ! !DESCRIPTION:
@@ -442,6 +462,23 @@ contains
     call this%soe%SetMeshesOfGoveqns(this%meshes, this%nmesh)
 
   end subroutine MPPSetMeshesOfGoveqns
+
+  !------------------------------------------------------------------------
+  subroutine MPPSetMeshesOfGoveqnsByMeshRank(this)
+    !
+    ! !DESCRIPTION:
+    ! Set association of governing equations and meshes
+    !
+    use GoverningEquationBaseType, only : goveqn_base_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+
+    call this%soe%SetMeshesOfGoveqnsByMeshRank(this%meshes, this%nmesh)
+
+  end subroutine MPPSetMeshesOfGoveqnsByMeshRank
 
   !------------------------------------------------------------------------
   subroutine MPPSetMPIRank(this, rank)
