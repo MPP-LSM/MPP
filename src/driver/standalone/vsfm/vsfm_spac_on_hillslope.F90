@@ -127,7 +127,7 @@ contains
   end subroutine MeshCopy
 
   !------------------------------------------------------------------------
-  subroutine MeshAddToMPP(this, vsfm_mpp, imesh, mesh_name, ncells, ncells_ghost, nz)
+  subroutine MeshAddToMPP(this, vsfm_mpp, imesh, mesh_name, nz)
     !
     use MultiPhysicsProbVSFM      , only : mpp_vsfm_type
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
@@ -147,15 +147,16 @@ contains
     class (mpp_vsfm_type)            :: vsfm_mpp
     PetscInt                         :: imesh
     character(len =*)                :: mesh_name
-    PetscInt                         :: ncells
     PetscInt                         :: ncells_ghost
     PetscInt                         :: nz
     
+    ncells_ghost = 0
+
     write(*,*)'Adding following mesh to MPP: ' // trim(mesh_name)
     call vsfm_mpp%MeshSetName                (imesh, trim(mesh_name)          )
     call vsfm_mpp%MeshSetOrientation         (imesh, MESH_ALONG_GRAVITY       )
     call vsfm_mpp%MeshSetID                  (imesh, MESH_CLM_SOIL_COL        )
-    call vsfm_mpp%MeshSetDimensions          (imesh, ncells, ncells_ghost, nz )
+    call vsfm_mpp%MeshSetDimensions          (imesh, this%ncells, ncells_ghost, nz )
 
     call vsfm_mpp%MeshSetGridCellFilter      (imesh, this%filter              )
 
@@ -795,8 +796,8 @@ subroutine add_single_mesh()
   imesh             = 1
   soil_ncells_ghost = 0
 
-  call combined_mesh%AddToMPP(vsfm_mpp, imesh, 'Combined mesh for Soil-Overstory-Understory', &
-       ncells, soil_ncells_ghost, soil_nz)
+  call combined_mesh%AddToMPP(vsfm_mpp, imesh, &
+       'Combined mesh for Soil-Overstory-Understory', soil_nz)
 
   !
   ! Add connections
@@ -876,55 +877,39 @@ subroutine add_multiple_meshes()
   ! Create memory for 7 meshes
   call vsfm_mpp%SetNumMeshes(7)
 
-  ! All meshes have no ghost cells
-  ncells_ghost = 0
-
   ! 1. Add mesh for soil
   imesh = 1
-  call soil_mesh%AddToMPP(vsfm_mpp, imesh, 'Soil mesh', &
-       soil_ncells, ncells_ghost, soil_nz)
+  call soil_mesh%AddToMPP(vsfm_mpp, imesh, 'Soil mesh', soil_nz)
 
   ! 2. Add mesh for overstory root
   imesh     = imesh + 1
   nz        = overstory_root_nz
-  num_cells = soil_nx*soil_ny*nz
-  call o_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory root mesh', &
-       num_cells, ncells_ghost, nz)
+  call o_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory root mesh', nz)
 
   ! 3. Add mesh for overstory xylem
   imesh     = imesh + 1
   nz        = overstory_xylem_nz
-  num_cells = soil_nx*soil_ny*nz
-  call o_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory xylem mesh', &
-       num_cells, ncells_ghost, nz)
+  call o_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory xylem mesh', nz)
 
   ! 4. Add mesh for overstory leaf
   imesh     = imesh + 1
   nz        = overstory_leaf_nz
-  num_cells = soil_nx*soil_ny*nz
-  call o_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory leaf mesh', &
-       num_cells, ncells_ghost, nz)
+  call o_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory leaf mesh', nz)
 
   ! 5. Add mesh for understory root
   imesh     = imesh + 1
   nz        = understory_root_nz
-  num_cells = soil_nx*soil_ny*nz
-  call u_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory root mesh', &
-       num_cells, ncells_ghost, nz)
+  call u_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory root mesh', nz)
 
   ! 6. Add mesh for understory xylem
   imesh     = imesh + 1
   nz        = understory_xylem_nz
-  num_cells = soil_nx*soil_ny*nz
-  call u_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory xylem mesh', &
-       num_cells, ncells_ghost, nz)
+  call u_xylem_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory xylem mesh', nz)
 
   ! 7. Add mesh for understory leaf
   imesh     = imesh + 1
   nz        = understory_leaf_nz
-  num_cells = soil_nx*soil_ny*nz
-  call u_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory leaf mesh', &
-       num_cells, ncells_ghost, nz)
+  call u_leaf_mesh%AddToMPP(vsfm_mpp, imesh, 'Understory leaf mesh', nz)
 
   write(*,*)'Add code to support addition of multiple meshes'
   stop
