@@ -73,10 +73,11 @@ module spac_component
      PetscReal , pointer :: relperm_dn_param_3(:)
 
    contains
-     
+
      procedure, public :: Init => ConnInit
      procedure, public :: Copy => ConnCopy
-     
+     procedure, public :: AddToMPPAsInternalConn
+
   end type spac_component_conn_type
 
 
@@ -299,6 +300,29 @@ contains
     this%relperm_dn_param_3  (idx_beg:idx_end) = conn%relperm_dn_param_3  (:)
 
   end subroutine ConnCopy
+
+  !------------------------------------------------------------------------
+  subroutine AddToMPPAsInternalConn(this, vsfm_mpp, imesh)
+    !
+    use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
+    use MultiPhysicsProbVSFM      , only : mpp_vsfm_type
+    !
+    implicit none
+    !
+    class (spac_component_conn_type) :: this
+    class (mpp_vsfm_type)            :: vsfm_mpp
+    PetscInt                         :: imesh
+
+    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+         this%nconn, &
+         this%id_up, &
+         this%id_dn,       &
+         this%dist_up, &
+         this%dist_dn,  &
+         this%area,  &
+         this%itype)
+
+  end subroutine AddToMPPAsInternalConn
 
 end module spac_component
 
@@ -851,11 +875,7 @@ subroutine add_single_mesh()
   call combined_conn%Copy(idx_beg, idx_end, u_x2l_conn)
 
   imesh = 1
-  call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-       nconn,  combined_conn%id_up, combined_conn%id_dn,          &
-       combined_conn%dist_up, combined_conn%dist_dn,  &
-       combined_conn%area,  combined_conn%itype)
-
+  call combined_conn%AddToMPPAsInternalConn(vsfm_mpp, imesh)
 
 end subroutine add_single_mesh
 
@@ -865,6 +885,7 @@ subroutine add_multiple_meshes()
 #include <petsc/finclude/petsc.h>
   !
   use MultiPhysicsProbVSFM      , only : vsfm_mpp
+  use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
   use problem_parameters
   !
   implicit none
@@ -885,6 +906,7 @@ subroutine add_multiple_meshes()
   imesh     = imesh + 1
   nz        = overstory_root_nz
   call o_root_mesh%AddToMPP(vsfm_mpp, imesh, 'Overstory root mesh', nz)
+  call s2s_conn%AddToMPPAsInternalConn(vsfm_mpp, imesh)
 
   ! 3. Add mesh for overstory xylem
   imesh     = imesh + 1
