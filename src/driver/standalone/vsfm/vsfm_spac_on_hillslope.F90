@@ -42,35 +42,35 @@ module spac_component
 
   type, public :: spac_component_conn_type
      PetscInt            :: nconn
-     PetscInt  , pointer :: conn_id_up(:)   !
-     PetscInt  , pointer :: conn_id_dn(:)   !
-     PetscReal , pointer :: conn_dist_up(:) !
-     PetscReal , pointer :: conn_dist_dn(:) !
-     PetscReal , pointer :: conn_area(:)    !
-     PetscInt  , pointer :: conn_type(:)    !
+     PetscInt  , pointer :: id_up(:)   !
+     PetscInt  , pointer :: id_dn(:)   !
+     PetscReal , pointer :: dist_up(:) !
+     PetscReal , pointer :: dist_dn(:) !
+     PetscReal , pointer :: area(:)    !
+     PetscInt  , pointer :: itype(:)    !
 
-     PetscInt  , pointer :: conn_flux_type(:)    !
-     PetscInt  , pointer :: conn_cond_type(:)    !
-     PetscReal , pointer :: conn_cond     (:)    !
-     PetscReal , pointer :: conn_cond_up  (:)    !
-     PetscReal , pointer :: conn_cond_dn  (:)    !
+     PetscInt  , pointer :: flux_type(:)    !
+     PetscInt  , pointer :: cond_type(:)    !
+     PetscReal , pointer :: cond     (:)    !
+     PetscReal , pointer :: cond_up  (:)    !
+     PetscReal , pointer :: cond_dn  (:)    !
 
-     PetscInt  , pointer :: conn_satparam_up_itype(:)
-     PetscReal , pointer :: conn_satparam_up_param_1(:)
-     PetscReal , pointer :: conn_satparam_up_param_2(:)
-     PetscReal , pointer :: conn_satparam_up_param_3(:)
-     PetscInt  , pointer :: conn_relperm_up_itype(:)
-     PetscReal , pointer :: conn_relperm_up_param_1(:)
-     PetscReal , pointer :: conn_relperm_up_param_2(:)
+     PetscInt  , pointer :: satparam_up_itype(:)
+     PetscReal , pointer :: satparam_up_param_1(:)
+     PetscReal , pointer :: satparam_up_param_2(:)
+     PetscReal , pointer :: satparam_up_param_3(:)
+     PetscInt  , pointer :: relperm_up_itype(:)
+     PetscReal , pointer :: relperm_up_param_1(:)
+     PetscReal , pointer :: relperm_up_param_2(:)
 
-     PetscInt  , pointer :: conn_satparam_dn_itype(:)
-     PetscReal , pointer :: conn_satparam_dn_param_1(:)
-     PetscReal , pointer :: conn_satparam_dn_param_2(:)
-     PetscReal , pointer :: conn_satparam_dn_param_3(:)
-     PetscInt  , pointer :: conn_relperm_dn_itype(:)
-     PetscReal , pointer :: conn_relperm_dn_param_1(:)
-     PetscReal , pointer :: conn_relperm_dn_param_2(:)
-     PetscReal , pointer :: conn_relperm_dn_param_3(:)
+     PetscInt  , pointer :: satparam_dn_itype(:)
+     PetscReal , pointer :: satparam_dn_param_1(:)
+     PetscReal , pointer :: satparam_dn_param_2(:)
+     PetscReal , pointer :: satparam_dn_param_3(:)
+     PetscInt  , pointer :: relperm_dn_itype(:)
+     PetscReal , pointer :: relperm_dn_param_1(:)
+     PetscReal , pointer :: relperm_dn_param_2(:)
+     PetscReal , pointer :: relperm_dn_param_3(:)
 
    contains
      
@@ -226,35 +226,35 @@ contains
 
     this%nconn = nconn
 
-    allocate (this%conn_id_up               (nconn)); this%conn_id_up               (:) = 0
-    allocate (this%conn_id_dn               (nconn)); this%conn_id_dn               (:) = 0
-    allocate (this%conn_dist_up             (nconn)); this%conn_dist_up             (:) = 0.d0
-    allocate (this%conn_dist_dn             (nconn)); this%conn_dist_dn             (:) = 0.d0
-    allocate (this%conn_area                (nconn)); this%conn_area                (:) = 0.d0
-    allocate (this%conn_type                (nconn)); this%conn_type                (:) = 0
+    allocate (this%id_up               (nconn)); this%id_up               (:) = 0
+    allocate (this%id_dn               (nconn)); this%id_dn               (:) = 0
+    allocate (this%dist_up             (nconn)); this%dist_up             (:) = 0.d0
+    allocate (this%dist_dn             (nconn)); this%dist_dn             (:) = 0.d0
+    allocate (this%area                (nconn)); this%area                (:) = 0.d0
+    allocate (this%itype                (nconn)); this%itype                (:) = 0
 
-    allocate (this%conn_flux_type           (nconn)); this%conn_flux_type           (:) = 0
-    allocate (this%conn_cond_type           (nconn)); this%conn_cond_type           (:) = 0
-    allocate (this%conn_cond                (nconn)); this%conn_cond                (:) = 0.d0
-    allocate (this%conn_cond_up             (nconn)); this%conn_cond_up             (:) = 0.d0
-    allocate (this%conn_cond_dn             (nconn)); this%conn_cond_dn             (:) = 0.d0
+    allocate (this%flux_type           (nconn)); this%flux_type           (:) = 0
+    allocate (this%cond_type           (nconn)); this%cond_type           (:) = 0
+    allocate (this%cond                (nconn)); this%cond                (:) = 0.d0
+    allocate (this%cond_up             (nconn)); this%cond_up             (:) = 0.d0
+    allocate (this%cond_dn             (nconn)); this%cond_dn             (:) = 0.d0
 
-    allocate (this%conn_satparam_up_itype   (nconn)); this%conn_satparam_up_itype   (:) = 0
-    allocate (this%conn_satparam_up_param_1 (nconn)); this%conn_satparam_up_param_1 (:) = 0.d0
-    allocate (this%conn_satparam_up_param_2 (nconn)); this%conn_satparam_up_param_2 (:) = 0.d0
-    allocate (this%conn_satparam_up_param_3 (nconn)); this%conn_satparam_up_param_3 (:) = 0.d0
-    allocate (this%conn_relperm_up_itype    (nconn)); this%conn_relperm_up_itype    (:) = 0
-    allocate (this%conn_relperm_up_param_1  (nconn)); this%conn_relperm_up_param_1  (:) = 0.d0
-    allocate (this%conn_relperm_up_param_2  (nconn)); this%conn_relperm_up_param_2  (:) = 0.d0
+    allocate (this%satparam_up_itype   (nconn)); this%satparam_up_itype   (:) = 0
+    allocate (this%satparam_up_param_1 (nconn)); this%satparam_up_param_1 (:) = 0.d0
+    allocate (this%satparam_up_param_2 (nconn)); this%satparam_up_param_2 (:) = 0.d0
+    allocate (this%satparam_up_param_3 (nconn)); this%satparam_up_param_3 (:) = 0.d0
+    allocate (this%relperm_up_itype    (nconn)); this%relperm_up_itype    (:) = 0
+    allocate (this%relperm_up_param_1  (nconn)); this%relperm_up_param_1  (:) = 0.d0
+    allocate (this%relperm_up_param_2  (nconn)); this%relperm_up_param_2  (:) = 0.d0
 
-    allocate (this%conn_satparam_dn_itype   (nconn)); this%conn_satparam_dn_itype   (:) = 0
-    allocate (this%conn_satparam_dn_param_1 (nconn)); this%conn_satparam_dn_param_1 (:) = 0.d0
-    allocate (this%conn_satparam_dn_param_2 (nconn)); this%conn_satparam_dn_param_2 (:) = 0.d0
-    allocate (this%conn_satparam_dn_param_3 (nconn)); this%conn_satparam_dn_param_3 (:) = 0.d0
-    allocate (this%conn_relperm_dn_itype    (nconn)); this%conn_relperm_dn_itype    (:) = 0
-    allocate (this%conn_relperm_dn_param_1  (nconn)); this%conn_relperm_dn_param_1  (:) = 0.d0
-    allocate (this%conn_relperm_dn_param_2  (nconn)); this%conn_relperm_dn_param_2  (:) = 0.d0
-    allocate (this%conn_relperm_dn_param_3  (nconn)); this%conn_relperm_dn_param_3  (:) = 0.d0
+    allocate (this%satparam_dn_itype   (nconn)); this%satparam_dn_itype   (:) = 0
+    allocate (this%satparam_dn_param_1 (nconn)); this%satparam_dn_param_1 (:) = 0.d0
+    allocate (this%satparam_dn_param_2 (nconn)); this%satparam_dn_param_2 (:) = 0.d0
+    allocate (this%satparam_dn_param_3 (nconn)); this%satparam_dn_param_3 (:) = 0.d0
+    allocate (this%relperm_dn_itype    (nconn)); this%relperm_dn_itype    (:) = 0
+    allocate (this%relperm_dn_param_1  (nconn)); this%relperm_dn_param_1  (:) = 0.d0
+    allocate (this%relperm_dn_param_2  (nconn)); this%relperm_dn_param_2  (:) = 0.d0
+    allocate (this%relperm_dn_param_3  (nconn)); this%relperm_dn_param_3  (:) = 0.d0
 
   end subroutine ConnInit
 
@@ -268,35 +268,35 @@ contains
     PetscInt                         :: idx_beg
     PetscInt                         :: idx_end
 
-    this%conn_id_up               (idx_beg:idx_end) = conn%conn_id_up               (:)
-    this%conn_id_dn               (idx_beg:idx_end) = conn%conn_id_dn               (:)
-    this%conn_dist_up             (idx_beg:idx_end) = conn%conn_dist_up             (:)
-    this%conn_dist_dn             (idx_beg:idx_end) = conn%conn_dist_dn             (:)
-    this%conn_area                (idx_beg:idx_end) = conn%conn_area                (:)
-    this%conn_type                (idx_beg:idx_end) = conn%conn_type                (:)
+    this%id_up               (idx_beg:idx_end) = conn%id_up               (:)
+    this%id_dn               (idx_beg:idx_end) = conn%id_dn               (:)
+    this%dist_up             (idx_beg:idx_end) = conn%dist_up             (:)
+    this%dist_dn             (idx_beg:idx_end) = conn%dist_dn             (:)
+    this%area                (idx_beg:idx_end) = conn%area                (:)
+    this%itype                (idx_beg:idx_end) = conn%itype                (:)
 
-    this%conn_flux_type           (idx_beg:idx_end) = conn%conn_flux_type           (:)
-    this%conn_cond_type           (idx_beg:idx_end) = conn%conn_cond_type           (:)
-    this%conn_cond                (idx_beg:idx_end) = conn%conn_cond                (:)
-    this%conn_cond_up             (idx_beg:idx_end) = conn%conn_cond_up             (:)
-    this%conn_cond_dn             (idx_beg:idx_end) = conn%conn_cond_dn             (:)
+    this%flux_type           (idx_beg:idx_end) = conn%flux_type           (:)
+    this%cond_type           (idx_beg:idx_end) = conn%cond_type           (:)
+    this%cond                (idx_beg:idx_end) = conn%cond                (:)
+    this%cond_up             (idx_beg:idx_end) = conn%cond_up             (:)
+    this%cond_dn             (idx_beg:idx_end) = conn%cond_dn             (:)
 
-    this%conn_satparam_up_itype   (idx_beg:idx_end) = conn%conn_satparam_up_itype   (:)
-    this%conn_satparam_up_param_1 (idx_beg:idx_end) = conn%conn_satparam_up_param_1 (:)
-    this%conn_satparam_up_param_2 (idx_beg:idx_end) = conn%conn_satparam_up_param_2 (:)
-    this%conn_satparam_up_param_3 (idx_beg:idx_end) = conn%conn_satparam_up_param_3 (:)
-    this%conn_relperm_up_itype    (idx_beg:idx_end) = conn%conn_relperm_up_itype    (:)
-    this%conn_relperm_up_param_1  (idx_beg:idx_end) = conn%conn_relperm_up_param_1  (:)
-    this%conn_relperm_up_param_2  (idx_beg:idx_end) = conn%conn_relperm_up_param_2  (:)
+    this%satparam_up_itype   (idx_beg:idx_end) = conn%satparam_up_itype   (:)
+    this%satparam_up_param_1 (idx_beg:idx_end) = conn%satparam_up_param_1 (:)
+    this%satparam_up_param_2 (idx_beg:idx_end) = conn%satparam_up_param_2 (:)
+    this%satparam_up_param_3 (idx_beg:idx_end) = conn%satparam_up_param_3 (:)
+    this%relperm_up_itype    (idx_beg:idx_end) = conn%relperm_up_itype    (:)
+    this%relperm_up_param_1  (idx_beg:idx_end) = conn%relperm_up_param_1  (:)
+    this%relperm_up_param_2  (idx_beg:idx_end) = conn%relperm_up_param_2  (:)
 
-    this%conn_satparam_dn_itype   (idx_beg:idx_end) = conn%conn_satparam_dn_itype   (:)
-    this%conn_satparam_dn_param_1 (idx_beg:idx_end) = conn%conn_satparam_dn_param_1 (:)
-    this%conn_satparam_dn_param_2 (idx_beg:idx_end) = conn%conn_satparam_dn_param_2 (:)
-    this%conn_satparam_dn_param_3 (idx_beg:idx_end) = conn%conn_satparam_dn_param_3 (:)
-    this%conn_relperm_dn_itype    (idx_beg:idx_end) = conn%conn_relperm_dn_itype    (:)
-    this%conn_relperm_dn_param_1  (idx_beg:idx_end) = conn%conn_relperm_dn_param_1  (:)
-    this%conn_relperm_dn_param_2  (idx_beg:idx_end) = conn%conn_relperm_dn_param_2  (:)
-    this%conn_relperm_dn_param_3  (idx_beg:idx_end) = conn%conn_relperm_dn_param_3  (:)
+    this%satparam_dn_itype   (idx_beg:idx_end) = conn%satparam_dn_itype   (:)
+    this%satparam_dn_param_1 (idx_beg:idx_end) = conn%satparam_dn_param_1 (:)
+    this%satparam_dn_param_2 (idx_beg:idx_end) = conn%satparam_dn_param_2 (:)
+    this%satparam_dn_param_3 (idx_beg:idx_end) = conn%satparam_dn_param_3 (:)
+    this%relperm_dn_itype    (idx_beg:idx_end) = conn%relperm_dn_itype    (:)
+    this%relperm_dn_param_1  (idx_beg:idx_end) = conn%relperm_dn_param_1  (:)
+    this%relperm_dn_param_2  (idx_beg:idx_end) = conn%relperm_dn_param_2  (:)
+    this%relperm_dn_param_3  (idx_beg:idx_end) = conn%relperm_dn_param_3  (:)
 
   end subroutine ConnCopy
 
@@ -664,7 +664,7 @@ subroutine initialize_problem()
   call set_material_properties() 
 
   ! 8. Set connection flux type
-  call set_conn_flux_type()
+  call set_flux_type()
 
   ! 9. Set initial conditions
   call set_initial_conditions()
@@ -852,9 +852,9 @@ subroutine add_single_mesh()
 
   imesh = 1
   call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-       nconn,  combined_conn%conn_id_up, combined_conn%conn_id_dn,          &
-       combined_conn%conn_dist_up, combined_conn%conn_dist_dn,  &
-       combined_conn%conn_area,  combined_conn%conn_type)
+       nconn,  combined_conn%id_up, combined_conn%id_dn,          &
+       combined_conn%dist_up, combined_conn%dist_dn,  &
+       combined_conn%area,  combined_conn%itype)
 
 
 end subroutine add_single_mesh
@@ -1028,13 +1028,13 @@ subroutine setup_soil_mesh()
         do kk = 1, soil_nz-1
            if (soil_id(ii,jj,kk) > 0 .and. soil_id(ii,jj,kk+1) > 0) then
               iconn                                  = iconn + 1
-              s2s_conn%conn_id_up(iconn)     = soil_id(ii,jj,kk  )
-              s2s_conn%conn_id_dn(iconn)     = soil_id(ii,jj,kk+1)
-              s2s_conn%conn_dist_up(iconn)   = 0.5d0*soil_dz
-              s2s_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dz
-              s2s_conn%conn_area(iconn)      = soil_dx*soil_dy
-              s2s_conn%conn_type(iconn)      = CONN_VERTICAL
-              s2s_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+              s2s_conn%id_up(iconn)     = soil_id(ii,jj,kk  )
+              s2s_conn%id_dn(iconn)     = soil_id(ii,jj,kk+1)
+              s2s_conn%dist_up(iconn)   = 0.5d0*soil_dz
+              s2s_conn%dist_dn(iconn)   = 0.5d0*soil_dz
+              s2s_conn%area(iconn)      = soil_dx*soil_dy
+              s2s_conn%itype(iconn)      = CONN_VERTICAL
+              s2s_conn%flux_type(iconn) = DARCY_FLUX_TYPE
            end if
         end do
      end do
@@ -1049,13 +1049,13 @@ subroutine setup_soil_mesh()
            do kk = 1, soil_nz
               if (soil_id(ii,jj,kk) > 0 .and. soil_id(ii+1,jj,kk) > 0) then
                  iconn                                  = iconn + 1
-                 s2s_conn%conn_id_up(iconn)     = soil_id(ii  ,jj,kk)
-                 s2s_conn%conn_id_dn(iconn)     = soil_id(ii+1,jj,kk)
-                 s2s_conn%conn_dist_up(iconn)   = 0.5d0*soil_dx
-                 s2s_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dx
-                 s2s_conn%conn_area(iconn)      = soil_dy*soil_dz
-                 s2s_conn%conn_type(iconn)      = CONN_HORIZONTAL
-                 s2s_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+                 s2s_conn%id_up(iconn)     = soil_id(ii  ,jj,kk)
+                 s2s_conn%id_dn(iconn)     = soil_id(ii+1,jj,kk)
+                 s2s_conn%dist_up(iconn)   = 0.5d0*soil_dx
+                 s2s_conn%dist_dn(iconn)   = 0.5d0*soil_dx
+                 s2s_conn%area(iconn)      = soil_dy*soil_dz
+                 s2s_conn%itype(iconn)      = CONN_HORIZONTAL
+                 s2s_conn%flux_type(iconn) = DARCY_FLUX_TYPE
               end if
            end do
         end do
@@ -1284,39 +1284,39 @@ subroutine setup_overstory_mesh()
 
         do kk = 1, overstory_root_nz
            iconn                                            = iconn + 1
-           o_r2s_conn%conn_id_up(iconn)     = o_root_mesh%id(ii,jj,kk)
-           o_r2s_conn%conn_id_dn(iconn)     = soil_id          (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
+           o_r2s_conn%id_up(iconn)     = o_root_mesh%id(ii,jj,kk)
+           o_r2s_conn%id_dn(iconn)     = soil_id          (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
 
-           o_r2s_conn%conn_dist_up(iconn)   = 0.d0
-           o_r2s_conn%conn_dist_dn(iconn)   = overstory_root_length_profile(kk)
-           o_r2s_conn%conn_area(iconn)      = overstory_root_area_profile  (kk)
-           o_r2s_conn%conn_type(iconn)      = CONN_HORIZONTAL
-           o_r2s_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           o_r2s_conn%conn_cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
-           o_r2s_conn%conn_cond_up(iconn)   = overstory_root_conductance
-           o_r2s_conn%conn_cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
+           o_r2s_conn%dist_up(iconn)   = 0.d0
+           o_r2s_conn%dist_dn(iconn)   = overstory_root_length_profile(kk)
+           o_r2s_conn%area(iconn)      = overstory_root_area_profile  (kk)
+           o_r2s_conn%itype(iconn)      = CONN_HORIZONTAL
+           o_r2s_conn%flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           o_r2s_conn%cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
+           o_r2s_conn%cond_up(iconn)   = overstory_root_conductance
+           o_r2s_conn%cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
                                                               overstory_root_length_profile(kk)        ! [m]
 
            ! Saturation up: CHUANG
-           o_r2s_conn%conn_satparam_up_itype   (iconn) = o_root_pp%satfunc_type    (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           o_r2s_conn%conn_satparam_up_param_1 (iconn) = o_root_pp%alpha           (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           o_r2s_conn%conn_satparam_up_param_2 (iconn) = o_root_pp%lambda          (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           o_r2s_conn%conn_satparam_up_param_3 (iconn) = o_root_pp%residual_sat    (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           o_r2s_conn%satparam_up_itype   (iconn) = o_root_pp%satfunc_type    (o_r2s_conn%id_up(iconn) - root_id_offset )
+           o_r2s_conn%satparam_up_param_1 (iconn) = o_root_pp%alpha           (o_r2s_conn%id_up(iconn) - root_id_offset )
+           o_r2s_conn%satparam_up_param_2 (iconn) = o_root_pp%lambda          (o_r2s_conn%id_up(iconn) - root_id_offset )
+           o_r2s_conn%satparam_up_param_3 (iconn) = o_root_pp%residual_sat    (o_r2s_conn%id_up(iconn) - root_id_offset )
            ! Relative Perm. up: WEIBULL
-           o_r2s_conn%conn_relperm_up_itype    (iconn) = o_root_pp%relperm_type    (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           o_r2s_conn%conn_relperm_up_param_1  (iconn) = o_root_pp%relperm_param_1 (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           o_r2s_conn%conn_relperm_up_param_2  (iconn) = o_root_pp%relperm_param_2 (o_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           o_r2s_conn%relperm_up_itype    (iconn) = o_root_pp%relperm_type    (o_r2s_conn%id_up(iconn) - root_id_offset )
+           o_r2s_conn%relperm_up_param_1  (iconn) = o_root_pp%relperm_param_1 (o_r2s_conn%id_up(iconn) - root_id_offset )
+           o_r2s_conn%relperm_up_param_2  (iconn) = o_root_pp%relperm_param_2 (o_r2s_conn%id_up(iconn) - root_id_offset )
 
            ! Saturation dn: CHUANG
-           o_r2s_conn%conn_satparam_dn_itype   (iconn) = soil_pp%satfunc_type    (o_r2s_conn%conn_id_dn(iconn) )
-           o_r2s_conn%conn_satparam_dn_param_1 (iconn) = soil_pp%alpha           (o_r2s_conn%conn_id_dn(iconn) )
-           o_r2s_conn%conn_satparam_dn_param_2 (iconn) = soil_pp%lambda          (o_r2s_conn%conn_id_dn(iconn) )
-           o_r2s_conn%conn_satparam_dn_param_3 (iconn) = soil_pp%residual_sat    (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%satparam_dn_itype   (iconn) = soil_pp%satfunc_type    (o_r2s_conn%id_dn(iconn) )
+           o_r2s_conn%satparam_dn_param_1 (iconn) = soil_pp%alpha           (o_r2s_conn%id_dn(iconn) )
+           o_r2s_conn%satparam_dn_param_2 (iconn) = soil_pp%lambda          (o_r2s_conn%id_dn(iconn) )
+           o_r2s_conn%satparam_dn_param_3 (iconn) = soil_pp%residual_sat    (o_r2s_conn%id_dn(iconn) )
            ! Relative Perm. dn: MUALEM
-           o_r2s_conn%conn_relperm_dn_itype    (iconn) = soil_pp%relperm_type    (o_r2s_conn%conn_id_dn(iconn) )
-           o_r2s_conn%conn_relperm_dn_param_1  (iconn) = soil_pp%alpha           (o_r2s_conn%conn_id_dn(iconn) )
-           o_r2s_conn%conn_relperm_dn_param_2  (iconn) = soil_pp%lambda          (o_r2s_conn%conn_id_dn(iconn) )
-           o_r2s_conn%conn_relperm_dn_param_3  (iconn) = soil_pp%residual_sat    (o_r2s_conn%conn_id_dn(iconn) )
+           o_r2s_conn%relperm_dn_itype    (iconn) = soil_pp%relperm_type    (o_r2s_conn%id_dn(iconn) )
+           o_r2s_conn%relperm_dn_param_1  (iconn) = soil_pp%alpha           (o_r2s_conn%id_dn(iconn) )
+           o_r2s_conn%relperm_dn_param_2  (iconn) = soil_pp%lambda          (o_r2s_conn%id_dn(iconn) )
+           o_r2s_conn%relperm_dn_param_3  (iconn) = soil_pp%residual_sat    (o_r2s_conn%id_dn(iconn) )
         end do
      end do
   end do
@@ -1328,37 +1328,37 @@ subroutine setup_overstory_mesh()
 
         do kk = 1, overstory_root_nz
            iconn                 = iconn + 1
-           o_x2r_conn%conn_id_up(iconn)     = o_xylem_mesh%id(ii,jj,1)
-           o_x2r_conn%conn_id_dn(iconn)     = o_root_mesh%id (ii,jj,kk)
-           o_x2r_conn%conn_dist_up(iconn)   = 0.1d0
-           o_x2r_conn%conn_dist_dn(iconn)   = 0.1d0
-           o_x2r_conn%conn_area(iconn)      = overstory_area_sapwood
-           o_x2r_conn%conn_type(iconn)      = CONN_VERTICAL
-           o_x2r_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           o_x2r_conn%conn_cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
-           o_x2r_conn%conn_cond(iconn)      = overstory_root_conductance
-           o_x2r_conn%conn_cond_up(iconn)   = overstory_root_conductance
-           o_x2r_conn%conn_cond_dn(iconn)   = overstory_root_conductance
+           o_x2r_conn%id_up(iconn)     = o_xylem_mesh%id(ii,jj,1)
+           o_x2r_conn%id_dn(iconn)     = o_root_mesh%id (ii,jj,kk)
+           o_x2r_conn%dist_up(iconn)   = 0.1d0
+           o_x2r_conn%dist_dn(iconn)   = 0.1d0
+           o_x2r_conn%area(iconn)      = overstory_area_sapwood
+           o_x2r_conn%itype(iconn)      = CONN_VERTICAL
+           o_x2r_conn%flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           o_x2r_conn%cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
+           o_x2r_conn%cond(iconn)      = overstory_root_conductance
+           o_x2r_conn%cond_up(iconn)   = overstory_root_conductance
+           o_x2r_conn%cond_dn(iconn)   = overstory_root_conductance
 
            ! Saturation up: CHUANG
-           o_x2r_conn%conn_satparam_up_itype   (iconn) = o_xylem_pp%satfunc_type    (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           o_x2r_conn%conn_satparam_up_param_1 (iconn) = o_xylem_pp%alpha           (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           o_x2r_conn%conn_satparam_up_param_2 (iconn) = o_xylem_pp%lambda          (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           o_x2r_conn%conn_satparam_up_param_3 (iconn) = o_xylem_pp%residual_sat    (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%satparam_up_itype   (iconn) = o_xylem_pp%satfunc_type    (o_x2r_conn%id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%satparam_up_param_1 (iconn) = o_xylem_pp%alpha           (o_x2r_conn%id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%satparam_up_param_2 (iconn) = o_xylem_pp%lambda          (o_x2r_conn%id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%satparam_up_param_3 (iconn) = o_xylem_pp%residual_sat    (o_x2r_conn%id_up(iconn) - xylem_id_offset )
            ! Relative Perm. up: WEIBULL
-           o_x2r_conn%conn_relperm_up_itype    (iconn) = o_xylem_pp%relperm_type    (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           o_x2r_conn%conn_relperm_up_param_1  (iconn) = o_xylem_pp%relperm_param_1 (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           o_x2r_conn%conn_relperm_up_param_2  (iconn) = o_xylem_pp%relperm_param_2 (o_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%relperm_up_itype    (iconn) = o_xylem_pp%relperm_type    (o_x2r_conn%id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%relperm_up_param_1  (iconn) = o_xylem_pp%relperm_param_1 (o_x2r_conn%id_up(iconn) - xylem_id_offset )
+           o_x2r_conn%relperm_up_param_2  (iconn) = o_xylem_pp%relperm_param_2 (o_x2r_conn%id_up(iconn) - xylem_id_offset )
 
            ! Saturation dn: CHUANG
-           o_x2r_conn%conn_satparam_dn_itype   (iconn) = o_root_pp%satfunc_type    (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           o_x2r_conn%conn_satparam_dn_param_1 (iconn) = o_root_pp%alpha           (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           o_x2r_conn%conn_satparam_dn_param_2 (iconn) = o_root_pp%lambda          (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           o_x2r_conn%conn_satparam_dn_param_3 (iconn) = o_root_pp%residual_sat    (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           o_x2r_conn%satparam_dn_itype   (iconn) = o_root_pp%satfunc_type    (o_x2r_conn%id_dn(iconn) - root_id_offset )
+           o_x2r_conn%satparam_dn_param_1 (iconn) = o_root_pp%alpha           (o_x2r_conn%id_dn(iconn) - root_id_offset )
+           o_x2r_conn%satparam_dn_param_2 (iconn) = o_root_pp%lambda          (o_x2r_conn%id_dn(iconn) - root_id_offset )
+           o_x2r_conn%satparam_dn_param_3 (iconn) = o_root_pp%residual_sat    (o_x2r_conn%id_dn(iconn) - root_id_offset )
            ! Relative Perm. dn: WEIBULL
-           o_x2r_conn%conn_relperm_dn_itype    (iconn) = o_root_pp%relperm_type    (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           o_x2r_conn%conn_relperm_dn_param_1  (iconn) = o_root_pp%relperm_param_1 (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           o_x2r_conn%conn_relperm_dn_param_2  (iconn) = o_root_pp%relperm_param_2 (o_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           o_x2r_conn%relperm_dn_itype    (iconn) = o_root_pp%relperm_type    (o_x2r_conn%id_dn(iconn) - root_id_offset )
+           o_x2r_conn%relperm_dn_param_1  (iconn) = o_root_pp%relperm_param_1 (o_x2r_conn%id_dn(iconn) - root_id_offset )
+           o_x2r_conn%relperm_dn_param_2  (iconn) = o_root_pp%relperm_param_2 (o_x2r_conn%id_dn(iconn) - root_id_offset )
         end do
      end do
   end do
@@ -1370,13 +1370,13 @@ subroutine setup_overstory_mesh()
         
         do kk = 1, overstory_xylem_nz-1
            iconn                 = iconn + 1
-           o_x2x_conn%conn_id_up(iconn)     = o_xylem_mesh%id(ii,jj,kk  )
-           o_x2x_conn%conn_id_dn(iconn)     = o_xylem_mesh%id(ii,jj,kk+1)
-           o_x2x_conn%conn_dist_up(iconn)   = 0.5d0*soil_dz
-           o_x2x_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dz
-           o_x2x_conn%conn_area(iconn)      = overstory_area_sapwood
-           o_x2x_conn%conn_type(iconn)      = CONN_VERTICAL
-           o_x2x_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+           o_x2x_conn%id_up(iconn)     = o_xylem_mesh%id(ii,jj,kk  )
+           o_x2x_conn%id_dn(iconn)     = o_xylem_mesh%id(ii,jj,kk+1)
+           o_x2x_conn%dist_up(iconn)   = 0.5d0*soil_dz
+           o_x2x_conn%dist_dn(iconn)   = 0.5d0*soil_dz
+           o_x2x_conn%area(iconn)      = overstory_area_sapwood
+           o_x2x_conn%itype(iconn)      = CONN_VERTICAL
+           o_x2x_conn%flux_type(iconn) = DARCY_FLUX_TYPE
         end do
      end do
   end do
@@ -1389,13 +1389,13 @@ subroutine setup_overstory_mesh()
            idx                   = overstory_branch_2_xylem_index(kk)
            
            iconn                 = iconn + 1
-           o_x2l_conn%conn_id_up(iconn)     = o_xylem_mesh%id(ii,jj,idx)
-           o_x2l_conn%conn_id_dn(iconn)     = o_leaf_mesh%id (ii,jj,kk )
-           o_x2l_conn%conn_dist_up(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
-           o_x2l_conn%conn_dist_dn(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
-           o_x2l_conn%conn_area(iconn)      = overstory_xylem_area_profile(idx)*overstory_branch_area_ratio
-           o_x2l_conn%conn_type(iconn)      = CONN_HORIZONTAL
-           o_x2l_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+           o_x2l_conn%id_up(iconn)     = o_xylem_mesh%id(ii,jj,idx)
+           o_x2l_conn%id_dn(iconn)     = o_leaf_mesh%id (ii,jj,kk )
+           o_x2l_conn%dist_up(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
+           o_x2l_conn%dist_dn(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
+           o_x2l_conn%area(iconn)      = overstory_xylem_area_profile(idx)*overstory_branch_area_ratio
+           o_x2l_conn%itype(iconn)      = CONN_HORIZONTAL
+           o_x2l_conn%flux_type(iconn) = DARCY_FLUX_TYPE
         end do
 
      end do
@@ -1614,38 +1614,38 @@ subroutine setup_understory_mesh()
 
         do kk = 1, understory_root_nz
            iconn                 = iconn + 1
-           u_r2s_conn%conn_id_up(iconn)     = u_root_mesh%id(ii,jj,kk)
-           u_r2s_conn%conn_id_dn(iconn)     = soil_id(ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
-           u_r2s_conn%conn_dist_up(iconn)   = 0.d0
-           u_r2s_conn%conn_dist_dn(iconn)   = understory_root_length_profile(kk)
-           u_r2s_conn%conn_area(iconn)      = understory_root_area_profile  (kk)
-           u_r2s_conn%conn_type(iconn)      = CONN_HORIZONTAL
-           u_r2s_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           u_r2s_conn%conn_cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
-           u_r2s_conn%conn_cond_up(iconn)   = understory_root_conductance
-           u_r2s_conn%conn_cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
+           u_r2s_conn%id_up(iconn)     = u_root_mesh%id(ii,jj,kk)
+           u_r2s_conn%id_dn(iconn)     = soil_id(ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
+           u_r2s_conn%dist_up(iconn)   = 0.d0
+           u_r2s_conn%dist_dn(iconn)   = understory_root_length_profile(kk)
+           u_r2s_conn%area(iconn)      = understory_root_area_profile  (kk)
+           u_r2s_conn%itype(iconn)      = CONN_HORIZONTAL
+           u_r2s_conn%flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           u_r2s_conn%cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
+           u_r2s_conn%cond_up(iconn)   = understory_root_conductance
+           u_r2s_conn%cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
                 understory_root_length_profile(kk)       ! [m]
 
            ! Saturation up: CHUANG
-           u_r2s_conn%conn_satparam_up_itype   (iconn) = u_root_pp%satfunc_type    (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           u_r2s_conn%conn_satparam_up_param_1 (iconn) = u_root_pp%alpha           (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           u_r2s_conn%conn_satparam_up_param_2 (iconn) = u_root_pp%lambda          (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           u_r2s_conn%conn_satparam_up_param_3 (iconn) = u_root_pp%residual_sat    (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           u_r2s_conn%satparam_up_itype   (iconn) = u_root_pp%satfunc_type    (u_r2s_conn%id_up(iconn) - root_id_offset )
+           u_r2s_conn%satparam_up_param_1 (iconn) = u_root_pp%alpha           (u_r2s_conn%id_up(iconn) - root_id_offset )
+           u_r2s_conn%satparam_up_param_2 (iconn) = u_root_pp%lambda          (u_r2s_conn%id_up(iconn) - root_id_offset )
+           u_r2s_conn%satparam_up_param_3 (iconn) = u_root_pp%residual_sat    (u_r2s_conn%id_up(iconn) - root_id_offset )
            ! Relative Perm. up: MUALEM
-           u_r2s_conn%conn_relperm_up_itype    (iconn) = u_root_pp%relperm_type    (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           u_r2s_conn%conn_relperm_up_param_1  (iconn) = u_root_pp%relperm_param_1 (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
-           u_r2s_conn%conn_relperm_up_param_2  (iconn) = u_root_pp%relperm_param_2 (u_r2s_conn%conn_id_up(iconn) - root_id_offset )
+           u_r2s_conn%relperm_up_itype    (iconn) = u_root_pp%relperm_type    (u_r2s_conn%id_up(iconn) - root_id_offset )
+           u_r2s_conn%relperm_up_param_1  (iconn) = u_root_pp%relperm_param_1 (u_r2s_conn%id_up(iconn) - root_id_offset )
+           u_r2s_conn%relperm_up_param_2  (iconn) = u_root_pp%relperm_param_2 (u_r2s_conn%id_up(iconn) - root_id_offset )
 
            ! Saturation dn: CHUANG
-           u_r2s_conn%conn_satparam_dn_itype   (iconn) = soil_pp%satfunc_type    (u_r2s_conn%conn_id_dn(iconn) )
-           u_r2s_conn%conn_satparam_dn_param_1 (iconn) = soil_pp%alpha           (u_r2s_conn%conn_id_dn(iconn) )
-           u_r2s_conn%conn_satparam_dn_param_2 (iconn) = soil_pp%lambda          (u_r2s_conn%conn_id_dn(iconn) )
-           u_r2s_conn%conn_satparam_dn_param_3 (iconn) = soil_pp%residual_sat    (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%satparam_dn_itype   (iconn) = soil_pp%satfunc_type    (u_r2s_conn%id_dn(iconn) )
+           u_r2s_conn%satparam_dn_param_1 (iconn) = soil_pp%alpha           (u_r2s_conn%id_dn(iconn) )
+           u_r2s_conn%satparam_dn_param_2 (iconn) = soil_pp%lambda          (u_r2s_conn%id_dn(iconn) )
+           u_r2s_conn%satparam_dn_param_3 (iconn) = soil_pp%residual_sat    (u_r2s_conn%id_dn(iconn) )
            ! Relative Perm. dn: MUALEM
-           u_r2s_conn%conn_relperm_dn_itype    (iconn) = soil_pp%relperm_type    (u_r2s_conn%conn_id_dn(iconn) )
-           u_r2s_conn%conn_relperm_dn_param_1  (iconn) = soil_pp%alpha           (u_r2s_conn%conn_id_dn(iconn) )
-           u_r2s_conn%conn_relperm_dn_param_2  (iconn) = soil_pp%lambda          (u_r2s_conn%conn_id_dn(iconn) )
-           u_r2s_conn%conn_relperm_dn_param_3  (iconn) = soil_pp%residual_sat    (u_r2s_conn%conn_id_dn(iconn) )
+           u_r2s_conn%relperm_dn_itype    (iconn) = soil_pp%relperm_type    (u_r2s_conn%id_dn(iconn) )
+           u_r2s_conn%relperm_dn_param_1  (iconn) = soil_pp%alpha           (u_r2s_conn%id_dn(iconn) )
+           u_r2s_conn%relperm_dn_param_2  (iconn) = soil_pp%lambda          (u_r2s_conn%id_dn(iconn) )
+           u_r2s_conn%relperm_dn_param_3  (iconn) = soil_pp%residual_sat    (u_r2s_conn%id_dn(iconn) )
         end do
      end do
   end do
@@ -1657,37 +1657,37 @@ subroutine setup_understory_mesh()
 
       do kk = 1, understory_root_nz
            iconn                 = iconn + 1
-           u_x2r_conn%conn_id_up(iconn)     = u_xylem_mesh%id(ii,jj,1)
-           u_x2r_conn%conn_id_dn(iconn)     = u_root_mesh%id (ii,jj,kk)
-           u_x2r_conn%conn_dist_up(iconn)   = 0.1d0
-           u_x2r_conn%conn_dist_dn(iconn)   = 0.1d0
-           u_x2r_conn%conn_area(iconn)      = understory_area_sapwood
-           u_x2r_conn%conn_type(iconn)      = CONN_VERTICAL
-           u_x2r_conn%conn_flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           u_x2r_conn%conn_cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
-           u_x2r_conn%conn_cond_up          = understory_root_conductance
-           u_x2r_conn%conn_cond_up(iconn)   = understory_root_conductance
-           u_x2r_conn%conn_cond_dn(iconn)   = understory_root_conductance
+           u_x2r_conn%id_up(iconn)     = u_xylem_mesh%id(ii,jj,1)
+           u_x2r_conn%id_dn(iconn)     = u_root_mesh%id (ii,jj,kk)
+           u_x2r_conn%dist_up(iconn)   = 0.1d0
+           u_x2r_conn%dist_dn(iconn)   = 0.1d0
+           u_x2r_conn%area(iconn)      = understory_area_sapwood
+           u_x2r_conn%itype(iconn)      = CONN_VERTICAL
+           u_x2r_conn%flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
+           u_x2r_conn%cond_type(iconn) = CONDUCTANCE_CAMPBELL_TYPE
+           u_x2r_conn%cond_up          = understory_root_conductance
+           u_x2r_conn%cond_up(iconn)   = understory_root_conductance
+           u_x2r_conn%cond_dn(iconn)   = understory_root_conductance
 
            ! Saturation up: CHUANG
-           u_x2r_conn%conn_satparam_up_itype   (iconn) = u_xylem_pp%satfunc_type    (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           u_x2r_conn%conn_satparam_up_param_1 (iconn) = u_xylem_pp%alpha           (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           u_x2r_conn%conn_satparam_up_param_2 (iconn) = u_xylem_pp%lambda          (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           u_x2r_conn%conn_satparam_up_param_3 (iconn) = u_xylem_pp%residual_sat    (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%satparam_up_itype   (iconn) = u_xylem_pp%satfunc_type    (u_x2r_conn%id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%satparam_up_param_1 (iconn) = u_xylem_pp%alpha           (u_x2r_conn%id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%satparam_up_param_2 (iconn) = u_xylem_pp%lambda          (u_x2r_conn%id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%satparam_up_param_3 (iconn) = u_xylem_pp%residual_sat    (u_x2r_conn%id_up(iconn) - xylem_id_offset )
            ! Relative Perm. up: WEIBULL
-           u_x2r_conn%conn_relperm_up_itype    (iconn) = u_xylem_pp%relperm_type    (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           u_x2r_conn%conn_relperm_up_param_1  (iconn) = u_xylem_pp%relperm_param_1 (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
-           u_x2r_conn%conn_relperm_up_param_2  (iconn) = u_xylem_pp%relperm_param_2 (u_x2r_conn%conn_id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%relperm_up_itype    (iconn) = u_xylem_pp%relperm_type    (u_x2r_conn%id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%relperm_up_param_1  (iconn) = u_xylem_pp%relperm_param_1 (u_x2r_conn%id_up(iconn) - xylem_id_offset )
+           u_x2r_conn%relperm_up_param_2  (iconn) = u_xylem_pp%relperm_param_2 (u_x2r_conn%id_up(iconn) - xylem_id_offset )
 
            ! Saturation dn: CHUANG
-           u_x2r_conn%conn_satparam_dn_itype   (iconn) = u_root_pp%satfunc_type    (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           u_x2r_conn%conn_satparam_dn_param_1 (iconn) = u_root_pp%alpha           (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           u_x2r_conn%conn_satparam_dn_param_2 (iconn) = u_root_pp%lambda          (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           u_x2r_conn%conn_satparam_dn_param_3 (iconn) = u_root_pp%residual_sat    (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           u_x2r_conn%satparam_dn_itype   (iconn) = u_root_pp%satfunc_type    (u_x2r_conn%id_dn(iconn) - root_id_offset )
+           u_x2r_conn%satparam_dn_param_1 (iconn) = u_root_pp%alpha           (u_x2r_conn%id_dn(iconn) - root_id_offset )
+           u_x2r_conn%satparam_dn_param_2 (iconn) = u_root_pp%lambda          (u_x2r_conn%id_dn(iconn) - root_id_offset )
+           u_x2r_conn%satparam_dn_param_3 (iconn) = u_root_pp%residual_sat    (u_x2r_conn%id_dn(iconn) - root_id_offset )
            ! Relative Perm. dn: WEIBULL
-           u_x2r_conn%conn_relperm_dn_itype    (iconn) = u_root_pp%relperm_type    (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           u_x2r_conn%conn_relperm_dn_param_1  (iconn) = u_root_pp%relperm_param_1 (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
-           u_x2r_conn%conn_relperm_dn_param_2  (iconn) = u_root_pp%relperm_param_2 (u_x2r_conn%conn_id_dn(iconn) - root_id_offset )
+           u_x2r_conn%relperm_dn_itype    (iconn) = u_root_pp%relperm_type    (u_x2r_conn%id_dn(iconn) - root_id_offset )
+           u_x2r_conn%relperm_dn_param_1  (iconn) = u_root_pp%relperm_param_1 (u_x2r_conn%id_dn(iconn) - root_id_offset )
+           u_x2r_conn%relperm_dn_param_2  (iconn) = u_root_pp%relperm_param_2 (u_x2r_conn%id_dn(iconn) - root_id_offset )
         end do
      end do
   end do
@@ -1699,13 +1699,13 @@ subroutine setup_understory_mesh()
 
         do kk                    = 1, understory_xylem_nz-1
            iconn                 = iconn + 1
-           u_x2x_conn%conn_id_up(iconn)     = u_xylem_mesh%id(ii,jj,kk  )
-           u_x2x_conn%conn_id_dn(iconn)     = u_xylem_mesh%id(ii,jj,kk+1)
-           u_x2x_conn%conn_dist_up(iconn)   = 0.5d0*soil_dz
-           u_x2x_conn%conn_dist_dn(iconn)   = 0.5d0*soil_dz
-           u_x2x_conn%conn_area(iconn)      = understory_area_sapwood
-           u_x2x_conn%conn_type(iconn)      = CONN_VERTICAL
-           u_x2x_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+           u_x2x_conn%id_up(iconn)     = u_xylem_mesh%id(ii,jj,kk  )
+           u_x2x_conn%id_dn(iconn)     = u_xylem_mesh%id(ii,jj,kk+1)
+           u_x2x_conn%dist_up(iconn)   = 0.5d0*soil_dz
+           u_x2x_conn%dist_dn(iconn)   = 0.5d0*soil_dz
+           u_x2x_conn%area(iconn)      = understory_area_sapwood
+           u_x2x_conn%itype(iconn)      = CONN_VERTICAL
+           u_x2x_conn%flux_type(iconn) = DARCY_FLUX_TYPE
         end do
      end do
   end do
@@ -1719,13 +1719,13 @@ subroutine setup_understory_mesh()
            idx                   = understory_branch_2_xylem_index(kk)
            
            iconn                 = iconn + 1
-           u_x2l_conn%conn_id_up(iconn)     = u_xylem_mesh%id(ii,jj,idx)
-           u_x2l_conn%conn_id_dn(iconn)     = u_leaf_mesh%id (ii,jj,kk )
-           u_x2l_conn%conn_dist_up(iconn)   = 0.5d0*understory_branch_length_profile(idx)
-           u_x2l_conn%conn_dist_dn(iconn)   = 0.5d0*understory_branch_length_profile(idx)
-           u_x2l_conn%conn_area(iconn)      = understory_xylem_area_profile(idx)*understory_branch_area_ratio
-           u_x2l_conn%conn_type(iconn)      = CONN_HORIZONTAL
-           u_x2l_conn%conn_flux_type(iconn) = DARCY_FLUX_TYPE
+           u_x2l_conn%id_up(iconn)     = u_xylem_mesh%id(ii,jj,idx)
+           u_x2l_conn%id_dn(iconn)     = u_leaf_mesh%id (ii,jj,kk )
+           u_x2l_conn%dist_up(iconn)   = 0.5d0*understory_branch_length_profile(idx)
+           u_x2l_conn%dist_dn(iconn)   = 0.5d0*understory_branch_length_profile(idx)
+           u_x2l_conn%area(iconn)      = understory_xylem_area_profile(idx)*understory_branch_area_ratio
+           u_x2l_conn%itype(iconn)      = CONN_HORIZONTAL
+           u_x2l_conn%flux_type(iconn) = DARCY_FLUX_TYPE
         end do
 
      end do
@@ -1841,24 +1841,24 @@ subroutine set_material_properties()
   set_upwind_auxvar(:) = PETSC_TRUE
   ! For upwind cells, set saturation parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%conn_satparam_up_itype, combined_conn%conn_satparam_up_param_1, &
-       combined_conn%conn_satparam_up_param_2, combined_conn%conn_satparam_up_param_3)
+       set_upwind_auxvar, combined_conn%satparam_up_itype, combined_conn%satparam_up_param_1, &
+       combined_conn%satparam_up_param_2, combined_conn%satparam_up_param_3)
 
   ! For upwind cells, set relative permeability parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%conn_relperm_up_itype, combined_conn%conn_relperm_up_param_1, &
-       combined_conn%conn_relperm_up_param_2, combined_conn%conn_relperm_up_param_2)
+       set_upwind_auxvar, combined_conn%relperm_up_itype, combined_conn%relperm_up_param_1, &
+       combined_conn%relperm_up_param_2, combined_conn%relperm_up_param_2)
 
   set_upwind_auxvar(:) = PETSC_FALSE
   ! For downwind cells, set saturation parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%conn_satparam_dn_itype, combined_conn%conn_satparam_dn_param_1, &
-       combined_conn%conn_satparam_dn_param_2, combined_conn%conn_satparam_dn_param_3)
+       set_upwind_auxvar, combined_conn%satparam_dn_itype, combined_conn%satparam_dn_param_1, &
+       combined_conn%satparam_dn_param_2, combined_conn%satparam_dn_param_3)
 
   ! For downwind cells, set relative permeability parameters
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%conn_relperm_dn_itype, combined_conn%conn_relperm_dn_param_1, &
-       combined_conn%conn_relperm_dn_param_2, combined_conn%conn_relperm_dn_param_3)
+       set_upwind_auxvar, combined_conn%relperm_dn_itype, combined_conn%relperm_dn_param_1, &
+       combined_conn%relperm_dn_param_2, combined_conn%relperm_dn_param_3)
 
 end subroutine set_material_properties
 
@@ -1912,7 +1912,7 @@ subroutine set_initial_conditions()
 end subroutine set_initial_conditions
 
 !------------------------------------------------------------------------
-subroutine set_conn_flux_type()
+subroutine set_flux_type()
   !
   ! !DESCRIPTION:
   !
@@ -1949,19 +1949,19 @@ subroutine set_conn_flux_type()
 
   ! Set connection flux type
   call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_FLUX_TYPE, combined_conn%conn_flux_type)
+       VAR_FLUX_TYPE, combined_conn%flux_type)
 
   ! Set conductance type
   call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_TYPE, combined_conn%conn_cond_type)
+       VAR_CONDUCTANCE_TYPE, combined_conn%cond_type)
 
   call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE, combined_conn%conn_cond)
+       VAR_CONDUCTANCE, combined_conn%cond)
 
   call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_UP, combined_conn%conn_cond_up)
+       VAR_CONDUCTANCE_UP, combined_conn%cond_up)
 
   call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_DN, combined_conn%conn_cond_dn)
+       VAR_CONDUCTANCE_DN, combined_conn%cond_dn)
 
-end subroutine set_conn_flux_type
+end subroutine set_flux_type
