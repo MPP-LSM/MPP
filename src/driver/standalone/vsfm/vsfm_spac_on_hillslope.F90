@@ -41,13 +41,22 @@ module spac_component
   end type spac_component_pp_type
 
   type, public :: spac_component_conn_type
+
      PetscInt            :: nconn
+
+     PetscInt            :: up_eqn_id
+     PetscInt            :: dn_eqn_id
+     character(len=256)  :: up_eqn_name
+     character(len=256)  :: dn_eqn_name
+
      PetscInt  , pointer :: id_up(:)   !
      PetscInt  , pointer :: id_dn(:)   !
      PetscReal , pointer :: dist_up(:) !
      PetscReal , pointer :: dist_dn(:) !
      PetscReal , pointer :: area(:)    !
      PetscInt  , pointer :: itype(:)    !
+
+     PetscReal , pointer :: unit_vec(:,:)
 
      PetscInt  , pointer :: flux_type(:)    !
      PetscInt  , pointer :: cond_type(:)    !
@@ -77,6 +86,7 @@ module spac_component
      procedure, public :: Init => ConnInit
      procedure, public :: Copy => ConnCopy
      procedure, public :: AddToMPPAsInternalConn
+     procedure, public :: AddToMPPCouplingBC
 
   end type spac_component_conn_type
 
@@ -232,7 +242,9 @@ contains
     allocate (this%dist_up             (nconn)); this%dist_up             (:) = 0.d0
     allocate (this%dist_dn             (nconn)); this%dist_dn             (:) = 0.d0
     allocate (this%area                (nconn)); this%area                (:) = 0.d0
-    allocate (this%itype                (nconn)); this%itype                (:) = 0
+    allocate (this%itype               (nconn)); this%itype               (:) = 0
+
+    allocate (this%unit_vec            (nconn,3)); this%unit_vec          (:,:) = 0.d0
 
     allocate (this%flux_type           (nconn)); this%flux_type           (:) = 0
     allocate (this%cond_type           (nconn)); this%cond_type           (:) = 0
@@ -323,6 +335,92 @@ contains
          this%itype)
 
   end subroutine AddToMPPAsInternalConn
+
+  !------------------------------------------------------------------------
+  subroutine AddToMPPCouplingBC(this, vsfm_mpp, reverse_up2dn)
+    !
+    use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
+    use MultiPhysicsProbVSFM      , only : mpp_vsfm_type
+    use ConnectionSetType         , only : connection_set_type
+    use ConnectionSetType         , only : ConnectionSetDestroy
+    use MeshType                  , only : MeshCreateConnectionSet
+    !
+    implicit none
+    !
+    class (spac_component_conn_type) :: this
+    class (mpp_vsfm_type)            :: vsfm_mpp
+    PetscBool                        :: reverse_up2dn
+    !
+    type(connection_set_type) , pointer :: conn_set
+    PetscInt                  , pointer :: id(:)
+    PetscInt                            :: iconn
+    PetscInt                            :: eqn_id
+    PetscInt                  , pointer :: ieqn_other(:)
+    PetscReal                 , pointer :: unit_vec(:,:)
+    character(len=256)                  :: name
+
+
+    allocate(ieqn_other(1));
+
+    allocate(id(this%nconn)); id(:) = 0
+
+    if (.not.reverse_up2dn) then
+       ieqn_other(1) = this%up_eqn_id
+       eqn_id        = this%dn_eqn_id
+       name          = trim(this%up_eqn_name) // ' BC in ' // trim(this%dn_eqn_name) // ' equation'
+
+       call MeshCreateConnectionSet(      &
+            vsfm_mpp%meshes(eqn_id) , &
+            this%nconn                  , &
+            id                          , &
+            this%id_dn                  , &
+            this%dist_up                , &
+            this%dist_dn                , &
+            this%area                   , &
+            this%itype                  , &
+            this%unit_vec               , &
+            conn_set)
+    else
+       ieqn_other(1) = this%dn_eqn_id
+       eqn_id        = this%up_eqn_id
+       name          = trim(this%dn_eqn_name) // ' BC in ' // trim(this%up_eqn_name) // ' equation'
+
+       allocate(unit_vec(this%nconn, 3))
+       do iconn = 1, this%nconn
+          unit_vec(iconn,1) = -this%unit_vec(iconn,1)
+          unit_vec(iconn,2) = -this%unit_vec(iconn,2)
+          unit_vec(iconn,3) = -this%unit_vec(iconn,3)
+       end do
+
+       call MeshCreateConnectionSet(  &
+            vsfm_mpp%meshes(eqn_id) , &
+            this%nconn              , &
+            id                      , &
+            this%id_up              , &
+            this%dist_dn            , &
+            this%dist_up            , &
+            this%area               , &
+            this%itype              , &
+            unit_vec                , &
+            conn_set)
+       deallocate(unit_vec)
+    endif
+
+    call vsfm_mpp%soe%AddCouplingBCsInGovEqn( &
+         eqn_id                             , &
+         name               = name          , &
+         unit               = 'Pa'          , &
+         region_type        = 0             , &
+         num_other_goveqs   = 1             , &
+         id_of_other_goveqs = ieqn_other    , &
+         conn_set           = conn_set)
+
+    call ConnectionSetDestroy(conn_set)
+
+    deallocate(id)
+    deallocate(ieqn_other)
+
+  end subroutine AddToMPPCouplingBC
 
 end module spac_component
 
@@ -543,6 +641,22 @@ module problem_parameters
   type(spac_component_mesh_type) :: combined_mesh
   type(spac_component_pp_type)   :: combined_pp
   type(spac_component_conn_type) :: combined_conn
+
+  PetscInt, parameter :: soil_eqn_id    = 1
+  PetscInt, parameter :: o_root_eqn_id  = 2
+  PetscInt, parameter :: o_xylem_eqn_id = 3
+  PetscInt, parameter :: o_leaf_eqn_id  = 4
+  PetscInt, parameter :: u_root_eqn_id  = 5
+  PetscInt, parameter :: u_xylem_eqn_id = 6
+  PetscInt, parameter :: u_leaf_eqn_id  = 7
+
+  PetscInt, parameter :: soil_mesh_id    = 1
+  PetscInt, parameter :: o_root_mesh_id  = 2
+  PetscInt, parameter :: o_xylem_mesh_id = 3
+  PetscInt, parameter :: o_leaf_mesh_id  = 4
+  PetscInt, parameter :: u_root_mesh_id  = 5
+  PetscInt, parameter :: u_xylem_mesh_id = 6
+  PetscInt, parameter :: u_leaf_mesh_id  = 7
 
 end module problem_parameters
 
@@ -1126,6 +1240,7 @@ subroutine setup_overstory_mesh()
   PetscInt  :: root_id_offset
   PetscInt  :: xylem_id_offset
   PetscInt  :: leaf_id_offset
+  PetscReal :: dist_x, dist_y, dist_z, dist
 
   overstory_leaf_nz  = 0
   overstory_xylem_nz = int(overstory_canopy_height/soil_dz)
@@ -1304,25 +1419,39 @@ subroutine setup_overstory_mesh()
   call o_x2l_conn%Init (overstory_leaf_nz*        soil_nx * soil_ny)
 
   ! Root-to-Soil: Condunctance flux type
+  o_r2s_conn%up_eqn_id   = o_root_eqn_id
+  o_r2s_conn%dn_eqn_id   = soil_eqn_id
+  o_r2s_conn%up_eqn_name = 'Overstory root'
+  o_r2s_conn%dn_eqn_name = 'Soil'
+
   iconn = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
         do kk = 1, overstory_root_nz
-           iconn                                            = iconn + 1
-           o_r2s_conn%id_up(iconn)     = o_root_mesh%id(ii,jj,kk)
-           o_r2s_conn%id_dn(iconn)     = soil_id          (ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
+           iconn                                  = iconn + 1
+           o_r2s_conn%id_up               (iconn) = o_root_mesh%id(ii,jj,kk)
+           o_r2s_conn%id_dn               (iconn) = soil_id(ii,jj,kk-1+top_active_layer_kk_index(ii,jj))
 
-           o_r2s_conn%dist_up(iconn)   = 0.d0
-           o_r2s_conn%dist_dn(iconn)   = overstory_root_length_profile(kk)
-           o_r2s_conn%area(iconn)      = overstory_root_area_profile  (kk)
-           o_r2s_conn%itype(iconn)      = CONN_HORIZONTAL
-           o_r2s_conn%flux_type(iconn) = CONDUCTANCE_FLUX_TYPE
-           o_r2s_conn%cond_type(iconn) = CONDUCTANCE_MANOLI_TYPE
-           o_r2s_conn%cond_up(iconn)   = overstory_root_conductance
-           o_r2s_conn%cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
+           o_r2s_conn%dist_up             (iconn) = 0.d0
+           o_r2s_conn%dist_dn             (iconn) = overstory_root_length_profile(kk)
+           o_r2s_conn%area                (iconn) = overstory_root_area_profile  (kk)
+           o_r2s_conn%itype               (iconn) = CONN_HORIZONTAL
+           o_r2s_conn%flux_type           (iconn) = CONDUCTANCE_FLUX_TYPE
+           o_r2s_conn%cond_type           (iconn) = CONDUCTANCE_MANOLI_TYPE
+           o_r2s_conn%cond_up             (iconn) = overstory_root_conductance
+           o_r2s_conn%cond_dn             (iconn) = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
                                                               overstory_root_length_profile(kk)        ! [m]
 
+           ! Set unit vector
+           dist_x = soil_mesh%xc(o_r2s_conn%id_dn(iconn)) - o_root_mesh%xc(o_r2s_conn%id_up(iconn) - root_id_offset)
+           dist_y = soil_mesh%yc(o_r2s_conn%id_dn(iconn)) - o_root_mesh%yc(o_r2s_conn%id_up(iconn) - root_id_offset)
+           dist_z = soil_mesh%zc(o_r2s_conn%id_dn(iconn)) - o_root_mesh%zc(o_r2s_conn%id_up(iconn) - root_id_offset)
+           dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+           o_r2s_conn%unit_vec(iconn,1) = dist_x/dist
+           o_r2s_conn%unit_vec(iconn,2) = dist_y/dist
+           o_r2s_conn%unit_vec(iconn,3) = dist_z/dist
+           
            ! Saturation up: CHUANG
            o_r2s_conn%satparam_up_itype   (iconn) = o_root_pp%satfunc_type    (o_r2s_conn%id_up(iconn) - root_id_offset )
            o_r2s_conn%satparam_up_param_1 (iconn) = o_root_pp%alpha           (o_r2s_conn%id_up(iconn) - root_id_offset )
@@ -1348,6 +1477,10 @@ subroutine setup_overstory_mesh()
   end do
 
   ! Xylem-to-Root: Conductance flux type
+  o_x2r_conn%up_eqn_id   = o_xylem_eqn_id
+  o_x2r_conn%dn_eqn_id   = o_root_eqn_id
+  o_x2r_conn%up_eqn_name = 'Overstory xylem'
+  o_x2r_conn%dn_eqn_name = 'Overstory root'
   iconn = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
@@ -1366,6 +1499,18 @@ subroutine setup_overstory_mesh()
            o_x2r_conn%cond_up(iconn)   = overstory_root_conductance
            o_x2r_conn%cond_dn(iconn)   = overstory_root_conductance
 
+           ! Set unit vector
+           dist_x = o_root_mesh%xc( o_x2r_conn%id_dn(iconn) - root_id_offset ) - &
+                    o_xylem_mesh%xc(o_x2r_conn%id_up(iconn) - xylem_id_offset)
+           dist_y = o_root_mesh%yc( o_x2r_conn%id_dn(iconn) - root_id_offset ) - &
+                    o_xylem_mesh%yc(o_x2r_conn%id_up(iconn) - xylem_id_offset)
+           dist_z = o_root_mesh%zc( o_x2r_conn%id_dn(iconn) - root_id_offset ) - &
+                    o_xylem_mesh%zc(o_x2r_conn%id_up(iconn) - xylem_id_offset)
+           dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+           o_x2r_conn%unit_vec(iconn,1) = dist_x/dist
+           o_x2r_conn%unit_vec(iconn,2) = dist_y/dist
+           o_x2r_conn%unit_vec(iconn,3) = dist_z/dist
+           
            ! Saturation up: CHUANG
            o_x2r_conn%satparam_up_itype   (iconn) = o_xylem_pp%satfunc_type    (o_x2r_conn%id_up(iconn) - xylem_id_offset )
            o_x2r_conn%satparam_up_param_1 (iconn) = o_xylem_pp%alpha           (o_x2r_conn%id_up(iconn) - xylem_id_offset )
@@ -1408,20 +1553,37 @@ subroutine setup_overstory_mesh()
   end do
 
   ! Xylem-to-Leaf
+  o_x2l_conn%up_eqn_id   = o_xylem_eqn_id
+  o_x2l_conn%dn_eqn_id   = o_leaf_eqn_id
+  o_x2l_conn%up_eqn_name = 'Overstory xylem'
+  o_x2l_conn%dn_eqn_name = 'Overstory leaf'
   iconn = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
         do kk = 1, overstory_leaf_nz
            idx                   = overstory_branch_2_xylem_index(kk)
            
-           iconn                 = iconn + 1
+           iconn                       = iconn + 1
            o_x2l_conn%id_up(iconn)     = o_xylem_mesh%id(ii,jj,idx)
            o_x2l_conn%id_dn(iconn)     = o_leaf_mesh%id (ii,jj,kk )
            o_x2l_conn%dist_up(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
            o_x2l_conn%dist_dn(iconn)   = 0.5d0*overstory_branch_length_profile(idx)
            o_x2l_conn%area(iconn)      = overstory_xylem_area_profile(idx)*overstory_branch_area_ratio
-           o_x2l_conn%itype(iconn)      = CONN_HORIZONTAL
+           o_x2l_conn%itype(iconn)     = CONN_HORIZONTAL
            o_x2l_conn%flux_type(iconn) = DARCY_FLUX_TYPE
+
+           ! Set unit vector
+           dist_x = o_leaf_mesh%xc( o_x2l_conn%id_dn(iconn) - leaf_id_offset ) - &
+                    o_xylem_mesh%xc(o_x2l_conn%id_up(iconn) - xylem_id_offset)
+           dist_y = o_leaf_mesh%yc( o_x2l_conn%id_dn(iconn) - leaf_id_offset ) - &
+                    o_xylem_mesh%yc(o_x2l_conn%id_up(iconn) - xylem_id_offset)
+           dist_z = o_leaf_mesh%zc( o_x2l_conn%id_dn(iconn) - leaf_id_offset ) - &
+                    o_xylem_mesh%zc(o_x2l_conn%id_up(iconn) - xylem_id_offset)
+           dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+           o_x2l_conn%unit_vec(iconn,1) = dist_x/dist
+           o_x2l_conn%unit_vec(iconn,2) = dist_y/dist
+           o_x2l_conn%unit_vec(iconn,3) = dist_z/dist
+
         end do
 
      end do
@@ -1634,6 +1796,10 @@ subroutine setup_understory_mesh()
   call u_x2l_conn%Init  (understory_leaf_nz*        soil_nx * soil_ny)
 
   ! Root-to-Soil: Condunctance flux type
+  u_r2s_conn%up_eqn_id   = u_root_eqn_id
+  u_r2s_conn%dn_eqn_id   = soil_eqn_id
+  u_r2s_conn%up_eqn_name = 'Understory root'
+  u_r2s_conn%dn_eqn_name = 'Soil'
   iconn = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
@@ -1719,6 +1885,10 @@ subroutine setup_understory_mesh()
   end do
 
   ! Xylem-to-Xylem: Darcy flux
+  u_x2r_conn%up_eqn_id   = u_xylem_eqn_id
+  u_x2r_conn%dn_eqn_id   = u_root_eqn_id
+  u_x2r_conn%up_eqn_name = 'Understory xylem'
+  u_x2r_conn%dn_eqn_name = 'Understory root'
   iconn = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
@@ -1737,6 +1907,10 @@ subroutine setup_understory_mesh()
   end do
 
   ! Xylem-to-Leaf
+  u_x2l_conn%up_eqn_id   = u_xylem_eqn_id
+  u_x2l_conn%dn_eqn_id   = u_leaf_eqn_id
+  u_x2l_conn%up_eqn_name = 'Understory xylem'
+  u_x2l_conn%dn_eqn_name = 'Understory leaf'
   iconn = 0
   do ii = 1, soil_nx
      do jj = 1, soil_ny
@@ -1802,9 +1976,6 @@ subroutine add_multiple_goveqns()
 
   call vsfm_mpp%SetMeshesOfGoveqnsByMeshRank()
 
-  write(*,*)'Add code to support addition of multiple goveqns'
-  stop
-
 end subroutine add_multiple_goveqns
 
 !------------------------------------------------------------------------
@@ -1827,13 +1998,62 @@ subroutine add_conditions_to_goveqns()
   use ConnectionSetType         , only : ConnectionSetDestroy
   use MeshType                  , only : MeshCreateConnectionSet
   use petscsys
+  use problem_parameters
   !
   ! !ARGUMENTS
   implicit none
   !
   PetscInt                            :: ieqn
 
+  if (multi_goveqns_formulation) call add_coupling_conditions_to_goveqns()
+  
 end subroutine add_conditions_to_goveqns
+
+!------------------------------------------------------------------------
+subroutine add_coupling_conditions_to_goveqns()
+  !
+  ! !DESCRIPTION:
+  !
+  !
+  ! !USES:
+  use MultiPhysicsProbVSFM      , only : vsfm_mpp
+  use MultiPhysicsProbConstants , only : ALL_CELLS
+  use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
+  use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
+  use MultiPhysicsProbConstants , only : COND_BC
+  use MultiPhysicsProbConstants , only : COND_SS
+  use MultiPhysicsProbConstants , only : COND_DIRICHLET
+  use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_FETCH2
+  use MultiPhysicsProbConstants , only : CONN_VERTICAL
+  use ConnectionSetType         , only : connection_set_type
+  use ConnectionSetType         , only : ConnectionSetDestroy
+  use MeshType                  , only : MeshCreateConnectionSet
+  use problem_parameters
+  use petscsys
+  !
+  ! !ARGUMENTS
+  implicit none
+  !
+
+  call o_r2s_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_FALSE)
+  call o_r2s_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_TRUE)
+  
+  call u_r2s_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_FALSE)
+  call u_r2s_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_TRUE)
+
+  call o_x2r_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_FALSE)
+  call o_x2r_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_TRUE)
+
+  call o_x2l_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_FALSE)
+  call o_x2l_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_TRUE)
+
+  call u_x2r_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_FALSE)
+  call u_x2r_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_TRUE)
+
+  call u_x2l_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_FALSE)
+  call u_x2l_conn%AddToMPPCouplingBC(vsfm_mpp, reverse_up2dn = PETSC_TRUE)
+
+end subroutine add_coupling_conditions_to_goveqns
 
 !------------------------------------------------------------------------
 subroutine allocate_auxvars()
@@ -1841,12 +2061,18 @@ subroutine allocate_auxvars()
   ! !DESCRIPTION:
   !
   use MultiPhysicsProbVSFM , only : vsfm_mpp
+  use problem_parameters
   !
   implicit none
 
   !
   ! Allocate auxvars
   !
+  if (multi_goveqns_formulation) then
+     write(*,*)'Add code to support of allocate_auxvars for multi-GE case'
+     stop
+  end if
+
   call vsfm_mpp%AllocateAuxVars()
 
 end subroutine allocate_auxvars
