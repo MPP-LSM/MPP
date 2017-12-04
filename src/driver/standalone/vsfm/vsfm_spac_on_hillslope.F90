@@ -71,6 +71,7 @@ module spac_component
      PetscInt  , pointer :: relperm_up_itype(:)
      PetscReal , pointer :: relperm_up_param_1(:)
      PetscReal , pointer :: relperm_up_param_2(:)
+     PetscReal , pointer :: relperm_up_param_3(:)
 
      PetscInt  , pointer :: satparam_dn_itype(:)
      PetscReal , pointer :: satparam_dn_param_1(:)
@@ -85,6 +86,7 @@ module spac_component
 
      procedure, public :: Init => ConnInit
      procedure, public :: Copy => ConnCopy
+     procedure, public :: Destroy => ConnDestroy
      procedure, public :: AddToMPPAsInternalConn
      procedure, public :: AddToMPPCouplingBC
 
@@ -259,6 +261,7 @@ contains
     allocate (this%relperm_up_itype    (nconn)); this%relperm_up_itype    (:) = 0
     allocate (this%relperm_up_param_1  (nconn)); this%relperm_up_param_1  (:) = 0.d0
     allocate (this%relperm_up_param_2  (nconn)); this%relperm_up_param_2  (:) = 0.d0
+    allocate (this%relperm_up_param_3  (nconn)); this%relperm_up_param_3  (:) = 0.d0
 
     allocate (this%satparam_dn_itype   (nconn)); this%satparam_dn_itype   (:) = 0
     allocate (this%satparam_dn_param_1 (nconn)); this%satparam_dn_param_1 (:) = 0.d0
@@ -272,44 +275,132 @@ contains
   end subroutine ConnInit
 
   !------------------------------------------------------------------------
-  subroutine ConnCopy(this, idx_beg, idx_end, conn)
+  subroutine ConnDestroy(this)
     !
+    implicit none
+    !
+    class (spac_component_conn_type) :: this
+
+    deallocate (this%id_up               )
+    deallocate (this%id_dn               )
+    deallocate (this%dist_up             )
+    deallocate (this%dist_dn             )
+    deallocate (this%area                )
+    deallocate (this%itype               )
+
+    deallocate (this%unit_vec            )
+
+    deallocate (this%flux_type           )
+    deallocate (this%cond_type           )
+    deallocate (this%cond                )
+    deallocate (this%cond_up             )
+    deallocate (this%cond_dn             )
+
+    deallocate (this%satparam_up_itype   )
+    deallocate (this%satparam_up_param_1 )
+    deallocate (this%satparam_up_param_2 )
+    deallocate (this%satparam_up_param_3 )
+    deallocate (this%relperm_up_itype    )
+    deallocate (this%relperm_up_param_1  )
+    deallocate (this%relperm_up_param_2  )
+    deallocate (this%relperm_up_param_3  )
+
+    deallocate (this%satparam_dn_itype   )
+    deallocate (this%satparam_dn_param_1 )
+    deallocate (this%satparam_dn_param_2 )
+    deallocate (this%satparam_dn_param_3 )
+    deallocate (this%relperm_dn_itype    )
+    deallocate (this%relperm_dn_param_1 )
+    deallocate (this%relperm_dn_param_2 )
+    deallocate (this%relperm_dn_param_3 )
+
+  end subroutine ConnDestroy
+
+  !------------------------------------------------------------------------
+  subroutine ConnCopy(this, idx_beg, idx_end, conn, reverse_updn)
+    !
+    use petscsys
+    !    
     implicit none
     !
     class (spac_component_conn_type) :: this
     class (spac_component_conn_type) :: conn
     PetscInt                         :: idx_beg
     PetscInt                         :: idx_end
+    PetscBool , optional             :: reverse_updn 
+    !
+    PetscBool                        :: reverse
 
-    this%id_up               (idx_beg:idx_end) = conn%id_up               (:)
-    this%id_dn               (idx_beg:idx_end) = conn%id_dn               (:)
-    this%dist_up             (idx_beg:idx_end) = conn%dist_up             (:)
-    this%dist_dn             (idx_beg:idx_end) = conn%dist_dn             (:)
-    this%area                (idx_beg:idx_end) = conn%area                (:)
-    this%itype                (idx_beg:idx_end) = conn%itype                (:)
+    idx_end = idx_beg + conn%nconn - 1
+    reverse = PETSC_FALSE
 
-    this%flux_type           (idx_beg:idx_end) = conn%flux_type           (:)
-    this%cond_type           (idx_beg:idx_end) = conn%cond_type           (:)
-    this%cond                (idx_beg:idx_end) = conn%cond                (:)
-    this%cond_up             (idx_beg:idx_end) = conn%cond_up             (:)
-    this%cond_dn             (idx_beg:idx_end) = conn%cond_dn             (:)
+    if (present(reverse_updn)) reverse = reverse_updn
+    
+    if (.not. reverse) then
+       this%id_up               (idx_beg:idx_end) = conn%id_up               (:)
+       this%id_dn               (idx_beg:idx_end) = conn%id_dn               (:)
+       this%dist_up             (idx_beg:idx_end) = conn%dist_up             (:)
+       this%dist_dn             (idx_beg:idx_end) = conn%dist_dn             (:)
+       this%area                (idx_beg:idx_end) = conn%area                (:)
+       this%itype               (idx_beg:idx_end) = conn%itype               (:)
 
-    this%satparam_up_itype   (idx_beg:idx_end) = conn%satparam_up_itype   (:)
-    this%satparam_up_param_1 (idx_beg:idx_end) = conn%satparam_up_param_1 (:)
-    this%satparam_up_param_2 (idx_beg:idx_end) = conn%satparam_up_param_2 (:)
-    this%satparam_up_param_3 (idx_beg:idx_end) = conn%satparam_up_param_3 (:)
-    this%relperm_up_itype    (idx_beg:idx_end) = conn%relperm_up_itype    (:)
-    this%relperm_up_param_1  (idx_beg:idx_end) = conn%relperm_up_param_1  (:)
-    this%relperm_up_param_2  (idx_beg:idx_end) = conn%relperm_up_param_2  (:)
+       this%unit_vec            (idx_beg:idx_end,:)= conn%unit_vec           (:,:)
 
-    this%satparam_dn_itype   (idx_beg:idx_end) = conn%satparam_dn_itype   (:)
-    this%satparam_dn_param_1 (idx_beg:idx_end) = conn%satparam_dn_param_1 (:)
-    this%satparam_dn_param_2 (idx_beg:idx_end) = conn%satparam_dn_param_2 (:)
-    this%satparam_dn_param_3 (idx_beg:idx_end) = conn%satparam_dn_param_3 (:)
-    this%relperm_dn_itype    (idx_beg:idx_end) = conn%relperm_dn_itype    (:)
-    this%relperm_dn_param_1  (idx_beg:idx_end) = conn%relperm_dn_param_1  (:)
-    this%relperm_dn_param_2  (idx_beg:idx_end) = conn%relperm_dn_param_2  (:)
-    this%relperm_dn_param_3  (idx_beg:idx_end) = conn%relperm_dn_param_3  (:)
+       this%flux_type           (idx_beg:idx_end) = conn%flux_type           (:)
+       this%cond_type           (idx_beg:idx_end) = conn%cond_type           (:)
+       this%cond                (idx_beg:idx_end) = conn%cond                (:)
+       this%cond_up             (idx_beg:idx_end) = conn%cond_up             (:)
+       this%cond_dn             (idx_beg:idx_end) = conn%cond_dn             (:)
+
+       this%satparam_up_itype   (idx_beg:idx_end) = conn%satparam_up_itype   (:)
+       this%satparam_up_param_1 (idx_beg:idx_end) = conn%satparam_up_param_1 (:)
+       this%satparam_up_param_2 (idx_beg:idx_end) = conn%satparam_up_param_2 (:)
+       this%satparam_up_param_3 (idx_beg:idx_end) = conn%satparam_up_param_3 (:)
+       this%relperm_up_itype    (idx_beg:idx_end) = conn%relperm_up_itype    (:)
+       this%relperm_up_param_1  (idx_beg:idx_end) = conn%relperm_up_param_1  (:)
+       this%relperm_up_param_2  (idx_beg:idx_end) = conn%relperm_up_param_2  (:)
+
+       this%satparam_dn_itype   (idx_beg:idx_end) = conn%satparam_dn_itype   (:)
+       this%satparam_dn_param_1 (idx_beg:idx_end) = conn%satparam_dn_param_1 (:)
+       this%satparam_dn_param_2 (idx_beg:idx_end) = conn%satparam_dn_param_2 (:)
+       this%satparam_dn_param_3 (idx_beg:idx_end) = conn%satparam_dn_param_3 (:)
+       this%relperm_dn_itype    (idx_beg:idx_end) = conn%relperm_dn_itype    (:)
+       this%relperm_dn_param_1  (idx_beg:idx_end) = conn%relperm_dn_param_1  (:)
+       this%relperm_dn_param_2  (idx_beg:idx_end) = conn%relperm_dn_param_2  (:)
+       this%relperm_dn_param_3  (idx_beg:idx_end) = conn%relperm_dn_param_3  (:)
+    else
+       this%id_dn               (idx_beg:idx_end) = conn%id_up               (:)
+       this%id_up               (idx_beg:idx_end) = conn%id_dn               (:)
+       this%dist_dn             (idx_beg:idx_end) = conn%dist_up             (:)
+       this%dist_up             (idx_beg:idx_end) = conn%dist_dn             (:)
+       this%area                (idx_beg:idx_end) = conn%area                (:)
+       this%itype               (idx_beg:idx_end) = conn%itype               (:)
+
+       this%unit_vec            (idx_beg:idx_end,:)= -conn%unit_vec           (:,:)
+
+       this%flux_type           (idx_beg:idx_end) = conn%flux_type           (:)
+       this%cond_type           (idx_beg:idx_end) = conn%cond_type           (:)
+       this%cond                (idx_beg:idx_end) = conn%cond                (:)
+       this%cond_dn             (idx_beg:idx_end) = conn%cond_up             (:)
+       this%cond_up             (idx_beg:idx_end) = conn%cond_dn             (:)
+
+       this%satparam_dn_itype   (idx_beg:idx_end) = conn%satparam_up_itype   (:)
+       this%satparam_dn_param_1 (idx_beg:idx_end) = conn%satparam_up_param_1 (:)
+       this%satparam_dn_param_2 (idx_beg:idx_end) = conn%satparam_up_param_2 (:)
+       this%satparam_dn_param_3 (idx_beg:idx_end) = conn%satparam_up_param_3 (:)
+       this%relperm_dn_itype    (idx_beg:idx_end) = conn%relperm_up_itype    (:)
+       this%relperm_dn_param_1  (idx_beg:idx_end) = conn%relperm_up_param_1  (:)
+       this%relperm_dn_param_2  (idx_beg:idx_end) = conn%relperm_up_param_2  (:)
+
+       this%satparam_up_itype   (idx_beg:idx_end) = conn%satparam_dn_itype   (:)
+       this%satparam_up_param_1 (idx_beg:idx_end) = conn%satparam_dn_param_1 (:)
+       this%satparam_up_param_2 (idx_beg:idx_end) = conn%satparam_dn_param_2 (:)
+       this%satparam_up_param_3 (idx_beg:idx_end) = conn%satparam_dn_param_3 (:)
+       this%relperm_up_itype    (idx_beg:idx_end) = conn%relperm_dn_itype    (:)
+       this%relperm_up_param_1  (idx_beg:idx_end) = conn%relperm_dn_param_1  (:)
+       this%relperm_up_param_2  (idx_beg:idx_end) = conn%relperm_dn_param_2  (:)
+       this%relperm_up_param_3  (idx_beg:idx_end) = conn%relperm_dn_param_3  (:)
+    endif
 
   end subroutine ConnCopy
 
@@ -815,7 +906,11 @@ subroutine initialize_problem()
   call vsfm_mpp%SetupProblem()
 
   ! 7. Add material properities associated with all governing equations
-  call set_material_properties() 
+  if (.not. multi_goveqns_formulation) then
+     call set_material_properties()
+  else
+     call set_material_properties_multi_goveqns()
+  endif
 
   ! 8. Set connection flux type
   call set_flux_type()
@@ -949,40 +1044,31 @@ subroutine add_single_mesh()
   call combined_conn%Init(nconn)
 
   ! Add soil-2-soil connections
-  idx_beg = 1; idx_end = idx_beg + s2s_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, s2s_conn)
+  idx_beg = 1; call combined_conn%Copy(idx_beg, idx_end, s2s_conn)
 
   ! Add overstory root-2-soil connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + o_r2s_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, o_r2s_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, o_r2s_conn)
 
   ! Add overstory xylem-2-root connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + o_x2r_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, o_x2r_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, o_x2r_conn)
 
   ! Add overstory xylem-2-xylem connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + o_x2x_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, o_x2x_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, o_x2x_conn)
 
   ! Add overstory xylem-2-leaf connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + o_x2l_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, o_x2l_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, o_x2l_conn)
 
   ! Add understory root-2-soil connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + u_r2s_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, u_r2s_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, u_r2s_conn)
 
   ! Add understory xylem-2-root connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + u_x2r_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, u_x2r_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, u_x2r_conn)
 
   ! Add understory xylem-2-xylem connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + u_x2x_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, u_x2x_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, u_x2x_conn)
 
   ! Add understory xylem-2-leaf connections
-  idx_beg = idx_end + 1; idx_end = idx_beg + u_x2l_conn%nconn - 1
-  call combined_conn%Copy(idx_beg, idx_end, u_x2l_conn)
+  idx_beg = idx_end + 1; call combined_conn%Copy(idx_beg, idx_end, u_x2l_conn)
 
   imesh = 1
   call combined_conn%AddToMPPAsInternalConn(vsfm_mpp, imesh)
@@ -2060,17 +2146,163 @@ subroutine allocate_auxvars()
   !
   ! !DESCRIPTION:
   !
-  use MultiPhysicsProbVSFM , only : vsfm_mpp
+  use MultiPhysicsProbVSFM     , only : vsfm_mpp
+  use MultiPhysicsProbConstants, only : VAR_PRESSURE
   use problem_parameters
   !
   implicit none
+  !
+  integer           :: ieqn
+  integer           :: nvars_for_coupling
+  integer, pointer  :: var_ids_for_coupling(:)
+  integer, pointer  :: goveqn_ids_for_coupling(:)
+  integer, pointer  :: is_bc(:)
 
   !
   ! Allocate auxvars
   !
   if (multi_goveqns_formulation) then
-     write(*,*)'Add code to support of allocate_auxvars for multi-GE case'
-     stop
+     !
+     ! Soil <---> Overstory root
+     ! Soil <---> Understory root
+     !
+     ieqn               = soil_eqn_id
+     nvars_for_coupling = 2
+
+     allocate (var_ids_for_coupling    (nvars_for_coupling))
+     allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+     var_ids_for_coupling    (1) = VAR_PRESSURE
+     var_ids_for_coupling    (2) = VAR_PRESSURE
+     goveqn_ids_for_coupling (1) = o_root_eqn_id
+     goveqn_ids_for_coupling (2) = u_root_eqn_id
+
+     call vsfm_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+          var_ids_for_coupling, goveqn_ids_for_coupling)
+       
+     deallocate(var_ids_for_coupling   )
+     deallocate(goveqn_ids_for_coupling)
+
+     !
+     ! Overstory root <---> Soil
+     ! Overstory root <---> Overstory xylem
+     !
+     ieqn               = o_root_eqn_id
+     nvars_for_coupling = 2
+
+     allocate (var_ids_for_coupling    (nvars_for_coupling))
+     allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+     var_ids_for_coupling    (1) = VAR_PRESSURE
+     var_ids_for_coupling    (2) = VAR_PRESSURE
+     goveqn_ids_for_coupling (1) = soil_eqn_id
+     goveqn_ids_for_coupling (2) = o_xylem_eqn_id
+
+     call vsfm_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+          var_ids_for_coupling, goveqn_ids_for_coupling)
+       
+     deallocate(var_ids_for_coupling   )
+     deallocate(goveqn_ids_for_coupling)
+
+     !
+     ! Overstory xylem <---> Overstory root
+     ! Overstory xylem <---> Overstory leaf
+     !
+     ieqn               = o_xylem_eqn_id
+     nvars_for_coupling = 2
+
+     allocate (var_ids_for_coupling    (nvars_for_coupling))
+     allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+     var_ids_for_coupling    (1) = VAR_PRESSURE
+     var_ids_for_coupling    (2) = VAR_PRESSURE
+     goveqn_ids_for_coupling (1) = o_root_eqn_id
+     goveqn_ids_for_coupling (2) = o_leaf_eqn_id
+
+     call vsfm_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+          var_ids_for_coupling, goveqn_ids_for_coupling)
+       
+     deallocate(var_ids_for_coupling   )
+     deallocate(goveqn_ids_for_coupling)
+
+     !
+     ! Overstory leaf <---> Overstory xylem
+     !
+     ieqn               = o_leaf_eqn_id
+     nvars_for_coupling = 1
+
+     allocate (var_ids_for_coupling    (nvars_for_coupling))
+     allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+     var_ids_for_coupling    (1) = VAR_PRESSURE
+     goveqn_ids_for_coupling (1) = o_xylem_eqn_id
+
+     call vsfm_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+          var_ids_for_coupling, goveqn_ids_for_coupling)
+       
+     deallocate(var_ids_for_coupling   )
+     deallocate(goveqn_ids_for_coupling)
+
+     !
+     ! Understory root <---> Soil
+     ! Understory root <---> Understory xylem
+     !
+     ieqn               = u_root_eqn_id
+     nvars_for_coupling = 2
+
+     allocate (var_ids_for_coupling    (nvars_for_coupling))
+     allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+     var_ids_for_coupling    (1) = VAR_PRESSURE
+     var_ids_for_coupling    (2) = VAR_PRESSURE
+     goveqn_ids_for_coupling (1) = soil_eqn_id
+     goveqn_ids_for_coupling (2) = u_xylem_eqn_id
+
+     call vsfm_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+          var_ids_for_coupling, goveqn_ids_for_coupling)
+       
+     deallocate(var_ids_for_coupling   )
+     deallocate(goveqn_ids_for_coupling)
+
+     !
+     ! Understory xylem <---> Understory root
+     ! Understory xylem <---> Understory leaf
+     !
+     ieqn               = u_xylem_eqn_id
+     nvars_for_coupling = 2
+
+     allocate (var_ids_for_coupling    (nvars_for_coupling))
+     allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+     var_ids_for_coupling    (1) = VAR_PRESSURE
+     var_ids_for_coupling    (2) = VAR_PRESSURE
+     goveqn_ids_for_coupling (1) = u_root_eqn_id
+     goveqn_ids_for_coupling (2) = u_leaf_eqn_id
+
+     call vsfm_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+          var_ids_for_coupling, goveqn_ids_for_coupling)
+       
+     deallocate(var_ids_for_coupling   )
+     deallocate(goveqn_ids_for_coupling)
+
+     !
+     ! Understory leaf <---> Understory xylem
+     !
+     ieqn               = u_leaf_eqn_id
+     nvars_for_coupling = 1
+
+     allocate (var_ids_for_coupling    (nvars_for_coupling))
+     allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+
+     var_ids_for_coupling    (1) = VAR_PRESSURE
+     goveqn_ids_for_coupling (1) = u_xylem_eqn_id
+
+     call vsfm_mpp%GovEqnSetCouplingVars(ieqn, nvars_for_coupling, &
+          var_ids_for_coupling, goveqn_ids_for_coupling)
+       
+     deallocate(var_ids_for_coupling   )
+     deallocate(goveqn_ids_for_coupling)
+
   end if
 
   call vsfm_mpp%AllocateAuxVars()
@@ -2083,17 +2315,8 @@ subroutine set_material_properties()
   ! !DESCRIPTION:
   !
   use MultiPhysicsProbVSFM      , only : vsfm_mpp
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoils
-  use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT
-  use EOSWaterMod               , only : DENSITY_TGDPB01
   use EOSWaterMod               , only : DENSITY_IFC67
-  use mpp_varcon                , only : denh2o
-  use mpp_varcon                , only : grav
   use MultiPhysicsProbVSFM      , only : VSFMMPPSetDensityType
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoilPorosity
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunction
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoilPermeability
   use MultiPhysicsProbConstants , only : AUXVAR_CONN_INTERNAL
   use problem_parameters
   use petscsys
@@ -2108,39 +2331,176 @@ subroutine set_material_properties()
 
   igoveqn = 1
 
-  call VSFMMPPSetSoilPorosity(vsfm_mpp, igoveqn, combined_pp%por)
-
-  call VSFMMPPSetSaturationFunction(vsfm_mpp, igoveqn, combined_pp%satfunc_type, &
-         combined_pp%alpha, combined_pp%lambda, combined_pp%residual_sat)
-
-  call VSFMMPPSetSoilPermeability(vsfm_mpp, igoveqn, combined_pp%perm, combined_pp%perm, combined_pp%perm)
   call VSFMMPPSetDensityType(vsfm_mpp, 1, DENSITY_IFC67)
 
-  allocate(set_upwind_auxvar(combined_conn%nconn))
+  call set_physical_property_for_eqn(igoveqn, combined_pp  )
+  call set_conn_property_for_eqn(    igoveqn, combined_conn, AUXVAR_CONN_INTERNAL)
+
+end subroutine set_material_properties
+
+!------------------------------------------------------------------------
+subroutine set_material_properties_multi_goveqns()
+  !
+  ! !DESCRIPTION:
+  !
+  use MultiPhysicsProbVSFM      , only : vsfm_mpp
+  use EOSWaterMod               , only : DENSITY_IFC67
+  use MultiPhysicsProbVSFM      , only : VSFMMPPSetDensityType
+  use MultiPhysicsProbConstants , only : AUXVAR_CONN_INTERNAL
+  use MultiPhysicsProbConstants , only : AUXVAR_CONN_BC
+  use problem_parameters
+  use petscsys
+  !
+#include <petsc/finclude/petsc.h>
+  !
+  implicit none
+  !
+  PetscInt                       :: idx_beg, idx_end
+  type(spac_component_conn_type) :: soil_bc_conn
+  type(spac_component_conn_type) :: o_root_bc_conn
+  type(spac_component_conn_type) :: o_xylem_bc_conn
+  type(spac_component_conn_type) :: u_root_bc_conn
+  type(spac_component_conn_type) :: u_xylem_bc_conn
+  !-----------------------------------------------------------------------
+
+  call VSFMMPPSetDensityType(vsfm_mpp, 1, DENSITY_IFC67)
+
+  call set_physical_property_for_eqn(soil_eqn_id    , soil_pp    )
+  call set_physical_property_for_eqn(o_root_eqn_id  , o_root_pp  )
+  call set_physical_property_for_eqn(o_xylem_eqn_id , o_xylem_pp )
+  call set_physical_property_for_eqn(o_leaf_eqn_id  , o_leaf_pp  )
+  call set_physical_property_for_eqn(u_root_eqn_id  , u_root_pp  )
+  call set_physical_property_for_eqn(u_xylem_eqn_id , u_xylem_pp )
+  call set_physical_property_for_eqn(u_leaf_eqn_id  , u_leaf_pp  )
+
+  ! Create soil coupling BC connections
+  call soil_bc_conn%Init(o_r2s_conn%nconn + u_r2s_conn%nconn)
+  idx_beg = 1          ; call soil_bc_conn%Copy(idx_beg, idx_end, o_r2s_conn)
+  idx_beg = idx_end + 1; call soil_bc_conn%Copy(idx_beg, idx_end, u_r2s_conn)
+
+  ! Create overstory root coupling BC connections
+  call o_root_bc_conn%Init(o_r2s_conn%nconn + o_x2r_conn%nconn)
+  idx_beg = 1          ; call o_root_bc_conn%Copy(idx_beg, idx_end, o_r2s_conn, reverse_updn=PETSC_TRUE)
+  idx_beg = idx_end + 1; call o_root_bc_conn%Copy(idx_beg, idx_end, o_x2r_conn)
+
+  ! Create overstory xylem coupling BC connections
+  call o_xylem_bc_conn%Init(o_x2r_conn%nconn + o_x2l_conn%nconn)
+  idx_beg = 1          ; call o_xylem_bc_conn%Copy(idx_beg, idx_end, o_x2r_conn, reverse_updn=PETSC_TRUE)
+  idx_beg = idx_end + 1; call o_xylem_bc_conn%Copy(idx_beg, idx_end, o_x2l_conn, reverse_updn=PETSC_TRUE)
+
+  ! Create understory root coupling BC connections
+  call u_root_bc_conn%Init(u_r2s_conn%nconn + u_x2r_conn%nconn)
+  idx_beg = 1          ; call u_root_bc_conn%Copy(idx_beg, idx_end, u_r2s_conn, reverse_updn=PETSC_TRUE)
+  idx_beg = idx_end + 1; call u_root_bc_conn%Copy(idx_beg, idx_end, u_x2r_conn)
+
+  ! Create understory xylem coupling BC connections
+  call u_xylem_bc_conn%Init(u_x2r_conn%nconn + u_x2l_conn%nconn)
+  idx_beg = 1          ; call u_xylem_bc_conn%Copy(idx_beg, idx_end, u_x2r_conn, reverse_updn=PETSC_TRUE)
+  idx_beg = idx_end + 1; call u_xylem_bc_conn%Copy(idx_beg, idx_end, u_x2l_conn, reverse_updn=PETSC_TRUE)
+
+
+  ! Soil equation
+  call set_conn_property_for_eqn(soil_eqn_id    , s2s_conn        , AUXVAR_CONN_INTERNAL)
+  call set_conn_property_for_eqn(soil_eqn_id    , soil_bc_conn    , AUXVAR_CONN_BC      )
+
+  ! Overstory root
+  call set_conn_property_for_eqn(o_root_eqn_id  , o_root_bc_conn  , AUXVAR_CONN_BC      )
+
+  ! Overstory xylem
+  call set_conn_property_for_eqn(o_xylem_eqn_id , o_x2x_conn      , AUXVAR_CONN_INTERNAL)
+  call set_conn_property_for_eqn(o_xylem_eqn_id , o_xylem_bc_conn , AUXVAR_CONN_BC      )
+
+  ! Overstory leaf
+  call set_conn_property_for_eqn(o_leaf_eqn_id  , o_x2l_conn      , AUXVAR_CONN_BC      )
+
+  ! Understory root
+  call set_conn_property_for_eqn(u_root_eqn_id  , u_root_bc_conn  , AUXVAR_CONN_BC      )
+
+  ! Understory xylem
+  call set_conn_property_for_eqn(u_xylem_eqn_id , u_x2x_conn      , AUXVAR_CONN_INTERNAL)
+  call set_conn_property_for_eqn(u_xylem_eqn_id , u_xylem_bc_conn , AUXVAR_CONN_BC      )
+
+  ! Understory leaf
+  call set_conn_property_for_eqn(u_leaf_eqn_id  , u_x2l_conn      , AUXVAR_CONN_BC      )
+
+  ! Free up the memory
+  call soil_bc_conn%Destroy()
+  call o_root_bc_conn%Destroy()
+  call o_xylem_bc_conn%Destroy()
+  call u_root_bc_conn%Destroy()
+  call u_xylem_bc_conn%Destroy()
+
+  write(*,*)'Add code to support of allocate_auxvars for multi-GE case'
+  stop
+
+end subroutine set_material_properties_multi_goveqns
+
+!------------------------------------------------------------------------
+subroutine set_physical_property_for_eqn(eqn_id, pp)
+  !
+  use MultiPhysicsProbVSFM , only : VSFMMPPSetSoilPorosity
+  use MultiPhysicsProbVSFM , only : VSFMMPPSetSaturationFunction
+  use MultiPhysicsProbVSFM , only : VSFMMPPSetSoilPermeability
+  use MultiPhysicsProbVSFM , only : vsfm_mpp
+  use spac_component
+  !
+  implicit none
+  !
+  PetscInt                      :: eqn_id
+  type (spac_component_pp_type) :: pp
+
+  call VSFMMPPSetSoilPorosity(vsfm_mpp, eqn_id, pp%por)
+
+  call VSFMMPPSetSaturationFunction(vsfm_mpp, eqn_id, pp%satfunc_type, &
+         pp%alpha, pp%lambda, pp%residual_sat)
+
+  call VSFMMPPSetSoilPermeability(vsfm_mpp, eqn_id, pp%perm, pp%perm, pp%perm)
+
+end subroutine set_physical_property_for_eqn
+
+!------------------------------------------------------------------------
+subroutine set_conn_property_for_eqn(eqn_id, conn, conn_type)
+  !
+  use MultiPhysicsProbVSFM      , only : vsfm_mpp
+  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
+  use spac_component
+  use petscsys
+  !
+  implicit none
+  !
+  PetscInt                        :: eqn_id
+  type (spac_component_conn_type) :: conn
+  PetscInt                        :: conn_type
+  !
+  PetscBool, pointer            :: set_upwind_auxvar(:)
+
+  allocate(set_upwind_auxvar(conn%nconn))
 
   set_upwind_auxvar(:) = PETSC_TRUE
   ! For upwind cells, set saturation parameters
-  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%satparam_up_itype, combined_conn%satparam_up_param_1, &
-       combined_conn%satparam_up_param_2, combined_conn%satparam_up_param_3)
+  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, eqn_id, conn_type, &
+       set_upwind_auxvar, conn%satparam_up_itype, conn%satparam_up_param_1, &
+       conn%satparam_up_param_2, conn%satparam_up_param_3)
 
   ! For upwind cells, set relative permeability parameters
-  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%relperm_up_itype, combined_conn%relperm_up_param_1, &
-       combined_conn%relperm_up_param_2, combined_conn%relperm_up_param_2)
+  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, eqn_id, conn_type, &
+       set_upwind_auxvar, conn%relperm_up_itype, conn%relperm_up_param_1, &
+       conn%relperm_up_param_2, conn%relperm_up_param_2)
 
   set_upwind_auxvar(:) = PETSC_FALSE
   ! For downwind cells, set saturation parameters
-  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%satparam_dn_itype, combined_conn%satparam_dn_param_1, &
-       combined_conn%satparam_dn_param_2, combined_conn%satparam_dn_param_3)
+  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, eqn_id, conn_type, &
+       set_upwind_auxvar, conn%satparam_dn_itype, conn%satparam_dn_param_1, &
+       conn%satparam_dn_param_2, conn%satparam_dn_param_3)
 
   ! For downwind cells, set relative permeability parameters
-  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       set_upwind_auxvar, combined_conn%relperm_dn_itype, combined_conn%relperm_dn_param_1, &
-       combined_conn%relperm_dn_param_2, combined_conn%relperm_dn_param_3)
+  call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, eqn_id, conn_type, &
+       set_upwind_auxvar, conn%relperm_dn_itype, conn%relperm_dn_param_1, &
+       conn%relperm_dn_param_2, conn%relperm_dn_param_3)
 
-end subroutine set_material_properties
+  deallocate(set_upwind_auxvar)
+
+end subroutine set_conn_property_for_eqn
 
 !------------------------------------------------------------------------
 subroutine set_initial_conditions()

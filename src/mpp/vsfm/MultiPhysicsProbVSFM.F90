@@ -1967,6 +1967,23 @@ contains
              endif
 
              select case(satfunc_itype(sum_conn))
+             case (0)
+                ! Do nothing
+
+             case (RELPERM_FUNC_MUALEM)
+                if (set_upwind_auxvar(sum_conn)) then
+                   conn_aux_vars(sum_conn)%satParams_up%relperm_func_type = RELPERM_FUNC_MUALEM
+                   conn_aux_vars(sum_conn)%satParams_up%alpha   = param_1(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_up%vg_m    = param_2(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_up%sat_res = param_3(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_up%vg_n    = 1.d0/(1.d0 - param_2(sum_conn))
+                else
+                   conn_aux_vars(sum_conn)%satParams_dn%relperm_func_type = RELPERM_FUNC_MUALEM
+                   conn_aux_vars(sum_conn)%satParams_dn%alpha             = param_1(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_dn%vg_m              = param_2(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_dn%sat_res           = param_3(sum_conn)
+                   conn_aux_vars(sum_conn)%satParams_dn%vg_n              = 1.d0/(1.d0 - param_2(sum_conn))
+                end if
              case (RELPERM_FUNC_CAMPBELL)
 
                 if (set_upwind_auxvar(sum_conn)) then
@@ -1977,11 +1994,37 @@ contains
                         param_1(sum_conn), param_2(sum_conn))
                 endif
 
-             case (0)
-                ! Do nothing
+             case (RELPERM_FUNC_WEIBULL)
+
+                if (set_upwind_auxvar(sum_conn)) then
+                   call SatFunc_Set_Weibull_RelPerm(conn_aux_vars(sum_conn)%satParams_up, &
+                        param_1(sum_conn), param_2(sum_conn))
+                else
+                   call SatFunc_Set_Weibull_RelPerm(conn_aux_vars(sum_conn)%satParams_dn, &
+                        param_1(sum_conn), param_2(sum_conn))
+                endif
+
+             case (SAT_FUNC_CHUANG)
+
+                if (set_upwind_auxvar(sum_conn)) then
+                   call SatFunc_Set_Chuang(conn_aux_vars(sum_conn)%satParams_up, &
+                        param_1(sum_conn), param_2(sum_conn))
+                else
+                   call SatFunc_Set_Chuang(conn_aux_vars(sum_conn)%satParams_dn, &
+                        param_1(sum_conn), param_2(sum_conn))
+                endif
+
+             case (SAT_FUNC_VAN_GENUCHTEN)
+                if (set_upwind_auxvar(sum_conn)) then
+                   call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_up, &
+                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                else
+                   call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_dn, &
+                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                endif
 
              case default
-                write(iulog,*)'Only supports RELPERM_FUNC_CAMPBELL type'
+                write(iulog,*)'Unknown satfunc_itype_variable ', satfunc_itype(sum_conn)
                 call endrun(msg=errMsg(__FILE__,__LINE__))
              end select
 
