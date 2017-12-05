@@ -435,6 +435,7 @@ contains
     use ConnectionSetType         , only : connection_set_type
     use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
+    use petscsys
     !
     implicit none
     !
@@ -460,17 +461,18 @@ contains
        eqn_id        = this%dn_eqn_id
        name          = trim(this%up_eqn_name) // ' BC in ' // trim(this%dn_eqn_name) // ' equation'
 
-       call MeshCreateConnectionSet(      &
+       call MeshCreateConnectionSet(  &
             vsfm_mpp%meshes(eqn_id) , &
-            this%nconn                  , &
-            id                          , &
-            this%id_dn                  , &
-            this%dist_up                , &
-            this%dist_dn                , &
-            this%area                   , &
-            this%itype                  , &
-            this%unit_vec               , &
-            conn_set)
+            this%nconn              , &
+            this%id_up              , &
+            this%id_dn              , &
+            this%dist_up            , &
+            this%dist_dn            , &
+            this%area               , &
+            this%itype              , &
+            this%unit_vec           , &
+            skip_id_check=PETSC_TRUE, &
+            conn_set=conn_set )
     else
        ieqn_other(1) = this%dn_eqn_id
        eqn_id        = this%up_eqn_id
@@ -486,14 +488,15 @@ contains
        call MeshCreateConnectionSet(  &
             vsfm_mpp%meshes(eqn_id) , &
             this%nconn              , &
-            id                      , &
+            this%id_dn              , &
             this%id_up              , &
             this%dist_dn            , &
             this%dist_up            , &
             this%area               , &
             this%itype              , &
             unit_vec                , &
-            conn_set)
+            skip_id_check=PETSC_TRUE, &
+            conn_set=conn_set )
        deallocate(unit_vec)
     endif
 
@@ -807,6 +810,7 @@ subroutine run_vsfm_spac_on_hillslope()
   dtime                             = 180.d0
   nstep                             = 1
   slope                             = 0.05d0
+  slope                             = 0.0d0
   is_soil_horizontally_disconnected = PETSC_FALSE
   multi_goveqns_formulation         = PETSC_FALSE
   
@@ -912,10 +916,7 @@ subroutine initialize_problem()
      call set_material_properties_multi_goveqns()
   endif
 
-  ! 8. Set connection flux type
-  call set_flux_type()
-
-  ! 9. Set initial conditions
+  ! 8. Set initial conditions
   call set_initial_conditions()
 
 end subroutine initialize_problem
@@ -1401,7 +1402,7 @@ subroutine setup_overstory_mesh()
 
            count                                     = count + 1
 
-           o_root_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           o_root_mesh%xc            (count) = soil_xc3d(ii,jj,1) - 0.1d0
            o_root_mesh%yc            (count) = soil_yc3d(ii,jj,1)
            o_root_mesh%zc            (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
            o_root_mesh%dx            (count) = soil_dx
@@ -1437,7 +1438,7 @@ subroutine setup_overstory_mesh()
            o_xylem_mesh%id        (ii,jj,kk)  = id_value
 
            count                                      = count + 1
-           o_xylem_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           o_xylem_mesh%xc            (count) = soil_xc3d(ii,jj,1) - 0.1d0
            o_xylem_mesh%yc            (count) = soil_yc3d(ii,jj,1)
            o_xylem_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
            o_xylem_mesh%dx            (count) = soil_dx
@@ -1475,7 +1476,7 @@ subroutine setup_overstory_mesh()
            count                                     = count + 1
            idx                                       = overstory_branch_2_xylem_index(kk)
 
-           o_leaf_mesh%xc            (count) = soil_xc3d(ii,jj,1)-overstory_branch_length_profile(idx)
+           o_leaf_mesh%xc            (count) = soil_xc3d(ii,jj,1)-overstory_branch_length_profile(idx) - 0.1d0
            o_leaf_mesh%yc            (count) = soil_yc3d(ii,jj,1)
            o_leaf_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (overstory_xylem_nz-overstory_leaf_nz)*soil_dz
            o_leaf_mesh%dx            (count) = soil_dx
@@ -1533,6 +1534,7 @@ subroutine setup_overstory_mesh()
            dist_x = soil_mesh%xc(o_r2s_conn%id_dn(iconn)) - o_root_mesh%xc(o_r2s_conn%id_up(iconn) - root_id_offset)
            dist_y = soil_mesh%yc(o_r2s_conn%id_dn(iconn)) - o_root_mesh%yc(o_r2s_conn%id_up(iconn) - root_id_offset)
            dist_z = soil_mesh%zc(o_r2s_conn%id_dn(iconn)) - o_root_mesh%zc(o_r2s_conn%id_up(iconn) - root_id_offset)
+
            dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
            o_r2s_conn%unit_vec(iconn,1) = dist_x/dist
            o_r2s_conn%unit_vec(iconn,2) = dist_y/dist
@@ -1708,6 +1710,7 @@ subroutine setup_understory_mesh()
   PetscInt  :: root_id_offset
   PetscInt  :: xylem_id_offset
   PetscInt  :: leaf_id_offset
+  PetscReal :: dist_x, dist_y, dist_z, dist
 
   understory_leaf_nz  = 0
   understory_xylem_nz = int(understory_canopy_height/soil_dz)
@@ -1776,11 +1779,11 @@ subroutine setup_understory_mesh()
      do jj = 1, soil_ny
 
         do kk = 1, understory_root_nz
-           id_value                                   = id_value + 1
+           id_value                          = id_value + 1
            u_root_mesh%id        (ii,jj,kk)  = id_value
 
-           count                                      = count + 1
-           u_root_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           count                             = count + 1
+           u_root_mesh%xc            (count) = soil_xc3d(ii,jj,1) + 0.1d0
            u_root_mesh%yc            (count) = soil_yc3d(ii,jj,1)
            u_root_mesh%zc            (count) = elevation(ii,jj) - soil_dz/2.d0 - soil_dz*(kk-1)
            u_root_mesh%dx            (count) = soil_dx
@@ -1811,11 +1814,11 @@ subroutine setup_understory_mesh()
   do ii = 1, soil_nx
      do jj = 1, soil_ny
         do kk = 1, understory_xylem_nz
-           id_value                                    = id_value + 1
+           id_value                           = id_value + 1
            u_xylem_mesh%id         (ii,jj,kk) = id_value
 
-           count                                       = count + 1
-           u_xylem_mesh%xc            (count) = soil_xc3d(ii,jj,1)
+           count                              = count + 1
+           u_xylem_mesh%xc            (count) = soil_xc3d(ii,jj,1) + 0.1d0
            u_xylem_mesh%yc            (count) = soil_yc3d(ii,jj,1)
            u_xylem_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz
            u_xylem_mesh%dx            (count) = soil_dx
@@ -1846,13 +1849,13 @@ subroutine setup_understory_mesh()
   do ii = 1, soil_nx
      do jj = 1, soil_ny
         do kk = 1, understory_leaf_nz
-           id_value                                   = id_value + 1
+           id_value                          = id_value + 1
            u_leaf_mesh%id        (ii,jj,kk)  = id_value
 
-           count                                      = count + 1
-           idx                                        = understory_branch_2_xylem_index(kk)
+           count                             = count + 1
+           idx                               = understory_branch_2_xylem_index(kk)
 
-           u_leaf_mesh%xc            (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx)
+           u_leaf_mesh%xc            (count) = soil_xc3d(ii,jj,1)-understory_branch_length_profile(idx) + 0.1d0
            u_leaf_mesh%yc            (count) = soil_yc3d(ii,jj,1)
            u_leaf_mesh%zc            (count) = elevation(ii,jj) + soil_dz/2.d0 + (kk-1)*soil_dz + (understory_xylem_nz-understory_leaf_nz)*soil_dz
            u_leaf_mesh%dx            (count) = soil_dx
@@ -1904,6 +1907,16 @@ subroutine setup_understory_mesh()
            u_r2s_conn%cond_dn(iconn)   = perm_z_top /vish2o * (denh2o * grav) / & ! [m/s]
                 understory_root_length_profile(kk)       ! [m]
 
+           ! Set unit vector
+           dist_x = soil_mesh%xc(u_r2s_conn%id_dn(iconn)) - u_root_mesh%xc(u_r2s_conn%id_up(iconn) - root_id_offset)
+           dist_y = soil_mesh%yc(u_r2s_conn%id_dn(iconn)) - u_root_mesh%yc(u_r2s_conn%id_up(iconn) - root_id_offset)
+           dist_z = soil_mesh%zc(u_r2s_conn%id_dn(iconn)) - u_root_mesh%zc(u_r2s_conn%id_up(iconn) - root_id_offset)
+
+           dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+           u_r2s_conn%unit_vec(iconn,1) = dist_x/dist
+           u_r2s_conn%unit_vec(iconn,2) = dist_y/dist
+           u_r2s_conn%unit_vec(iconn,3) = dist_z/dist
+           
            ! Saturation up: CHUANG
            u_r2s_conn%satparam_up_itype   (iconn) = u_root_pp%satfunc_type    (u_r2s_conn%id_up(iconn) - root_id_offset )
            u_r2s_conn%satparam_up_param_1 (iconn) = u_root_pp%alpha           (u_r2s_conn%id_up(iconn) - root_id_offset )
@@ -1947,6 +1960,18 @@ subroutine setup_understory_mesh()
            u_x2r_conn%cond_up(iconn)   = understory_root_conductance
            u_x2r_conn%cond_dn(iconn)   = understory_root_conductance
 
+           ! Set unit vector
+           dist_x = u_root_mesh%xc( u_x2r_conn%id_dn(iconn) - root_id_offset ) - &
+                    u_xylem_mesh%xc(u_x2r_conn%id_up(iconn) - xylem_id_offset)
+           dist_y = u_root_mesh%yc( u_x2r_conn%id_dn(iconn) - root_id_offset ) - &
+                    u_xylem_mesh%yc(u_x2r_conn%id_up(iconn) - xylem_id_offset)
+           dist_z = u_root_mesh%zc( u_x2r_conn%id_dn(iconn) - root_id_offset ) - &
+                    u_xylem_mesh%zc(u_x2r_conn%id_up(iconn) - xylem_id_offset)
+           dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+           u_x2r_conn%unit_vec(iconn,1) = dist_x/dist
+           u_x2r_conn%unit_vec(iconn,2) = dist_y/dist
+           u_x2r_conn%unit_vec(iconn,3) = dist_z/dist
+
            ! Saturation up: CHUANG
            u_x2r_conn%satparam_up_itype   (iconn) = u_xylem_pp%satfunc_type    (u_x2r_conn%id_up(iconn) - xylem_id_offset )
            u_x2r_conn%satparam_up_param_1 (iconn) = u_xylem_pp%alpha           (u_x2r_conn%id_up(iconn) - xylem_id_offset )
@@ -1979,14 +2004,14 @@ subroutine setup_understory_mesh()
   do ii = 1, soil_nx
      do jj = 1, soil_ny
 
-        do kk                    = 1, understory_xylem_nz-1
-           iconn                 = iconn + 1
+        do kk                          = 1, understory_xylem_nz-1
+           iconn                       = iconn + 1
            u_x2x_conn%id_up(iconn)     = u_xylem_mesh%id(ii,jj,kk  )
            u_x2x_conn%id_dn(iconn)     = u_xylem_mesh%id(ii,jj,kk+1)
            u_x2x_conn%dist_up(iconn)   = 0.5d0*soil_dz
            u_x2x_conn%dist_dn(iconn)   = 0.5d0*soil_dz
            u_x2x_conn%area(iconn)      = understory_area_sapwood
-           u_x2x_conn%itype(iconn)      = CONN_VERTICAL
+           u_x2x_conn%itype(iconn)     = CONN_VERTICAL
            u_x2x_conn%flux_type(iconn) = DARCY_FLUX_TYPE
         end do
      end do
@@ -2009,9 +2034,24 @@ subroutine setup_understory_mesh()
            u_x2l_conn%id_dn(iconn)     = u_leaf_mesh%id (ii,jj,kk )
            u_x2l_conn%dist_up(iconn)   = 0.5d0*understory_branch_length_profile(idx)
            u_x2l_conn%dist_dn(iconn)   = 0.5d0*understory_branch_length_profile(idx)
+
            u_x2l_conn%area(iconn)      = understory_xylem_area_profile(idx)*understory_branch_area_ratio
            u_x2l_conn%itype(iconn)      = CONN_HORIZONTAL
            u_x2l_conn%flux_type(iconn) = DARCY_FLUX_TYPE
+
+
+           ! Set unit vector
+           dist_x = u_leaf_mesh%xc( u_x2l_conn%id_dn(iconn) - leaf_id_offset ) - &
+                    u_xylem_mesh%xc(u_x2l_conn%id_up(iconn) - xylem_id_offset)
+           dist_y = u_leaf_mesh%yc( u_x2l_conn%id_dn(iconn) - leaf_id_offset ) - &
+                    u_xylem_mesh%yc(u_x2l_conn%id_up(iconn) - xylem_id_offset)
+           dist_z = u_leaf_mesh%zc( u_x2l_conn%id_dn(iconn) - leaf_id_offset ) - &
+                    u_xylem_mesh%zc(u_x2l_conn%id_up(iconn) - xylem_id_offset)
+           dist   = (dist_x**2.d0 + dist_y**2.d0 + dist_z**2.d0)**0.5d0
+           u_x2l_conn%unit_vec(iconn,1) = dist_x/dist
+           u_x2l_conn%unit_vec(iconn,2) = dist_y/dist
+           u_x2l_conn%unit_vec(iconn,3) = dist_z/dist
+
         end do
 
      end do
@@ -2363,7 +2403,13 @@ subroutine set_material_properties_multi_goveqns()
   type(spac_component_conn_type) :: u_xylem_bc_conn
   !-----------------------------------------------------------------------
 
-  call VSFMMPPSetDensityType(vsfm_mpp, 1, DENSITY_IFC67)
+  call VSFMMPPSetDensityType(vsfm_mpp, soil_eqn_id, DENSITY_IFC67)
+  call VSFMMPPSetDensityType(vsfm_mpp, o_root_eqn_id, DENSITY_IFC67)
+  call VSFMMPPSetDensityType(vsfm_mpp, o_xylem_eqn_id, DENSITY_IFC67)
+  call VSFMMPPSetDensityType(vsfm_mpp, o_leaf_eqn_id, DENSITY_IFC67)
+  call VSFMMPPSetDensityType(vsfm_mpp, u_root_eqn_id, DENSITY_IFC67)
+  call VSFMMPPSetDensityType(vsfm_mpp, u_xylem_eqn_id, DENSITY_IFC67)
+  call VSFMMPPSetDensityType(vsfm_mpp, u_leaf_eqn_id, DENSITY_IFC67)
 
   call set_physical_property_for_eqn(soil_eqn_id    , soil_pp    )
   call set_physical_property_for_eqn(o_root_eqn_id  , o_root_pp  )
@@ -2430,9 +2476,6 @@ subroutine set_material_properties_multi_goveqns()
   call u_root_bc_conn%Destroy()
   call u_xylem_bc_conn%Destroy()
 
-  write(*,*)'Add code to support of allocate_auxvars for multi-GE case'
-  stop
-
 end subroutine set_material_properties_multi_goveqns
 
 !------------------------------------------------------------------------
@@ -2441,6 +2484,7 @@ subroutine set_physical_property_for_eqn(eqn_id, pp)
   use MultiPhysicsProbVSFM , only : VSFMMPPSetSoilPorosity
   use MultiPhysicsProbVSFM , only : VSFMMPPSetSaturationFunction
   use MultiPhysicsProbVSFM , only : VSFMMPPSetSoilPermeability
+  use MultiPhysicsProbVSFM , only : VSFMMPPSetRelativePermeability
   use MultiPhysicsProbVSFM , only : vsfm_mpp
   use spac_component
   !
@@ -2456,6 +2500,9 @@ subroutine set_physical_property_for_eqn(eqn_id, pp)
 
   call VSFMMPPSetSoilPermeability(vsfm_mpp, eqn_id, pp%perm, pp%perm, pp%perm)
 
+  call VSFMMPPSetRelativePermeability(vsfm_mpp, eqn_id, pp%relperm_type, &
+       pp%relperm_param_1, pp%relperm_param_2)
+
 end subroutine set_physical_property_for_eqn
 
 !------------------------------------------------------------------------
@@ -2463,6 +2510,13 @@ subroutine set_conn_property_for_eqn(eqn_id, conn, conn_type)
   !
   use MultiPhysicsProbVSFM      , only : vsfm_mpp
   use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
+  use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnIntValue
+  use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnRealValue
+  use MultiPhysicsProbConstants , only : VAR_FLUX_TYPE
+  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE
+  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE_TYPE
+  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE_UP
+  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE_DN
   use spac_component
   use petscsys
   !
@@ -2497,6 +2551,23 @@ subroutine set_conn_property_for_eqn(eqn_id, conn, conn_type)
   call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, eqn_id, conn_type, &
        set_upwind_auxvar, conn%relperm_dn_itype, conn%relperm_dn_param_1, &
        conn%relperm_dn_param_2, conn%relperm_dn_param_3)
+
+  ! Set connection flux type
+  call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, eqn_id, conn_type, &
+       VAR_FLUX_TYPE, conn%flux_type)
+
+  ! Set conductance type
+  call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, eqn_id, conn_type, &
+       VAR_CONDUCTANCE_TYPE, conn%cond_type)
+
+  call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, eqn_id, conn_type, &
+       VAR_CONDUCTANCE, conn%cond)
+
+  call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, eqn_id, conn_type, &
+       VAR_CONDUCTANCE_UP, conn%cond_up)
+
+  call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, eqn_id, conn_type, &
+       VAR_CONDUCTANCE_DN, conn%cond_dn)
 
   deallocate(set_upwind_auxvar)
 
@@ -2550,58 +2621,3 @@ subroutine set_initial_conditions()
   call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
 end subroutine set_initial_conditions
-
-!------------------------------------------------------------------------
-subroutine set_flux_type()
-  !
-  ! !DESCRIPTION:
-  !
-  use MultiPhysicsProbVSFM      , only : vsfm_mpp
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetRelativePermeability 
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnIntValue
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnRealValue
-  use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
-  use MultiPhysicsProbConstants , only : AUXVAR_CONN_INTERNAL
-  use MultiPhysicsProbConstants , only : AUXVAR_CONN_BC
-  use MultiPhysicsProbConstants , only : AUXVAR_CONN_BC
-  use MultiPhysicsProbConstants , only : VAR_FLUX_TYPE
-  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE
-  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE_TYPE
-  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE_UP
-  use MultiPhysicsProbConstants , only : VAR_CONDUCTANCE_DN
-  use MultiPhysicsProbConstants , only : CONDUCTANCE_FLUX_TYPE
-  use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
-  use MultiPhysicsProbConstants , only : VAR_CAMPBELL_HE
-  use MultiPhysicsProbConstants , only : VAR_CAMPBELL_N
-  use SaturationFunction        , only : RELPERM_FUNC_CAMPBELL
-  use MultiPhysicsProbConstants , only : AUXVAR_CONN_BC
-  use petscsys
-  use problem_parameters
-  !
-  implicit none
-  !
-  PetscInt :: igoveqn
-
-  igoveqn = 1
-
-  call VSFMMPPSetRelativePermeability(vsfm_mpp, igoveqn, combined_pp%relperm_type, &
-       combined_pp%relperm_param_1, combined_pp%relperm_param_2)
-
-  ! Set connection flux type
-  call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_FLUX_TYPE, combined_conn%flux_type)
-
-  ! Set conductance type
-  call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_TYPE, combined_conn%cond_type)
-
-  call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE, combined_conn%cond)
-
-  call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_UP, combined_conn%cond_up)
-
-  call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, igoveqn, AUXVAR_CONN_INTERNAL, &
-       VAR_CONDUCTANCE_DN, combined_conn%cond_dn)
-
-end subroutine set_flux_type

@@ -643,7 +643,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine MeshCreateConnectionSet2(this, nconn, id_up, id_dn, &
-       dist_up, dist_dn, area, itype, unit_vec, conn_set)
+       dist_up, dist_dn, area, itype, unit_vec, conn_set, skip_id_check)
     !
     ! !DESCRIPTION:
     ! Creates a connection set based on information passed
@@ -664,6 +664,7 @@ contains
     PetscReal, pointer                :: area(:)
     PetscInt, pointer                 :: itype(:)
     PetscReal, pointer, optional      :: unit_vec(:,:)
+    PetscBool, optional               :: skip_id_check
     type(connection_set_type),pointer :: conn_set
     !
     ! !LOCAL VARIABLES:
@@ -672,12 +673,16 @@ contains
     PetscReal                         :: dist_y
     PetscReal                         :: dist_z
     PetscReal                         :: dist
+    PetscBool                         :: check
+
+    check = PETSC_TRUE
+    if (present(skip_id_check)) check = .not.skip_id_check
 
     conn_set => ConnectionSetNew(nconn)
 
     do iconn = 1, nconn
 
-       if (id_up(iconn) > this%ncells_all) then
+       if (check .and. (id_up(iconn) > this%ncells_all)) then
           write(iulog,*)'Cell id up is greater than total number of cells '
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
