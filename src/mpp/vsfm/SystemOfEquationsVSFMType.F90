@@ -57,6 +57,7 @@ module SystemOfEquationsVSFMType
      procedure, public :: SetDataFromCLMForGhost => VSFMSOESetDataFromCLMForGhost
      procedure, public :: ComputeLateralFlux     => VSFMComputeLateralFlux
      procedure, public :: AddGovEqn              => VSFMAddGovEqn
+     procedure, public :: AddGovEqnWithMeshRank  => VSFMAddGovEqnWithMeshRank
      procedure, public :: CreateVectorsForGovEqn => VSFMCreateVectorsForGovEqn
   end type sysofeqns_vsfm_type
 
@@ -1060,27 +1061,84 @@ contains
     this%ngoveqns = this%ngoveqns + 1
 
     select case(geq_type)
-       case (GE_RE)
+    case (GE_RE)
 
-          allocate(goveq_richards)
-          call goveq_richards%Setup()
+       allocate(goveq_richards)
+       call goveq_richards%Setup()
 
-          goveq_richards%name              = trim(name)
-          goveq_richards%rank_in_soe_list  = this%ngoveqns
-          goveq_richards%mesh_itype        = mesh_itype
+       goveq_richards%name              = trim(name)
+       goveq_richards%rank_in_soe_list  = this%ngoveqns
+       goveq_richards%mesh_itype        = mesh_itype
 
-          if (this%ngoveqns == 1) then
-             this%goveqns => goveq_richards
-          else
-             cur_goveqn%next => goveq_richards
-          endif
+       if (this%ngoveqns == 1) then
+          this%goveqns => goveq_richards
+       else
+          cur_goveqn%next => goveq_richards
+       endif
 
-       case default
-          write(iulog,*) 'Unknown governing equation type'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       end select
+    case default
+       write(iulog,*) 'Unknown governing equation type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
 
-     end subroutine VSFMAddGovEqn
+  end subroutine VSFMAddGovEqn
+
+  !------------------------------------------------------------------------
+  subroutine VSFMAddGovEqnWithMeshRank(this, geq_type, name, mesh_rank)
+    !
+    ! !DESCRIPTION:
+    ! Adds a governing equation to system-of-equations
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType     , only : SOEBaseInit
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use MultiPhysicsProbConstants     , only : GE_RE
+    use MultiPhysicsProbConstants     , only : MESH_CLM_SOIL_COL
+    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_vsfm_type) :: this
+    PetscInt                   :: geq_type
+    character(len=*)           :: name
+    PetscInt                   :: mesh_rank
+    !
+    ! !LOCAL VARIABLES:
+    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
+    class(goveqn_base_type), pointer                    :: cur_goveqn
+    integer                                             :: igoveqn
+
+    cur_goveqn => this%goveqns
+
+    do igoveqn = 1, this%ngoveqns - 1
+       cur_goveqn => cur_goveqn%next
+    enddo
+
+    this%ngoveqns = this%ngoveqns + 1
+
+    select case(geq_type)
+    case (GE_RE)
+
+       allocate(goveq_richards)
+       call goveq_richards%Setup()
+
+       goveq_richards%name              = trim(name)
+       goveq_richards%rank_in_soe_list  = this%ngoveqns
+       goveq_richards%mesh_rank         = mesh_rank
+
+       if (this%ngoveqns == 1) then
+          this%goveqns => goveq_richards
+       else
+          cur_goveqn%next => goveq_richards
+       endif
+
+    case default
+       write(iulog,*) 'Unknown governing equation type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine VSFMAddGovEqnWithMeshRank
 
   !------------------------------------------------------------------------
   subroutine VSFMCreateVectorsForGovEqn(this)

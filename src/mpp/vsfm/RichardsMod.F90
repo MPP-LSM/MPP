@@ -522,10 +522,9 @@ contains
     PetscReal :: Pres_dn
     PetscReal :: den_dn
     PetscReal :: dden_dP_dn
-    PetscReal :: conductance
-    PetscReal :: kr
-    PetscReal :: dkr_dP_up
-    PetscReal :: dkr_dP_dn
+    PetscReal :: krg
+    PetscReal :: dkrg_dP_up
+    PetscReal :: dkrg_dP_dn
     PetscReal :: den_ave
     PetscReal :: upweight
     PetscReal :: dphi
@@ -548,15 +547,14 @@ contains
     dden_dP_dn  = aux_var_dn%dden_dP
 
     ! Get variables about connection
-    conductance = aux_var_conn%conductance
-    kr          = aux_var_conn%kr
-    dkr_dP_up   = aux_var_conn%dkr_dP_up
-    dkr_dP_dn   = aux_var_conn%dkr_dP_dn
+    krg         = aux_var_conn%krg
+    dkrg_dP_up  = aux_var_conn%dkrg_dP_up
+    dkrg_dP_dn  = aux_var_conn%dkrg_dP_dn
 
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
     dphi = (Pres_up - Pres_dn)
 
-    flux    = -den_ave * kr * conductance * dphi * area
+    flux    = -den_ave * krg * dphi * area
 
     if (compute_deriv) then
 
@@ -570,13 +568,13 @@ contains
           dflux_dP_up = 0.d0
           dflux_dP_dn = 0.d0
        else
-          dflux_dP_up = + dden_ave_dP_up * kr        * conductance * dphi       * area &
-                        + den_ave        * dkr_dP_up * conductance * dphi       * area &
-                        + den_ave        * kr        * conductance * dphi_dP_up * area
+          dflux_dP_up = + dden_ave_dP_up * krg        * dphi       * area &
+                        + den_ave        * dkrg_dP_up * dphi       * area &
+                        + den_ave        * krg        * dphi_dP_up * area
 
-          dflux_dP_dn = + dden_ave_dP_dn * kr        * conductance * dphi       * area &
-                        + den_ave        * dkr_dP_dn * conductance * dphi       * area &
-                        + den_ave        * kr        * conductance * dphi_dP_dn * area
+          dflux_dP_dn = + dden_ave_dP_dn * krg        * dphi       * area &
+                        + den_ave        * dkrg_dP_dn * dphi       * area &
+                        + den_ave        * krg        * dphi_dP_dn * area
        endif
 
     endif

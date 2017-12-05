@@ -122,6 +122,9 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_CAMPBELL_HE                   = 642
   PetscInt, parameter, public :: VAR_CAMPBELL_N                    = 643
   PetscInt, parameter, public :: VAR_MASS_FLUX                     = 644
+  PetscInt, parameter, public :: VAR_CONDUCTANCE_TYPE              = 645
+  PetscInt, parameter, public :: VAR_CONDUCTANCE_UP                = 646
+  PetscInt, parameter, public :: VAR_CONDUCTANCE_DN                = 647
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
@@ -141,6 +144,8 @@ module MultiPhysicsProbConstants
 
   PetscInt, parameter, public :: DARCY_FLUX_TYPE                   = 1001
   PetscInt, parameter, public :: CONDUCTANCE_FLUX_TYPE             = 1002
+  PetscInt, parameter, public :: CONDUCTANCE_CAMPBELL_TYPE         = 1003
+  PetscInt, parameter, public :: CONDUCTANCE_MANOLI_TYPE           = 1004
 
   !
   PetscReal, parameter, public :: PRESSURE_REF                     = 101325.d0     ! [Pa]
