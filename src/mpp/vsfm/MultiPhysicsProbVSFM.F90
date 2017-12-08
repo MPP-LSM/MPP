@@ -707,28 +707,34 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_vsfm_type)                   :: this
+    class(mpp_vsfm_type)                 :: this
     !
-    class(sysofeqns_base_type), pointer    :: base_soe
-    class(sysofeqns_vsfm_type), pointer :: soe
-    class(goveqn_base_type), pointer       :: cur_goveq
-    PetscInt                               :: igoveqn
-    PetscInt                               :: num_bc
-    PetscInt                               :: num_ss
-    PetscInt                               :: nconn_in
-    PetscInt                               :: icond
-    PetscInt                               :: iauxvar
-    PetscInt                               :: iauxvar_beg, iauxvar_end
-    PetscInt                               :: iauxvar_beg_bc, iauxvar_end_bc
-    PetscInt                               :: iauxvar_beg_ss, iauxvar_end_ss
-    PetscInt                               :: iauxvar_beg_conn_in, iauxvar_end_conn_in
-    PetscInt                               :: cond_itype_to_exclude
-    PetscInt                               :: count_bc, count_ss
-    PetscInt                               :: offset_bc, offset_ss
-    PetscInt, pointer                      :: ncells_for_bc(:)
-    PetscInt, pointer                      :: ncells_for_ss(:)
-    PetscInt, pointer                      :: offsets_bc(:)
-    PetscInt, pointer                      :: offsets_ss(:)
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_vsfm_type) , pointer :: soe
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscInt                             :: igoveqn
+    PetscInt                             :: num_bc
+    PetscInt                             :: num_ss
+    PetscInt                             :: nconn_in
+    PetscInt                             :: icond
+    PetscInt                             :: iauxvar
+    PetscInt                             :: iauxvar_beg, iauxvar_end
+    PetscInt                             :: iauxvar_beg_bc, iauxvar_end_bc
+    PetscInt                             :: iauxvar_beg_ss, iauxvar_end_ss
+    PetscInt                             :: iauxvar_beg_conn_in, iauxvar_end_conn_in
+    PetscInt                             :: cond_itype_to_exclude
+    PetscInt                             :: count_bc, count_ss
+    PetscInt                             :: offset_bc, offset_ss
+    PetscInt                             :: cell_id
+    PetscInt                             :: num_cells_bc
+    PetscInt                             :: num_cells_ss
+    PetscInt                   , pointer :: ncells_for_bc(:)
+    PetscInt                   , pointer :: ncells_for_ss(:)
+    PetscInt                   , pointer :: offsets_bc(:)
+    PetscInt                   , pointer :: offsets_ss(:)
+    PetscInt                   , pointer :: cell_id_dn_in_bc(:)
+    PetscInt                   , pointer :: cell_id_dn_in_ss(:)
+    PetscBool                  , pointer :: grid_cell_active(:)
 
     base_soe => this%soe
 
@@ -819,13 +825,21 @@ contains
     do
        if (.not.associated(cur_goveq)) exit
 
+       ! Boundary condition
        cond_itype_to_exclude = COND_DIRICHLET_FRM_OTR_GOVEQ
        call cur_goveq%GetNCellsInCondsExcptCondItype(COND_BC, &
             cond_itype_to_exclude, num_bc, ncells_for_bc)
+       call cur_goveq%GetConnIDDnForCondsExcptCondItype(COND_BC, &
+            cond_itype_to_exclude, num_cells_bc, cell_id_dn_in_bc)
 
+       ! Source-sinks
        cond_itype_to_exclude = COND_NULL
        call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, &
             cond_itype_to_exclude, num_ss, ncells_for_ss)
+       call cur_goveq%GetConnIDDnForCondsExcptCondItype(COND_SS, &
+            cond_itype_to_exclude, num_cells_ss, cell_id_dn_in_ss)
+
+       call cur_goveq%GetMeshGridCellIsActive(grid_cell_active)
 
        select type(cur_goveq)
        class is (goveqn_richards_ode_pressure_type)
@@ -838,13 +852,19 @@ contains
        iauxvar_beg = iauxvar_end + 1
        iauxvar_end = iauxvar_end + cur_goveq%mesh%ncells_all
 
+       ! AuxVars associated with grid cells
+       cell_id     = 0
        do iauxvar = iauxvar_beg, iauxvar_end
+
+          cell_id = cell_id + 1
           call soe%aux_vars_in(iauxvar)%Init()
 
           soe%aux_vars_in(iauxvar)%is_in     = PETSC_TRUE
           soe%aux_vars_in(iauxvar)%goveqn_id = igoveqn
+          soe%aux_vars_in(iauxvar)%is_active = grid_cell_active(cell_id)
        enddo
 
+       ! AuxVars associated with internal connections
        iauxvar_beg_conn_in = iauxvar_end_conn_in + 1
        iauxvar_end_conn_in = iauxvar_end_conn_in + nconn_in
 
@@ -871,11 +891,15 @@ contains
           iauxvar_end_bc = iauxvar_end_bc + ncells_for_bc(icond)
 
           do iauxvar = iauxvar_beg_bc, iauxvar_end_bc
+
+             cell_id = cell_id_dn_in_bc(iauxvar)
+
              call soe%aux_vars_bc(iauxvar)%Init()
 
              soe%aux_vars_bc(iauxvar)%is_bc        = PETSC_TRUE
              soe%aux_vars_bc(iauxvar)%goveqn_id    = igoveqn
              soe%aux_vars_bc(iauxvar)%condition_id = icond
+             soe%aux_vars_bc(iauxvar)%is_active    = grid_cell_active(cell_id)
           enddo
        enddo
 
@@ -890,11 +914,15 @@ contains
           iauxvar_end_ss = iauxvar_end_ss + ncells_for_ss(icond)
 
           do iauxvar = iauxvar_beg_ss, iauxvar_end_ss
+
+             cell_id = cell_id_dn_in_ss(iauxvar)
+
              call soe%aux_vars_ss(iauxvar)%Init()
 
              soe%aux_vars_ss(iauxvar)%is_ss        = PETSC_TRUE
              soe%aux_vars_ss(iauxvar)%goveqn_id    = igoveqn
              soe%aux_vars_ss(iauxvar)%condition_id = icond
+             soe%aux_vars_ss(iauxvar)%is_active    = grid_cell_active(cell_id)
           enddo
        enddo
 
@@ -903,11 +931,18 @@ contains
           call cur_goveq%SetSOEAuxVarOffsets(num_bc, offsets_bc, num_ss, offsets_ss)
        end select
 
-       if (num_bc > 0) deallocate(ncells_for_bc)
-       if (num_ss > 0) deallocate(ncells_for_ss)
+       if (num_bc > 0) then
+          deallocate(ncells_for_bc    )
+          deallocate(offsets_bc       )
+          deallocate(cell_id_dn_in_bc )
+       end if
+       if (num_ss > 0) then
+          deallocate(ncells_for_ss    )
+          deallocate(offsets_ss       )
+          deallocate(cell_id_dn_in_ss )
+       end if
 
-       if (num_bc > 0) deallocate(offsets_bc)
-       if (num_ss > 0) deallocate(offsets_ss)
+       deallocate(grid_cell_active)
 
        cur_goveq => cur_goveq%next
     enddo

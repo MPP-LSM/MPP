@@ -184,15 +184,17 @@ contains
        enddo
     enddo
 
-    cur_goveq => this%goveqns
-    do
-       if (.not.associated(cur_goveq)) exit
-       select type(cur_goveq)
-       class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%UpdateAuxVars()
-       end select
-       cur_goveq => cur_goveq%next
-    enddo
+    if (nDM > 1) then
+       cur_goveq => this%goveqns
+       do
+          if (.not.associated(cur_goveq)) exit
+          select type(cur_goveq)
+             class is (goveqn_richards_ode_pressure_type)
+             call cur_goveq%UpdateAuxVars()
+          end select
+          cur_goveq => cur_goveq%next
+       enddo
+    end if
 
     ! Call Residual
     dm_id = 0
@@ -509,7 +511,9 @@ contains
 
     call VecGetArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
     do iauxvar = 1, nvar
-       call avars(iauxvar + iauxvar_off)%SetValue(var_type, var_p(iauxvar))
+       if (avars(iauxvar + iauxvar_off)%is_active) then
+          call avars(iauxvar + iauxvar_off)%SetValue(var_type, var_p(iauxvar))
+       end if
     enddo
 
     call VecRestoreArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
@@ -742,7 +746,9 @@ contains
     endif
 
     do iauxvar = 1, nauxvar
-       call auxvars(iauxvar + iauxvar_off)%SetValue(var_type, data_1d(iauxvar))
+       if (auxvars(iauxvar + iauxvar_off)%is_active) then
+          call auxvars(iauxvar + iauxvar_off)%SetValue(var_type, data_1d(iauxvar))
+       end if
     enddo
 
   end subroutine VSFMSOESetDataFromCLM

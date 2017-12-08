@@ -52,6 +52,7 @@ module ConditionType
   public :: ConditionListPrintInfo
   public :: CondListGetNumCondsExcptCondItype
   public :: CondListGetNumCellsForCondsExcptCondItype
+  public :: CondListGetConnIDDnForCondsExcptCondItype
   public :: CondListGetCondNamesExcptCondItype
   !------------------------------------------------------------------------
 
@@ -258,6 +259,66 @@ contains
     end if
 
   end subroutine CondListGetNumCellsForCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine CondListGetConnIDDnForCondsExcptCondItype( &
+       list, cond_itype, num_cells, cell_id_dn)
+    !
+    ! !DESCRIPTION:
+    ! Returns the downwind cell associated with all conditions excluding
+    ! conditions of itype = cond_type_to_exclude
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(condition_list_type) , intent(in)           :: list
+    PetscInt                  , intent(in)           :: cond_itype
+    PetscInt                  , intent(out)          :: num_cells
+    PetscInt                  , intent(out), pointer :: cell_id_dn(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                                         :: icond
+    PetscInt                                         :: iconn
+    PetscInt                                         :: count
+    PetscInt                                         :: num_conds
+    PetscInt                  , pointer              :: num_cells_for_conds(:)
+    type(condition_type)      , pointer              :: cur_cond
+    type(connection_set_type) , pointer              :: cur_conn_set
+
+    call CondListGetNumCondsExcptCondItype(list, cond_itype, num_conds)
+    call CondListGetNumCellsForCondsExcptCondItype(list, cond_itype, num_cells_for_conds)
+
+    num_cells = 0
+    do icond = 1, num_conds
+       num_cells = num_cells + num_cells_for_conds(icond)
+    end do
+
+    if (num_cells == 0) then
+
+       nullify(cell_id_dn)
+
+    else
+
+       allocate(cell_id_dn(num_cells))
+
+       count = 0
+       cur_cond => list%first
+       do
+          if (.not.associated(cur_cond)) exit
+
+          if (cur_cond%itype /= cond_itype) then
+             cur_conn_set => cur_cond%conn_set
+             do iconn = 1, cur_conn_set%num_connections
+                count = count + 1
+                cell_id_dn(count) = cur_conn_set%conn(iconn)%GetIDDn()
+             end do
+          endif
+          cur_cond => cur_cond%next
+       enddo
+
+    end if
+
+  end subroutine CondListGetConnIDDnForCondsExcptCondItype
 
   !------------------------------------------------------------------------
   subroutine CondListGetCondNamesExcptCondItype( &
