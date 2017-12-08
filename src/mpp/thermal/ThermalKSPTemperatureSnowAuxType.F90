@@ -1,6 +1,6 @@
-#ifdef USE_PETSC_LIB
-
 module  ThermalKSPTemperatureSnowAuxType
+
+#ifdef USE_PETSC_LIB
 
 #include <petsc/finclude/petsc.h>
 
@@ -77,6 +77,6 @@ contains
     this%heat_cap_pva = this%heat_cap_pva/dz
   end subroutine ThermKSPTempSnowAuxVarCompute
 
-end module ThermalKSPTemperatureSnowAuxType
-
 #endif
+
+end module ThermalKSPTemperatureSnowAuxType
