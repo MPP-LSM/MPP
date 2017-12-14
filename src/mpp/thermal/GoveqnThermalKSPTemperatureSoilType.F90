@@ -961,8 +961,8 @@ contains
               (.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
           area          = cur_conn_set%conn(iconn)%GetArea()
-          dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
-          dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
+          dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+          dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
           dist          = dist_up + dist_dn
 
           therm_cond_up = this%aux_vars_in(cell_id_up)%therm_cond
@@ -1034,8 +1034,8 @@ contains
 
              frac          = this%aux_vars_bc(sum_conn)%frac
              area          = cur_conn_set%conn(iconn)%GetArea()
-             dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
-             dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
+             dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+             dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
              dist          = dist_up + dist_dn
 
              therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -1181,8 +1181,8 @@ contains
 
                    frac          = this%aux_vars_bc(sum_conn)%frac
                    area          = cur_conn_set%conn(iconn)%GetArea()
-                   dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
-                   dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
+                   dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+                   dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
                    dist          = dist_up + dist_dn
 
                    therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
