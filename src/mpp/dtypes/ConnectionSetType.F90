@@ -44,10 +44,14 @@ module ConnectionSetType
 
   type, public :: connection_set_type
 
-     PetscInt                           :: id              ! identifier
-     PetscInt                           :: num_connections ! total num. of connections
-     type(connection_type)    , pointer :: conn(:)         ! information about all connections
+     PetscInt                           :: id                 ! identifier
+     PetscInt                           :: num_connections    ! total num. of connections
+     PetscInt                           :: num_active_conn    ! number of active connections
+     PetscInt                 , pointer :: active_conn_ids(:) ! IDs of active connection
+     type(connection_type)    , pointer :: conn(:)            ! information about all connections
      type(connection_set_type), pointer :: next
+   contains
+     procedure, public :: SetActiveConnections => ConnSetSetActiveConnections
 
   end type connection_set_type
 
@@ -417,6 +421,9 @@ contains
 
     conn_set%id                = 0
     conn_set%num_connections   = num_connections
+    conn_set%num_active_conn  = 0
+
+    nullify(conn_set%active_conn_ids)
 
     allocate(conn_set%conn(num_connections));
     do iconn = 1, num_connections
@@ -522,6 +529,29 @@ contains
 
   end subroutine ConnectionSetListClean
 
+  !------------------------------------------------------------------------
+  subroutine ConnSetSetActiveConnections(this, num_active_conn, active_conn_ids)
+    !
+    ! !DESCRIPTION:
+    ! Release all allocated memory
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(connection_set_type) , intent(inout)       :: this
+    PetscInt                   , intent(in)          :: num_active_conn
+    PetscInt                   , pointer, intent(in) :: active_conn_ids(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt :: iconn
+
+    this%num_active_conn = num_active_conn
+    allocate (this%active_conn_ids(num_active_conn))
+
+    this%active_conn_ids(1:num_active_conn) = active_conn_ids(1:num_active_conn)
+
+  end subroutine ConnSetSetActiveConnections
+    
 #endif
 
 end module ConnectionSetType

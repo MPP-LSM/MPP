@@ -745,6 +745,7 @@ contains
     integer                                                    :: iauxvar
     integer                                                    :: iauxvar_off
     integer                                                    :: iconn
+    integer                                                    :: iconn_active
     integer                                                    :: auxVarCt_ge, auxVarCt_soe
     integer                                                    :: condition_id, sum_conn
     integer                                                    :: cell_id_dn
@@ -797,8 +798,8 @@ contains
           !  - GE auxvars already have pre-computed values of lateral flux.
           !
           cur_conn_set => cur_cond%conn_set
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
+          do iconn_active = 1, cur_conn_set%num_active_conn
+             iconn = cur_conn_set%active_conn_ids(iconn_active)
 
              cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
              if ( (.not. this%mesh%is_active(cell_id_dn))) cycle
@@ -806,7 +807,7 @@ contains
              select case(cur_cond%itype)
              case (COND_MASS_RATE, COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
                 var_value = soe_avars(iconn + iauxvar_off)%condition_value
-                ge_avars(sum_conn)%condition_value = var_value
+                ge_avars(sum_conn + iconn)%condition_value = var_value
                 cur_cond%value(iconn) = var_value
              case default
                 write(string,*) cur_cond%itype
@@ -814,6 +815,7 @@ contains
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              end select
           enddo
+          sum_conn = sum_conn + cur_conn_set%num_connections
        endif
 
        cur_cond => cur_cond%next
@@ -910,6 +912,7 @@ contains
     PetscInt                                                       :: iauxvar
     PetscInt                                                       :: iauxvar_off
     PetscInt                                                       :: iconn
+    PetscInt                                                       :: iconn_active
     PetscInt                                                       :: sum_conn
     PetscInt                                                       :: auxVarCt_ge
     PetscInt                                                       :: auxVarCt_soe
@@ -1047,12 +1050,13 @@ contains
           if (trim(cur_cond%name) == 'Lateral_flux') then
 
              cur_conn_set => cur_cond%conn_set
-             do iconn = 1, cur_conn_set%num_connections
-                sum_conn = sum_conn + 1
+             do iconn_active = 1, cur_conn_set%num_active_conn
+                iconn = cur_conn_set%active_conn_ids(iconn_active)
+                
                 select case(cur_cond%itype)
                 case (COND_MASS_RATE)
                    soe_avars(iconn + iauxvar_off)%condition_value = cur_cond%value(iconn)
-                   soe_avars(iconn + iauxvar_off)%mass_flux       = this%ss_flux(sum_conn)
+                   soe_avars(iconn + iauxvar_off)%mass_flux       = this%ss_flux(sum_conn+iconn)
 
                 case default
                    write(string,*) cur_cond%itype
@@ -1060,19 +1064,20 @@ contains
                    call endrun(msg=errMsg(__FILE__, __LINE__))
                 end select
              enddo
+             sum_conn = sum_conn + cur_conn_set%num_connections
 
           else
 
              cur_conn_set => cur_cond%conn_set
-             do iconn = 1, cur_conn_set%num_connections
+             do iconn_active = 1, cur_conn_set%num_active_conn
+                iconn = cur_conn_set%active_conn_ids(iconn_active)
 
-                sum_conn = sum_conn + 1
                 select case(cur_cond%itype)
                 case (COND_MASS_RATE)
-                   soe_avars(iconn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+                   soe_avars(iconn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn + iconn)
 
                 case (COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
-                   soe_avars(iconn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn)
+                   soe_avars(iconn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn + iconn)
 
                 case default
                    write(string,*) cur_cond%itype
@@ -1080,6 +1085,7 @@ contains
                    call endrun(msg=errMsg(__FILE__, __LINE__))
                 end select
              enddo
+             sum_conn = sum_conn + cur_conn_set%num_connections
 
           endif
 
@@ -1311,6 +1317,7 @@ contains
     ! !LOCAL VARIABLES
     PetscInt                                 :: ghosted_id
     PetscInt                                 :: iconn
+    PetscInt                                 :: iconn_active
     PetscInt                                 :: sum_conn
     type(condition_type),pointer             :: cur_cond
     type(connection_set_type), pointer       :: cur_conn_set
@@ -1324,13 +1331,15 @@ contains
        if (.not.associated(cur_cond)) exit
        cur_conn_set => cur_cond%conn_set
 
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
+       do iconn_active = 1, cur_conn_set%num_active_conn
+          iconn = cur_conn_set%active_conn_ids(iconn_active)
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-          this%aux_vars_ss(sum_conn)%pressure =  &
+
+          this%aux_vars_ss(sum_conn+iconn)%pressure =  &
               this%aux_vars_in(ghosted_id)%pressure
-          call this%aux_vars_ss(sum_conn)%AuxVarCompute()
+          call this%aux_vars_ss(sum_conn+iconn)%AuxVarCompute()
        enddo
+       sum_conn = sum_conn + cur_conn_set%num_connections
        cur_cond => cur_cond%next
     enddo
 
@@ -1463,6 +1472,7 @@ contains
     !
     ! !LOCAL VARIABLES
     PetscInt                                 :: iconn
+    PetscInt                                 :: iconn_active
     PetscInt                                 :: sum_conn
     PetscInt                                 :: cell_id_dn
     PetscInt                                 :: cell_id_up
@@ -1656,22 +1666,23 @@ contains
 
        cur_conn_set => cur_cond%conn_set
 
-       do iconn = 1, cur_conn_set%num_connections
-          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
-          sum_conn = sum_conn + 1
+       do iconn_active = 1, cur_conn_set%num_active_conn
 
-          if ( (.not. this%mesh%is_active(cell_id))) cycle
+          iconn = cur_conn_set%active_conn_ids(iconn_active)
+          
+          cell_id = cur_conn_set%conn(iconn)%GetIDDn()
+
 
           select case(cur_cond%itype)
           case (COND_MASS_RATE)
              ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)/FMWH2O
 
-             this%ss_flux(sum_conn) = cur_cond%value(iconn)
+             this%ss_flux(sum_conn+iconn) = cur_cond%value(iconn)
 
           case (COND_DOWNREG_MASS_RATE_CAMPBELL)
              dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
+             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
 
              if (dP <= 0.d0) then
                 factor = 1.d0 + (dP/Pc)**n
@@ -1680,12 +1691,12 @@ contains
              endif
 
              ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)/factor/FMWH2O
-             this%ss_flux(sum_conn) = cur_cond%value(iconn)/factor
+             this%ss_flux(sum_conn+iconn) = cur_cond%value(iconn)/factor
 
           case (COND_DOWNREG_MASS_RATE_FETCH2)
              dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
+             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
 
              if (dP <= 0.d0) then
                 factor = exp( -(dP/Pc)**n )
@@ -1694,14 +1705,15 @@ contains
              endif
 
              ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)*factor/FMWH2O
-             this%ss_flux(sum_conn) = cur_cond%value(iconn)*factor
+             this%ss_flux(sum_conn+iconn) = cur_cond%value(iconn)*factor
 
           case default
             write(iulog,*)'RichardsODEPressureDivergence: Unknown cond_type in SS.'
             call endrun(msg=errMsg(__FILE__, __LINE__))
          end select
-       enddo
-       cur_cond => cur_cond%next
+      enddo
+      sum_conn = sum_conn + cur_conn_set%num_connections
+      cur_cond => cur_cond%next
     enddo
 
   end subroutine RichardsODEPressureDivergence
@@ -1737,6 +1749,7 @@ contains
     !
     ! !LOCAL VARIABLES
     PetscInt                                 :: iconn
+    PetscInt                                 :: iconn_active
     PetscInt                                 :: sum_conn
     PetscInt                                 :: cell_id_dn
     PetscInt                                 :: cell_id_up
@@ -1947,20 +1960,19 @@ contains
 
        cur_conn_set => cur_cond%conn_set
 
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
+       do iconn_active = 1, cur_conn_set%num_active_conn
+
+          iconn = cur_conn_set%active_conn_ids(iconn_active)
 
           cell_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          if ( (.not. this%mesh%is_active(cell_id))) cycle
 
           select case(cur_cond%itype)
           case (COND_MASS_RATE)
 
           case (COND_DOWNREG_MASS_RATE_CAMPBELL)
              dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
+             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
 
              if (dP <= 0.d0) then
                 cell_id = cur_conn_set%conn(iconn)%GetIDDn()
@@ -1975,8 +1987,8 @@ contains
 
           case (COND_DOWNREG_MASS_RATE_FETCH2)
              dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn)%pot_mass_sink_exponent
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
+             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
 
              if (dP <= 0.d0) then
                 cell_id = cur_conn_set%conn(iconn)%GetIDDn()
@@ -1994,8 +2006,9 @@ contains
             call endrun(msg=errMsg(__FILE__, __LINE__))
          end select
 
-       enddo
-       cur_cond => cur_cond%next
+      enddo
+      sum_conn = sum_conn + cur_conn_set%num_connections
+      cur_cond => cur_cond%next
     enddo
 
   end subroutine RichardsODEPressureDivergenceDeriv

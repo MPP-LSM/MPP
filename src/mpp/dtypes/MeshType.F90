@@ -512,6 +512,8 @@ contains
     PetscInt                          :: ncols
     PetscInt                          :: offset
     PetscBool                         :: use_centroid_in_dist_computation
+    PetscInt                          :: num_active_conn
+    PetscInt , pointer                :: active_conn_ids(:)
 
     ncols = mesh%ncells_local/mesh%nlev
 
@@ -552,6 +554,8 @@ contains
 
        nconn = ncols
        conn_set => ConnectionSetNew(nconn)
+       allocate(active_conn_ids(nconn))
+       num_active_conn = 0
 
        iconn = 0
        do c = 1, ncols
@@ -565,12 +569,22 @@ contains
                 id_up = -1
                 id_dn = mesh%nlev*c + offset
 
+                if (mesh%is_active(id_dn)) then
+                   num_active_conn = num_active_conn + 1
+                   active_conn_ids(num_active_conn) = iconn
+                end if
+
                 call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, -1.d0)
 
              case (SOIL_BOTTOM_CELLS, SNOW_BOTTOM_CELLS)
 
                 id_up = -1
                 id_dn = mesh%nlev*(c-1) + 1 + offset
+
+                if (mesh%is_active(id_dn)) then
+                   num_active_conn = num_active_conn + 1
+                   active_conn_ids(num_active_conn) = iconn
+                end if
 
                 call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, 1.d0)
              end select
@@ -581,11 +595,20 @@ contains
                 id_up = -1
                 id_dn = mesh%nlev*c + offset
 
+                if (mesh%is_active(id_dn)) then
+                   num_active_conn = num_active_conn + 1
+                   active_conn_ids(num_active_conn) = iconn
+                end if
                 call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, 1.d0)
 
              case (SOIL_TOP_CELLS, SNOW_TOP_CELLS, SSW_TOP_CELLS)
                 id_up = -1
                 id_dn = mesh%nlev*(c-1) + 1 + offset
+
+                if (mesh%is_active(id_dn)) then
+                   num_active_conn = num_active_conn + 1
+                   active_conn_ids(num_active_conn) = iconn
+                end if
 
                 call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, -1.d0)
              end select
@@ -607,10 +630,16 @@ contains
           endif
        enddo
 
+       call conn_set%SetActiveConnections(num_active_conn, active_conn_ids)
+       
+       deallocate(active_conn_ids)
+
     case (SOIL_CELLS, ALL_CELLS)
 
        nconn = mesh%ncells_local
        conn_set => ConnectionSetNew(nconn)
+       allocate(active_conn_ids(nconn))
+       num_active_conn = 0
 
        iconn = 0
        do c = 1,ncols
@@ -623,15 +652,24 @@ contains
              call conn_set%conn(iconn)%SetIDUp(id_up)
              call conn_set%conn(iconn)%SetIDDn(id_dn)
 
-                call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, 0.d0)
+             call conn_set%conn(iconn)%SetDistUnitVec(0.d0, 0.d0, 0.d0)
 
              call conn_set%conn(iconn)%SetArea(mesh%area_xy(id_dn))
 
              call conn_set%conn(iconn)%SetDistUp(0.0d0)
              call conn_set%conn(iconn)%SetDistDn(0.0d0)
 
+             if (mesh%is_active(id_dn)) then
+                num_active_conn = num_active_conn + 1
+                active_conn_ids(num_active_conn) = iconn
+             end if
+
           enddo
        enddo
+
+       call conn_set%SetActiveConnections(num_active_conn, active_conn_ids)
+       
+       deallocate(active_conn_ids)
 
     case default
 
@@ -674,11 +712,15 @@ contains
     PetscReal                         :: dist_z
     PetscReal                         :: dist
     PetscBool                         :: check
+    PetscInt                          :: num_active_conn
+    PetscInt , pointer                :: active_conn_ids(:)
 
     check = PETSC_TRUE
     if (present(skip_id_check)) check = .not.skip_id_check
 
     conn_set => ConnectionSetNew(nconn)
+    allocate(active_conn_ids(nconn))
+    num_active_conn = 0
 
     do iconn = 1, nconn
 
@@ -699,6 +741,22 @@ contains
        call conn_set%conn(iconn)%SetDistUp(dist_up(iconn))
        call conn_set%conn(iconn)%SetDistDn(dist_dn(iconn))
 
+       if (id_up(iconn) > 0 .and. id_dn(iconn) > 0) then
+          if (this%is_active(id_up(iconn)) .and. this%is_active(id_dn(iconn))) then
+             num_active_conn = num_active_conn + 1
+             active_conn_ids(num_active_conn) = iconn
+          end if
+       elseif (id_up(iconn) > 0) then
+          if (this%is_active(id_up(iconn))) then
+             num_active_conn = num_active_conn + 1
+             active_conn_ids(num_active_conn) = iconn
+          end if
+       else
+          if (this%is_active(id_dn(iconn))) then
+             num_active_conn = num_active_conn + 1
+             active_conn_ids(num_active_conn) = iconn
+          end if
+       end if
        if (.not.present(unit_vec)) then
           dist_x = this%x(id_dn(iconn)) - this%x(id_up(iconn))
           dist_y = this%y(id_dn(iconn)) - this%y(id_up(iconn))
@@ -712,6 +770,10 @@ contains
 
        call conn_set%conn(iconn)%SetType(itype(iconn))
     end do
+
+    call conn_set%SetActiveConnections(num_active_conn, active_conn_ids)
+       
+    deallocate(active_conn_ids)
 
   end subroutine MeshCreateConnectionSet2
 
