@@ -22,12 +22,12 @@ matrix:
     - env:
       os: linux
 
-    - env: CMAKE_BUILD=1
+    - env:
       os: osx
 
 script: 
-  - .ci-scripts/install-petsc.sh
-  - export PETSC_DIR=$PWD/petsc; export PETSC_ARCH=linux-gnu
+  - .travis/install-petsc.sh
+  - export PETSC_DIR=$PWD/petsc; export PETSC_ARCH=petsc-arch
   - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 config
   - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 all
   - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 install
