@@ -33,5 +33,4 @@ script:
   - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 install
   - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 test || EXIT_CODE=$?
   - cat regression_tests/*testlog
-  - exit ${EXIT_CODE}
 
