@@ -1,0 +1,36 @@
+language: 
+
+before_script:
+  - echo -e "Host *\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+
+sudo: required
+
+dist: trusty # Ubuntu 14.04.
+
+compiler:
+  - gcc
+
+install: sh ./.travis/install-$TRAVIS_OS_NAME-deps.sh
+
+addons:
+  apt:
+    packages:
+      - cmake
+
+matrix:
+  include:
+    - env:
+      os: linux
+
+#    - env:
+#      os: osx
+
+script: 
+  - .travis/install-petsc.sh
+  - export PETSC_DIR=$PWD/petsc; export PETSC_ARCH=petsc-arch
+  - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 config
+  - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 all
+  - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 install
+  - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 test || EXIT_CODE=$?
+  - cat regression_tests/*testlog
+
