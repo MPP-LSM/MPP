@@ -102,3 +102,7 @@ make CC=$CC CXX=$CXX FC=$FC test
 ```
 
 
+## License
+
+[BSD-3](https://github.com/MPP-LSM/MPP/blob/master/License.txt)
+
