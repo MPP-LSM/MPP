@@ -2,7 +2,7 @@
 
 git clone https://bitbucket.org/petsc/petsc.git
 
-PETSC_GIT_HASH=a12052c5384dbd298e0348d2e27951245b7274e9
+PETSC_GIT_HASH=v3.8.3
 
 cd petsc
 
