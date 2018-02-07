@@ -18,7 +18,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: c1       = 1.278d6     ! Pa
   PetscReal , parameter :: c2       = 2.8299d0    ! -
   PetscReal , parameter :: c3       = 5.d0        ! -
-  PetscReal , parameter :: kmax     = 9.8513d-7   ! s^{-1}
+  PetscReal , parameter :: kmax     = 9.8513d-7   ! s
   PetscReal , parameter :: vis      = 8.904156d-4 ! Pa s
   PetscReal , parameter :: rho      = 1000.d0     ! kg m^{-3}
   PetscReal , parameter :: grav     = 9.81        ! m s^{-2}
@@ -242,10 +242,10 @@ contains
     vol_xylem    (:) = 1.d0/50.d0
 
     zc_xylem(1)  = 0.17d0
-    vol_xylem(1) = area_xylem(1) * dz * porosity
+    vol_xylem(1) = area_xylem(1) * dz
     do kk = 2, nz
        zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1))
-       vol_xylem(kk) = area_xylem(kk) * dz * porosity
+       vol_xylem(kk) = area_xylem(kk) * dz
     enddo
 
     call mpp_varpar_set_nlevsoi(nz)
@@ -442,7 +442,7 @@ contains
     allocate (weibull_c      (nz))
     allocate(ss_auxvar_value (nz))
 
-    por          (1 : nz ) = 1.d0
+    por          (1 : nz ) = porosity
     call VSFMMPPSetSoilPorosity(vsfm_mpp, 1, por)
 
     satfunc_type (1 : nz ) = SAT_FUNC_FETCH2
