@@ -82,7 +82,9 @@ contains
     use GoverningEquationBaseType
     use GoveqnThermalKSPTemperatureSoilType
     use ThermalKSPTemperatureSoilAuxType
-    use mpp_varpar      , only : nlevgrnd, nlevsoi, nlevsno
+    use mpp_varpar       , only : nlevgrnd, nlevsoi, nlevsno
+    use ConditionType    , only : condition_type
+    use ConnectionSetType, only : connection_set_type
     !
     implicit none
     !
@@ -101,8 +103,13 @@ contains
     class (goveqn_thermal_ksp_temp_soil_type) , pointer :: goveq_soil
     class(goveqn_base_type)                   , pointer :: cur_goveq
     type (therm_ksp_temp_soil_auxvar_type)    , pointer :: aux_vars_in(:)
+    type (therm_ksp_temp_soil_auxvar_type)    , pointer :: aux_vars_bc(:)
+    type(condition_type)                      , pointer :: cur_cond
+    type(connection_set_type)                 , pointer :: cur_conn_set
     PetscInt                                            :: j,c,g,l
+    PetscInt                                            :: sum_conn
     PetscInt                                            :: icell
+    PetscInt                                            :: iconn
     PetscInt                                            :: col_id
     PetscInt                                            :: first_active_col_id
     PetscBool                                           :: found
@@ -176,6 +183,27 @@ contains
 
       enddo
    enddo
+
+   sum_conn = 0
+   aux_vars_bc => goveq_soil%aux_vars_bc
+   cur_cond    => goveq_soil%boundary_conditions%first
+   do
+      if (.not.associated(cur_cond)) exit
+      cur_conn_set => cur_cond%conn_set
+
+      do iconn = 1, cur_conn_set%num_connections
+         sum_conn = sum_conn + 1
+         icell    = cur_conn_set%conn(iconn)%GetIDDn()
+
+         aux_vars_bc(sum_conn)%itype                 = aux_vars_in(icell)%itype
+         aux_vars_bc(sum_conn)%por                   = aux_vars_in(icell)%por
+         aux_vars_bc(sum_conn)%therm_cond_minerals   = aux_vars_in(icell)%therm_cond_minerals
+         aux_vars_bc(sum_conn)%therm_cond_dry        = aux_vars_in(icell)%therm_cond_dry
+         aux_vars_bc(sum_conn)%heat_cap_minerals_puv = aux_vars_in(icell)%heat_cap_minerals_puv
+      end do
+
+      cur_cond => cur_cond%next
+   end do
 
   end subroutine MPPThermalSetSoils
 

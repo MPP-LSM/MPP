@@ -356,7 +356,7 @@ contains
   
   !------------------------------------------------------------------------
   subroutine ThermalSOESetBDataFromCLM(this, soe_auxvar_type, var_type, &
-       data_1d)
+       data_1d, soe_auxvar_id)
     !
     ! !DESCRIPTION:
     ! Used by CLM to set values of boundary conditions and source-sink
@@ -376,6 +376,7 @@ contains
     PetscInt, intent(in)          :: var_type
     PetscInt                      :: soe_auxvar_type
     PetscBool, pointer            :: data_1d(:)
+    PetscInt, optional            :: soe_auxvar_id
     !
     ! !LOCAL VARIABLES:
     PetscInt                      :: iauxvar
@@ -388,6 +389,17 @@ contains
        nauxvar      = this%num_auxvars_in
 
        call SOEThermalAuxSetBData(this%aux_vars_in, var_type, nauxvar, &
+            iauxvar_off, data_1d)
+
+    case(AUXVAR_BC)
+       if (.not.present(soe_auxvar_id)) then
+          write(iulog,*)'SOE_AUXVAR_ID is needed when setting data for boundary conditions'
+          call endrun(msg=errMsg(__FILE__,__LINE__))
+       endif
+       iauxvar_off  = this%soe_auxvars_bc_offset(soe_auxvar_id)
+       nauxvar      = this%soe_auxvars_bc_ncells(soe_auxvar_id)
+
+       call SOEThermalAuxSetBData(this%aux_vars_bc, var_type, nauxvar, &
             iauxvar_off, data_1d)
 
     case default
@@ -668,6 +680,7 @@ contains
           call cur_goveq%UpdateAuxVarsIntrn()
        class is (goveqn_thermal_ksp_temp_soil_type)
           call cur_goveq%UpdateAuxVarsIntrn()
+          call cur_goveq%UpdateAuxVarsBC()
        end select
 
        cur_goveq => cur_goveq%next
