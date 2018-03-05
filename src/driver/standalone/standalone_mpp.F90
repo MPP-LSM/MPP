@@ -39,6 +39,9 @@ program standalone_mpp
   use vsfm_spac_problem           , only : output_regression_vsfm_spac_problem
   use vsfm_spac_campbell_problem  , only : run_vsfm_spac_campbell_problem
   use vsfm_spac_campbell_problem  , only : output_regression_vsfm_spac_campbell_problem
+  use thermal_mms_problem         , only : run_thermal_mms_problem
+  use thermal_mms_problem         , only : output_regression_th_mms_problem
+  
   use petscsys
   !
   implicit none
@@ -148,6 +151,13 @@ program standalone_mpp
 
      if (write_regression_output) then
         call output_regression_vsfm_spac_campbell_problem(filename_base, num_cells)
+     endif
+
+  else if(trim(problem_type) == 'thermal_mms') then
+     call run_thermal_mms_problem()
+
+     if (write_regression_output) then
+        call output_regression_th_mms_problem(filename_base, num_cells)
      endif
 
   else
