@@ -45,6 +45,7 @@ module GoveqnThermalKSPTemperatureSoilType
      procedure, public :: SetSOEAuxVarOffsets     => ThermKSPTempSoilSetSOEAuxVarOffsets
      procedure, public :: UpdateBoundaryConn      => ThermKSPTempSoilUpdateBoundaryConn
      procedure, public :: UpdateAuxVarsIntrn      => ThermKSPTempSoilUpdateAuxVarsIntrn
+     procedure, public :: UpdateAuxVarsBC         => ThermKSPTempSoilUpdateAuxVarsBC
 
      procedure, public :: ComputeRHS              => ThermKSPTempSoilComputeRHS
      procedure, public :: ComputeOperatorsDiag    => ThermKSPTempSoilComputeOperatorsDiag
@@ -248,6 +249,7 @@ contains
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
     use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : VAR_BC_SS_CONDITION
     !
@@ -315,6 +317,10 @@ contains
 
              this%aux_vars_bc(sum_conn)%frac = &
                   soe_avars(iconn + iauxvar_off)%frac
+
+          case (COND_DIRICHLET)
+             this%aux_vars_bc(sum_conn)%condition_value =  &
+                  soe_avars(iconn + iauxvar_off)%condition_value
 
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
@@ -538,6 +544,70 @@ contains
 
   !------------------------------------------------------------------------
 
+  subroutine ThermKSPTempSoilUpdateAuxVarsBC(this)
+    !
+    ! !DESCRIPTION:
+    ! Updates auxiliary variable associated with boundary condition
+    !
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    !
+    ! !LOCAL VARIABLES
+    PetscInt                                 :: ghosted_id
+    PetscInt                                 :: iconn
+    PetscInt                                 :: sum_conn
+    type(condition_type)      , pointer      :: cur_cond
+    type(connection_set_type) , pointer      :: cur_conn_set
+    character(len=256)                       :: string
+
+    ! Update aux vars for boundary cells
+    sum_conn = 0
+    cur_cond => this%boundary_conditions%first
+    do
+       if (.not.associated(cur_cond)) exit
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn   = sum_conn + 1
+          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
+
+          select case(cur_cond%itype)
+          case (COND_DIRICHLET)
+             this%aux_vars_bc(sum_conn)%temperature = &
+                  this%aux_vars_bc(sum_conn)%condition_value
+
+          case (COND_HEAT_FLUX)
+             this%aux_vars_bc(sum_conn)%temperature =  &
+                this%aux_vars_in(ghosted_id)%temperature
+
+          case (COND_DIRICHLET_FRM_OTR_GOVEQ)
+             ! Do nothing
+
+          case default
+             write(string,*) cur_cond%itype
+             write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+
+          call this%aux_vars_bc(sum_conn)%AuxVarCompute( &
+               this%mesh%dz(ghosted_id), this%mesh%vol(ghosted_id))
+
+       enddo
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine ThermKSPTempSoilUpdateAuxVarsBC
+  !------------------------------------------------------------------------
+
   subroutine ThermKSPTempSoilComputeRHS(this, B, ierr)
     !
     ! !DESCRIPTION:
@@ -621,6 +691,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
     use MultiPhysicsProbConstants , only : COND_HEAT_RATE
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
     use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
     !
     implicit none
@@ -778,6 +849,29 @@ contains
                      geq_soil%aux_vars_bc(sum_conn)%frac* &
                      cnfac * flux * area * factor
 
+          case(COND_DIRICHLET)
+
+             if (.not.geq_soil%aux_vars_bc(sum_conn)%is_active) cycle
+
+                if (is_bc_sh2o) then
+                   write(iulog,*)'unsupported'
+                   stop
+                endif
+
+                dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+                dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
+                dist          = dist_up + dist_dn
+
+                therm_cond_up = geq_soil%aux_vars_bc(sum_conn)%therm_cond
+                therm_cond_dn = geq_soil%aux_vars_in(cell_id )%therm_cond
+
+                therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up+dist_dn)/ &
+                                  (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
+
+                b_p(cell_id) = b_p(cell_id) + &
+                     therm_cond_aveg/dist*geq_soil%aux_vars_bc(sum_conn)%temperature * &
+                     area * factor
+
           case (COND_HEAT_FLUX)             
              area = cur_conn_set%conn(iconn)%GetArea()
 
@@ -885,6 +979,7 @@ contains
     use mpp_varcon                , only : cnfac
     use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
     use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
     !
     implicit none
@@ -1029,7 +1124,7 @@ contains
           if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
           select case(cur_cond%itype)
-          case(COND_DIRICHLET_FRM_OTR_GOVEQ)
+          case(COND_DIRICHLET_FRM_OTR_GOVEQ, COND_DIRICHLET)
              if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
 
              frac          = this%aux_vars_bc(sum_conn)%frac

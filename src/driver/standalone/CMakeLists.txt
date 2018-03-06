@@ -5,6 +5,7 @@ set(VSFM_DRIVER_SOURCES
 add_subdirectory(util)
 add_subdirectory(vsfm)
 add_subdirectory(thermal-e)
+add_subdirectory(thermal)
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/th)
@@ -12,6 +13,7 @@ include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal-e)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
+include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/thermal)
 include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/thermal-e)
 include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/vsfm)
 
