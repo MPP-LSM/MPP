@@ -7,7 +7,8 @@ module vsfm_spac_fetch2_problem
   PetscInt  , parameter :: ny       = 1           ! -
   PetscInt  , parameter :: nz       = 60           ! -
   PetscReal , parameter :: Az       = 9.8715e-3   ! m^2
-  PetscReal , parameter :: dx       = 9.8715e-3   ! m
+  !PetscReal , parameter :: dx       = 9.8715e-3   ! m
+  PetscReal , parameter :: dx       = 0.0088d0    ! m
   PetscReal , parameter :: porosity = 0.55d0      ! -
   PetscReal , parameter :: dy       = 1.d0        ! m
   PetscReal , parameter :: dz       = 0.2d0       ! m
@@ -24,9 +25,6 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: grav     = 9.81        ! m s^{-2}
   PetscInt              :: ncells_local
   PetscInt              :: ncells_ghost
-  PetscReal             :: Campbell_n
-  PetscReal             :: Campbell_b
-  PetscReal             :: Campbell_he
   PetscReal             :: theta_s
   PetscReal             :: VG_alpha
   PetscReal             :: VG_n
@@ -60,9 +58,15 @@ contains
     PetscInt           :: istep, nstep
     PetscBool          :: flg
     PetscBool          :: save_initial_soln, save_final_soln
-    PetscBool          :: print_actual_ET
+    PetscBool          :: print_actual_et
     character(len=256) :: string
-    character(len=256) :: output_suffix
+    character(len=256) :: pet_file
+    character(len=256) :: soil_bc_file
+    character(len=256) :: actual_et_file
+    Vec                :: ET
+    Vec                :: SoilBC
+    Vec                :: Actual_ET
+    PetscReal, pointer :: act_et_p(:)
     PetscViewer        :: viewer
 
     ! Set default settings
@@ -70,34 +74,88 @@ contains
     nstep                  = 24
     save_initial_soln      = PETSC_FALSE
     save_final_soln        = PETSC_FALSE
-    print_actual_ET        = PETSC_FALSE
-    output_suffix          = ''
+    print_actual_et        = PETSC_FALSE
 
     ! Get some command line options
 
-    call PetscOptionsGetInt    (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep             ',nstep             ,flg,ierr)
-    call PetscOptionsGetBool   (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_initial_soln ',save_initial_soln ,flg,ierr)
-    call PetscOptionsGetBool   (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_final_soln   ',save_final_soln   ,flg,ierr)
-    call PetscOptionsGetBool   (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-print_actual_ET   ',print_actual_ET   ,flg,ierr)
-    call PetscOptionsGetString (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_suffix     ',output_suffix     ,flg,ierr)
+    call PetscOptionsGetInt  (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-nstep', nstep,flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-save_initial_soln', save_initial_soln, flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-save_final_soln', save_final_soln, flg,ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-print_actual_et', print_actual_et, flg, ierr)
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-pet_file', pet_file, flg, ierr)
+    if (.not.flg) then
+       write(*,*)'Need to specify the potential ET filename using -pet_file'
+       stop
+    end if
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-soil_bc_file',soil_bc_file,flg,ierr)
+    if (.not.flg) then
+       write(*,*)'Need to specify the soil boundary condition filename using -soil_bc_file'
+       stop
+    end if
     
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-actual_et_file', actual_et_file, flg, ierr)
+    if (.not.flg .and. print_actual_et) then
+       write(*,*)'Need to specify the output filename for actual ET using -actual_et_file'
+       stop
+    end if
+
+    ! Read the PET file
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, pet_file, FILE_MODE_READ, viewer, ierr)
+    call VecCreate(PETSC_COMM_WORLD, ET, ierr)
+    call VecLoad(ET, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
+
+    ! Read the soil bc file
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, soil_bc_file, FILE_MODE_READ, viewer, ierr)
+    call VecCreate(PETSC_COMM_WORLD, SoilBC, ierr)
+    call VecLoad(SoilBC, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
+
     ! Initialize the problem
     call Init()
 
     time = 0.d0
+    call VecCreateSeq(PETSC_COMM_SELF, nstep*nz, Actual_ET, ierr)
+    call VecGetArrayF90(Actual_ET, act_et_p, ierr)
 
     do istep = 1, nstep
 
-       call set_bondary_conditions(istep)
+       call set_bondary_conditions(istep, ET, SoilBC)
        time = time + dtime
 
        ! Run the model
        call vsfm_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
 
-       if (print_actual_ET) call diagnose_actual_sink()
+       if (.not.converged) then
+          write(*,*)'Model failed to converge'
+          stop
+       end if
+
+       if (print_actual_et) call diagnose_actual_sink(istep, act_et_p)
 
     end do
+    call VecRestoreArrayF90(Actual_ET, act_et_p, ierr)
+
+    if (print_actual_et) then
+       call PetscViewerBinaryOpen(PETSC_COMM_SELF,actual_et_file,FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+       call VecView(Actual_ET,viewer,ierr);CHKERRQ(ierr)
+       call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    end if
+
+    call VecDestroy(Actual_ET, ierr); CHKERRQ(ierr)
 
   end subroutine run_vsfm_spac_fetch2_problem
   
@@ -518,7 +576,7 @@ contains
   end subroutine set_initial_conditions
 
   !------------------------------------------------------------------------
-  subroutine set_bondary_conditions(nstep)
+  subroutine set_bondary_conditions(nstep, ET, SoilBC)
     !
     ! !DESCRIPTION:
     !
@@ -536,24 +594,20 @@ contains
     PetscReal, pointer :: bc_value(:)
     PetscViewer        :: viewer
     Vec                :: ET
+    Vec                :: SoilBC
     PetscReal, pointer :: et_p(:)
+    PetscReal, pointer :: soilbc_p(:)
     PetscErrorCode     :: ierr
     PetscInt           :: soe_auxvar_id
     PetscInt           :: kk
 
     allocate(ss_value(nz))
 
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, '../../src/driver/standalone/vsfm/data/PotentialET.bin', FILE_MODE_READ, viewer, ierr)
-    call VecCreate(PETSC_COMM_WORLD, ET, ierr)
-    call VecLoad(ET, viewer, ierr)
-    call PetscViewerDestroy(viewer, ierr)
-
     call VecGetArrayF90(ET, et_p, ierr)
     do kk = 1, nz
        ss_value(nz-kk+1) = -et_p(nz*(nstep-1) + kk) * dz
     end do
     call VecRestoreArrayF90(ET, et_p, ierr)
-    call VecDestroy(ET, ierr)
 
     soe_auxvar_id = 1
     call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_SS,  &
@@ -561,17 +615,19 @@ contains
 
     deallocate(ss_value)
 
+    call VecGetArrayF90(SoilBC, soilbc_p, ierr)
     allocate(bc_value(1))
-    bc_value(1) = 9.382538342475891e+04
+    bc_value(1) = soilbc_p(nstep)
     soe_auxvar_id = 1
     call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, bc_value)
     deallocate(bc_value)
+    call VecRestoreArrayF90(SoilBC, soilbc_p, ierr)
 
   end subroutine set_bondary_conditions
 
   !------------------------------------------------------------------------
-  subroutine diagnose_actual_sink()
+  subroutine diagnose_actual_sink(nstep, act_et_p)
     !
     ! !DESCRIPTION:
     !
@@ -589,6 +645,7 @@ contains
     !
     PetscReal, pointer :: ss_value(:)
     PetscReal, pointer :: press(:)
+    PetscReal, pointer :: act_et_p(:)
     PetscInt           :: kk
 
     allocate(ss_value(nz))
@@ -597,7 +654,7 @@ contains
     call vsfm_mpp%soe%GetDataForCLM(AUXVAR_SS, VAR_MASS_FLUX, 1, ss_value)
     call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,VAR_PRESSURE, -1, press)
     do kk = 1, nz
-       write(*,*)kk,ss_value(kk),press(kk)
+       act_et_p((nstep-1)*nz + kk) = ss_value(kk)
     end do
     
     deallocate(ss_value)
