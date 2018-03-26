@@ -290,7 +290,7 @@ contains
     type (rich_ode_pres_auxvar_type), pointer         :: ode_aux_vars_bc(:)
     type (rich_ode_pres_auxvar_type), pointer         :: ode_aux_vars_ss(:)
     type(condition_type),pointer                      :: cur_cond
-    type(connection_set_type), pointer                :: cur_conn_set
+    class(connection_set_type), pointer               :: cur_conn_set
     PetscInt                                          :: ghosted_id
     PetscInt                                          :: sum_conn
     PetscInt                                          :: iconn
@@ -1864,7 +1864,7 @@ contains
     class(goveqn_base_type)                   , pointer             :: cur_goveq
     type (rich_ode_pres_conn_auxvar_type)     , pointer             :: conn_aux_vars(:)
     type(condition_type)                      , pointer             :: cur_cond
-    type(connection_set_type)                 , pointer             :: cur_conn_set
+    class(connection_set_type)                , pointer             :: cur_conn_set
     PetscInt                                                        :: ii
     PetscInt                                                        :: ghosted_id
     PetscInt                                                        :: sum_conn

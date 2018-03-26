@@ -710,7 +710,7 @@ contains
     PetscReal                                :: flux
     PetscReal                                :: area
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     PetscReal                                :: factor
     PetscReal                                :: T
     PetscReal                                :: dt
@@ -1011,7 +1011,7 @@ contains
     PetscReal                                :: frac
     PetscReal                                :: dt
     PetscReal                                :: value
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     type(condition_type),pointer             :: cur_cond
     PetscReal :: factor
     PetscReal                                :: T
@@ -1240,7 +1240,7 @@ contains
     PetscReal                                :: vol
     PetscReal                                :: dt
     PetscBool                                :: is_bc_sh2o
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     type(condition_type)     , pointer       :: cur_cond
 
     dt = this%dtime
@@ -1349,7 +1349,7 @@ contains
     PetscBool                                :: is_bc_snow
     PetscBool                                :: is_bc_sh2o
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
       
     ! Boundary cells
     cur_cond => this%boundary_conditions%first

@@ -124,7 +124,7 @@ contains
     class(goveqn_richards_ode_pressure_type) :: this
     !
     type(condition_type)      , pointer      :: cur_cond
-    type(connection_set_type) , pointer      :: cur_conn_set
+    class(connection_set_type) , pointer     :: cur_conn_set
     PetscInt                                 :: ncells_cond
     PetscInt                                 :: sum_conn
     PetscInt                                 :: icond
@@ -641,7 +641,7 @@ contains
     integer                                                             :: sum_conn
     type(rich_ode_pres_auxvar_type)          , dimension(:), pointer    :: ge_avars
     type(condition_type)                     , pointer                  :: cur_cond
-    type(connection_set_type)                , pointer                  :: cur_conn_set
+    class(connection_set_type)               , pointer                  :: cur_conn_set
     character(len=256)                                                  :: string
     PetscInt                                                            :: num_bc
     PetscInt                                                            :: icond
@@ -752,7 +752,7 @@ contains
     PetscReal                                                  :: var_value
     type(rich_ode_pres_auxvar_type), dimension(:), pointer     :: ge_avars
     type(condition_type), pointer                              :: cur_cond
-    type(connection_set_type), pointer                         :: cur_conn_set
+    class(connection_set_type), pointer                        :: cur_conn_set
     character(len=256)                                         :: string
 
     ge_avars => this%aux_vars_ss
@@ -927,7 +927,7 @@ contains
     PetscInt, pointer                                              :: ncells_for_bc(:)
     character(len=256)                                             :: string
     type(condition_type), pointer                                  :: cur_cond
-    type(connection_set_type), pointer                             :: cur_conn_set
+    class(connection_set_type), pointer                            :: cur_conn_set
 
     iauxvar_off = offset
 
@@ -1173,7 +1173,7 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type) :: this
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     !
     ! !LOCAL VARIABLES
     PetscInt                                 :: ghosted_id
@@ -1247,7 +1247,7 @@ contains
     PetscInt                                 :: sum_conn
     PetscReal                                :: temperature
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     character(len=256)                       :: string
 
     ! Update aux vars for boundary cells
@@ -1320,7 +1320,7 @@ contains
     PetscInt                                 :: iconn_active
     PetscInt                                 :: sum_conn
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
 
     return
 
@@ -1488,7 +1488,7 @@ contains
     PetscBool                                :: internal_conn
     PetscInt                                 :: cond_type
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
 
     compute_deriv = PETSC_FALSE
 
@@ -1768,7 +1768,7 @@ contains
     PetscBool                                :: internal_conn
     PetscInt                                 :: cond_type
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
 
     compute_deriv = PETSC_TRUE
 
@@ -2056,7 +2056,7 @@ contains
     PetscBool                                :: cur_cond_used
     PetscInt                                 :: cond_type
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
 
     compute_deriv = PETSC_TRUE
 
@@ -2234,7 +2234,7 @@ contains
     PetscBool                                :: cur_cond_used
     PetscInt                                 :: ivar
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
 
     coupling_via_BC  = PETSC_FALSE
     eqns_are_coupled = PETSC_FALSE
@@ -2458,7 +2458,7 @@ contains
     PetscBool                                :: internal_conn
     PetscInt                                 :: cond_type
     type(condition_type),pointer             :: lateral_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     PetscBool                                :: lateral_cond_found
     PetscErrorCode                           :: ierr
     PetscViewer :: viewer
@@ -2703,8 +2703,8 @@ contains
     PetscReal                 , pointer , intent(in) :: var_value(:)
     !
     ! !LOCAL VARAIABLES:
-    type(connection_set_type) , pointer              :: cur_conn_set
-    type(condition_type)      , pointer              :: cur_cond
+    class(connection_set_type) , pointer             :: cur_conn_set
+    class(condition_type)      , pointer             :: cur_cond
     PetscInt                                         :: iconn
     PetscInt                                         :: nvars
     PetscInt                                         :: sum_conn
@@ -2791,7 +2791,7 @@ contains
     !
     !
     ! !LOCAL VARAIABLES:
-    type(connection_set_type) , pointer              :: cur_conn_set
+    class(connection_set_type) , pointer             :: cur_conn_set
     type(condition_type)      , pointer              :: cur_cond
     PetscInt                                         :: iconn
     PetscInt                                         :: nvars
@@ -2874,7 +2874,7 @@ contains
     !
     !
     ! !LOCAL VARAIABLES:
-    type(connection_set_type) , pointer      :: cur_conn_set
+    class(connection_set_type) , pointer     :: cur_conn_set
 
     ! Interior cells
     cur_conn_set => this%mesh%intrn_conn_set_list%first

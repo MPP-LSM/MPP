@@ -49,7 +49,7 @@ module ConnectionSetType
      PetscInt                           :: num_connections    ! total num. of connections
      PetscInt                           :: num_active_conn    ! number of active connections
      PetscInt                 , pointer :: active_conn_ids(:) ! IDs of active connection
-     type(connection_type)    , pointer :: conn(:)            ! information about all connections
+     class(connection_type)    , pointer :: conn(:)            ! information about all connections
      class(connection_set_type), pointer :: next
    contains
      procedure, public :: SetActiveConnections => ConnSetSetActiveConnections
@@ -60,8 +60,8 @@ module ConnectionSetType
 
   type, public :: connection_set_list_type
      PetscInt                           :: num_connection_list
-     type(connection_set_type), pointer :: first
-     type(connection_set_type), pointer :: last
+     class(connection_set_type), pointer :: first
+     class(connection_set_type), pointer :: last
    contains
      procedure, public :: Init   => ConnectionSetListInit
      procedure, public :: AddSet => ConnectionSetListAddSet

@@ -940,7 +940,7 @@ contains
     PetscInt                                 :: sum_conn
     PetscReal                                :: temperature
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     character(len=256)                       :: string
 
     ! Update aux vars for boundary cells
@@ -992,7 +992,7 @@ contains
     PetscInt                                 :: iconn
     PetscInt                                 :: sum_conn
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
 
     ! Update aux vars for source/sink cells
     sum_conn = 0
@@ -1278,7 +1278,7 @@ contains
     !
     ! !LOCAL VARIABLES
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     PetscInt                                 :: iconn
     PetscInt                                 :: sum_conn
     PetscInt                                 :: cell_id_dn
@@ -1499,7 +1499,7 @@ contains
     !
     ! !LOCAL VARIABLES
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     PetscInt                                 :: iconn
     PetscInt                                 :: sum_conn
     PetscInt                                 :: cell_id_dn
@@ -1737,7 +1737,7 @@ contains
     !
     ! !LOCAL VARIABLES
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     PetscInt                                 :: ieqn
     PetscInt                                 :: iconn
     PetscInt                                 :: sum_conn
@@ -1875,7 +1875,7 @@ contains
     ! !LOCAL VARIABLES
     type (therm_enthalpy_soil_auxvar_type) , pointer :: aux_vars(:)
     type(condition_type)                   , pointer :: cur_cond
-    type(connection_set_type)              , pointer :: cur_conn_set
+    class(connection_set_type)             , pointer :: cur_conn_set
     type(coupling_variable_type)           , pointer :: cpl_var
     PetscInt                                         :: iconn
     PetscInt                                         :: ieqn
