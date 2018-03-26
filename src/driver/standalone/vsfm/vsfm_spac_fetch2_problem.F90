@@ -356,7 +356,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_FETCH2
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     use petscsys
     !

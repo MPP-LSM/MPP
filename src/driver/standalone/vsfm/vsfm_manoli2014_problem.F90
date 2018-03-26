@@ -824,7 +824,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     !
     ! !ARGUMENTS
@@ -849,7 +848,7 @@ contains
     PetscReal                 , pointer :: area(:)
     PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
-    type(connection_set_type) , pointer :: conn_set
+    class(connection_set_type) , pointer :: conn_set
 
     if (single_pde_formulation) return
 
@@ -920,8 +919,6 @@ contains
          id_of_other_goveqs = ieqn_others,                  &
          conn_set           = conn_set)
 
-    call ConnectionSetDestroy(conn_set)
-
     ieqn           = 2
     ieqn_others(1) = 1
 
@@ -939,8 +936,6 @@ contains
          id_of_other_goveqs = ieqn_others, &
          conn_set           = conn_set)
 
-    call ConnectionSetDestroy(conn_set)
-    
     ieqn           = 2
     ieqn_others(1) = 3
 
@@ -1104,7 +1099,7 @@ contains
     type (rich_ode_pres_auxvar_type), pointer           :: aux_vars_bc(:)  !!< Boundary conditions.
     type (rich_ode_pres_auxvar_type), pointer           :: aux_vars_ss(:)  !!< Source-sink.
     type(condition_type),pointer                        :: cur_cond
-    type(connection_set_type), pointer                  :: cur_conn_set
+    class(connection_set_type), pointer                  :: cur_conn_set
     PetscInt                                            :: ghosted_id
     PetscInt                                            :: sum_conn
     PetscInt                                            :: iconn

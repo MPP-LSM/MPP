@@ -141,6 +141,10 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: CONN_HORIZONTAL                   = 902
   PetscInt, parameter, public :: CONN_SET_INTERNAL                 = 903
   PetscInt, parameter, public :: CONN_SET_LATERAL                  = 904
+  PetscInt, parameter, public :: CONN_IN_X_DIR                     = 905
+  PetscInt, parameter, public :: CONN_IN_Y_DIR                     = 906
+  PetscInt, parameter, public :: CONN_IN_Z_DIR                     = 907
+  PetscInt, parameter, public :: CONN_IN_XYZ_DIR                   = 908
 
   PetscInt, parameter, public :: DARCY_FLUX_TYPE                   = 1001
   PetscInt, parameter, public :: CONDUCTANCE_FLUX_TYPE             = 1002

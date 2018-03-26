@@ -40,6 +40,7 @@ module ConnectionSetType
      procedure, public :: GetDistUnitVecX => ConnGetDistUnitVecX
      procedure, public :: GetDistUnitVecY => ConnGetDistUnitVecY
      procedure, public :: GetDistUnitVecZ => ConnGetDistUnitVecZ
+     procedure, public :: Copy            => ConnCopy
   end type connection_type
 
   type, public :: connection_set_type
@@ -49,9 +50,11 @@ module ConnectionSetType
      PetscInt                           :: num_active_conn    ! number of active connections
      PetscInt                 , pointer :: active_conn_ids(:) ! IDs of active connection
      type(connection_type)    , pointer :: conn(:)            ! information about all connections
-     type(connection_set_type), pointer :: next
+     class(connection_set_type), pointer :: next
    contains
      procedure, public :: SetActiveConnections => ConnSetSetActiveConnections
+     procedure, public :: Copy                 => ConnSetCopy
+     procedure, public :: Destroy              => ConnSetDestroy
 
   end type connection_set_type
 
@@ -59,13 +62,14 @@ module ConnectionSetType
      PetscInt                           :: num_connection_list
      type(connection_set_type), pointer :: first
      type(connection_set_type), pointer :: last
+   contains
+     procedure, public :: Init   => ConnectionSetListInit
+     procedure, public :: AddSet => ConnectionSetListAddSet
+     procedure, public :: Copy   => ConnectionSetListCopy
+     procedure, public :: Destroy=> ConnectionSetListDestroy
   end type connection_set_list_type
 
   public :: ConnectionSetNew
-  public :: ConnectionSetDestroy
-  public :: ConnectionSetListInit
-  public :: ConnectionSetListAddSet
-  public :: ConnectionSetListClean
   !------------------------------------------------------------------------
 
 contains
@@ -437,6 +441,34 @@ contains
   end function ConnectionSetNew
 
   !------------------------------------------------------------------------
+  subroutine ConnCopy(this, inp_conn)
+    !
+    ! !DESCRIPTION:
+    ! Makes a copy of connection
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants   , only : CONN_VERTICAL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(connection_type), intent(inout) :: this
+    class(connection_type), intent(in)    :: inp_conn
+
+    this%type                = inp_conn%GetType()
+    this%id_up               = inp_conn%GetIDUp()
+    this%id_dn               = inp_conn%GetIDDn()
+    this%area                = inp_conn%GetArea()
+    this%dist_up             = inp_conn%GetDistUp()
+    this%dist_dn             = inp_conn%GetDistDn()
+    this%dist_unitvec%arr(1) = inp_conn%GetDistUnitVecX()
+    this%dist_unitvec%arr(2) = inp_conn%GetDistUnitVecY()
+    this%dist_unitvec%arr(3) = inp_conn%GetDistUnitVecZ()
+    
+  end subroutine ConnCopy
+
+  !------------------------------------------------------------------------
   subroutine ConnectionSetListInit(list)
     !
     ! !DESCRIPTION:
@@ -445,7 +477,7 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    type(connection_set_list_type) :: list
+    class(connection_set_list_type) :: list
 
     list%num_connection_list   = 0
 
@@ -463,8 +495,8 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    type(connection_set_list_type)    :: list
-    type(connection_set_type),pointer :: new_conn_set
+    class(connection_set_list_type)    :: list
+    class(connection_set_type),pointer :: new_conn_set
 
     list%num_connection_list = list%num_connection_list + 1
     new_conn_set%id          = list%num_connection_list
@@ -482,7 +514,7 @@ contains
   end subroutine ConnectionSetListAddSet
 
   !------------------------------------------------------------------------
-  subroutine ConnectionSetDestroy(conn_set)
+  subroutine ConnSetDestroy(conn_set)
     !
     ! !DESCRIPTION:
     ! Release all allocated memory
@@ -490,21 +522,16 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    type(connection_set_type),pointer :: conn_set
+    class(connection_set_type) :: conn_set
 
-    if (.not.(associated(conn_set))) return
-
-    deallocate(conn_set%conn)
+    if (associated(conn_set%conn)) deallocate(conn_set%conn)
     nullify(conn_set%conn)
-
     nullify(conn_set%next)
-    deallocate(conn_set)
-    nullify(conn_set)
 
-  end subroutine ConnectionSetDestroy
+  end subroutine ConnSetDestroy
 
   !------------------------------------------------------------------------
-  subroutine ConnectionSetListClean(list)
+  subroutine ConnectionSetListDestroy(list)
     !
     ! !DESCRIPTION:
     ! Release all allocated memory
@@ -512,22 +539,22 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    type(connection_set_list_type), intent(inout) :: list
+    class(connection_set_list_type), intent(inout) :: list
     !
     ! !LOCAL VARIABLES:
-    type(connection_set_type), pointer            :: curr_conn_set, prev_conn_set
+    class(connection_set_type), pointer            :: curr_conn_set, prev_conn_set
 
     curr_conn_set => list%first
     do
        if (.not.associated(curr_conn_set)) exit
        prev_conn_set => curr_conn_set
        curr_conn_set => curr_conn_set%next
-       call ConnectionSetDestroy(prev_conn_set)
+       call prev_conn_set%Destroy()
     enddo
 
     call ConnectionSetListInit(list)
 
-  end subroutine ConnectionSetListClean
+  end subroutine ConnectionSetListDestroy
 
   !------------------------------------------------------------------------
   subroutine ConnSetSetActiveConnections(this, num_active_conn, active_conn_ids)
@@ -551,7 +578,71 @@ contains
     this%active_conn_ids(1:num_active_conn) = active_conn_ids(1:num_active_conn)
 
   end subroutine ConnSetSetActiveConnections
+
+  !------------------------------------------------------------------------
+  subroutine ConnSetCopy(this, inp_conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Makes a copy of a connection set
+    !
+    implicit none
+    !
+    class(connection_set_type) , intent(inout) :: this
+    class(connection_set_type) , intent(in)    :: inp_conn_set
+    !
+    PetscInt :: iconn
+
+    this%id              = inp_conn_set%id
+    this%num_connections = inp_conn_set%num_connections
+
+    call this%SetActiveConnections(inp_conn_set%num_active_conn, &
+         inp_conn_set%active_conn_ids)
+
+    allocate(this%conn(this%num_connections))
+
+    do iconn = 1, this%num_connections
+       call this%conn(iconn)%Init()
+       call this%conn(iconn)%Copy( inp_conn_set%conn(iconn) )
+    end do
+
+    nullify(this%next)
     
+ end subroutine ConnSetCopy
+
+  !------------------------------------------------------------------------
+  subroutine ConnectionSetListCopy(this, inp_list)
+    !
+    ! !DESCRIPTION:
+    ! Makes a copy of a connection list
+    !
+    implicit none
+    ! !ARGUMENTS
+    !
+    class(connection_set_list_type) , intent(inout) :: this
+    class(connection_set_list_type) , intent(in)    :: inp_list
+    !
+    class(connection_set_type), pointer :: inp_conn_set
+    class(connection_set_type), pointer :: conn_set
+
+    call ConnectionSetListInit(this)
+
+    inp_conn_set => inp_list%first
+
+    if (associated(inp_conn_set)) then
+
+       allocate(conn_set)
+       call conn_set%Copy(inp_conn_set)
+
+       call this%AddSet(conn_set)
+
+       nullify(conn_set)
+       
+       inp_conn_set => inp_conn_set%next
+    endif
+    
+  end subroutine ConnectionSetListCopy
+
+  !------------------------------------------------------------------------
 #endif
 
 end module ConnectionSetType

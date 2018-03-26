@@ -62,6 +62,7 @@ module MultiPhysicsProbBaseType
      procedure, public :: GovEqnSetInternalCouplingVars => MPPGovEqnSetInternalCouplingVars
      procedure, public :: GovEqnSetBothCouplingVars     => MPPGovEqnSetBothCouplingVars
      procedure, public :: GovEqnAddCouplingCondition    => MPPGovEqnAddCouplingCondition
+     procedure, public :: AddMesh                       => MPPAddMesh
   end type multiphysicsprob_base_type
 
   public :: MPPBaseInit
@@ -160,6 +161,21 @@ contains
     enddo
 
   end subroutine MPPSetNumMeshes
+
+  !------------------------------------------------------------------------
+  subroutine MPPAddMesh(this, imesh, mesh)
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(multiphysicsprob_base_type) :: this
+    PetscInt                          :: imesh
+    class(mesh_type), pointer         :: mesh
+
+    call CheckMeshIndex(this, imesh)
+    call this%meshes(imesh)%Copy(mesh)
+
+  end subroutine MPPAddMesh
 
   !------------------------------------------------------------------------
   subroutine MPPSetID(this, id)

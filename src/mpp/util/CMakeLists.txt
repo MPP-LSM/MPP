@@ -4,6 +4,7 @@ set(MPP_UTIL_SOURCES
   MultiPhysicsProbConstants.F90
   mpp_abortutils.F90
   mpp_bounds.F90
+  mpp_mesh_utils.F90
   mpp_shr_log_mod.F90
   mpp_varcon.F90
   mpp_varctl.F90

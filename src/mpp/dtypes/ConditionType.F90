@@ -399,7 +399,6 @@ contains
     ! Release all allocated memory
     !
     ! !USES:
-    use ConnectionSetType  , only : ConnectionSetDestroy
     !
     implicit none
     !
@@ -416,7 +415,8 @@ contains
     if (associated(cond%value)) deallocate(cond%value)
     nullify(cond%value)
 
-    call ConnectionSetDestroy(cond%conn_set)
+    call cond%conn_set%Destroy()
+
     nullify(cond%conn_set)
 
   end subroutine ConditionDestroy

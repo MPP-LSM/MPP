@@ -171,137 +171,44 @@ contains
     !
 #include <petsc/finclude/petsc.h>
     !
-    use MultiPhysicsProbTH , only : th_mpp
-    use MultiPhysicsProbConstants       , only : MESH_ALONG_GRAVITY
-    use MultiPhysicsProbConstants       , only : MESH_AGAINST_GRAVITY
-    use MultiPhysicsProbConstants       , only : MESH_CLM_THERMAL_SOIL_COL
-    use MultiPhysicsProbConstants       , only : VAR_XC
-    use MultiPhysicsProbConstants       , only : VAR_YC
-    use MultiPhysicsProbConstants       , only : VAR_ZC
-    use MultiPhysicsProbConstants       , only : VAR_DX
-    use MultiPhysicsProbConstants       , only : VAR_DY
-    use MultiPhysicsProbConstants       , only : VAR_DZ
-    use MultiPhysicsProbConstants       , only : VAR_AREA
-    use MultiPhysicsProbConstants       , only : CONN_SET_INTERNAL
-    use MultiPhysicsProbConstants       , only : CONN_SET_LATERAL
-    use MultiPhysicsProbConstants       , only : CONN_VERTICAL
-    use mpp_varpar                      , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use MultiPhysicsProbTH        , only : th_mpp
+    use MultiPhysicsProbConstants , only : CONN_IN_X_DIR, MESH_CLM_THERMAL_SOIL_COL
+    use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use MeshType                  , only : mesh_type, MeshCreate
+    use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
     use petscsys
     !
     implicit none
     !
-    PetscReal          :: dx, dy, dz
-    PetscInt           :: imesh, kk
-    PetscInt           :: nlev
-    PetscInt           :: iconn, vert_nconn
-    PetscReal, pointer :: soil_xc(:)           ! x-position of grid cell [m]
-    PetscReal, pointer :: soil_yc(:)           ! y-position of grid cell [m]
-    PetscReal, pointer :: soil_zc(:)           ! z-position of grid cell [m]
-    PetscReal, pointer :: soil_dx(:)           ! layer thickness of grid cell [m]
-    PetscReal, pointer :: soil_dy(:)           ! layer thickness of grid cell [m]
-    PetscReal, pointer :: soil_dz(:)           ! layer thickness of grid cell [m]
-    PetscReal, pointer :: soil_area(:)         ! area of grid cell [m^2]
-    PetscInt , pointer :: soil_filter(:)       ! 
-
-    PetscInt, pointer  :: vert_conn_id_up(:)   !
-    PetscInt, pointer  :: vert_conn_id_dn(:)   !
-    PetscReal, pointer :: vert_conn_dist_up(:) !
-    PetscReal, pointer :: vert_conn_dist_dn(:) !
-    PetscReal, pointer :: vert_conn_area(:)    !
-    PetscInt , pointer :: vert_conn_type(:)    !
-
-    PetscErrorCode     :: ierr
+    class(mesh_type), pointer :: mesh
+    PetscInt                  :: imesh
+    PetscInt                  :: nlev
 
     call mpp_varpar_set_nlevsoi(nz)
     call mpp_varpar_set_nlevgrnd(nz)
 
-    dx = x_column/nx
-    dy = y_column/ny
-    dz = z_column/nz
-
     imesh        = 1
     nlev         = nz
     ncells_local = nx*ny*nz
-    ncells_ghost = 0
-
-    allocate(soil_xc(ncells_local))
-    allocate(soil_yc(ncells_local))
-    allocate(soil_zc(ncells_local))
-    allocate(soil_dx(ncells_local))
-    allocate(soil_dy(ncells_local))
-    allocate(soil_dz(ncells_local))
-    allocate(soil_area(ncells_local))
-    allocate(soil_filter(ncells_local))
-
-    soil_filter (:) = 1
-    soil_area   (:) = dx*dy
-    soil_dx     (:) = dx
-    soil_dy     (:) = dy
-    soil_dz     (:) = dz
-    soil_yc     (:) = dy/2.d0
-    soil_zc     (:) = dz/2.d0
-
-    do kk = 1,nx
-       soil_xc(kk) = dx/2.d0 + dx * (kk - 1)
-    enddo
 
     !
     ! Set up the meshes
-    !    
+    !
     call th_mpp%SetNumMeshes(1)
 
-    call th_mpp%MeshSetName        (imesh, 'Soil mesh')
-    call th_mpp%MeshSetOrientation (imesh, MESH_AGAINST_GRAVITY)
-    call th_mpp%MeshSetID          (imesh, MESH_CLM_THERMAL_SOIL_COL)
-    call th_mpp%MeshSetDimensions  (imesh, ncells_local, ncells_ghost, nlev)
+    allocate(mesh)
 
-    call th_mpp%MeshSetGridCellFilter      (imesh, soil_filter)
-    call th_mpp%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
-    call th_mpp%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
-    call th_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
-    call th_mpp%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
-    call th_mpp%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
-    call th_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
-    call th_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
-    call th_mpp%MeshComputeVolume          (imesh)
+    call MeshCreate(mesh, 'Soil mesh', x_column, y_column, z_column, &
+         nx, ny, nz, CONN_IN_X_DIR)
+    call mesh%SetID(MESH_CLM_THERMAL_SOIL_COL)
 
-    allocate (vert_conn_id_up   (nx-1))
-    allocate (vert_conn_id_dn   (nx-1))
-    allocate (vert_conn_dist_up (nx-1))
-    allocate (vert_conn_dist_dn (nx-1))
-    allocate (vert_conn_area    (nx-1))
-    allocate (vert_conn_type    (nx-1))
+    call th_mpp%AddMesh(imesh, mesh)
 
-    iconn = 0
-    do kk = 1, nx-1
+    call mesh%Clean()
 
-       iconn = iconn + 1
-       vert_conn_id_up(iconn)   = kk
-       vert_conn_id_dn(iconn)   = vert_conn_id_up(iconn) + 1
-       vert_conn_dist_up(iconn) = 0.5d0*dx
-       vert_conn_dist_dn(iconn) = 0.5d0*dx
-       vert_conn_area(iconn)    = dy*dz
-       vert_conn_type(iconn)    = CONN_VERTICAL
-
-    end do
-    vert_nconn = iconn
-
-    call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL,  &
-         vert_nconn,  vert_conn_id_up, vert_conn_id_dn,         &
-         vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area, &
-         vert_conn_type)
-
-    deallocate(soil_xc)
-    deallocate(soil_yc)
-    deallocate(soil_zc)
-    deallocate(soil_dx)
-    deallocate(soil_dy)
-    deallocate(soil_dz)
-    deallocate(soil_area)
-    deallocate(soil_filter)  
+    deallocate(mesh)
 
   end subroutine add_meshes
-
   !------------------------------------------------------------------------
 
   subroutine add_goveqns()
@@ -357,7 +264,7 @@ contains
     PetscReal                 , pointer :: area(:)
     PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
-    type(connection_set_type) , pointer :: conn_set
+    class(connection_set_type) , pointer :: conn_set
 
     !  ieqn_1 = 1
     !  ieqn_2 = 2
@@ -667,7 +574,7 @@ contains
     PetscInt                            :: sum_conn
     PetscBool                           :: first_bc
     type(condition_type)      , pointer :: cur_cond
-    type(connection_set_type) , pointer :: cur_conn_set
+    class(connection_set_type) , pointer :: cur_conn_set
     class(goveqn_base_type)   , pointer :: cur_goveq
     character(len=256)                  :: string
 

@@ -433,7 +433,6 @@ contains
     use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
     use MultiPhysicsProbVSFM      , only : mpp_vsfm_type
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     use petscsys
     !
@@ -443,7 +442,7 @@ contains
     class (mpp_vsfm_type)            :: vsfm_mpp
     PetscBool                        :: reverse_up2dn
     !
-    type(connection_set_type) , pointer :: conn_set
+    class(connection_set_type) , pointer :: conn_set
     PetscInt                  , pointer :: id(:)
     PetscInt                            :: iconn
     PetscInt                            :: eqn_id
@@ -508,8 +507,6 @@ contains
          num_other_goveqs   = 1             , &
          id_of_other_goveqs = ieqn_other    , &
          conn_set           = conn_set)
-
-    call ConnectionSetDestroy(conn_set)
 
     deallocate(id)
     deallocate(ieqn_other)
@@ -2121,7 +2118,6 @@ subroutine add_conditions_to_goveqns()
   use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_FETCH2
   use MultiPhysicsProbConstants , only : CONN_VERTICAL
   use ConnectionSetType         , only : connection_set_type
-  use ConnectionSetType         , only : ConnectionSetDestroy
   use MeshType                  , only : MeshCreateConnectionSet
   use petscsys
   use problem_parameters
@@ -2152,7 +2148,6 @@ subroutine add_coupling_conditions_to_goveqns()
   use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_FETCH2
   use MultiPhysicsProbConstants , only : CONN_VERTICAL
   use ConnectionSetType         , only : connection_set_type
-  use ConnectionSetType         , only : ConnectionSetDestroy
   use MeshType                  , only : MeshCreateConnectionSet
   use problem_parameters
   use petscsys

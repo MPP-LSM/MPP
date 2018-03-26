@@ -909,7 +909,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_SEEPAGE_BC
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     !
     ! !ARGUMENTS
@@ -926,7 +925,7 @@ contains
     PetscReal                 , pointer :: conn_area(:)    !
     PetscInt                  , pointer :: conn_type(:)    !
     PetscReal                 , pointer :: conn_unitvec(:,:)
-    type(connection_set_type) , pointer :: conn_set
+    class(connection_set_type) , pointer :: conn_set
 
     if (.not. with_seepage_bc) return
 
@@ -966,8 +965,6 @@ contains
     call vsfm_mpp_vertical%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_SEEPAGE_BC, &
          SOIL_TOP_CELLS, conn_set)
-
-    call ConnectionSetDestroy(conn_set)
 
     !icond = 1
     !call vsfm_mpp_lateral%GovEqnUpdateConditionConnSet(ieqn, icond, COND_BC, &
