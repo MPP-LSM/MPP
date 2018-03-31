@@ -150,6 +150,7 @@ module thermal_mms_steady_state_problem_1D
         call compute_temperature_or_deriv(x,y,z,T=data_1D(count))
 
      case(DATA_HEAT_SOURCE)
+        jj = 1; kk = 1;
         do ii = 1, nx
            x = soil_xc_3d(ii,1,1)
            y = soil_yc_3d(ii,jj,kk)
