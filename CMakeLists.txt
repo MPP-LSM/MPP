@@ -142,12 +142,12 @@ include_directories(${PETSC_INCLUDES})
 # Include PETSc in the rpath.
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:${PETSC_DIR}/${PETSC_ARCH}/lib")
 
-find_package(NetCDF COMPONENTS F90 REQUIRED)
-if (NOT NETCDF_FOUND)
-  message(FATAL_ERROR "NetCDF was not found.")
-endif()
-include_directories(${NETCDF_INCLUDE_DIR})
-include_directories(${NETCDF_F90_INCLUDE_DIR})
+#find_package(NetCDF COMPONENTS F90 REQUIRED)
+#if (NOT NETCDF_FOUND)
+#  message(FATAL_ERROR "NetCDF was not found.")
+#endif()
+#include_directories(${NETCDF_INCLUDE_DIR})
+#include_directories(${NETCDF_F90_INCLUDE_DIR})
 
 
 # Other third-party libraries.
