@@ -72,7 +72,7 @@ contains
        if (len(trim(adjustl(output_suffix))) ==  0) then
           string = trim(output_suffix) // 'initial_soln.bin'
        else
-          string = 'initial_soln_' // trim(output_suffix) // '_.bin'
+          string = 'initial_soln_' // trim(output_suffix) // '.bin'
        endif
 
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
@@ -93,7 +93,7 @@ contains
        if (len(trim(adjustl(output_suffix))) ==  0) then
           string = trim(output_suffix) // 'final_soln.bin'
        else
-          string = 'final_soln_' // trim(output_suffix) // '_.bin'
+          string = 'final_soln_' // trim(output_suffix) // '.bin'
        endif
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
        call VecView(vsfm_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)

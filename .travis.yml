@@ -22,8 +22,8 @@ matrix:
     - env:
       os: linux
 
-#    - env:
-#      os: osx
+    - env:
+      os: osx
 
 script: 
   - .travis/install-petsc.sh
