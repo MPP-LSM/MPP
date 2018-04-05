@@ -684,6 +684,21 @@ contains
     call VecCopy(base_soe%solver%soln, base_soe%solver%soln_prev, ierr); CHKERRQ(ierr)
     call VecCopy(base_soe%solver%soln, base_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
+    cur_goveq => vsfm_soe%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_pres => cur_goveq
+          do local_id = 1, goveq_richards_pres%mesh%ncells_local
+             goveq_richards_pres%aux_vars_in(local_id)%pressure_prev = &
+                  data_1d(local_id)
+          end do
+       end select
+       cur_goveq => cur_goveq%next
+    enddo
+
     ! Free up memory
     deallocate(dms)
     deallocate(soln_subvecs)
