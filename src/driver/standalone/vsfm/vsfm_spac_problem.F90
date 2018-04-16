@@ -326,7 +326,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_CAMPBELL
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     !
     ! !ARGUMENTS
@@ -349,7 +348,7 @@ contains
     PetscReal                 , pointer :: area(:)
     PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
-    type(connection_set_type) , pointer :: conn_set
+    class(connection_set_type) , pointer :: conn_set
 
 
     nconn         = 28
@@ -390,9 +389,6 @@ contains
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &
          'Potential Mass_Flux', 'kg/s', COND_DOWNREG_MASS_RATE_CAMPBELL, &
          SOIL_BOTTOM_CELLS)
-
-
-    call ConnectionSetDestroy(conn_set)
 
 
     deallocate(id_up          )

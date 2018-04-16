@@ -354,7 +354,7 @@ subroutine add_conditions_to_goveqns()
   PetscReal                 , pointer :: area(:)
   PetscInt                  , pointer :: itype(:)
   PetscReal                 , pointer :: unit_vec(:,:)
-  type(connection_set_type) , pointer :: conn_set
+  class(connection_set_type) , pointer :: conn_set
   
   nconn         = 1
 

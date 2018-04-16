@@ -222,209 +222,49 @@ contains
   !------------------------------------------------------------------------
   subroutine add_meshes()
     !
-    use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
-    use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_CLM_THERMAL_SOIL_COL
-    use MultiPhysicsProbConstants , only : VAR_XC
-    use MultiPhysicsProbConstants , only : VAR_YC
-    use MultiPhysicsProbConstants , only : VAR_ZC
-    use MultiPhysicsProbConstants , only : VAR_DX
-    use MultiPhysicsProbConstants , only : VAR_DY
-    use MultiPhysicsProbConstants , only : VAR_DZ
-    use MultiPhysicsProbConstants , only : VAR_AREA
-    use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
-    use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
-    use MultiPhysicsProbConstants , only : CONN_VERTICAL, CONN_HORIZONTAL
     use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use MeshType                  , only : mesh_type, MeshCreate
+    use MultiPhysicsProbConstants , only : CONN_IN_XYZ_DIR
+    use mpp_mesh_utils            , only : ComputeXYZCentroids, ComputeCellID
     !
     implicit none
     !
-#include <petsc/finclude/petsc.h>
-    !
-    PetscReal           :: area, dist
-    PetscInt            :: idir, nconn
-    PetscInt            :: ii, jj, kk
-    PetscInt            :: ii_offset, jj_offset, kk_offset
-    PetscInt            :: ii_max, jj_max, kk_max
-    PetscInt            :: ii_up, jj_up, kk_up
-    PetscInt            :: ii_dn, jj_dn, kk_dn
-    PetscInt            :: nlev, imesh, conn_type
-    PetscInt            :: iconn , count, vert_nconn
-    PetscReal , pointer :: soil_xc(:)           ! x-position of grid cell [m]
-    PetscReal , pointer :: soil_yc(:)           ! y-position of grid cell [m]
-    PetscReal , pointer :: soil_zc(:)           ! z-position of grid cell [m]
-    PetscReal , pointer :: soil_dx(:)           ! layer thickness of grid cell [m]
-    PetscReal , pointer :: soil_dy(:)           ! layer thickness of grid cell [m]
-    PetscReal , pointer :: soil_dz(:)           ! layer thickness of grid cell [m]
-    PetscReal , pointer :: soil_area(:)         ! area of grid cell [m^2]
-    PetscInt  , pointer :: soil_filter(:)       ! 
-    PetscInt  , pointer :: vert_conn_id_up(:)   !
-    PetscInt  , pointer :: vert_conn_id_dn(:)   !
-    PetscReal , pointer :: vert_conn_dist_up(:) !
-    PetscReal , pointer :: vert_conn_dist_dn(:) !
-    PetscReal , pointer :: vert_conn_area(:)    !
-    PetscInt  , pointer :: vert_conn_type(:)    !
-
-    PetscErrorCode :: ierr
+    class (mesh_type), pointer :: mesh
+    PetscInt                   :: imesh
+    PetscInt :: ii,jj,kk
 
     call mpp_varpar_set_nlevsoi(nz)
     call mpp_varpar_set_nlevgrnd(nz)
+
+    imesh        = 1
+    ncells_local = nx*ny*nz
+    ncells_ghost = 0
+
+    call thermal_mpp%SetNumMeshes(1)
+
+    allocate(mesh)
+
+    call MeshCreate(mesh, 'Soil mesh', x_column, y_column, z_column, &
+         nx, ny, nz, CONN_IN_XYZ_DIR)
+    call mesh%SetID(MESH_CLM_THERMAL_SOIL_COL)
+
+    call thermal_mpp%AddMesh(imesh, mesh)
+
+    call mesh%Clean()
+
+    deallocate(mesh)
 
     dx = x_column/nx
     dy = y_column/ny
     dz = z_column/nz
 
-    imesh        = 1
-    nlev         = nz
-    ncells_local = nx*ny*nz
-    ncells_ghost = 0
+    call ComputeXYZCentroids(nx, ny, nz, dx, dy, dz, &
+         soil_xc_3d, soil_yc_3d, soil_zc_3d)
 
-    allocate(soil_id     (nx,ny,nz))
-    allocate(soil_xc_3d  (nx,ny,nz))
-    allocate(soil_yc_3d  (nx,ny,nz))
-    allocate(soil_zc_3d  (nx,ny,nz))
-    allocate(soil_xc     (ncells_local))
-    allocate(soil_yc     (ncells_local))
-    allocate(soil_zc     (ncells_local))
-    allocate(soil_dx     (ncells_local))
-    allocate(soil_dy     (ncells_local))
-    allocate(soil_dz     (ncells_local))
-    allocate(soil_area   (ncells_local))
-    allocate(soil_filter (ncells_local))
-
-    soil_filter (:) = 1
-    soil_area   (:) = dx*dy
-    soil_dx     (:) = dx
-    soil_dy     (:) = dy
-    soil_dz     (:) = dz
-    soil_xc     (:) = dx/2.d0
-    soil_yc     (:) = dy/2.d0
-
-    call set_variable_for_problem(problem_type, DATA_XC, data_1D=soil_xc)
-    call set_variable_for_problem(problem_type, DATA_YC, data_1D=soil_yc)
-    call set_variable_for_problem(problem_type, DATA_ZC, data_1D=soil_zc)
-
-    count = 0
-    do kk = 1,nz
-       do jj = 1,ny
-          do ii = 1, nx
-             count = count + 1
-             soil_xc(count) = dx/2.d0 + dx * (ii - 1)
-             soil_yc(count) = dy/2.d0 + dx * (jj - 1)
-             soil_zc(count) = dz/2.d0 + dz * (kk - 1)
-             soil_id(ii,jj,kk) = count
-             soil_xc_3d(ii,jj,kk) = soil_xc(count)
-             soil_yc_3d(ii,jj,kk) = soil_yc(count)
-             soil_zc_3d(ii,jj,kk) = soil_zc(count)
-          end do
-       end do
-    end do
-
-    !
-    ! Set up the meshes
-    !    
-    call thermal_mpp%SetNumMeshes(1)
-
-    call thermal_mpp%MeshSetName        (imesh, 'Soil mesh')
-    call thermal_mpp%MeshSetOrientation (imesh, MESH_AGAINST_GRAVITY)
-    call thermal_mpp%MeshSetID          (imesh, MESH_CLM_THERMAL_SOIL_COL)
-    call thermal_mpp%MeshSetDimensions  (imesh, ncells_local, ncells_ghost, nlev)
-
-    call thermal_mpp%MeshSetGridCellFilter      (imesh, soil_filter)
-    call thermal_mpp%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
-    call thermal_mpp%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
-    call thermal_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
-    call thermal_mpp%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
-    call thermal_mpp%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
-    call thermal_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
-    call thermal_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
-    call thermal_mpp%MeshComputeVolume          (imesh)
-
-    nconn = &
-         (nx-1)* ny   *nz     + & ! connections in x-dir
-          nx   *(ny-1)*nz     + & ! connections in y-dir
-          nx   * ny   *(nz-1)     ! connections in z-dir
-    
-    allocate (vert_conn_id_up   (nconn))
-    allocate (vert_conn_id_dn   (nconn))
-    allocate (vert_conn_dist_up (nconn))
-    allocate (vert_conn_dist_dn (nconn))
-    allocate (vert_conn_area    (nconn))
-    allocate (vert_conn_type    (nconn))
-
-    iconn = 0
-
-    do idir = 1,3
-
-       ii_offset = 0; ii_max = nx
-       jj_offset = 0; jj_max = ny
-       kk_offset = 0; kk_max = nz
-
-       select case (idir)
-       case (1) ! x-dir
-          ii_offset = 1; ii_max = nx-1
-       case (2) ! y-dir
-          jj_offset = 1; jj_max = ny-1
-       case (3) ! z-dir
-          kk_offset = 1; kk_max = nz-1
-       end select
-          
-       
-       do ii = 1, ii_max
-          do jj = 1, jj_max
-             do kk = 1, kk_max
-                
-                iconn = iconn + 1
-                ii_up = ii; ii_dn = ii + ii_offset
-                jj_up = jj; jj_dn = jj + jj_offset
-                kk_up = kk; kk_dn = kk + kk_offset
-                
-                vert_conn_id_up(iconn)   = soil_id(ii_up, jj_up, kk_up)
-                vert_conn_id_dn(iconn)   = soil_id(ii_dn, jj_dn, kk_dn)
-                
-                select case (idir)
-                case (1)
-                   dist      = dx
-                   area      = dy*dz
-                   conn_type = CONN_HORIZONTAL
-                case (2)
-                   dist      = dy
-                   area      = dx*dz
-                   conn_type = CONN_HORIZONTAL
-                case (3)
-                   dist      = dz
-                   area      = dx*dy
-                   conn_type = CONN_VERTICAL
-                end select
-                vert_conn_dist_up(iconn) = 0.5d0*dist
-                vert_conn_dist_dn(iconn) = 0.5d0*dist
-                vert_conn_area(iconn)    = area
-                vert_conn_type(iconn)    = conn_type
-                
-             end do
-          end do
-       end do
-       
-    end do
-
-    vert_nconn = iconn
-
-    call thermal_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-         vert_nconn,  vert_conn_id_up, vert_conn_id_dn,          &
-         vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area,  &
-         vert_conn_type)
-
-    deallocate(soil_xc)
-    deallocate(soil_yc)
-    deallocate(soil_zc)
-    deallocate(soil_dx)
-    deallocate(soil_dy)
-    deallocate(soil_dz)
-    deallocate(soil_area)
-    deallocate(soil_filter)  
+    call ComputeCellID(nx, ny, nz, soil_id)
 
   end subroutine add_meshes
-
   !------------------------------------------------------------------------
 
   subroutine add_goveqns()
@@ -466,7 +306,6 @@ contains
     use MultiPhysicsProbConstants , only : CONN_HORIZONTAL
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     !
     ! !ARGUMENTS
@@ -482,7 +321,7 @@ contains
     PetscInt                  , pointer :: itype    (:)
     PetscInt                  , pointer :: tmp_3d      (:,:,:)
     PetscReal                 , pointer :: unit_vec (:,:)
-    type(connection_set_type) , pointer :: conn_set
+    class(connection_set_type) , pointer :: conn_set
 
     ieqn = 1
     
@@ -603,8 +442,6 @@ contains
     call thermal_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS, &
          'Source term for MMS', 'W/m^2', COND_HEAT_RATE,     &
          ALL_CELLS)
-
-    call ConnectionSetDestroy(conn_set)
 
     deallocate(id_up    )
     deallocate(id_dn    )

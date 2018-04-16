@@ -1,32 +1,60 @@
 module vsfm_spac_fetch2_problem
 
+#include <petsc/finclude/petsc.h>
+
+  use petscsys
+  use petscvec
+  use petscmat
+  use petscts
+  use petscsnes
+  use petscdm
+  use petscdmda
+
   implicit none
 
-#include <petsc/finclude/petsc.h>
-  PetscInt  , parameter :: nx       = 1           ! -
-  PetscInt  , parameter :: ny       = 1           ! -
-  PetscInt  , parameter :: nz       = 60           ! -
-  PetscReal , parameter :: Az       = 9.8715e-3   ! m^2
-  PetscReal , parameter :: dx       = 9.8715e-3   ! m
-  PetscReal , parameter :: porosity = 0.55d0      ! -
-  PetscReal , parameter :: dy       = 1.d0        ! m
-  PetscReal , parameter :: dz       = 0.2d0       ! m
-  PetscReal , parameter :: Acrown   = 28.8415d0   ! m^2
-  PetscReal , parameter :: phis50   = -1.0d6      ! Pa
-  PetscReal , parameter :: phi50    = -2.1048d6   ! Pa
-  PetscReal , parameter :: phi88    = -0.5876d6   ! Pa
-  PetscReal , parameter :: c1       = 1.278d6     ! Pa
-  PetscReal , parameter :: c2       = 2.8299d0    ! -
-  PetscReal , parameter :: c3       = 5.d0        ! -
-  PetscReal , parameter :: kmax     = 9.8513d-7   ! s
-  PetscReal , parameter :: vis      = 8.904156d-4 ! Pa s
-  PetscReal , parameter :: rho      = 1000.d0     ! kg m^{-3}
-  PetscReal , parameter :: grav     = 9.81        ! m s^{-2}
+  PetscReal , parameter :: vis      = 8.904156d-4   ! Pa s
+  PetscReal , parameter :: rho      = 1000.d0       ! kg m^{-3}
+  PetscReal , parameter :: grav     = 9.81          ! m s^{-2}
+
+  PetscInt  , parameter :: nx       = 1             ! -
+  PetscInt  , parameter :: ny       = 1             ! -
+  PetscReal , parameter :: dx       = 1.d0          ! m
+  PetscReal , parameter :: dy       = 1.d0          ! m
+  PetscReal , parameter :: dz       = 0.2d0         ! m
+
+  PetscReal , parameter :: porosity = 0.55d0        ! [-]
+
+  PetscInt  , parameter :: oak_nz       = 60        ! -
+  PetscReal , parameter :: oak_Asapwood = 0.0088d0  ! m^2
+  PetscReal , parameter :: oak_Acrown   = 28.8d0    ! m^2
+  PetscReal , parameter :: oak_phis50   = -0.91d6   ! Pa
+  PetscReal , parameter :: oak_phi50    = -2.5d6    ! Pa
+  PetscReal , parameter :: oak_phi88    = -0.5d6    ! Pa
+  PetscReal , parameter :: oak_c1       = 1.7d6     ! Pa
+  PetscReal , parameter :: oak_c2       = 3.0d0     ! -
+  PetscReal , parameter :: oak_c3       = 12.3d0    ! -
+  PetscReal , parameter :: oak_kmax     = 1.6d-6    ! s
+
+  PetscInt  , parameter :: pine_nz       = 85       ! -
+  PetscReal , parameter :: pine_Asapwood = 0.0616d0 ! m^2
+  PetscReal , parameter :: pine_Acrown   = 46.1d0   ! m^2
+  !PetscReal , parameter :: pine_phis50   = -0.18d6  ! Pa
+  PetscReal , parameter :: pine_phis50   = -0.91d6  ! Pa
+  PetscReal , parameter :: pine_phi50    = -2.2d6   ! Pa
+  PetscReal , parameter :: pine_phi88    = -0.5d6   ! Pa
+  PetscReal , parameter :: pine_c1       = 1.2d6    ! Pa
+  PetscReal , parameter :: pine_c2       = 2.8d0    ! -
+  PetscReal , parameter :: pine_c3       = 10.3d0   ! -
+  PetscReal , parameter :: pine_kmax     = 1.2d-6   ! s
+
+  character(len=256) :: problem_type
+
+  character(len=256) :: ic_filename
+  PetscBool          :: ic_file_specified
+
   PetscInt              :: ncells_local
   PetscInt              :: ncells_ghost
-  PetscReal             :: Campbell_n
-  PetscReal             :: Campbell_b
-  PetscReal             :: Campbell_he
+
   PetscReal             :: theta_s
   PetscReal             :: VG_alpha
   PetscReal             :: VG_n
@@ -38,66 +66,207 @@ contains
 
   subroutine run_vsfm_spac_fetch2_problem()
     !
-#include <petsc/finclude/petsc.h>
     !
     use MultiPhysicsProbVSFM , only : vsfm_mpp
     use mpp_varpar           , only : mpp_varpar_init
-    use petscsys
-    use petscvec
-    use petscmat
-    use petscts
-    use petscsnes
-    use petscdm
-    use petscdmda
     !
     implicit none
     !
     PetscBool          :: converged
     PetscInt           :: converged_reason
+    PetscInt           :: nz
     PetscErrorCode     :: ierr
     PetscReal          :: dtime
     PetscReal          :: time
     PetscInt           :: istep, nstep
     PetscBool          :: flg
     PetscBool          :: save_initial_soln, save_final_soln
-    PetscBool          :: print_actual_ET
+    PetscBool          :: print_actual_et
     character(len=256) :: string
-    character(len=256) :: output_suffix
+    character(len=256) :: pet_file
+    character(len=256) :: soil_bc_file
+    character(len=256) :: actual_et_file
+    Vec                :: ET
+    Vec                :: SoilBC
+    Vec                :: Actual_ET
+    PetscInt           :: vec_size
+    PetscInt           :: ntimes
+    PetscReal, pointer :: act_et_p(:)
     PetscViewer        :: viewer
+    PetscBool          :: error_in_cmd_options
 
     ! Set default settings
     dtime                  = 180.d0
     nstep                  = 24
     save_initial_soln      = PETSC_FALSE
     save_final_soln        = PETSC_FALSE
-    print_actual_ET        = PETSC_FALSE
-    output_suffix          = ''
+    print_actual_et        = PETSC_FALSE
+    error_in_cmd_options   = PETSC_FALSE
+    problem_type           = 'oak'
+    ic_file_specified      = PETSC_FALSE
 
     ! Get some command line options
 
-    call PetscOptionsGetInt    (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep             ',nstep             ,flg,ierr)
-    call PetscOptionsGetBool   (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_initial_soln ',save_initial_soln ,flg,ierr)
-    call PetscOptionsGetBool   (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_final_soln   ',save_final_soln   ,flg,ierr)
-    call PetscOptionsGetBool   (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-print_actual_ET   ',print_actual_ET   ,flg,ierr)
-    call PetscOptionsGetString (PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_suffix     ',output_suffix     ,flg,ierr)
+    call PetscOptionsGetInt  (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-nstep', nstep,flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-save_initial_soln', save_initial_soln, flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-save_final_soln', save_final_soln, flg,ierr)
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-pet_file', pet_file, flg, ierr)
+    if (.not.flg) then
+       write(*,*)'ERROR: Specify the potential ET filename via -pet_file <filename>'
+       error_in_cmd_options = PETSC_TRUE
+    end if
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-soil_bc_file',soil_bc_file,flg,ierr)
+    if (.not.flg) then
+       write(*,*)'ERROR: Specify the soil boundary condition filename via -soil_bc_file <filename>'
+       error_in_cmd_options = PETSC_TRUE
+    end if
     
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-actual_et_file', actual_et_file, flg, ierr)
+    if (flg) then
+       print_actual_et = PETSC_TRUE
+    end if
+
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-ic_file', ic_filename, flg, ierr)
+    if (flg) ic_file_specified = PETSC_TRUE
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-problem_type', problem_type, flg, ierr)
+    if (flg) then
+       select case(trim(problem_type))
+       case ('oak')
+       case ('pine')
+       case ('oak_and_pine')
+       case default
+          write(*,*)'ERROR: Unknown option specified via -problem_type <value>.'
+          write(*,*)'       Valid value for -problem_type are:'
+          write(*,*)'         oak'
+          write(*,*)'         pine'
+          write(*,*)'         oak_and_pine'
+          error_in_cmd_options = PETSC_TRUE
+       end select
+    end if
+
+    if (error_in_cmd_options) stop
+
+    select case(trim(problem_type))
+    case ('oak')
+       nz       = oak_nz
+    case ('pine')
+       nz       = pine_nz
+    case ('oak_and_pine')
+       nz       = oak_nz + pine_nz
+    case default
+       write(*,*)'Unsupported problem_type'
+       stop
+    end select
+
+    ! Read the PET file
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, pet_file, FILE_MODE_READ, viewer, ierr); CHKERRQ(ierr)
+    call VecCreate(PETSC_COMM_WORLD, ET, ierr); CHKERRQ(ierr)
+    call VecLoad(ET, viewer, ierr); CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
+    call VecGetSize(ET, vec_size, ierr); CHKERRQ(ierr)
+
+    ntimes = vec_size/nz
+    if (nstep > ntimes) then
+       write(*,*)'ERROR: Value for nstep exceeds the number of timesteps ' // &
+            'for which potential ET data is available.'
+       write(*,*)'nstep = ',nstep
+       write(*,*)'ntimes= ',ntimes
+       stop
+    end if
+
+    ! Read the soil bc file
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, soil_bc_file, FILE_MODE_READ, viewer, ierr); CHKERRQ(ierr)
+    call VecCreate(PETSC_COMM_WORLD, SoilBC, ierr); CHKERRQ(ierr)
+    call VecLoad(SoilBC, viewer, ierr); CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
+    call VecGetSize(SoilBC, vec_size, ierr); CHKERRQ(ierr)
+
+    ntimes = vec_size
+    if (nstep > ntimes) then
+       write(*,*)'ERROR: Value for nstep exceeds the number of timesteps ' // &
+            'for which soil boundary condition data is available.'
+       write(*,*)'nstep = ',nstep
+       write(*,*)'ntimes= ',ntimes
+       stop
+    end if
+
     ! Initialize the problem
     call Init()
 
     time = 0.d0
+    call VecCreateSeq(PETSC_COMM_SELF, nstep*nz, Actual_ET, ierr)
+    call VecGetArrayF90(Actual_ET, act_et_p, ierr)
+
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'init.bin',FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+    call VecView(vsfm_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
     do istep = 1, nstep
 
-       call set_bondary_conditions(istep)
+       select case(trim(problem_type))
+       case ('oak')
+          call set_bondary_conditions_for_single_tree(nz, istep, ET, SoilBC)
+       case ('pine')
+          call set_bondary_conditions_for_single_tree(nz, istep, ET, SoilBC)
+       case ('oak_and_pine')
+          call set_bondary_conditions_for_two_trees(nz, istep, ET, SoilBC)
+       case default
+          write(*,*)'Unsupported problem_type'
+          stop
+       end select
+
        time = time + dtime
 
        ! Run the model
        call vsfm_mpp%soe%StepDT(dtime, istep, &
             converged, converged_reason, ierr); CHKERRQ(ierr)
 
-       if (print_actual_ET) call diagnose_actual_sink()
+       if (.not.converged) then
+          write(*,*)'Model failed to converge'
+          stop
+       end if
+
+       if (print_actual_et) then
+          select case(trim(problem_type))
+          case ('oak')
+             call diagnose_actual_sink_for_single_tree(nz, istep, act_et_p)
+          case ('pine')
+             call diagnose_actual_sink_for_single_tree(nz, istep, act_et_p)
+          case ('oak_and_pine')
+             call diagnose_actual_sink_for_single_tree(nz, istep, act_et_p)
+          case default
+             write(*,*)'Unsupported problem_type'
+             stop
+          end select
+       end if
 
     end do
+    call VecRestoreArrayF90(Actual_ET, act_et_p, ierr)
+
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'final.bin',FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+    call VecView(vsfm_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+    if (print_actual_et) then
+       call PetscViewerBinaryOpen(PETSC_COMM_SELF,actual_et_file,FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+       call VecView(Actual_ET,viewer,ierr);CHKERRQ(ierr)
+       call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    end if
+
+    call VecDestroy(Actual_ET, ierr); CHKERRQ(ierr)
 
   end subroutine run_vsfm_spac_fetch2_problem
   
@@ -115,13 +284,33 @@ contains
     call initialize_mpp()
 
     ! 2. Add all meshes needed for the MPP
-    call add_mesh()
+    select case(trim(problem_type))
+    case ('oak')
+       call add_mesh_for_single_tree(oak_nz, oak_Asapwood)
+    case ('pine')
+       call add_mesh_for_single_tree(pine_nz, pine_Asapwood)
+    case ('oak_and_pine')
+       call add_mesh_for_two_trees()
+    case default
+       write(*,*)'Unsupported problem_type'
+       stop
+    end select
 
     ! 3. Add all governing equations
     call add_goveqn()
 
     ! 4. Add boundary and source-sink conditions to all governing equations
-    call add_conditions_to_goveqns()
+    select case(trim(problem_type))
+    case ('oak')
+       call add_conditions_to_goveqns_for_single_tree()
+    case ('pine')
+       call add_conditions_to_goveqns_for_single_tree()
+    case ('oak_and_pine')
+       call add_conditions_to_goveqns_for_two_trees()
+    case default
+       write(*,*)'Unsupported problem_type'
+       stop
+    end select
 
     ! 5. Allocate memory to hold auxvars
     call allocate_auxvars()
@@ -130,10 +319,32 @@ contains
     call vsfm_mpp%SetupProblem()
 
     ! 7. Add material properities associated with all governing equations
-    call set_material_properties() 
+    select case(trim(problem_type))
+    case ('oak')
+       call set_material_properties_for_single_tree(oak_nz, porosity, oak_phi88, oak_phi50, &
+            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50)
+    case ('pine')
+       call set_material_properties_for_single_tree(pine_nz, porosity, pine_phi88, pine_phi50, &
+            pine_kmax, pine_c1, pine_c2, pine_c3, pine_phis50)
+    case ('oak_and_pine')
+       call set_material_properties_for_two_trees()
+    case default
+       write(*,*)'Unsupported problem_type'
+       stop
+    end select
 
     ! 8. Set initial conditions
-    call set_initial_conditions()
+    select case(trim(problem_type))
+    case ('oak')
+       call set_initial_conditions_for_single_tree(oak_nz)
+    case ('pine')
+       call set_initial_conditions_for_single_tree(pine_nz)
+    case ('oak_and_pine')
+       call set_initial_conditions_for_two_trees()
+    case default
+       write(*,*)'Unsupported problem_type'
+       stop
+    end select
 
   end subroutine Init
 
@@ -169,13 +380,14 @@ contains
   end subroutine initialize_mpp
 
   !------------------------------------------------------------------------
-  subroutine add_mesh()
+  subroutine add_mesh_for_single_tree(local_nz, local_Asapwood)
     !
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
     use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
     use MultiPhysicsProbConstants , only : VAR_XC
+    
     use MultiPhysicsProbConstants , only : VAR_YC
     use MultiPhysicsProbConstants , only : VAR_ZC
     use MultiPhysicsProbConstants , only : VAR_DX
@@ -190,7 +402,9 @@ contains
     !
     implicit none
     !
-#include <petsc/finclude/petsc.h>
+    PetscInt            :: local_nz
+    PetscReal           :: local_Asapwood
+
     !
     PetscInt            :: imesh, kk
     PetscInt            :: nlev
@@ -220,7 +434,7 @@ contains
     PetscErrorCode      :: ierr
 
     ncells_ghost = 0
-    ncells_xylem = nz
+    ncells_xylem =local_nz
 
     allocate(xc_xylem     (ncells_xylem ))
     allocate(yc_xylem     (ncells_xylem ))
@@ -233,23 +447,22 @@ contains
     allocate(vol_xylem    (ncells_xylem ))
     
     filter_xylem (:) = 1
-    area_xylem   (:) = dx * dy
-    dx_xylem     (:) = dx
-    dy_xylem     (:) = dy
+    area_xylem   (:) = local_Asapwood
+    dx_xylem     (:) = sqrt(local_Asapwood)
+    dy_xylem     (:) = sqrt(local_Asapwood)
     dz_xylem     (:) = dz
-    xc_xylem     (:) = dx/2.d0
-    yc_xylem     (:) = dy/2.d0
-    vol_xylem    (:) = 1.d0/50.d0
+    xc_xylem     (:) = sqrt(local_Asapwood)/2.d0
+    yc_xylem     (:) = sqrt(local_Asapwood)/2.d0
 
-    zc_xylem(1)  = 0.17d0
+    zc_xylem(1)  = -0.17d0 + local_nz * dz
     vol_xylem(1) = area_xylem(1) * dz
-    do kk = 2, nz
-       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1))
+    do kk = 2, local_nz
+       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1)) + local_nz * dz
        vol_xylem(kk) = area_xylem(kk) * dz
     enddo
 
-    call mpp_varpar_set_nlevsoi(nz)
-    call mpp_varpar_set_nlevgrnd(nz)
+    call mpp_varpar_set_nlevsoi(local_nz)
+    call mpp_varpar_set_nlevgrnd(local_nz)
 
     !
     ! Set up the meshes
@@ -261,7 +474,7 @@ contains
     call vsfm_mpp%MeshSetName                (imesh, 'Xylem mesh')
     call vsfm_mpp%MeshSetOrientation         (imesh, MESH_ALONG_GRAVITY)
     call vsfm_mpp%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
-    call vsfm_mpp%MeshSetDimensions          (imesh, ncells_xylem, ncells_ghost, nz)
+    call vsfm_mpp%MeshSetDimensions          (imesh, ncells_xylem, ncells_ghost, local_nz)
 
     call vsfm_mpp%MeshSetGridCellFilter      (imesh, filter_xylem)
     call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_XC     , xc_xylem)
@@ -273,7 +486,7 @@ contains
     call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA   , area_xylem)
     call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_VOLUME , vol_xylem)
 
-    nconn_xylem = nz - 1
+    nconn_xylem = local_nz - 1
 
     allocate (vert_conn_id_up_xylem   (nconn_xylem))
     allocate (vert_conn_id_dn_xylem   (nconn_xylem))
@@ -283,7 +496,7 @@ contains
     allocate (vert_conn_type_xylem    (nconn_xylem))
 
     iconn = 0
-    do kk = 1, nz - 1
+    do kk = 1, local_nz - 1
        iconn = iconn + 1
        vert_conn_id_up_xylem(iconn)   = kk 
        vert_conn_id_dn_xylem(iconn)   = kk + 1
@@ -316,7 +529,175 @@ contains
     deallocate (vert_conn_area_xylem    )
     deallocate (vert_conn_type_xylem    )
 
-  end subroutine add_mesh
+  end subroutine add_mesh_for_single_tree
+
+  !------------------------------------------------------------------------
+
+  subroutine add_mesh_for_two_trees()
+    !
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
+    use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
+    use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
+    use MultiPhysicsProbConstants , only : VAR_XC
+    
+    use MultiPhysicsProbConstants , only : VAR_YC
+    use MultiPhysicsProbConstants , only : VAR_ZC
+    use MultiPhysicsProbConstants , only : VAR_DX
+    use MultiPhysicsProbConstants , only : VAR_DY
+    use MultiPhysicsProbConstants , only : VAR_DZ
+    use MultiPhysicsProbConstants , only : VAR_AREA
+    use MultiPhysicsProbConstants , only : VAR_VOLUME
+    use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
+    use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
+    use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    !
+    implicit none
+    !
+
+    !
+    PetscInt            :: imesh, kk
+    PetscInt            :: nlev
+    PetscInt            :: iconn, vert_nconn
+
+    PetscInt            :: ncells_xylem
+
+    PetscInt            :: nconn_xylem
+
+    PetscReal , pointer :: xc_xylem(:)                ! x-position of grid cell [m]
+    PetscReal , pointer :: yc_xylem(:)                ! y-position of grid cell [m]
+    PetscReal , pointer :: zc_xylem(:)                ! z-position of grid cell [m]
+    PetscReal , pointer :: dx_xylem(:)                ! layer thickness of grid cell [m]
+    PetscReal , pointer :: dy_xylem(:)                ! layer thickness of grid cell [m]
+    PetscReal , pointer :: dz_xylem(:)                ! layer thickness of grid cell [m]
+    PetscReal , pointer :: area_xylem(:)              ! area of grid cell [m^2]
+    PetscReal , pointer :: vol_xylem(:)               ! volume of grid cell [m^3]
+    PetscInt  , pointer :: filter_xylem(:)            ! 
+    
+    PetscInt  , pointer :: vert_conn_id_up_xylem(:)   !
+    PetscInt  , pointer :: vert_conn_id_dn_xylem(:)   !
+    PetscReal , pointer :: vert_conn_dist_up_xylem(:) !
+    PetscReal , pointer :: vert_conn_dist_dn_xylem(:) !
+    PetscReal , pointer :: vert_conn_area_xylem(:)    !
+    PetscInt  , pointer :: vert_conn_type_xylem(:)    !
+
+    PetscErrorCode      :: ierr
+
+    ncells_ghost = 0
+    ncells_xylem = oak_nz + pine_nz
+
+    allocate(xc_xylem     (ncells_xylem ))
+    allocate(yc_xylem     (ncells_xylem ))
+    allocate(zc_xylem     (ncells_xylem ))
+    allocate(dx_xylem     (ncells_xylem ))
+    allocate(dy_xylem     (ncells_xylem ))
+    allocate(dz_xylem     (ncells_xylem ))
+    allocate(area_xylem   (ncells_xylem ))
+    allocate(filter_xylem (ncells_xylem ))
+    allocate(vol_xylem    (ncells_xylem ))
+    
+    filter_xylem (:) = 1
+    area_xylem   (1:oak_nz) = oak_Asapwood            ;area_xylem   (oak_nz+1:oak_nz+pine_nz) = pine_Asapwood;
+    dx_xylem     (1:oak_nz) = sqrt(oak_Asapwood)      ;dx_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood);
+    dy_xylem     (1:oak_nz) = sqrt(oak_Asapwood)      ;dy_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood);
+    dz_xylem     (:) = dz
+    xc_xylem     (1:oak_nz) = sqrt(oak_Asapwood)/2.d0 ;xc_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood)/2.d0;
+    yc_xylem     (1:oak_nz) = sqrt(oak_Asapwood)/2.d0 ;yc_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood)/2.d0;
+
+    zc_xylem(1)  = 0.17d0 + oak_nz * dz
+    vol_xylem(1) = area_xylem(1) * dz
+    do kk = 2, oak_nz
+       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1)) + oak_nz * dz
+       vol_xylem(kk) = area_xylem(kk) * dz
+    enddo
+
+    zc_xylem(oak_nz+1)  = 0.17d0 + pine_nz * dz
+    vol_xylem(oak_nz+1) = area_xylem(oak_nz+1) * dz
+    do kk = oak_nz+2, oak_nz+pine_nz
+       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1-oak_nz)) + pine_nz * dz
+       vol_xylem(kk) = area_xylem(kk) * dz
+    enddo
+
+    call mpp_varpar_set_nlevsoi(oak_nz + pine_nz)
+    call mpp_varpar_set_nlevgrnd(oak_nz+ pine_nz)
+
+    !
+    ! Set up the meshes
+    !    
+    call vsfm_mpp%SetNumMeshes(1)
+
+    ! Xylem Mesh
+    imesh        = 1
+    call vsfm_mpp%MeshSetName                (imesh, 'Xylem mesh')
+    call vsfm_mpp%MeshSetOrientation         (imesh, MESH_ALONG_GRAVITY)
+    call vsfm_mpp%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
+    call vsfm_mpp%MeshSetDimensions          (imesh, ncells_xylem, ncells_ghost, oak_nz + pine_nz)
+
+    call vsfm_mpp%MeshSetGridCellFilter      (imesh, filter_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_XC     , xc_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_YC     , yc_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC     , zc_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DX     , dx_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DY     , dy_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ     , dz_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA   , area_xylem)
+    call vsfm_mpp%MeshSetGeometricAttributes (imesh, VAR_VOLUME , vol_xylem)
+
+    nconn_xylem = oak_nz - 1 + pine_nz - 1
+
+    allocate (vert_conn_id_up_xylem   (nconn_xylem))
+    allocate (vert_conn_id_dn_xylem   (nconn_xylem))
+    allocate (vert_conn_dist_up_xylem (nconn_xylem))
+    allocate (vert_conn_dist_dn_xylem (nconn_xylem))
+    allocate (vert_conn_area_xylem    (nconn_xylem))
+    allocate (vert_conn_type_xylem    (nconn_xylem))
+
+    iconn = 0
+    do kk = 1, oak_nz - 1
+       iconn = iconn + 1
+       vert_conn_id_up_xylem(iconn)   = kk 
+       vert_conn_id_dn_xylem(iconn)   = kk + 1
+       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz
+       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz
+       vert_conn_area_xylem(iconn)    = area_xylem(kk)
+       vert_conn_type_xylem(iconn)    = CONN_VERTICAL
+    end do
+
+    do kk = oak_nz + 1, oak_nz + pine_nz - 1
+       iconn = iconn + 1
+       vert_conn_id_up_xylem(iconn)   = kk 
+       vert_conn_id_dn_xylem(iconn)   = kk + 1
+       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz
+       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz
+       vert_conn_area_xylem(iconn)    = area_xylem(kk)
+       vert_conn_type_xylem(iconn)    = CONN_VERTICAL
+    end do
+
+    imesh = 1
+    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+         nconn_xylem,  vert_conn_id_up_xylem, vert_conn_id_dn_xylem,          &
+         vert_conn_dist_up_xylem, vert_conn_dist_dn_xylem,  vert_conn_area_xylem,  &
+         vert_conn_type_xylem)
+
+    deallocate (xc_xylem                )
+    deallocate (yc_xylem                )
+    deallocate (zc_xylem                )
+    deallocate (dx_xylem                )
+    deallocate (dy_xylem                )
+    deallocate (dz_xylem                )
+    deallocate (area_xylem              )
+    deallocate (filter_xylem            )
+    deallocate (vol_xylem               )
+
+    deallocate (vert_conn_id_up_xylem   )
+    deallocate (vert_conn_id_dn_xylem   )
+    deallocate (vert_conn_dist_up_xylem )
+    deallocate (vert_conn_dist_dn_xylem )
+    deallocate (vert_conn_area_xylem    )
+    deallocate (vert_conn_type_xylem    )
+
+  end subroutine add_mesh_for_two_trees
 
   !------------------------------------------------------------------------
 
@@ -326,7 +707,7 @@ contains
     !
     !
     ! !USES:
-    use MultiPhysicsProbVSFM , only : vsfm_mpp
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : GE_RE
     use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
     !
@@ -340,7 +721,7 @@ contains
   end subroutine add_goveqn
 
   !------------------------------------------------------------------------
-  subroutine add_conditions_to_goveqns()
+  subroutine add_conditions_to_goveqns_for_single_tree()
     !
     ! !DESCRIPTION:
     !
@@ -356,7 +737,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_FETCH2
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     use petscsys
     !
@@ -374,7 +754,98 @@ contains
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Bottom BC', 'Pa', COND_DIRICHLET, SOIL_BOTTOM_CELLS)
 
-  end subroutine add_conditions_to_goveqns
+  end subroutine add_conditions_to_goveqns_for_single_tree
+
+  !------------------------------------------------------------------------
+  subroutine add_conditions_to_goveqns_for_two_trees()
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use MultiPhysicsProbConstants , only : ALL_CELLS
+    use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
+    use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_FETCH2
+    use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use ConnectionSetType         , only : connection_set_type
+    use MeshType                  , only : MeshCreateConnectionSet
+    use petscsys
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    PetscInt                            :: ieqn
+    PetscInt                            :: nconn
+    PetscInt                            :: iconn
+    PetscInt                  , pointer :: conn_id_up(:)
+    PetscInt                  , pointer :: conn_id_dn(:)
+    PetscReal                 , pointer :: conn_dist_up(:)
+    PetscReal                 , pointer :: conn_dist_dn(:)
+    PetscReal                 , pointer :: conn_area(:)
+    PetscInt                  , pointer :: conn_type(:)
+    PetscReal                 , pointer :: conn_unitvec(:,:)
+    class(connection_set_type), pointer :: conn_set
+
+    ieqn       = 1
+    call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &
+         'Potential Mass_Flux', 'kg/s', COND_DOWNREG_MASS_RATE_FETCH2, &
+         ALL_CELLS)
+
+    nconn = 2
+
+    allocate (conn_id_up   (nconn))
+    allocate (conn_id_dn   (nconn))
+    allocate (conn_dist_up (nconn))
+    allocate (conn_dist_dn (nconn))
+    allocate (conn_area    (nconn))
+    allocate (conn_type    (nconn))
+    allocate (conn_unitvec (nconn,3))
+
+    iconn = 1
+    conn_id_up(iconn)     = 0
+    conn_id_dn(iconn)     = oak_nz
+    conn_dist_up(iconn)   = 0.d0
+    conn_dist_dn(iconn)   = 0.5d0*dz
+    conn_area(iconn)      = oak_Asapwood
+    conn_type(iconn)      = CONN_VERTICAL
+    conn_unitvec(iconn,1) = 0.d0
+    conn_unitvec(iconn,2) = 0.d0
+    conn_unitvec(iconn,3) = 1.d0
+
+    iconn = 2
+    conn_id_up(iconn)     = 0
+    conn_id_dn(iconn)     = oak_nz+pine_nz
+    conn_dist_up(iconn)   = 0.d0
+    conn_dist_dn(iconn)   = 0.5d0*dz
+    conn_area(iconn)      = pine_Asapwood
+    conn_type(iconn)      = CONN_VERTICAL
+    conn_unitvec(iconn,1) = 0.d0
+    conn_unitvec(iconn,2) = 0.d0
+    conn_unitvec(iconn,3) = 1.d0
+
+    call MeshCreateConnectionSet(vsfm_mpp%meshes(1), &
+         nconn, conn_id_up, conn_id_dn, &
+         conn_dist_up, conn_dist_dn, conn_area, &
+         conn_type, conn_unitvec, conn_set)
+
+    ieqn       = 1
+    call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
+         'Bottom BC', 'Pa', COND_DIRICHLET, SOIL_BOTTOM_CELLS, conn_set)
+
+    deallocate (conn_id_up   )
+    deallocate (conn_id_dn   )
+    deallocate (conn_dist_up )
+    deallocate (conn_dist_dn )
+    deallocate (conn_area    )
+    deallocate (conn_type    )
+    deallocate (conn_unitvec )
+
+  end subroutine add_conditions_to_goveqns_for_two_trees
 
   !------------------------------------------------------------------------
   subroutine allocate_auxvars()
@@ -393,7 +864,8 @@ contains
   end subroutine allocate_auxvars
 
   !------------------------------------------------------------------------
-  subroutine set_material_properties()
+  subroutine set_material_properties_for_single_tree(local_nz, local_porosity, &
+       local_phi88, local_phi50, local_kmax, local_c1, local_c2, local_c3, local_phis50)
     !
     ! !DESCRIPTION:
     !
@@ -411,12 +883,16 @@ contains
     !
     implicit none
     !
-    PetscReal , pointer   :: vsfm_watsat(:,:)
-    PetscReal , pointer   :: vsfm_hksat(:,:)
-    PetscReal , pointer   :: vsfm_bsw(:,:)
-    PetscReal , pointer   :: vsfm_sucsat(:,:)
-    PetscReal , pointer   :: vsfm_eff_porosity(:,:)
-    PetscReal , pointer   :: vsfm_residual_sat(:,:)
+    PetscInt  :: local_nz
+    PetscReal :: local_porosity
+    PetscReal :: local_phi88
+    PetscReal :: local_phi50
+    PetscReal :: local_kmax
+    PetscReal :: local_c1
+    PetscReal :: local_c2
+    PetscReal :: local_c3
+    PetscReal :: local_phis50
+    !
     PetscReal , pointer   :: por(:)
     PetscReal , pointer   :: alpha(:)
     PetscReal , pointer   :: lambda(:)
@@ -431,42 +907,42 @@ contains
     PetscInt              :: ieqn
     !-----------------------------------------------------------------------
 
-    allocate (por            (nz))
-    allocate (alpha          (nz))
-    allocate (lambda         (nz))
-    allocate (sat_res        (nz))
-    allocate (satfunc_type   (nz))
-    allocate (perm           (nz))
-    allocate (relperm_type   (nz))
-    allocate (weibull_d      (nz))
-    allocate (weibull_c      (nz))
-    allocate(ss_auxvar_value (nz))
+    allocate (por            (local_nz))
+    allocate (alpha          (local_nz))
+    allocate (lambda         (local_nz))
+    allocate (sat_res        (local_nz))
+    allocate (satfunc_type   (local_nz))
+    allocate (perm           (local_nz))
+    allocate (relperm_type   (local_nz))
+    allocate (weibull_d      (local_nz))
+    allocate (weibull_c      (local_nz))
+    allocate(ss_auxvar_value (local_nz))
 
-    por          (1 : nz ) = porosity
+    por          (1 : local_nz ) = local_porosity
     call VSFMMPPSetSoilPorosity(vsfm_mpp, 1, por)
 
-    satfunc_type (1 : nz ) = SAT_FUNC_FETCH2
-    alpha        (1 : nz ) = phi88
-    lambda       (1 : nz ) = phi50
-    sat_res      (1 : nz ) = 0.d0
+    satfunc_type (1 : local_nz ) = SAT_FUNC_FETCH2
+    alpha        (1 : local_nz ) = local_phi88
+    lambda       (1 : local_nz ) = local_phi50
+    sat_res      (1 : local_nz ) = 0.d0
     call VSFMMPPSetSaturationFunction(vsfm_mpp, 1, satfunc_type, &
          alpha, lambda, sat_res)
 
 
-    perm         (1 : nz ) = kmax  * vis / rho
+    perm         (1 : local_nz ) = local_kmax  * vis / rho * 1.125d0
     call VSFMMPPSetSoilPermeability(vsfm_mpp, 1, perm, perm, perm)
 
     relperm_type (:) = RELPERM_FUNC_WEIBULL
-    weibull_d    (:) = c1
-    weibull_c    (:) = c2
+    weibull_d    (:) = local_c1
+    weibull_c    (:) = local_c2
     
     call VSFMMPPSetRelativePermeability(vsfm_mpp, 1, relperm_type, weibull_d, weibull_c)
 
-    ss_auxvar_value(:) = c3
+    ss_auxvar_value(:) = local_c3
     call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
          VAR_POT_MASS_SINK_EXPONENT, ss_auxvar_value)
 
-    ss_auxvar_value(:) = phis50
+    ss_auxvar_value(:) = local_phis50
     call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
          VAR_POT_MASS_SINK_PRESSURE, ss_auxvar_value)
 
@@ -481,10 +957,155 @@ contains
     deallocate(weibull_d    )
     deallocate(ss_auxvar_value)
 
-  end subroutine set_material_properties
+  end subroutine set_material_properties_for_single_tree
 
   !------------------------------------------------------------------------
-  subroutine set_initial_conditions()
+  subroutine set_material_properties_for_two_trees()
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetSourceSinkAuxVarRealValue
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoilPorosity
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunction
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoilPermeability
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetRelativePermeability
+    use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_PRESSURE
+    use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_EXPONENT
+    use EOSWaterMod               , only : DENSITY_TGDPB01
+    use SaturationFunction        , only : SAT_FUNC_FETCH2
+    use SaturationFunction        , only : RELPERM_FUNC_WEIBULL
+    !
+    implicit none
+    !
+    PetscInt              :: nz
+    PetscReal , pointer   :: por(:)
+    PetscReal , pointer   :: alpha(:)
+    PetscReal , pointer   :: lambda(:)
+    PetscReal , pointer   :: sat_res(:)
+    PetscReal , pointer   :: perm(:)
+    PetscInt  , pointer   :: vsfm_filter(:)
+    PetscInt  , pointer   :: satfunc_type(:)
+    PetscInt  , pointer   :: relperm_type(:)
+    PetscReal , pointer   :: ss_auxvar_value(:)
+    PetscReal , pointer   :: weibull_d(:)
+    PetscReal , pointer   :: weibull_c(:)
+    PetscInt              :: ieqn
+    !-----------------------------------------------------------------------
+
+    nz = oak_nz + pine_nz
+    
+    allocate (por            (nz))
+    allocate (alpha          (nz))
+    allocate (lambda         (nz))
+    allocate (sat_res        (nz))
+    allocate (satfunc_type   (nz))
+    allocate (perm           (nz))
+    allocate (relperm_type   (nz))
+    allocate (weibull_d      (nz))
+    allocate (weibull_c      (nz))
+    allocate(ss_auxvar_value (nz))
+
+    por(1:oak_nz ) = porosity; por(oak_nz+1:oak_nz+pine_nz ) = porosity
+
+    call VSFMMPPSetSoilPorosity(vsfm_mpp, 1, por)
+
+    satfunc_type (1:oak_nz ) = SAT_FUNC_FETCH2 ; satfunc_type (oak_nz+1:oak_nz+pine_nz ) = SAT_FUNC_FETCH2
+    alpha        (1:oak_nz ) = oak_phi88       ; alpha        (oak_nz+1:oak_nz+pine_nz ) = pine_phi88
+    lambda       (1:oak_nz ) = oak_phi50       ; lambda       (oak_nz+1:oak_nz+pine_nz ) = pine_phi50
+    sat_res      (1:oak_nz ) = 0.d0            ; sat_res      (oak_nz+1:oak_nz+pine_nz ) = 0.d0;
+    call VSFMMPPSetSaturationFunction(vsfm_mpp, 1, satfunc_type, &
+         alpha, lambda, sat_res)
+
+
+    perm (1:oak_nz ) = oak_kmax  * vis / rho; perm (oak_nz+1:oak_nz+pine_nz ) = pine_kmax  * vis / rho
+    call VSFMMPPSetSoilPermeability(vsfm_mpp, 1, perm, perm, perm)
+
+    relperm_type (1:oak_nz) = RELPERM_FUNC_WEIBULL ; relperm_type (oak_nz+1:oak_nz+pine_nz) = RELPERM_FUNC_WEIBULL
+    weibull_d    (1:oak_nz) = oak_c1               ; weibull_d    (oak_nz+1:oak_nz+pine_nz) = pine_c1
+    weibull_c    (1:oak_nz) = oak_c2               ; weibull_c    (oak_nz+1:oak_nz+pine_nz) = pine_c2
+    
+    call VSFMMPPSetRelativePermeability(vsfm_mpp, 1, relperm_type, weibull_d, weibull_c)
+
+    ss_auxvar_value(1:oak_nz) = oak_c3; ss_auxvar_value(oak_nz+1:oak_nz+pine_nz) = pine_c3
+    call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
+         VAR_POT_MASS_SINK_EXPONENT, ss_auxvar_value)
+
+    ss_auxvar_value(1:oak_nz) = oak_phis50; ss_auxvar_value(oak_nz+1:oak_nz+pine_nz) = pine_phis50
+    call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
+         VAR_POT_MASS_SINK_PRESSURE, ss_auxvar_value)
+
+    deallocate(por          )
+    deallocate(sat_res      )
+    deallocate(lambda       )
+    deallocate(alpha        )
+    deallocate(perm         )
+    deallocate(satfunc_type )
+    deallocate(relperm_type )
+    deallocate(weibull_c    )
+    deallocate(weibull_d    )
+    deallocate(ss_auxvar_value)
+
+  end subroutine set_material_properties_for_two_trees
+
+  !------------------------------------------------------------------------
+  subroutine set_initial_conditions_for_single_tree(nz)
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use petscsys
+    use petscvec
+    use petscmat
+    use petscts
+    use petscsnes
+    use petscdm
+    use petscdmda
+    !
+    implicit none
+    !
+    PetscInt           :: nz
+    !
+    PetscReal          :: theta
+    PetscReal          :: phi_root_mean_times_beta_s
+    PetscInt           :: ii
+    PetscReal, pointer :: press_ic(:)
+    PetscErrorCode     :: ierr
+
+    Vec                :: p_init
+    PetscViewer        :: viewer
+    PetscReal, pointer :: p_init_ptr(:)
+
+    phi_root_mean_times_beta_s = 5.831916333333334e+03
+
+    if (ic_file_specified) then
+       call PetscViewerBinaryOpen(PETSC_COMM_WORLD, ic_filename, FILE_MODE_READ, &
+            viewer, ierr); CHKERRQ(ierr)
+       ! Load the data
+       call VecCreate(PETSC_COMM_WORLD, p_init, ierr); CHKERRQ(ierr)
+       call VecLoad(p_init, viewer, ierr); CHKERRQ(ierr)
+       call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
+
+       call VecCopy(p_init, vsfm_mpp%soe%solver%soln, ierr); CHKERRQ(ierr)
+       call VecGetArrayF90(p_init, p_init_ptr, ierr); CHKERRQ(ierr)
+       call vsfm_mpp%Restart(p_init_ptr)
+       call VecRestoreArrayF90(p_init, p_init_ptr, ierr); CHKERRQ(ierr)
+    else
+       call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+       do ii = 1, nz
+          press_ic(ii) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (nz - ii)*dz) + 101325.d0
+       enddo
+       call vsfm_mpp%Restart(press_ic)
+       call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+    end if
+
+    call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+    
+  end subroutine set_initial_conditions_for_single_tree
+
+  !------------------------------------------------------------------------
+  subroutine set_initial_conditions_for_two_trees()
     !
     ! !DESCRIPTION:
     !
@@ -505,21 +1126,70 @@ contains
     PetscReal, pointer :: press_ic(:)
     PetscErrorCode     :: ierr
 
+    Vec                :: p_init
+    PetscViewer        :: viewer
+    PetscReal, pointer :: p_init_ptr(:)
+
     phi_root_mean_times_beta_s = 5.831916333333334e+03
     
-    call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
-    do ii = 1, nz
-       press_ic(nz-ii+1) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (ii-1)*dz) + 101325.d0
-    enddo
-    call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+    if (ic_file_specified) then
+       call PetscViewerBinaryOpen(PETSC_COMM_WORLD, ic_filename, FILE_MODE_READ, &
+            viewer, ierr); CHKERRQ(ierr)
+       ! Load the data
+       call VecCreate(PETSC_COMM_WORLD, p_init, ierr); CHKERRQ(ierr)
+       call VecLoad(p_init, viewer, ierr); CHKERRQ(ierr)
+       call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
+
+       call VecCopy(p_init, vsfm_mpp%soe%solver%soln, ierr); CHKERRQ(ierr)
+       call VecGetArrayF90(p_init, p_init_ptr, ierr); CHKERRQ(ierr)
+       call vsfm_mpp%Restart(p_init_ptr)
+       call VecRestoreArrayF90(p_init, p_init_ptr, ierr); CHKERRQ(ierr)
+    else
+       call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+       do ii = 1, oak_nz
+          press_ic(ii         ) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (oak_nz - ii)*dz) + 101325.d0
+       enddo
+
+       do ii = 1, pine_nz
+          press_ic(ii + oak_nz) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (pine_nz - ii)*dz) + 101325.d0
+       enddo
+       call vsfm_mpp%Restart(press_ic)
+       call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+    end if
 
     call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
     call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+
+#if 0
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'initial_pressure.bin', FILE_MODE_READ, viewer, ierr); CHKERRQ(ierr)
+    call VecCreate(PETSC_COMM_WORLD, p_init, ierr); CHKERRQ(ierr)
+    call VecLoad(p_init, viewer, ierr); CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
+
+    call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(p_init, p_init_ptr, ierr); CHKERRQ(ierr)
+
+    do ii = 1, oak_nz
+       press_ic(ii         ) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (oak_nz - ii)*dz) + 101325.d0
+    enddo
+
+    do ii = 1, pine_nz
+       press_ic(ii + oak_nz) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (pine_nz - ii)*dz) + 101325.d0
+    enddo
+
+    call vsfm_mpp%Restart(press_ic)
+    call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
+
+    call VecRestoreArrayF90(p_init, p_init_ptr, ierr); CHKERRQ(ierr)
+
+    call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+#endif
     
-  end subroutine set_initial_conditions
+  end subroutine set_initial_conditions_for_two_trees
 
   !------------------------------------------------------------------------
-  subroutine set_bondary_conditions(nstep)
+  subroutine set_bondary_conditions_for_single_tree(nz, nstep, ET, SoilBC)
     !
     ! !DESCRIPTION:
     !
@@ -531,30 +1201,27 @@ contains
     !
     implicit none
     !
+    PetscInt           :: nz
     PetscInt           :: nstep
     !
     PetscReal, pointer :: ss_value(:)
     PetscReal, pointer :: bc_value(:)
     PetscViewer        :: viewer
     Vec                :: ET
+    Vec                :: SoilBC
     PetscReal, pointer :: et_p(:)
+    PetscReal, pointer :: soilbc_p(:)
     PetscErrorCode     :: ierr
     PetscInt           :: soe_auxvar_id
     PetscInt           :: kk
 
     allocate(ss_value(nz))
 
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, '../../src/driver/standalone/vsfm/data/PotentialET.bin', FILE_MODE_READ, viewer, ierr)
-    call VecCreate(PETSC_COMM_WORLD, ET, ierr)
-    call VecLoad(ET, viewer, ierr)
-    call PetscViewerDestroy(viewer, ierr)
-
     call VecGetArrayF90(ET, et_p, ierr)
     do kk = 1, nz
-       ss_value(nz-kk+1) = -et_p(nz*(nstep-1) + kk) * dz
+       ss_value(kk) = -et_p(nz*(nstep-1) + kk) * dz
     end do
     call VecRestoreArrayF90(ET, et_p, ierr)
-    call VecDestroy(ET, ierr)
 
     soe_auxvar_id = 1
     call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_SS,  &
@@ -562,17 +1229,74 @@ contains
 
     deallocate(ss_value)
 
+    call VecGetArrayF90(SoilBC, soilbc_p, ierr)
     allocate(bc_value(1))
-    bc_value(1) = 9.382538342475891e+04
+    bc_value(1) = soilbc_p(nstep)
     soe_auxvar_id = 1
     call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
          VAR_BC_SS_CONDITION, soe_auxvar_id, bc_value)
     deallocate(bc_value)
+    call VecRestoreArrayF90(SoilBC, soilbc_p, ierr)
 
-  end subroutine set_bondary_conditions
+  end subroutine set_bondary_conditions_for_single_tree
 
   !------------------------------------------------------------------------
-  subroutine diagnose_actual_sink()
+  subroutine set_bondary_conditions_for_two_trees(nz, nstep, ET, SoilBC)
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use MultiPhysicsProbConstants , only : AUXVAR_BC, VAR_BC_SS_CONDITION
+    use MultiPhysicsProbConstants , only : AUXVAR_SS
+    use petscsys
+    use petscvec
+    !
+    implicit none
+    !
+    PetscInt           :: nz
+    PetscInt           :: nstep
+    !
+    PetscReal, pointer :: ss_value(:)
+    PetscReal, pointer :: bc_value(:)
+    PetscViewer        :: viewer
+    Vec                :: ET
+    Vec                :: SoilBC
+    PetscReal, pointer :: et_p(:)
+    PetscReal, pointer :: soilbc_p(:)
+    PetscErrorCode     :: ierr
+    PetscInt           :: soe_auxvar_id
+    PetscInt           :: kk
+
+    allocate(ss_value(nz))
+
+    ! Set source sink
+    call VecGetArrayF90(ET, et_p, ierr)
+    
+    do kk = 1, nz
+       ss_value(kk) = -et_p(nz*(nstep-1) + kk)*dz
+    end do
+    call VecRestoreArrayF90(ET, et_p, ierr)
+
+    soe_auxvar_id = 1
+    call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_SS,  &
+         VAR_BC_SS_CONDITION, soe_auxvar_id, ss_value)
+
+    deallocate(ss_value)
+
+    ! Set BC
+    call VecGetArrayF90(SoilBC, soilbc_p, ierr)
+    allocate(bc_value(2))
+    bc_value(1:2) = soilbc_p(nstep)
+        soe_auxvar_id = 1
+    call vsfm_mpp%soe%SetDataFromCLM(AUXVAR_BC,  &
+         VAR_BC_SS_CONDITION, soe_auxvar_id, bc_value)
+    deallocate(bc_value)
+    call VecRestoreArrayF90(SoilBC, soilbc_p, ierr)
+
+  end subroutine set_bondary_conditions_for_two_trees
+
+  !------------------------------------------------------------------------
+  subroutine diagnose_actual_sink_for_single_tree(nz, nstep, act_et_p)
     !
     ! !DESCRIPTION:
     !
@@ -586,7 +1310,9 @@ contains
     !
     implicit none
     !
+    PetscInt           :: nz
     PetscInt           :: nstep
+    PetscReal, pointer :: act_et_p(:)
     !
     PetscReal, pointer :: ss_value(:)
     PetscReal, pointer :: press(:)
@@ -597,13 +1323,15 @@ contains
 
     call vsfm_mpp%soe%GetDataForCLM(AUXVAR_SS, VAR_MASS_FLUX, 1, ss_value)
     call vsfm_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,VAR_PRESSURE, -1, press)
+    !write(*,*)'sink:'
     do kk = 1, nz
-       write(*,*)kk,ss_value(kk),press(kk)
+       act_et_p((nstep-1)*nz + kk) = ss_value(kk)
+       !write(*,*)kk,ss_value(kk)
     end do
     
     deallocate(ss_value)
     deallocate(press)
 
-  end subroutine diagnose_actual_sink
+  end subroutine diagnose_actual_sink_for_single_tree
 
 end module vsfm_spac_fetch2_problem

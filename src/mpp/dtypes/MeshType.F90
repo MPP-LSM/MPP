@@ -10,6 +10,7 @@ module MeshType
 
 #include <petsc/finclude/petsc.h>
   use petscsys
+  use mpp_mesh_utils
 
   ! !USES:
   use mpp_varctl         , only : iulog
@@ -30,7 +31,7 @@ module MeshType
      PetscInt            :: nlev         ! Number of cells in z
      PetscInt            :: itype        ! identifier
 
-                                         ! centroid
+     ! centroid
      PetscReal, pointer  :: x(:)         ! [m]
      PetscReal, pointer  :: y(:)         ! [m]
      PetscReal, pointer  :: z(:)         ! [m]
@@ -63,9 +64,17 @@ module MeshType
      procedure, public :: SetID                  => MeshSetID
      procedure, public :: SetName                => MeshSetName
      procedure, public :: SetOrientation         => MeshSetOrientation
+     procedure, public :: Copy                   => MeshCopy
+     procedure         :: AllocateMemory         => MeshAllocateMemory
   end type mesh_type
 
+  public :: MeshCreate
   public :: MeshCreateConnectionSet
+
+  interface MeshCreate
+     module procedure MeshCreate1
+     module procedure MeshCreate2
+  end interface MeshCreate
 
   interface MeshCreateConnectionSet
     module procedure MeshCreateConnectionSet1
@@ -80,9 +89,6 @@ contains
     !
     ! !DESCRIPTION:
     ! Initializes a mesh object
-    !
-    ! !USES:
-    use ConnectionSetType  , only : ConnectionSetListInit
     !
     implicit none
     !
@@ -112,10 +118,172 @@ contains
 
     nullify(this%is_active )
 
-    call ConnectionSetListInit(this%intrn_conn_set_list)
-    call ConnectionSetListInit(this%lateral_conn_set_list)
+    call this%intrn_conn_set_list%Init()
+    call this%lateral_conn_set_list%Init()
 
   end subroutine Init
+
+  !------------------------------------------------------------------------
+  subroutine MeshCopy(this, inp_mesh)
+    !
+    ! !DESCRIPTION:
+    ! Copies a mesh
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mesh_type) :: this
+    class(mesh_type) :: inp_mesh
+
+    this%name         = inp_mesh%name
+    this%ncells_local = inp_mesh%ncells_local
+    this%ncells_ghost = inp_mesh%ncells_ghost
+    this%ncells_all   = inp_mesh%ncells_all
+    this%nlev         = inp_mesh%nlev
+    this%itype        = inp_mesh%itype
+    this%orientation  = inp_mesh%orientation
+
+    call this%AllocateMemory()
+
+    this%x(:)         = inp_mesh%x(:)
+    this%y(:)         = inp_mesh%y(:)
+    this%z(:)         = inp_mesh%z(:)
+
+    this%z_m(:)       = inp_mesh%z_m(:)
+    this%z_p(:)       = inp_mesh%z_P(:)
+
+    this%dx(:)        = inp_mesh%dx(:)
+    this%dy(:)        = inp_mesh%dy(:)
+    this%dz(:)        = inp_mesh%dz(:)
+
+    this%area_xy(:)   = inp_mesh%area_xy(:)
+    this%vol(:)       = inp_mesh%vol(:)
+
+    this%is_active(:) = inp_mesh%is_active(:)
+
+    call this%intrn_conn_set_list%Copy(inp_mesh%intrn_conn_set_list)
+    call this%lateral_conn_set_list%Copy(inp_mesh%lateral_conn_set_list)
+    
+  end subroutine MeshCopy
+
+  !------------------------------------------------------------------------
+  subroutine MeshCreate1(mesh, name, x_min, y_min, z_min, &
+       x_max, y_max, z_max, nx, ny, nz, internal_conn_dir)
+    !
+    use MultiPhysicsProbConstants , only : MESH_AGAINST_GRAVITY
+    use MultiPhysicsProbConstants , only : MESH_CLM_SOIL_COL
+    use MultiPhysicsProbConstants , only : VAR_XC
+    use MultiPhysicsProbConstants , only : VAR_YC
+    use MultiPhysicsProbConstants , only : VAR_ZC
+    use MultiPhysicsProbConstants , only : VAR_DX
+    use MultiPhysicsProbConstants , only : VAR_DY
+    use MultiPhysicsProbConstants , only : VAR_DZ
+    use MultiPhysicsProbConstants , only : VAR_AREA
+    use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mesh_type)  , intent(inout) :: mesh
+    character(len =*) , intent(in)    :: name
+    PetscReal         , intent(in)    :: x_min, y_min, z_min
+    PetscReal         , intent(in)    :: x_max, y_max, z_max
+    PetscInt          , intent(in)    :: nx, ny, nz
+    PetscInt          , intent(in)    :: internal_conn_dir
+    !
+    PetscReal          :: dx, dy, dz
+    PetscReal, pointer :: dx_1d(:), dy_1d(:), dz_1d(:)
+    PetscReal, pointer :: xc_1d(:), yc_1d(:), zc_1d(:)
+    PetscReal, pointer :: area_1d(:)
+    PetscInt            :: vert_nconn
+    PetscInt  , pointer :: vert_conn_id_up(:)   !
+    PetscInt  , pointer :: vert_conn_id_dn(:)   !
+    PetscReal , pointer :: vert_conn_dist_up(:) !
+    PetscReal , pointer :: vert_conn_dist_dn(:) !
+    PetscReal , pointer :: vert_conn_area(:)    !
+    PetscInt  , pointer :: vert_conn_type(:)    !
+
+    dx = (x_max - x_min)/nx
+    dy = (y_max - y_min)/ny
+    dz = (z_max - z_min)/nz
+    
+    call mesh%SetName(name)
+    call mesh%SetOrientation(MESH_AGAINST_GRAVITY)
+    call mesh%SetID(MESH_CLM_SOIL_COL)
+
+    call mesh%SetDimensions(nx*ny*nz, 0, nz)
+    
+    call ComputeXYZCentroids( &
+         nx, ny, nz, &
+         dx, dy, dz, &
+         x_min, y_min, z_min, &
+         xc_1d, yc_1d, zc_1d)
+
+    allocate(dx_1d  (nx*ny*nz))
+    allocate(dy_1d  (nx*ny*nz))
+    allocate(dz_1d  (nx*ny*nz))
+    allocate(area_1d(nx*ny*nz))
+
+    dx_1d   (:) = dx
+    dy_1d   (:) = dy
+    dz_1d   (:) = dz
+    area_1d (:) = dx*dy
+
+    call mesh%SetGeometricAttributes(VAR_XC   , xc_1d   )
+    call mesh%SetGeometricAttributes(VAR_YC   , yc_1d   )
+    call mesh%SetGeometricAttributes(VAR_ZC   , zc_1d   )    
+    call mesh%SetGeometricAttributes(VAR_DX   , dx_1d   )
+    call mesh%SetGeometricAttributes(VAR_DY   , dy_1d   )
+    call mesh%SetGeometricAttributes(VAR_DZ   , dz_1d   )
+    call mesh%SetGeometricAttributes(VAR_AREA , area_1d )
+
+    call mesh%ComputeVolume()
+
+    vert_nconn = 0
+    call ComputeInternalConnections(nx, ny, nz,      &
+       dx, dy, dz, internal_conn_dir,               &
+       vert_nconn, vert_conn_id_up, vert_conn_id_dn, &
+       vert_conn_dist_up, vert_conn_dist_dn,         &
+       vert_conn_area, vert_conn_type)
+
+    call mesh%intrn_conn_set_list%Init()
+    call mesh%lateral_conn_set_list%Init()
+
+    call MeshSetConnectionSet(mesh, CONN_SET_INTERNAL,           &
+         vert_nconn,  vert_conn_id_up, vert_conn_id_dn,         &
+         vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area, &
+         vert_conn_type)
+
+    deallocate(xc_1d   )
+    deallocate(yc_1d   )
+    deallocate(zc_1d   )
+    deallocate(dx_1d   )
+    deallocate(dy_1d   )
+    deallocate(dz_1d   )
+    deallocate(area_1d )
+
+  end subroutine MeshCreate1
+
+  !------------------------------------------------------------------------
+  subroutine MeshCreate2(mesh, name, x_max, y_max, z_max, &
+       nx, ny, nz, internal_conn_dir)
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(mesh_type)  , intent(inout) :: mesh
+    character(len =*) , intent(in)    :: name
+    PetscReal         , intent(in)    :: x_max, y_max, z_max
+    PetscInt          , intent(in)    :: nx, ny, nz
+    PetscInt          , intent(in)    :: internal_conn_dir
+
+    call MeshCreate(mesh, name, &
+         x_min =  0.d0, y_min =  0.d0, z_min =  0.d0, &
+         x_max = x_max, y_max = y_max, z_max = z_max, &
+         nx    =    nx, ny    =    ny, nz    =    nz, &
+         internal_conn_dir = internal_conn_dir)
+
+  end subroutine MeshCreate2
 
   !------------------------------------------------------------------------
   subroutine CreateFromCLMCols(this, begg, begc, endc, &
@@ -137,7 +305,6 @@ contains
     use MultiPhysicsProbConstants   , only : CONN_VERTICAL
     use MultiPhysicsProbConstants   , only : CONN_HORIZONTAL
     use ConnectionSetType           , only : connection_set_type
-    use ConnectionSetType           , only : ConnectionSetListAddSet
     use mpp_varcon                  , only : istsoil
     use UnstructuredGridType        , only : ugrid_type
     !
@@ -164,24 +331,24 @@ contains
     PetscInt, pointer  , intent(in) :: filter(:)
     !
     ! !LOCAL VARIABLES:
-    PetscInt                          :: c,j,l                              !indices
-    PetscInt                          :: icell
-    PetscInt                          :: iconn
-    PetscInt                          :: nconn
-    PetscInt                          :: nconn_vert
-    PetscInt                          :: nconn_horz
-    PetscInt                          :: id_up, id_dn
-    PetscInt                          :: first_active_hydro_col_id
-    PetscInt                          :: col_id
-    type(connection_set_type),pointer :: conn_set
-    PetscInt                          :: g_up, g_dn, iedge
-    PetscInt                          :: c_idx_up, c_idx_dn
-    PetscInt                          :: l_idx_up, l_idx_dn
-    PetscInt                          :: ltype, ctype
-    PetscInt                          :: tmp
-    PetscReal                         :: dist_x, dist_y, dist_z, dist
-    PetscReal                         :: dc, dv
-    PetscErrorCode                    :: ierr
+    PetscInt                           :: c,j,l                              !indices
+    PetscInt                           :: icell
+    PetscInt                           :: iconn
+    PetscInt                           :: nconn
+    PetscInt                           :: nconn_vert
+    PetscInt                           :: nconn_horz
+    PetscInt                           :: id_up, id_dn
+    PetscInt                           :: first_active_hydro_col_id
+    PetscInt                           :: col_id
+    class(connection_set_type),pointer :: conn_set
+    PetscInt                           :: g_up, g_dn, iedge
+    PetscInt                           :: c_idx_up, c_idx_dn
+    PetscInt                           :: l_idx_up, l_idx_dn
+    PetscInt                           :: ltype, ctype
+    PetscInt                           :: tmp
+    PetscReal                          :: dist_x, dist_y, dist_z, dist
+    PetscReal                          :: dc, dv
+    PetscErrorCode                     :: ierr
 
     call this%Init()
 
@@ -360,7 +527,7 @@ contains
 
     ! If it is not a 3D problem, then internal connections are done
     if (discretization_type /= DISCRETIZATION_THREE_DIM) then
-       call ConnectionSetListAddSet(this%intrn_conn_set_list, conn_set)
+       call this%intrn_conn_set_list%AddSet(conn_set)
        nullify(conn_set)
     endif
 
@@ -461,11 +628,11 @@ contains
        enddo
 
        if (discretization_type == DISCRETIZATION_VERTICAL_WITH_SS) then
-          call ConnectionSetListAddSet(this%lateral_conn_set_list, conn_set)
+          call this%lateral_conn_set_list%AddSet(conn_set)
           nullify(conn_set)
 
        else if (discretization_type == DISCRETIZATION_THREE_DIM) then
-          call ConnectionSetListAddSet(this%intrn_conn_set_list, conn_set)
+          call this%intrn_conn_set_list%AddSet(conn_set)
           nullify(conn_set)
        endif
 
@@ -687,7 +854,6 @@ contains
     ! Creates a connection set based on information passed
     !
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetListAddSet
     use ConnectionSetType         , only : ConnectionSetNew
     !
     implicit none
@@ -703,7 +869,7 @@ contains
     PetscInt, pointer                 :: itype(:)
     PetscReal, pointer, optional      :: unit_vec(:,:)
     PetscBool, optional               :: skip_id_check
-    type(connection_set_type),pointer :: conn_set
+    class(connection_set_type),pointer:: conn_set
     !
     ! !LOCAL VARIABLES:
     PetscInt                          :: iconn
@@ -886,6 +1052,32 @@ contains
     this%ncells_all   = this%ncells_local + this%ncells_ghost
     this%nlev         = nlev
 
+    call this%AllocateMemory()
+
+    ! Initialize values
+    this%x(:)         = 0.d0
+    this%y(:)         = 0.d0
+    this%z(:)         = 0.d0
+
+    this%z_m(:)       = 0.d0
+    this%z_p(:)       = 0.d0
+
+    this%dx(:)        = 0.d0
+    this%dy(:)        = 0.d0
+    this%dz(:)        = 0.d0
+
+    this%area_xy(:)   = 0.d0
+    this%vol(:)       = 0.d0
+    this%is_active(:) = PETSC_TRUE
+
+  end subroutine MeshSetDimensions
+
+  !------------------------------------------------------------------------
+  subroutine MeshAllocateMemory (this)
+    !
+    implicit none
+    !
+    class(mesh_type) :: this
 
     ! Allocate memory
     allocate (this%x         (this%ncells_all ))
@@ -903,23 +1095,32 @@ contains
     allocate (this%vol       (this%ncells_all ))
     allocate (this%is_active (this%ncells_all ))
 
-    ! Initialize values
-    this%x(:)         = 0.d0
-    this%y(:)         = 0.d0
-    this%z(:)         = 0.d0
+  end subroutine MeshAllocateMemory
 
-    this%z_m(:)       = 0.d0
-    this%z_p(:)       = 0.d0
+  !------------------------------------------------------------------------
+  subroutine MeshDeallocateMemory (this)
+    !
+    implicit none
+    !
+    class(mesh_type) :: this
 
-    this%dx(:)        = 0.d0
-    this%dy(:)        = 0.d0
-    this%dz(:)        = 0.d0
+    ! Deallocate memory
+    if (associated(this%x         )) deallocate (this%x)
+    if (associated(this%y         )) deallocate (this%y)
+    if (associated(this%z         )) deallocate (this%z)
 
-    this%area_xy(:)   = 0.d0
-    this%vol(:)       = 0.d0
-    this%is_active(:) = PETSC_FALSE
+    if (associated(this%z_m       )) deallocate (this%z_m)
+    if (associated(this%z_p       )) deallocate (this%z_p)
 
-  end subroutine MeshSetDimensions
+    if (associated(this%dx        )) deallocate (this%dx)
+    if (associated(this%dy        )) deallocate (this%dy)
+    if (associated(this%dx        )) deallocate (this%dz)
+
+    if (associated(this%area_xy   )) deallocate (this%area_xy  )
+    if (associated(this%vol       )) deallocate (this%vol      )
+    if (associated(this%is_active )) deallocate (this%is_active)
+
+  end subroutine MeshDeallocateMemory
 
   !------------------------------------------------------------------------
   subroutine MeshSetGeometricAttributes(this, var_id, values)
@@ -1067,38 +1268,37 @@ contains
     use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
     use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetListAddSet
     use ConnectionSetType         , only : ConnectionSetNew
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(mesh_type)                  :: this
-    PetscInt                          :: conn_type
-    PetscInt                          :: nconn
-    PetscInt, pointer                 :: id_up(:)
-    PetscInt, pointer                 :: id_dn(:)
-    PetscReal, pointer                :: dist_up(:)
-    PetscReal, pointer                :: dist_dn(:)
-    PetscReal, pointer                :: area(:)
-    PetscInt, pointer                 :: itype(:)
+    class(mesh_type)                   :: this
+    PetscInt                           :: conn_type
+    PetscInt                           :: nconn
+    PetscInt, pointer                  :: id_up(:)
+    PetscInt, pointer                  :: id_dn(:)
+    PetscReal, pointer                 :: dist_up(:)
+    PetscReal, pointer                 :: dist_dn(:)
+    PetscReal, pointer                 :: area(:)
+    PetscInt, pointer                  :: itype(:)
     !
     ! !LOCAL VARIABLES:
-    type(connection_set_type),pointer :: conn_set
-    PetscInt                          :: iconn
-    PetscReal                         :: dist_x
-    PetscReal                         :: dist_y
-    PetscReal                         :: dist_z
-    PetscReal                         :: dist
+    class(connection_set_type),pointer :: conn_set
+    PetscInt                           :: iconn
+    PetscReal                          :: dist_x
+    PetscReal                          :: dist_y
+    PetscReal                          :: dist_z
+    PetscReal                          :: dist
 
     call MeshCreateConnectionSet(this, nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, conn_set=conn_set)
 
     select case(conn_type)
     case (CONN_SET_INTERNAL)
-       call ConnectionSetListAddSet(this%intrn_conn_set_list, conn_set)
+       call this%intrn_conn_set_list%AddSet(conn_set)
     case (CONN_SET_LATERAL)
-       call ConnectionSetListAddSet(this%lateral_conn_set_list, conn_set)
+       call this%lateral_conn_set_list%AddSet(conn_set)
     case default
        write(iulog,*)'Unknown connection set type = ',conn_type
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1113,8 +1313,6 @@ contains
     ! Release memory allocated to the mesh
     !
     ! !USES:
-    use ConnectionSetType, only : ConnectionSetListClean
-    !
     implicit none
     !
     ! !ARGUMENTS
@@ -1131,7 +1329,8 @@ contains
     deallocate(this%dy )
     deallocate(this%dz )
 
-    call ConnectionSetListClean(this%intrn_conn_set_list)
+    call this%intrn_conn_set_list%Destroy()
+    call this%lateral_conn_set_list%Destroy()
 
   end subroutine Clean
 

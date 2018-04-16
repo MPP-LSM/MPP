@@ -173,135 +173,41 @@ subroutine add_meshes()
 #include <petsc/finclude/petsc.h>
   !
   use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
-  use MultiPhysicsProbConstants       , only : MESH_ALONG_GRAVITY
-  use MultiPhysicsProbConstants       , only : MESH_AGAINST_GRAVITY
-  use MultiPhysicsProbConstants       , only : MESH_CLM_THERMAL_SOIL_COL
-  use MultiPhysicsProbConstants       , only : VAR_XC
-  use MultiPhysicsProbConstants       , only : VAR_YC
-  use MultiPhysicsProbConstants       , only : VAR_ZC
-  use MultiPhysicsProbConstants       , only : VAR_DX
-  use MultiPhysicsProbConstants       , only : VAR_DY
-  use MultiPhysicsProbConstants       , only : VAR_DZ
-  use MultiPhysicsProbConstants       , only : VAR_AREA
-  use MultiPhysicsProbConstants       , only : CONN_SET_INTERNAL
-  use MultiPhysicsProbConstants       , only : CONN_SET_LATERAL
-  use MultiPhysicsProbConstants       , only : CONN_VERTICAL
-  use mesh_info                       , only : nx, ny, x_column, y_column, z_column, nz
-  use mesh_info                       , only : ncells_local, ncells_ghost
-  use mpp_varpar                      , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
-  use petscsys
-  !
-  implicit none
-  !
-  PetscReal          :: dx, dy, dz
-  PetscInt           :: imesh, kk
-  PetscInt           :: nlev
-  PetscInt           :: iconn, vert_nconn
-  PetscReal, pointer :: soil_xc(:)           ! x-position of grid cell [m]
-  PetscReal, pointer :: soil_yc(:)           ! y-position of grid cell [m]
-  PetscReal, pointer :: soil_zc(:)           ! z-position of grid cell [m]
-  PetscReal, pointer :: soil_dx(:)           ! layer thickness of grid cell [m]
-  PetscReal, pointer :: soil_dy(:)           ! layer thickness of grid cell [m]
-  PetscReal, pointer :: soil_dz(:)           ! layer thickness of grid cell [m]
-  PetscReal, pointer :: soil_area(:)         ! area of grid cell [m^2]
-  PetscInt , pointer :: soil_filter(:)       ! 
-  
-  PetscInt, pointer  :: vert_conn_id_up(:)   !
-  PetscInt, pointer  :: vert_conn_id_dn(:)   !
-  PetscReal, pointer :: vert_conn_dist_up(:) !
-  PetscReal, pointer :: vert_conn_dist_dn(:) !
-  PetscReal, pointer :: vert_conn_area(:)    !
-  PetscInt , pointer :: vert_conn_type(:)    !
+    use MultiPhysicsProbConstants     , only : CONN_IN_Z_DIR, MESH_CLM_THERMAL_SOIL_COL
+    use mpp_varpar                    , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use MeshType                      , only : mesh_type, MeshCreate
+    use mpp_varpar                    , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use mesh_info
+    !
+    implicit none
+    !
+    class(mesh_type), pointer :: mesh
+    PetscInt                  :: imesh
+    PetscInt                  :: nlev
 
-  PetscErrorCode     :: ierr
+    call mpp_varpar_set_nlevsoi(nz)
+    call mpp_varpar_set_nlevgrnd(nz)
 
-  call mpp_varpar_set_nlevsoi(nz)
-  call mpp_varpar_set_nlevgrnd(nz)
+    imesh        = 1
+    nlev         = nz
+    ncells_local = nx*ny*nz
 
-  dx = x_column/nx
-  dy = y_column/ny
-  dz = z_column/nz
+    !
+    ! Set up the meshes
+    !
+    call thermal_enthalpy_mpp%SetNumMeshes(1)
 
-  imesh        = 1
-  nlev         = nz
-  ncells_local = nx*ny*nz
-  ncells_ghost = 0
+    allocate(mesh)
 
-  allocate(soil_xc(nz))
-  allocate(soil_yc(nz))
-  allocate(soil_zc(nz))
-  allocate(soil_dx(nz))
-  allocate(soil_dy(nz))
-  allocate(soil_dz(nz))
-  allocate(soil_area(nz))
-  allocate(soil_filter(nz))
-  
-  soil_filter (:) = 1
-  soil_area   (:) = dx*dy
-  soil_dx     (:) = dx
-  soil_dy     (:) = dy
-  soil_dz     (:) = dz
-  soil_xc     (:) = dx/2.d0
-  soil_xc     (:) = dy/2.d0
+    call MeshCreate(mesh, 'Soil mesh', x_column, y_column, z_column, &
+         nx, ny, nz, CONN_IN_Z_DIR)
+    call mesh%SetID(MESH_CLM_THERMAL_SOIL_COL)
 
-  do kk = 1,nz
-     soil_zc(kk) = dz/2.d0 + dz * (kk - 1)
-  enddo
-  
-  !
-  ! Set up the meshes
-  !    
-  call thermal_enthalpy_mpp%SetNumMeshes(1)
+    call thermal_enthalpy_mpp%AddMesh(imesh, mesh)
 
-  call thermal_enthalpy_mpp%MeshSetName        (imesh, 'Soil mesh')
-  call thermal_enthalpy_mpp%MeshSetOrientation (imesh, MESH_AGAINST_GRAVITY)
-  call thermal_enthalpy_mpp%MeshSetID          (imesh, MESH_CLM_THERMAL_SOIL_COL)
-  call thermal_enthalpy_mpp%MeshSetDimensions  (imesh, ncells_local, ncells_ghost, nlev)
+    call mesh%Clean()
 
-  call thermal_enthalpy_mpp%MeshSetGridCellFilter      (imesh, soil_filter)
-  call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc)
-  call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_YC   , soil_yc)
-  call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_ZC   , soil_zc)
-  call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_DX   , soil_dx)
-  call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_DY   , soil_dy)
-  call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_DZ   , soil_dz)
-  call thermal_enthalpy_mpp%MeshSetGeometricAttributes (imesh, VAR_AREA , soil_area)
-  call thermal_enthalpy_mpp%MeshComputeVolume          (imesh)
-
-  allocate (vert_conn_id_up   (nz-1))
-  allocate (vert_conn_id_dn   (nz-1))
-  allocate (vert_conn_dist_up (nz-1))
-  allocate (vert_conn_dist_dn (nz-1))
-  allocate (vert_conn_area    (nz-1))
-  allocate (vert_conn_type    (nz-1))
-
-  iconn = 0
-  do kk = 1, nz-1
-
-     iconn = iconn + 1
-     vert_conn_id_up(iconn)   = kk
-     vert_conn_id_dn(iconn)   = vert_conn_id_up(iconn) + 1
-     vert_conn_dist_up(iconn) = 0.5d0*dz
-     vert_conn_dist_dn(iconn) = 0.5d0*dz
-     vert_conn_area(iconn)    = soil_area(kk)
-     vert_conn_type(iconn)    = CONN_VERTICAL
-
-  end do
-  vert_nconn = iconn
-
-  call thermal_enthalpy_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
-       vert_nconn,  vert_conn_id_up, vert_conn_id_dn,                      &
-       vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area,              &
-       vert_conn_type)
-  
-  deallocate(soil_xc)
-  deallocate(soil_yc)
-  deallocate(soil_zc)
-  deallocate(soil_dx)
-  deallocate(soil_dy)
-  deallocate(soil_dz)
-  deallocate(soil_area)
-  deallocate(soil_filter)  
+    deallocate(mesh)
 
 end subroutine add_meshes
 

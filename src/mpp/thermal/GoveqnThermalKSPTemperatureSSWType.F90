@@ -257,7 +257,7 @@ contains
     integer                                                       :: condition_id, sum_conn
     integer                                                       :: cell_id
     type(condition_type), pointer                                 :: cur_cond
-    type(connection_set_type), pointer                            :: cur_conn_set
+    class(connection_set_type), pointer                           :: cur_conn_set
     character(len=256)                                            :: string
 
     auxVarCt_ge = size(this%aux_vars_bc)
@@ -347,7 +347,7 @@ contains
     integer                                                       :: condition_id, sum_conn
     PetscReal                                                     :: var_value
     type(condition_type), pointer                                 :: cur_cond
-    type(connection_set_type), pointer                            :: cur_conn_set
+    class(connection_set_type), pointer                           :: cur_conn_set
     character(len=256)                                            :: string
 
     auxVarCt_ge = size(this%aux_vars_ss)
@@ -561,7 +561,7 @@ contains
     class(goveqn_thermal_ksp_temp_ssw_type)        :: this
     !
     ! !LOCAL VARIABLES
-    type(connection_set_type), pointer             :: conn_set
+    class(connection_set_type), pointer            :: conn_set
     PetscInt                                       :: cell_id
     PetscInt                                       :: ieqn
     PetscInt                                       :: iconn
@@ -686,7 +686,7 @@ contains
     PetscReal                                  :: coeff
     PetscReal                                  :: value
     PetscReal                                  :: factor
-    type(connection_set_type), pointer         :: cur_conn_set
+    class(connection_set_type), pointer        :: cur_conn_set
     type(condition_type),pointer               :: cur_cond
 
     dt = this%dtime
@@ -824,7 +824,7 @@ contains
     PetscReal                                  :: dt, factor
     PetscReal                                  :: therm_cond_aveg, therm_cond_up, therm_cond_dn
     PetscReal                                  :: coeff
-    type(connection_set_type), pointer         :: cur_conn_set
+    class(connection_set_type), pointer        :: cur_conn_set
     type(condition_type),pointer               :: cur_cond
 
     dt = this%dtime
@@ -958,7 +958,7 @@ contains
     PetscReal                                :: area, vol, dt
     PetscReal                                :: heat_cap, factor
     type(condition_type),pointer             :: cur_cond
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     PetscReal                                :: dist, dist_up, dist_dn
     PetscReal                                :: therm_cond_aveg, therm_cond_up, therm_cond_dn
     PetscReal                                :: T_up, T_dn

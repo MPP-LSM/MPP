@@ -743,7 +743,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_DOWNREG_MASS_RATE_CAMPBELL
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
     use ConnectionSetType         , only : connection_set_type
-    use ConnectionSetType         , only : ConnectionSetDestroy
     use MeshType                  , only : MeshCreateConnectionSet
     use petscsys
     !
@@ -764,7 +763,7 @@ contains
     PetscInt                            :: num_other_goveqs
     PetscInt                  , pointer :: ieqn_others(:)
 
-    type(connection_set_type) , pointer :: conn_set
+    class(connection_set_type) , pointer :: conn_set
 
     ieqn       = 1
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &
@@ -880,8 +879,6 @@ contains
          id_of_other_goveqs = ieqn_others                  , &
          conn_set           = conn_set)
 
-
-    call ConnectionSetDestroy(conn_set)
 
     deallocate(id_up    )
     deallocate(id_dn    )

@@ -290,7 +290,7 @@ contains
     type (rich_ode_pres_auxvar_type), pointer         :: ode_aux_vars_bc(:)
     type (rich_ode_pres_auxvar_type), pointer         :: ode_aux_vars_ss(:)
     type(condition_type),pointer                      :: cur_cond
-    type(connection_set_type), pointer                :: cur_conn_set
+    class(connection_set_type), pointer               :: cur_conn_set
     PetscInt                                          :: ghosted_id
     PetscInt                                          :: sum_conn
     PetscInt                                          :: iconn
@@ -683,6 +683,21 @@ contains
 
     call VecCopy(base_soe%solver%soln, base_soe%solver%soln_prev, ierr); CHKERRQ(ierr)
     call VecCopy(base_soe%solver%soln, base_soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+
+    cur_goveq => vsfm_soe%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)
+          goveq_richards_pres => cur_goveq
+          do local_id = 1, goveq_richards_pres%mesh%ncells_local
+             goveq_richards_pres%aux_vars_in(local_id)%pressure_prev = &
+                  data_1d(local_id)
+          end do
+       end select
+       cur_goveq => cur_goveq%next
+    enddo
 
     ! Free up memory
     deallocate(dms)
@@ -1864,7 +1879,7 @@ contains
     class(goveqn_base_type)                   , pointer             :: cur_goveq
     type (rich_ode_pres_conn_auxvar_type)     , pointer             :: conn_aux_vars(:)
     type(condition_type)                      , pointer             :: cur_cond
-    type(connection_set_type)                 , pointer             :: cur_conn_set
+    class(connection_set_type)                , pointer             :: cur_conn_set
     PetscInt                                                        :: ii
     PetscInt                                                        :: ghosted_id
     PetscInt                                                        :: sum_conn

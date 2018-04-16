@@ -548,7 +548,7 @@ contains
     class(goveqn_thermal_ksp_temp_snow_type) :: this
     !
     ! !LOCAL VARIABLES
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     PetscInt                                 :: icell
     PetscInt                                 :: cell_id_up
     PetscInt                                 :: cell_id_dn
@@ -596,7 +596,7 @@ contains
     class(goveqn_thermal_ksp_temp_snow_type) :: this
     !
     ! !LOCAL VARIABLES
-    type(connection_set_type), pointer       :: conn_set
+    class(connection_set_type), pointer      :: conn_set
     PetscInt                                 :: ieqn
     PetscInt                                 :: iconn
     PetscInt                                 :: cell_id
@@ -791,7 +791,7 @@ contains
     PetscReal                          :: dt
     PetscReal                          :: area, heat_cap, tfactor, vol, factor
     type(condition_type),pointer       :: cur_cond
-    type(connection_set_type), pointer :: cur_conn_set
+    class(connection_set_type), pointer:: cur_conn_set
 
     dt = geq_snow%dtime
 
@@ -1008,7 +1008,7 @@ contains
     PetscReal                                  :: dhsdT
     PetscReal                                  :: dt
     PetscReal                                  :: value, factor
-    type(connection_set_type), pointer         :: cur_conn_set
+    class(connection_set_type), pointer        :: cur_conn_set
     type(condition_type),pointer               :: cur_cond
 
     dt = this%dtime
@@ -1198,7 +1198,7 @@ contains
     PetscReal                                :: tfactor
     PetscReal                                :: dt
     PetscReal                                :: value
-    type(connection_set_type), pointer       :: cur_conn_set
+    class(connection_set_type), pointer      :: cur_conn_set
     type(condition_type),pointer             :: cur_cond
     PetscReal                                :: factor
     PetscReal                                :: T

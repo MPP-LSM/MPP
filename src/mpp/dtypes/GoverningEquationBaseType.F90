@@ -599,7 +599,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     use ConnectionSetType         , only : ConnectionSetNew
-    use ConnectionSetType         , only : ConnectionSetDestroy
     !
     implicit none
     !
@@ -668,7 +667,7 @@ contains
 
     end select
 
-    call ConnectionSetDestroy(cond%conn_set)
+    call cond%conn_set%Destroy()
 
     allocate(cond%conn_set)
     cond%conn_set => ConnectionSetNew(nconn)
