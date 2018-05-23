@@ -1,4 +1,9 @@
-# MPP [![Build Status](https://travis-ci.org/MPP-LSM/MPP.svg?branch=master)](https://travis-ci.org/MPP-LSM/MPP)
+# MPP
+
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/MPP-LSM/MPP/blob/master/License.txt)
+
+[![Build Status](https://travis-ci.org/MPP-LSM/MPP.svg?branch=master)](https://travis-ci.org/MPP-LSM/MPP)
+
 
 Multi-Physics Problem (MPP) library is a standalone library that
 solves biophysics problems relevant to global land surface models (LSMs).
@@ -95,9 +100,3 @@ make CC=$CC CXX=$CXX FC=$FC install
 ```sh
 make CC=$CC CXX=$CXX FC=$FC test
 ```
-
-
-## License
-
-[BSD-3](https://github.com/MPP-LSM/MPP/blob/master/License.txt)
-
