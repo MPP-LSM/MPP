@@ -56,7 +56,6 @@ contains
     allocate(yc(nx*ny*nz))
     allocate(zc(nx*ny*nz))
 
-    write(*,*)'call ComputeCentroids: ',x_min
     call ComputeCentroids(nx, ny, nz, dx, x_min, VAR_XC, xc)
     call ComputeCentroids(nx, ny, nz, dy, y_min, VAR_YC, yc)
     call ComputeCentroids(nx, ny, nz, dz, z_min, VAR_ZC, zc)
@@ -495,6 +494,8 @@ contains
     allocate(area     (nconn ))
     allocate(itype    (nconn ))
     allocate(unit_vec (nconn,3 ))
+
+    unit_vec(:,:) = 0.d0
 
     count = 0
     call ComputeXBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &

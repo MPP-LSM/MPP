@@ -9,6 +9,8 @@ set(VSFM_DRIVER_SOURCES
   vsfm_vchannel.F90
   vsfm_vchannel_operator_split.F90
   vsfm_manoli2014.F90
+  vsfm_mms.F90
+  vsfm_mms_problem.F90
   )
 
 set(VSFM_PROBLEM_SOURCES
@@ -21,6 +23,9 @@ set(VSFM_PROBLEM_SOURCES
   vsfm_vchannel_problem.F90
   vsfm_vchannel_problem_operator_split.F90
   vsfm_manoli2014_problem.F90
+  vsfm_mms_problem.F90
+  vsfm_mms_steady_state_soil_only_1D.F90
+  vsfm_mms_vars.F90
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
@@ -52,6 +57,7 @@ add_mpp_executable(vsfm_spac_on_hillslope vsfm_spac_on_hillslope.F90)
 add_mpp_executable(vsfm_vchannel vsfm_vchannel.F90)
 add_mpp_executable(vsfm_vchannel_operator_split vsfm_vchannel_operator_split.F90)
 add_mpp_executable(vsfm_manoli2014 vsfm_manoli2014.F90)
+add_mpp_executable(vsfm_mms vsfm_mms.F90)
 
 if (NOT CMAKE_INSTALL_PREFIX STREQUAL "INSTALL_DISABLED")
   install(TARGETS vsfm_problems DESTINATION lib)
@@ -66,6 +72,7 @@ if (NOT CMAKE_INSTALL_PREFIX STREQUAL "INSTALL_DISABLED")
   install(TARGETS vsfm_vchannel DESTINATION bin)
   install(TARGETS vsfm_vchannel_operator_split DESTINATION bin)
   install(TARGETS vsfm_manoli2014 DESTINATION bin)
+  install(TARGETS vsfm_mms DESTINATION bin)
 
   file(GLOB HEADERS *.mod)
   install(FILES ${HEADERS} DESTINATION include/mpp/driver)
