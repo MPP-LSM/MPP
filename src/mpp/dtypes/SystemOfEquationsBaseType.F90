@@ -886,33 +886,10 @@ contains
        itype_of_other_goveqs(jj) = other_goveq%id
     enddo
 
-    if (.not.present(conn_set)) then
-       if (.not.present(icoupling_of_other_goveqns)) then
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type, num_other_goveqs,             &
-               id_of_other_goveqs, itype_of_other_goveqs )
-       else
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type, num_other_goveqs,             &
-               id_of_other_goveqs, itype_of_other_goveqs,             &
-               icoupling_of_other_goveqns=icoupling_of_other_goveqns)
-       end if
-    else
-       if (.not.present(icoupling_of_other_goveqns)) then
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type,                               &
-               num_other_goveqs, id_of_other_goveqs,                  &
-               itype_of_other_goveqs,                                 &
-               conn_set=conn_set)
-       else
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type,                               &
-               num_other_goveqs, id_of_other_goveqs,                  &
-               itype_of_other_goveqs,                                 &
-               icoupling_of_other_goveqns=icoupling_of_other_goveqns, &
-               conn_set=conn_set)
-       end if
-    endif
+    call cur_goveq%AddCouplingBC(                   &
+         name, unit, region_type, num_other_goveqs, &
+         id_of_other_goveqs, itype_of_other_goveqs, &
+         icoupling_of_other_goveqns, conn_set )
 
     deallocate(itype_of_other_goveqs)
 
