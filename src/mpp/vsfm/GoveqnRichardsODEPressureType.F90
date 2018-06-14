@@ -2273,7 +2273,9 @@ contains
           do ieqn = 1, cur_cond%num_other_goveqs
              if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
-                coupling_via_BC = PETSC_TRUE
+                cur_cond_used = PETSC_TRUE
+
+                if (.not.(cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn))) coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
 
