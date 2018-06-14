@@ -75,7 +75,6 @@ contains
     ! Initialze a GE object
     !
     ! !USES:
-    use ConditionType        , only : ConditionListInit
     use CouplingVariableType , only : CouplingVariableListCreate
     !
     implicit none
@@ -91,8 +90,8 @@ contains
     this%dtime            = 0.d0
 
     nullify(this%mesh)
-    call ConditionListInit(this%boundary_conditions )
-    call ConditionListInit(this%source_sinks        )
+    call this%boundary_conditions%Init()
+    call this%source_sinks%Init()
 
     call CouplingVariableListCreate(this%coupling_vars)
 
@@ -107,7 +106,6 @@ contains
     ! Release allocated memory
     !
     ! !USES:
-    use ConditionType        , only : ConditionListClean
     use CouplingVariableType , only : CouplingVariableListDestroy
     !
     implicit none
@@ -115,8 +113,8 @@ contains
     ! !ARGUMENTS
     class(goveqn_base_type) :: this
 
-    call ConditionListClean          (this%boundary_conditions )
-    call ConditionListClean          (this%source_sinks        )
+    call this%boundary_conditions%Clean()
+    call this%source_sinks%Clean()
     call CouplingVariableListDestroy (this%coupling_vars       )
 
   end subroutine GoveqnBaseDestroy
@@ -268,7 +266,6 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
-    use ConditionType        , only : ConditionListPrintInfo
     use CouplingVariableType , only : CouplingVariableListPrintInfo
     implicit none
     !
@@ -282,9 +279,9 @@ contains
     write(iulog,*)' '
 
     write(iulog,*)'    BC'
-    call ConditionListPrintInfo(this%boundary_conditions)
+    call this%boundary_conditions%PrintInfo()
     write(iulog,*)'    SS'
-    call ConditionListPrintInfo(this%source_sinks)
+    call this%source_sinks%PrintInfo()
     write(iulog,*)'    Coupling Vars'
     call CouplingVariableListPrintInfo(this%coupling_vars)
 
@@ -316,7 +313,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetNumCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -334,12 +330,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetNumCondsExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, num_conds)
+       call this%boundary_conditions%GetNumCondsExcptCondItype( &
+            cond_itype_to_exclude, num_conds)
 
     case (COND_SS)
-       call CondListGetNumCondsExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, num_conds)
+       call this%source_sinks%GetNumCondsExcptCondItype( &
+            cond_itype_to_exclude, num_conds)
 
     case default
        write(string,*) cond_type
@@ -358,7 +354,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetNumCellsForCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -380,12 +375,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetNumCellsForCondsExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, ncells_for_conds)
+       call this%boundary_conditions%GetNumCellsForCondsExcptCondItype( &
+            cond_itype_to_exclude, ncells_for_conds)
 
     case (COND_SS)
-       call CondListGetNumCellsForCondsExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, ncells_for_conds)
+       call this%source_sinks%GetNumCellsForCondsExcptCondItype( &
+            cond_itype_to_exclude, ncells_for_conds)
 
     case default
        write(string,*) cond_type
@@ -405,7 +400,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetCondNamesExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     use MultiPhysicsProbConstants , only : COND_NULL
@@ -429,12 +423,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetCondNamesExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, cond_names)
+       call this%boundary_conditions%GetCondNamesExcptCondItype( &
+            cond_itype_to_exclude, cond_names)
 
     case (COND_SS)
-       call CondListGetCondNamesExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, cond_names)
+       call this%source_sinks%GetCondNamesExcptCondItype( &
+            cond_itype_to_exclude, cond_names)
 
     case default
        write(string,*) cond_type
@@ -453,7 +447,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionListAddCondition
     use ConditionType             , only : ConditionNew
     use MeshType                  , only : MeshCreateConnectionSet
     use MultiPhysicsProbConstants , only : COND_BC
@@ -499,10 +492,10 @@ contains
           write(iulog,*) 'Call AddCouplingBC'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
-       call ConditionListAddCondition(this%boundary_conditions, cond)
+       call this%boundary_conditions%AddCondition(cond)
 
     case (COND_SS)
-       call ConditionListAddCondition(this%source_sinks, cond)
+       call this%source_sinks%AddCondition(cond)
 
     case default
        write(iulog,*) 'Unknown condition type'
@@ -524,7 +517,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionListAddCondition
     use ConditionType             , only : ConditionNew
     use MeshType                  , only : MeshCreateConnectionSet
     use MultiPhysicsProbConstants , only : COND_BC
@@ -580,7 +572,7 @@ contains
        cond%coupled_via_intauxvar_with_other_goveqns(:) = icoupling_of_other_goveqns(:)
     endif
 
-    call ConditionListAddCondition(this%boundary_conditions, cond)
+    call this%boundary_conditions%AddCondition(cond)
 
   end subroutine GoveqnBaseAddCouplingBC
 
@@ -594,7 +586,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionListAddCondition
     use ConditionType             , only : ConditionNew
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
@@ -734,7 +725,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetConnIDDnForCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -753,12 +743,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetConnIDDnForCondsExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, num_cells, cell_id_dn)
+       call this%boundary_conditions%GetConnIDDnForCondsExcptCondItype( &
+            cond_itype_to_exclude, num_cells, cell_id_dn)
 
     case (COND_SS)
-       call CondListGetConnIDDnForCondsExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, num_cells, cell_id_dn)
+       call this%source_sinks%GetConnIDDnForCondsExcptCondItype( &
+            cond_itype_to_exclude, num_cells, cell_id_dn)
 
     case default
        write(string,*) cond_type
