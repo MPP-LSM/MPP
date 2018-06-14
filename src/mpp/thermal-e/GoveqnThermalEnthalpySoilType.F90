@@ -1951,7 +1951,7 @@ contains
 
                 cur_cond_used = PETSC_TRUE
 
-                if (.not.(cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn))) coupling_via_BC = PETSC_TRUE
+                if (.not.(cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn))) coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
 
@@ -2009,7 +2009,7 @@ contains
                            Jdn                                          &
                            )
 
-                      if (cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn)) then
+                      if (cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn)) then
                          val = Jdn
                       else
                          val = Jup
@@ -2059,7 +2059,7 @@ contains
                            Jdn                                          &
                            )
 
-                      if (cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn)) then
+                      if (cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn)) then
                          val = -Jup
                       else
                          val = -Jdn
@@ -2070,7 +2070,7 @@ contains
                    row = cell_id - 1
                    col = cur_conn_set%conn(iconn)%GetIDUp() - 1
 
-                   if (cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn)) then
+                   if (cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn)) then
                       col = row
                    endif
 

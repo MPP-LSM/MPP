@@ -563,13 +563,13 @@ contains
     allocate (cond%rank_of_other_goveqs                     (cond%num_other_goveqs))
     allocate (cond%itype_of_other_goveqs                    (cond%num_other_goveqs))
     allocate (cond%swap_order_of_other_goveqs               (cond%num_other_goveqs))
-    allocate (cond%coupled_via_intauxvar_with_other_goveqns (cond%num_other_goveqs))
+    allocate (cond%is_the_other_GE_coupled_via_int_auxvars  (cond%num_other_goveqs))
 
     cond%rank_of_other_goveqs  (:) = id_of_other_goveqs(:)
     cond%itype_of_other_goveqs (:) = itype_of_other_goveqs(:)
 
     if (present(icoupling_of_other_goveqns)) then
-       cond%coupled_via_intauxvar_with_other_goveqns(:) = icoupling_of_other_goveqns(:)
+       cond%is_the_other_GE_coupled_via_int_auxvars(:) = icoupling_of_other_goveqns(:)
     endif
 
     call this%boundary_conditions%AddCondition(cond)

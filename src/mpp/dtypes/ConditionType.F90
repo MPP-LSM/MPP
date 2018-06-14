@@ -15,27 +15,28 @@ module ConditionType
 
   type, public :: condition_type
 
-     character (len=256)                 :: name                       ! name for condition
-     character (len=256)                 :: units                      ! units
+     character (len=256)                 :: name                                       ! name for condition
+     character (len=256)                 :: units                                      ! units
 
-     PetscInt                            :: id                         ! identifier of condition within the list
-     PetscInt                            :: itype                      ! identifier for type of condition
-     PetscInt                            :: region_itype               ! identifier for region
+     PetscInt                            :: id                                         ! identifier of condition within the list
+     PetscInt                            :: itype                                      ! identifier for type of condition
+     PetscInt                            :: region_itype                               ! identifier for region
      PetscInt                            :: ncells
-     PetscReal                 , pointer :: value(:)                   ! Magnitude of the condition
+     PetscReal                 , pointer :: value(:)                                   ! Magnitude of the condition
 
-     PetscBool                           :: swap_order                 ! FALSE(default): "upwind cell  " = BC; "downwind cell" = Internal cell
-                                                                       ! TRUE          : "downwind cell" = BC; "upwind cell  " = Internal cell
+     PetscBool                           :: swap_order                                 ! FALSE(default): "upwind cell  " = BC; "downwind cell" = Internal cell
+                                                                                       ! TRUE          : "downwind cell" = BC; "upwind cell  " = Internal cell
 
-     PetscInt                            :: num_other_goveqs           ! Number of other governing equations
-     PetscInt                  , pointer :: rank_of_other_goveqs(:)    ! Rank of other governing equations
-     PetscInt                  , pointer :: itype_of_other_goveqs(:)   ! Type of other governing equations
-                                                                       !(e.g. GE_THERM_SSW_TBASED, GE_THERM_SNOW_TBASED, etc)
-     PetscBool                 , pointer :: swap_order_of_other_goveqs(:)
-     PetscBool                 , pointer :: coupled_via_intauxvar_with_other_goveqns(:)
+     PetscInt                            :: num_other_goveqs                           ! Number of other governing equations
+     PetscInt                  , pointer :: rank_of_other_goveqs(:)                    ! Rank of other governing equations
+     PetscInt                  , pointer :: itype_of_other_goveqs(:)                   ! Type of other governing equations
+                                                                                       ! (e.g. GE_THERM_SSW_TBASED, GE_THERM_SNOW_TBASED, etc)
+     PetscBool                 , pointer :: swap_order_of_other_goveqs(:)              !
+     PetscBool                 , pointer :: is_the_other_GE_coupled_via_int_auxvars(:) ! TRUE : The i-th coupling governing equation is coupled via internal auxvars
+                                                                                       ! FALSE: The i-th coupling governing equation is coupled via boundary auxvars
 
-     type(connection_set_type) , pointer :: conn_set                   ! Applicable to BC condition type
-     type(condition_type)      , pointer :: next                       ! Pointer to next condition
+     type(connection_set_type) , pointer :: conn_set                                   ! Applicable to BC condition type
+     type(condition_type)      , pointer :: next                                       ! Pointer to next condition
 
      contains
        procedure, public :: PrintInfo => ConditionPrintInfo
@@ -94,7 +95,7 @@ contains
     nullify(cond%conn_set                                )
     nullify(cond%next                                    )
     nullify(cond%swap_order_of_other_goveqs              )
-    nullify(cond%coupled_via_intauxvar_with_other_goveqns)
+    nullify(cond%is_the_other_GE_coupled_via_int_auxvars)
 
     ConditionNew => cond
 
