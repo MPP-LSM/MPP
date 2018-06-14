@@ -443,7 +443,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine RichardsODEComputeOffDiagJacobian(this, X_1, X_2, A, B, &
-       id_of_other_goveq, list_id_of_other_goveq,        &
+       itype_of_other_goveq, list_id_of_other_goveq,        &
        ierr)
     !
     ! !DESCRIPTION:
@@ -462,20 +462,20 @@ contains
     Vec                                      :: X_2
     Mat                                      :: A
     Mat                                      :: B
-    PetscInt                                 :: id_of_other_goveq
+    PetscInt                                 :: itype_of_other_goveq
     PetscInt                                 :: list_id_of_other_goveq
     PetscErrorCode                           :: ierr
     !
     ! LOCAL VARIABLES
     character(len=256)                       :: string
 
-    select case(id_of_other_goveq)
+    select case(itype_of_other_goveq)
     case (GE_RE)
        call RichardsODEPressureJacOffDiag_BC(this, list_id_of_other_goveq, B, ierr)
     case (GE_THERM_SOIL_EBASED)
        call RichardsODEPressureJacOffDiag_Temp(this, list_id_of_other_goveq, B, ierr)
     case default
-       write(string,*) id_of_other_goveq
+       write(string,*) itype_of_other_goveq
        write(iulog,*) 'Unknown id_of_other_goveq = ' // trim(string)
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select

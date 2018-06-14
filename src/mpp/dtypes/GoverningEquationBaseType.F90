@@ -140,7 +140,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseComputeOffDiagJacobian(this, X_1, X_2, A, B, &
-       id_of_other_goveq, &
+       itype_of_other_goveq, &
        list_id_of_other_goveq, &
        ierr)
     !
@@ -156,7 +156,7 @@ contains
     Vec                     :: X_2
     Mat                     :: A
     Mat                     :: B
-    PetscInt                :: id_of_other_goveq
+    PetscInt                :: itype_of_other_goveq
     PetscInt                :: list_id_of_other_goveq
     PetscErrorCode          :: ierr
 
