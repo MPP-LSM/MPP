@@ -12,6 +12,13 @@ module mpp_mesh_utils
   public :: ComputeXYZCentroids
   public :: ComputeCentroids
   public :: ComputeInternalConnections
+  public :: ComputeBoundaryDomainConnection
+  public :: ComputeLeftBoundaryDomainConnection
+  public :: ComputeRightBoundaryDomainConnection
+  public :: ComputeTopBoundaryDomainConnection
+  public :: ComputeBottomBoundaryDomainConnection
+  public :: ComputeSouthBoundaryDomainConnection
+  public :: ComputeNorthBoundaryDomainConnection
 
   interface ComputeXYZCentroids
      procedure ComputeXYZCentroids1
@@ -461,6 +468,35 @@ contains
   end subroutine ComputeIntConnAlongADirection
 
   !------------------------------------------------------------------------
+  subroutine AllocateMemoryForBoundaryConnection( &
+       nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+    !
+    implicit none
+    !
+
+    PetscInt   :: nconn
+    PetscInt  , pointer     :: id_up    (:)
+    PetscInt  , pointer     :: id_dn    (:)
+    PetscReal , pointer     :: dist_up  (:)
+    PetscReal , pointer     :: dist_dn  (:)
+    PetscReal , pointer     :: area     (:)
+    PetscInt  , pointer     :: itype    (:)
+    PetscInt  , pointer     :: tmp_3d   (:,:,:)
+    PetscReal , pointer     :: unit_vec (:,:)
+
+    allocate(id_up    (nconn ))
+    allocate(id_dn    (nconn ))
+    allocate(dist_up  (nconn ))
+    allocate(dist_dn  (nconn ))
+    allocate(area     (nconn ))
+    allocate(itype    (nconn ))
+    allocate(unit_vec (nconn,3 ))
+
+    unit_vec(:,:) = 0.d0
+
+  end subroutine AllocateMemoryForBoundaryConnection
+
+  !------------------------------------------------------------------------
   subroutine ComputeBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
        nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
     !
@@ -486,17 +522,10 @@ contains
     if (nx > 1) nconn = nconn + ny*nz*2
     if (ny > 1) nconn = nconn + nx*nz*2
     if (nz > 1) nconn = nconn + nx*ny*2
+
+    call AllocateMemoryForBoundaryConnection( &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
         
-    allocate(id_up    (nconn ))
-    allocate(id_dn    (nconn ))
-    allocate(dist_up  (nconn ))
-    allocate(dist_dn  (nconn ))
-    allocate(area     (nconn ))
-    allocate(itype    (nconn ))
-    allocate(unit_vec (nconn,3 ))
-
-    unit_vec(:,:) = 0.d0
-
     count = 0
     call ComputeXBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
        count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
@@ -510,8 +539,213 @@ contains
   end subroutine ComputeBoundaryDomainConnection
 
   !------------------------------------------------------------------------
+  subroutine ComputeLeftBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+       nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+    !
+    implicit none
+    !
+    PetscInt  , intent(in)  :: nx, ny, nz
+    PetscReal , intent(in)  :: dx, dy, dz
+    PetscInt  , intent(out) :: nconn
+    PetscInt  , pointer     :: id_up    (:)
+    PetscInt  , pointer     :: id_dn    (:)
+    PetscReal , pointer     :: dist_up  (:)
+    PetscReal , pointer     :: dist_dn  (:)
+    PetscReal , pointer     :: area     (:)
+    PetscInt  , pointer     :: itype    (:)
+    PetscInt  , pointer     :: tmp_3d   (:,:,:)
+    PetscReal , pointer     :: unit_vec (:,:)
+    !
+    PetscInt                :: iconn
+    PetscInt                :: count
+  
+    nconn = ny*nz
+        
+    call AllocateMemoryForBoundaryConnection( &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    count = 0
+    call ComputeXBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+         count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+         include_left_boundary =.true., &
+         include_right_boundary=.false.)
+    
+  end subroutine ComputeLeftBoundaryDomainConnection
+
+  !------------------------------------------------------------------------
+  subroutine ComputeRightBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+       nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+    !
+    implicit none
+    !
+    PetscInt  , intent(in)  :: nx, ny, nz
+    PetscReal , intent(in)  :: dx, dy, dz
+    PetscInt  , intent(out) :: nconn
+    PetscInt  , pointer     :: id_up    (:)
+    PetscInt  , pointer     :: id_dn    (:)
+    PetscReal , pointer     :: dist_up  (:)
+    PetscReal , pointer     :: dist_dn  (:)
+    PetscReal , pointer     :: area     (:)
+    PetscInt  , pointer     :: itype    (:)
+    PetscInt  , pointer     :: tmp_3d   (:,:,:)
+    PetscReal , pointer     :: unit_vec (:,:)
+    !
+    PetscInt                :: iconn
+    PetscInt                :: count
+
+    nconn = ny*nz
+        
+    call AllocateMemoryForBoundaryConnection( &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    count = 0
+    call ComputeXBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+         count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+         include_left_boundary =.false., &
+         include_right_boundary=.true.)
+    
+  end subroutine ComputeRightBoundaryDomainConnection
+
+  !------------------------------------------------------------------------
+  subroutine ComputeSouthBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+       nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+    !
+    implicit none
+    !
+    PetscInt  , intent(in)  :: nx, ny, nz
+    PetscReal , intent(in)  :: dx, dy, dz
+    PetscInt  , intent(out) :: nconn
+    PetscInt  , pointer     :: id_up    (:)
+    PetscInt  , pointer     :: id_dn    (:)
+    PetscReal , pointer     :: dist_up  (:)
+    PetscReal , pointer     :: dist_dn  (:)
+    PetscReal , pointer     :: area     (:)
+    PetscInt  , pointer     :: itype    (:)
+    PetscInt  , pointer     :: tmp_3d   (:,:,:)
+    PetscReal , pointer     :: unit_vec (:,:)
+    !
+    PetscInt                :: iconn
+    PetscInt                :: count
+  
+    nconn = nx*nz
+        
+    call AllocateMemoryForBoundaryConnection( &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    count = 0
+    call ComputeYBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+         count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+         include_south_boundary =.true., &
+         include_north_boundary=.false.)
+    
+  end subroutine ComputeSouthBoundaryDomainConnection
+
+  !------------------------------------------------------------------------
+  subroutine ComputeNorthBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+       nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+    !
+    implicit none
+    !
+    PetscInt  , intent(in)  :: nx, ny, nz
+    PetscReal , intent(in)  :: dx, dy, dz
+    PetscInt  , intent(out) :: nconn
+    PetscInt  , pointer     :: id_up    (:)
+    PetscInt  , pointer     :: id_dn    (:)
+    PetscReal , pointer     :: dist_up  (:)
+    PetscReal , pointer     :: dist_dn  (:)
+    PetscReal , pointer     :: area     (:)
+    PetscInt  , pointer     :: itype    (:)
+    PetscInt  , pointer     :: tmp_3d   (:,:,:)
+    PetscReal , pointer     :: unit_vec (:,:)
+    !
+    PetscInt                :: iconn
+    PetscInt                :: count
+
+    nconn = nx*nz
+        
+    call AllocateMemoryForBoundaryConnection( &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    count = 0
+    call ComputeYBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+         count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+         include_south_boundary =.false., &
+         include_north_boundary=.true.)
+    
+  end subroutine ComputeNorthBoundaryDomainConnection
+
+  !------------------------------------------------------------------------
+  subroutine ComputeBottomBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+       nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+    !
+    implicit none
+    !
+    PetscInt  , intent(in)  :: nx, ny, nz
+    PetscReal , intent(in)  :: dx, dy, dz
+    PetscInt  , intent(out) :: nconn
+    PetscInt  , pointer     :: id_up    (:)
+    PetscInt  , pointer     :: id_dn    (:)
+    PetscReal , pointer     :: dist_up  (:)
+    PetscReal , pointer     :: dist_dn  (:)
+    PetscReal , pointer     :: area     (:)
+    PetscInt  , pointer     :: itype    (:)
+    PetscInt  , pointer     :: tmp_3d   (:,:,:)
+    PetscReal , pointer     :: unit_vec (:,:)
+    !
+    PetscInt                :: iconn
+    PetscInt                :: count
+  
+    nconn = ny*nz
+        
+    call AllocateMemoryForBoundaryConnection( &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    count = 0
+    call ComputeZBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+         count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+         include_bottom_boundary =.true., &
+         include_top_boundary    =.false.)
+    
+  end subroutine ComputeBottomBoundaryDomainConnection
+
+  !------------------------------------------------------------------------
+  subroutine ComputeTopBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+       nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+    !
+    implicit none
+    !
+    PetscInt  , intent(in)  :: nx, ny, nz
+    PetscReal , intent(in)  :: dx, dy, dz
+    PetscInt  , intent(out) :: nconn
+    PetscInt  , pointer     :: id_up    (:)
+    PetscInt  , pointer     :: id_dn    (:)
+    PetscReal , pointer     :: dist_up  (:)
+    PetscReal , pointer     :: dist_dn  (:)
+    PetscReal , pointer     :: area     (:)
+    PetscInt  , pointer     :: itype    (:)
+    PetscInt  , pointer     :: tmp_3d   (:,:,:)
+    PetscReal , pointer     :: unit_vec (:,:)
+    !
+    PetscInt                :: iconn
+    PetscInt                :: count
+
+    nconn = ny*nz
+        
+    call AllocateMemoryForBoundaryConnection( &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    count = 0
+    call ComputeZBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
+         count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+         include_bottom_boundary =.true., &
+         include_top_boundary    =.false.)
+    
+  end subroutine ComputeTopBoundaryDomainConnection
+
+  !------------------------------------------------------------------------
   subroutine ComputeXBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
-       count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+       count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+       include_left_boundary, include_right_boundary)
     !
     use MultiPhysicsProbConstants, only : CONN_HORIZONTAL
     use MultiPhysicsProbConstants, only : CONN_VERTICAL
@@ -528,9 +762,19 @@ contains
     PetscReal , pointer     :: area     (:)
     PetscInt  , pointer     :: itype    (:)
     PetscReal , pointer     :: unit_vec (:,:)
+    PetscBool , optional    :: include_left_boundary
+    PetscBool , optional    :: include_right_boundary
     !
-    PetscInt :: ii, jj, kk
-    PetscInt, pointer               :: id(:,:,:)
+    PetscInt                :: ii, jj, kk
+    PetscInt, pointer       :: id(:,:,:)
+    PetscBool               :: add_left_boundary
+    PetscBool               :: add_right_boundary
+
+    add_left_boundary  = PETSC_TRUE
+    add_right_boundary = PETSC_TRUE
+
+    if (present(include_left_boundary )) add_left_boundary  = include_left_boundary
+    if (present(include_right_boundary)) add_right_boundary = include_right_boundary
 
     ! Compute cell ids
     call ComputeCellID(nx, ny, nz, id)
@@ -543,24 +787,28 @@ contains
           do jj = 1,ny
 
              ! At the beginning
-             ii = 1;
-             count             = count + 1
-             id_dn(count)      = id(ii,jj,kk)
-             dist_up(count)    = dx/2.d0*0.d0
-             dist_dn(count)    = dx/2.d0
-             area(count)       = dy*dz
-             unit_vec(count,1) = 1.d0
-             itype(count)      = CONN_HORIZONTAL
+             if (add_left_boundary) then
+                ii = 1;
+                count             = count + 1
+                id_dn(count)      = id(ii,jj,kk)
+                dist_up(count)    = dx/2.d0*0.d0
+                dist_dn(count)    = dx/2.d0
+                area(count)       = dy*dz
+                unit_vec(count,1) = 1.d0
+                itype(count)      = CONN_HORIZONTAL
+             endif
 
              ! At the end
-             ii = nx
-             count             = count + 1
-             id_dn(count)      = id(ii,jj,kk)
-             dist_up(count)    = dx/2.d0*0.d0
-             dist_dn(count)    = dx/2.d0
-             area(count)       = dy*dz
-             unit_vec(count,1) = -1.d0
-             itype(count)      = CONN_HORIZONTAL
+             if (add_right_boundary) then
+                ii = nx
+                count             = count + 1
+                id_dn(count)      = id(ii,jj,kk)
+                dist_up(count)    = dx/2.d0*0.d0
+                dist_dn(count)    = dx/2.d0
+                area(count)       = dy*dz
+                unit_vec(count,1) = -1.d0
+                itype(count)      = CONN_HORIZONTAL
+             endif
           end do
        end do
     end if
@@ -569,26 +817,37 @@ contains
 
   !------------------------------------------------------------------------
   subroutine ComputeYBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
-       count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+       count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+       include_south_boundary, include_north_boundary)
     !
     use MultiPhysicsProbConstants, only : CONN_HORIZONTAL
     use MultiPhysicsProbConstants, only : CONN_VERTICAL
     !
     implicit none
     !
-    PetscInt  , intent(in)  :: nx, ny, nz
-    PetscReal , intent(in)  :: dx, dy, dz
+    PetscInt  , intent(in)    :: nx, ny, nz
+    PetscReal , intent(in)    :: dx, dy, dz
     PetscInt  , intent(inout) :: count
-    PetscInt  , pointer     :: id_up    (:)
-    PetscInt  , pointer     :: id_dn    (:)
-    PetscReal , pointer     :: dist_up  (:)
-    PetscReal , pointer     :: dist_dn  (:)
-    PetscReal , pointer     :: area     (:)
-    PetscInt  , pointer     :: itype    (:)
-    PetscReal , pointer     :: unit_vec (:,:)
+    PetscInt  , pointer       :: id_up    (:)
+    PetscInt  , pointer       :: id_dn    (:)
+    PetscReal , pointer       :: dist_up  (:)
+    PetscReal , pointer       :: dist_dn  (:)
+    PetscReal , pointer       :: area     (:)
+    PetscInt  , pointer       :: itype    (:)
+    PetscReal , pointer       :: unit_vec (:,:)
+    PetscBool , optional      :: include_south_boundary
+    PetscBool , optional      :: include_north_boundary
     !
-    PetscInt :: ii, jj, kk
-    PetscInt, pointer               :: id(:,:,:)
+    PetscInt                  :: ii, jj, kk
+    PetscInt, pointer         :: id(:,:,:)
+    PetscBool                 :: add_south_boundary
+    PetscBool                 :: add_north_boundary
+
+    add_south_boundary = PETSC_TRUE
+    add_north_boundary = PETSC_TRUE
+
+    if (present(include_south_boundary)) add_south_boundary = include_south_boundary
+    if (present(include_north_boundary)) add_north_boundary = include_north_boundary
 
     ! Compute cell ids
     call ComputeCellID(nx, ny, nz, id)
@@ -601,24 +860,28 @@ contains
           do ii = 1,nx
 
              ! At the beginning
-             jj = 1;
-             count             = count + 1
-             id_dn(count)      = id(ii,jj,kk)
-             dist_up(count)    = 0.d0
-             dist_dn(count)    = dy/2.d0
-             area(count)       = dx*dz
-             unit_vec(count,1) = 1.d0
-             itype(count)      = CONN_HORIZONTAL
+             if (add_south_boundary) then
+                jj = 1;
+                count             = count + 1
+                id_dn(count)      = id(ii,jj,kk)
+                dist_up(count)    = 0.d0
+                dist_dn(count)    = dy/2.d0
+                area(count)       = dx*dz
+                unit_vec(count,1) = 1.d0
+                itype(count)      = CONN_HORIZONTAL
+             endif
 
              ! At the end
-             jj = ny
-             count             = count + 1
-             id_dn(count)      = id(ii,jj,kk)
-             dist_up(count)    = 0.d0
-             dist_dn(count)    = dy/2.d0
-             area(count)       = dx*dz
-             unit_vec(count,1) = -1.d0
-             itype(count)      = CONN_HORIZONTAL
+             if (add_north_boundary) then
+                jj = ny
+                count             = count + 1
+                id_dn(count)      = id(ii,jj,kk)
+                dist_up(count)    = 0.d0
+                dist_dn(count)    = dy/2.d0
+                area(count)       = dx*dz
+                unit_vec(count,1) = -1.d0
+                itype(count)      = CONN_HORIZONTAL
+             endif
           end do
        end do
     end if
@@ -627,7 +890,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine ComputeZBoundaryDomainConnection(nx, ny, nz, dx, dy, dz, &
-       count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+       count, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, &
+       include_bottom_boundary, include_top_boundary)
     !
     use MultiPhysicsProbConstants, only : CONN_HORIZONTAL
     use MultiPhysicsProbConstants, only : CONN_VERTICAL
@@ -644,9 +908,19 @@ contains
     PetscReal      , pointer       :: area     (:)
     PetscInt       , pointer       :: itype    (:)
     PetscReal      , pointer       :: unit_vec (:,:)
+    PetscBool      , optional      :: include_bottom_boundary
+    PetscBool      , optional      :: include_top_boundary
     !
     PetscInt                       :: ii , jj, kk
     PetscInt       , pointer       :: id(:,:,:)
+    PetscBool                      :: add_bottom_boundary
+    PetscBool                      :: add_top_boundary
+
+    add_bottom_boundary = PETSC_TRUE
+    add_top_boundary    = PETSC_TRUE
+
+    if (present(include_bottom_boundary)) add_bottom_boundary = include_bottom_boundary
+    if (present(include_top_boundary   )) add_top_boundary    = include_top_boundary
 
     ! Compute cell ids
     call ComputeCellID(nx, ny, nz, id)
@@ -659,24 +933,28 @@ contains
           do ii = 1,nx
 
              ! At the beginning
-             kk = 1;
-             count             = count + 1
-             id_dn(count)      = id(ii,jj,kk)
-             dist_up(count)    = 0.d0
-             dist_dn(count)    = dz/2.d0
-             area(count)       = dx*dy
-             unit_vec(count,1) = 1.d0
-             itype(count)      = CONN_VERTICAL
+             if (add_bottom_boundary) then
+                kk = 1;
+                count             = count + 1
+                id_dn(count)      = id(ii,jj,kk)
+                dist_up(count)    = 0.d0
+                dist_dn(count)    = dz/2.d0
+                area(count)       = dx*dy
+                unit_vec(count,1) = 1.d0
+                itype(count)      = CONN_VERTICAL
+             endif
 
              ! At the end
-             kk = nz
-             count             = count + 1
-             id_dn(count)      = id(ii,jj,kk)
-             dist_up(count)    = 0.d0
-             dist_dn(count)    = dz/2.d0
-             area(count)       = dx*dy
-             unit_vec(count,1) = -1.d0
-             itype(count)      = CONN_VERTICAL
+             if (add_top_boundary) then
+                kk = nz
+                count             = count + 1
+                id_dn(count)      = id(ii,jj,kk)
+                dist_up(count)    = 0.d0
+                dist_dn(count)    = dz/2.d0
+                area(count)       = dx*dy
+                unit_vec(count,1) = -1.d0
+                itype(count)      = CONN_VERTICAL
+             endif
           end do
        end do
     end if
