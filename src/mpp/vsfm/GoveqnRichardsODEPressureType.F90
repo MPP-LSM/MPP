@@ -675,6 +675,11 @@ contains
        if (.not.associated(cur_cond)) exit
        condition_id = condition_id + 1
 
+       if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          cur_cond => cur_cond%next
+          cycle
+       end if
+
        ! Find first soe-auxvar corresponding to goveqn-auxvar.
        iauxvar_off = -1
        do iauxvar = 1, auxVarCt_soe
@@ -701,8 +706,6 @@ contains
           case (COND_DIRICHLET, COND_MASS_RATE, COND_MASS_FLUX)
              ge_avars(sum_conn)%condition_value =  &
                   soe_avars(iconn + iauxvar_off)%condition_value
-          case (COND_DIRICHLET_FRM_OTR_GOVEQ)
-             ! Do nothing
           case (COND_SEEPAGE_BC)
              ge_avars(sum_conn)%condition_value = &
                   soe_avars(iconn + iauxvar_off)%condition_value
@@ -1115,7 +1118,10 @@ contains
           if (.not.associated(cur_cond)) exit
           cur_conn_set => cur_cond%conn_set
 
-          if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) cycle
+          if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+             cur_cond => cur_cond%next
+             cycle
+          end if
 
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
