@@ -61,6 +61,7 @@ module GoverningEquationBaseType
      procedure, public :: GetMeshIType                      => GoveqnBaseGetMeshIType
      procedure, public :: GetMeshGridCellIsActive           => GoveqnBaseGetMeshGridCellIsActive
      procedure, public :: GetConnIDDnForCondsExcptCondItype => GoveqnBaseGetConnIDDnForCondsExcptCondItype
+     procedure, public :: IsCoupledToOtherEquation          => GoveqnIsCoupledToOtherEquation
   end type goveqn_base_type
   !------------------------------------------------------------------------
 
@@ -757,6 +758,40 @@ contains
     end select
 
   end subroutine GoveqnBaseGetConnIDDnForCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnIsCoupledToOtherEquation(this, rank_of_other_goveqn, is_coupled)
+    !
+    ! !DESCRIPTION:
+    ! Returns if the given governing equation is coupled to other equation
+    ! that the rank = rank_of_other_goveqn
+    !
+    use CouplingVariableType      , only : coupling_variable_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)               :: this
+    PetscInt                              :: rank_of_other_goveqn
+    !
+    PetscBool                             :: is_coupled
+    type(coupling_variable_type), pointer :: cpl_var
+
+    is_coupled = PETSC_FALSE
+
+    cpl_var => this%coupling_vars%first
+    do
+       if (.not.associated(cpl_var)) exit
+
+       if (cpl_var%rank_of_coupling_goveqn == rank_of_other_goveqn) then
+          is_coupled = PETSC_TRUE
+          exit
+       endif
+
+       cpl_var => cpl_var%next
+    enddo
+
+  end subroutine GoveqnIsCoupledToOtherEquation
 
 #endif
 
