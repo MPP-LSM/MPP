@@ -1862,7 +1862,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
     use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
-    use CouplingVariableType      , only : coupling_variable_type
     !
     implicit none
     !
@@ -1876,7 +1875,6 @@ contains
     type (therm_enthalpy_soil_auxvar_type) , pointer :: aux_vars(:)
     type(condition_type)                   , pointer :: cur_cond
     class(connection_set_type)             , pointer :: cur_conn_set
-    type(coupling_variable_type)           , pointer :: cpl_var
     PetscInt                                         :: iconn
     PetscInt                                         :: ieqn
     PetscInt                                         :: sum_conn
@@ -1922,20 +1920,6 @@ contains
     eqns_are_coupled = PETSC_FALSE
     compute_deriv    = PETSC_TRUE
 
-    ! Are the two equations coupled?
-    cpl_var => geq_soil%coupling_vars%first
-    do
-       if (.not.associated(cpl_var)) exit
-       
-       if (cpl_var%rank_of_coupling_goveqn == rank_of_other_goveq) then
-          eqns_are_coupled = PETSC_TRUE
-          exit
-       endif
-       cpl_var => cpl_var%next
-    enddo
-
-    if (.not.eqns_are_coupled) return
- 
     sum_conn = 0
     cur_cond => geq_soil%boundary_conditions%first
     do

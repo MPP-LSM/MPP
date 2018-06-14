@@ -254,6 +254,7 @@ contains
     PetscInt                        :: col
     PetscInt                        :: nDM
     PetscInt                        :: icell
+    PetscBool                       :: are_eqns_coupled
 
     IS,pointer                      :: is(:)
     DM, pointer                     :: dms(:)
@@ -313,25 +314,31 @@ contains
 
           col = col + 1
 
-          ! J = dF_1/dx_2
-          call cur_goveq_1%ComputeOffDiagJacobian( &
-               X_subvecs(row),                     &
-               X_subvecs(col),                     &
-               B_submats(row,col),                 &
-               B_submats(row,col),                 &
-               cur_goveq_2%id,                     &
-               cur_goveq_2%rank_in_soe_list,       &
-               ierr); CHKERRQ(ierr)
+          call cur_goveq_1%IsCoupledToOtherEquation(cur_goveq_2%rank_in_soe_list, &
+               are_eqns_coupled)
 
-          ! J = dF_2/dx_1
-          call cur_goveq_2%ComputeOffDiagJacobian( &
-               X_subvecs(col),                     &
-               X_subvecs(row),                     &
-               B_submats(col,row),                 &
-               B_submats(col,row),                 &
-               cur_goveq_1%id,                     &
-               cur_goveq_1%rank_in_soe_list,       &
-               ierr); CHKERRQ(ierr)
+          if (are_eqns_coupled) then
+
+             ! J = dF_1/dx_2
+             call cur_goveq_1%ComputeOffDiagJacobian( &
+                  X_subvecs(row),                     &
+                  X_subvecs(col),                     &
+                  B_submats(row,col),                 &
+                  B_submats(row,col),                 &
+                  cur_goveq_2%id,                     &
+                  cur_goveq_2%rank_in_soe_list,       &
+                  ierr); CHKERRQ(ierr)
+
+             ! J = dF_2/dx_1
+             call cur_goveq_2%ComputeOffDiagJacobian( &
+                  X_subvecs(col),                     &
+                  X_subvecs(row),                     &
+                  B_submats(col,row),                 &
+                  B_submats(col,row),                 &
+                  cur_goveq_1%id,                     &
+                  cur_goveq_1%rank_in_soe_list,       &
+                  ierr); CHKERRQ(ierr)
+          end if
 
           cur_goveq_2 => cur_goveq_2%next
        enddo
