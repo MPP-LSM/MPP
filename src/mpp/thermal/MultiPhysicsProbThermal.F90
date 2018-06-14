@@ -507,7 +507,7 @@ contains
              ! Is this the appropriate BC?
              if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
                 do ieqn = 1, cur_cond_1%num_other_goveqs
-                   if (cur_cond_1%list_id_of_other_goveqs(ieqn) == jj ) then
+                   if (cur_cond_1%rank_of_other_goveqs(ieqn) == jj ) then
                       bc_found = PETSC_TRUE
                       exit
                    endif
@@ -528,7 +528,7 @@ contains
                 ! Is this the appropriate BC?
                 if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
                    do ieqn = 1, cur_cond_2%num_other_goveqs
-                      if (cur_cond_2%list_id_of_other_goveqs(ieqn) == ii ) then
+                      if (cur_cond_2%rank_of_other_goveqs(ieqn) == ii ) then
                          bc_found = PETSC_TRUE
                          exit
                       endif

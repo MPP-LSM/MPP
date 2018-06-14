@@ -28,7 +28,7 @@ module ConditionType
                                                                        ! TRUE          : "downwind cell" = BC; "upwind cell  " = Internal cell
 
      PetscInt                            :: num_other_goveqs           ! Number of other governing equations
-     PetscInt                  , pointer :: list_id_of_other_goveqs(:) ! List ID of other governing equations
+     PetscInt                  , pointer :: rank_of_other_goveqs(:)    ! Rank of other governing equations
      PetscInt                  , pointer :: itype_of_other_goveqs(:)   ! Type of other governing equations
                                                                        !(e.g. GE_THERM_SSW_TBASED, GE_THERM_SNOW_TBASED, etc)
      PetscBool                 , pointer :: swap_order_of_other_goveqs(:)
@@ -89,7 +89,7 @@ contains
     cond%swap_order             = PETSC_FALSE
 
     nullify(cond%value                                   )
-    nullify(cond%list_id_of_other_goveqs                 )
+    nullify(cond%rank_of_other_goveqs                    )
     nullify(cond%itype_of_other_goveqs                   )
     nullify(cond%conn_set                                )
     nullify(cond%next                                    )

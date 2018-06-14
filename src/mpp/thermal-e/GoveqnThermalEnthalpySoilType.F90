@@ -1079,7 +1079,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine ThermEnthalpySoilComputeOffDiagJacobian(this, X_1, X_2, A, B, &
-       itype_of_other_goveq, list_id_of_other_goveq,        &
+       itype_of_other_goveq, rank_of_other_goveq,        &
        ierr)
     !
     ! !DESCRIPTION:
@@ -1099,7 +1099,7 @@ contains
     Mat                                      :: A
     Mat                                      :: B
     PetscInt                                 :: itype_of_other_goveq
-    PetscInt                                 :: list_id_of_other_goveq
+    PetscInt                                 :: rank_of_other_goveq
     PetscErrorCode                           :: ierr
     !
     ! LOCAL VARIABLES
@@ -1107,10 +1107,10 @@ contains
 
     select case(itype_of_other_goveq)
     case (GE_RE)
-       call ThermalEnthalpySoilJacOffDiag_Pressure(this, list_id_of_other_goveq, &
+       call ThermalEnthalpySoilJacOffDiag_Pressure(this, rank_of_other_goveq, &
             B, ierr)
     case (GE_THERM_SOIL_EBASED)
-       call ThermalEnthalpySoilJacOffDiag_BC(this, list_id_of_other_goveq, &
+       call ThermalEnthalpySoilJacOffDiag_BC(this, rank_of_other_goveq, &
             B, ierr)
     case default
        write(string,*) itype_of_other_goveq
@@ -1711,7 +1711,7 @@ contains
   end subroutine ThermalEnthalpySoilDivergenceDeriv
 
   !------------------------------------------------------------------------
-  subroutine ThermalEnthalpySoilJacOffDiag_BC(geq_soil, list_id_of_other_goveq, B, ierr)
+  subroutine ThermalEnthalpySoilJacOffDiag_BC(geq_soil, rank_of_other_goveq, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of energy residual equation w.r.t to pressure
@@ -1731,7 +1731,7 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_thermal_enthalpy_soil_type) :: geq_soil
-    PetscInt                                 :: list_id_of_other_goveq
+    PetscInt                                 :: rank_of_other_goveq
     Mat                                      :: B
     PetscErrorCode                           :: ierr
     !
@@ -1774,7 +1774,7 @@ contains
 
           do ieqn = 1, cur_cond%num_other_goveqs
 
-             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+             if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
                 cur_cond_used = PETSC_TRUE
 
@@ -1848,7 +1848,7 @@ contains
   end subroutine ThermalEnthalpySoilJacOffDiag_BC
 
     !------------------------------------------------------------------------
-  subroutine ThermalEnthalpySoilJacOffDiag_Pressure(geq_soil, list_id_of_other_goveq, B, ierr)
+  subroutine ThermalEnthalpySoilJacOffDiag_Pressure(geq_soil, rank_of_other_goveq, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of energy residual equation w.r.t to pressure
@@ -1868,7 +1868,7 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
-    PetscInt                                         :: list_id_of_other_goveq
+    PetscInt                                         :: rank_of_other_goveq
     Mat                                              :: B
     PetscErrorCode                                   :: ierr
     !
@@ -1927,7 +1927,7 @@ contains
     do
        if (.not.associated(cpl_var)) exit
        
-       if (cpl_var%rank_of_coupling_goveqn == list_id_of_other_goveq) then          
+       if (cpl_var%rank_of_coupling_goveqn == rank_of_other_goveq) then
           eqns_are_coupled = PETSC_TRUE
           exit
        endif
@@ -1947,7 +1947,7 @@ contains
 
           do ieqn = 1, cur_cond%num_other_goveqs
 
-             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+             if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
                 cur_cond_used = PETSC_TRUE
 

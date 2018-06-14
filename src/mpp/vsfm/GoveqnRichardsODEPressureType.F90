@@ -443,7 +443,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine RichardsODEComputeOffDiagJacobian(this, X_1, X_2, A, B, &
-       itype_of_other_goveq, list_id_of_other_goveq,        &
+       itype_of_other_goveq, rank_of_other_goveq,        &
        ierr)
     !
     ! !DESCRIPTION:
@@ -463,7 +463,7 @@ contains
     Mat                                      :: A
     Mat                                      :: B
     PetscInt                                 :: itype_of_other_goveq
-    PetscInt                                 :: list_id_of_other_goveq
+    PetscInt                                 :: rank_of_other_goveq
     PetscErrorCode                           :: ierr
     !
     ! LOCAL VARIABLES
@@ -471,9 +471,9 @@ contains
 
     select case(itype_of_other_goveq)
     case (GE_RE)
-       call RichardsODEPressureJacOffDiag_BC(this, list_id_of_other_goveq, B, ierr)
+       call RichardsODEPressureJacOffDiag_BC(this, rank_of_other_goveq, B, ierr)
     case (GE_THERM_SOIL_EBASED)
-       call RichardsODEPressureJacOffDiag_Temp(this, list_id_of_other_goveq, B, ierr)
+       call RichardsODEPressureJacOffDiag_Temp(this, rank_of_other_goveq, B, ierr)
     case default
        write(string,*) itype_of_other_goveq
        write(iulog,*) 'Unknown id_of_other_goveq = ' // trim(string)
@@ -2020,7 +2020,7 @@ contains
   end subroutine RichardsODEPressureDivergenceDeriv
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEPressureJacOffDiag_BC(this, list_id_of_other_goveq, &
+  subroutine RichardsODEPressureJacOffDiag_BC(this, rank_of_other_goveq, &
                                               B, ierr)
     !
     ! !DESCRIPTION:
@@ -2040,7 +2040,7 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type) :: this
-    PetscInt                                 :: list_id_of_other_goveq
+    PetscInt                                 :: rank_of_other_goveq
     Mat                                      :: B
     PetscErrorCode                           :: ierr
     !
@@ -2079,7 +2079,7 @@ contains
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
 
           do ieqn = 1, cur_cond%num_other_goveqs
-             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+             if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
                 cur_cond_used = PETSC_TRUE
 
@@ -2188,7 +2188,7 @@ contains
   end subroutine RichardsODEPressureJacOffDiag_BC
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEPressureJacOffDiag_Temp(this, list_id_of_other_goveq, B, ierr)
+  subroutine RichardsODEPressureJacOffDiag_Temp(this, rank_of_other_goveq, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of residual equation with respect to
@@ -2206,7 +2206,7 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type) :: this
-    PetscInt                                 :: list_id_of_other_goveq
+    PetscInt                                 :: rank_of_other_goveq
     Mat                                      :: B
     PetscErrorCode                           :: ierr
     !
@@ -2251,7 +2251,7 @@ contains
     do
        if (.not.associated(cpl_var)) exit
        
-       if (cpl_var%rank_of_coupling_goveqn == list_id_of_other_goveq) then
+       if (cpl_var%rank_of_coupling_goveqn == rank_of_other_goveq) then
           eqns_are_coupled = PETSC_TRUE
           exit
        endif
@@ -2271,7 +2271,7 @@ contains
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
 
           do ieqn = 1, cur_cond%num_other_goveqs
-             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+             if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
                 coupling_via_BC = PETSC_TRUE
 

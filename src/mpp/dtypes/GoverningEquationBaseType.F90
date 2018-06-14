@@ -141,7 +141,7 @@ contains
   !------------------------------------------------------------------------
   subroutine GoveqnBaseComputeOffDiagJacobian(this, X_1, X_2, A, B, &
        itype_of_other_goveq, &
-       list_id_of_other_goveq, &
+       rank_of_other_goveq, &
        ierr)
     !
     ! !DESCRIPTION:
@@ -157,7 +157,7 @@ contains
     Mat                     :: A
     Mat                     :: B
     PetscInt                :: itype_of_other_goveq
-    PetscInt                :: list_id_of_other_goveq
+    PetscInt                :: rank_of_other_goveq
     PetscErrorCode          :: ierr
 
     write(iulog,*)'GoveqnBaseJacobianOffDiag must be extended by child class.'
@@ -224,7 +224,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseComputeOperatorsOffDiag(this, A, B, &
-       itype_of_other_goveq, list_id_of_other_goveq, ierr)
+       itype_of_other_goveq, rank_of_other_goveq, ierr)
     !
     ! !DESCRIPTION:
     ! Dummy subroutine for PETSc KSP Operator matrix
@@ -236,7 +236,7 @@ contains
     Mat                     :: A
     Mat                     :: B
     PetscInt                :: itype_of_other_goveq
-    PetscInt                :: list_id_of_other_goveq
+    PetscInt                :: rank_of_other_goveq
     PetscErrorCode          :: ierr
 
     write(iulog,*)'GoveqnBaseComputeOperatorsOffDiag must be extended by child class.'
@@ -560,13 +560,13 @@ contains
 
     cond%num_other_goveqs = num_other_goveqs
 
-    allocate (cond%list_id_of_other_goveqs                  (cond%num_other_goveqs))
+    allocate (cond%rank_of_other_goveqs                     (cond%num_other_goveqs))
     allocate (cond%itype_of_other_goveqs                    (cond%num_other_goveqs))
     allocate (cond%swap_order_of_other_goveqs               (cond%num_other_goveqs))
     allocate (cond%coupled_via_intauxvar_with_other_goveqns (cond%num_other_goveqs))
 
-    cond%list_id_of_other_goveqs (:) = id_of_other_goveqs(:)
-    cond%itype_of_other_goveqs   (:) = itype_of_other_goveqs(:)
+    cond%rank_of_other_goveqs  (:) = id_of_other_goveqs(:)
+    cond%itype_of_other_goveqs (:) = itype_of_other_goveqs(:)
 
     if (present(icoupling_of_other_goveqns)) then
        cond%coupled_via_intauxvar_with_other_goveqns(:) = icoupling_of_other_goveqns(:)
