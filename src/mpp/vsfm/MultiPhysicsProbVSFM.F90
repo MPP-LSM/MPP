@@ -907,7 +907,7 @@ contains
 
           do iauxvar = iauxvar_beg_bc, iauxvar_end_bc
 
-             cell_id = cell_id_dn_in_bc(iauxvar)
+             cell_id = cell_id_dn_in_bc(iauxvar-iauxvar_beg_bc+1)
 
              call soe%aux_vars_bc(iauxvar)%Init()
 
@@ -930,7 +930,7 @@ contains
 
           do iauxvar = iauxvar_beg_ss, iauxvar_end_ss
 
-             cell_id = cell_id_dn_in_ss(iauxvar)
+             cell_id = cell_id_dn_in_ss(iauxvar-iauxvar_beg_ss+1)
 
              call soe%aux_vars_ss(iauxvar)%Init()
 
@@ -1851,10 +1851,12 @@ contains
     use SaturationFunction             , only : SatFunc_Set_Weibull_RelPerm
     use SaturationFunction             , only : SatFunc_Set_Chuang
     use SaturationFunction             , only : SatFunc_Set_VG
+    use SaturationFunction             , only : SatFunc_Set_FETCH2
     use SaturationFunction             , only : RELPERM_FUNC_CAMPBELL
     use SaturationFunction             , only : RELPERM_FUNC_WEIBULL
     use SaturationFunction             , only : RELPERM_FUNC_MUALEM
     use SaturationFunction             , only : SAT_FUNC_CHUANG
+    use SaturationFunction             , only : SAT_FUNC_FETCH2
     use SaturationFunction             , only : SAT_FUNC_VAN_GENUCHTEN
     use MultiPhysicsProbConstants      , only : AUXVAR_CONN_BC
     use MultiPhysicsProbConstants      , only : AUXVAR_CONN_INTERNAL
@@ -2013,6 +2015,7 @@ contains
 
              if (sum_conn> size(param_1)) then
                 write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                write(iulog,*) sum_conn,size(param_1)
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              endif
 
@@ -2073,6 +2076,14 @@ contains
                         param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
                 endif
 
+             case (SAT_FUNC_FETCH2)
+                if (set_upwind_auxvar(sum_conn)) then
+                   call SatFunc_Set_FETCH2(conn_aux_vars(sum_conn)%satParams_up, &
+                        param_1(sum_conn), param_2(sum_conn))
+                else
+                   call SatFunc_Set_FETCH2(conn_aux_vars(sum_conn)%satParams_dn, &
+                        param_1(sum_conn), param_2(sum_conn))
+                end if
              case default
                 write(iulog,*)'Unknown satfunc_itype_variable ', satfunc_itype(sum_conn)
                 call endrun(msg=errMsg(__FILE__,__LINE__))
