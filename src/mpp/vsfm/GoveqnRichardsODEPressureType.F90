@@ -471,9 +471,9 @@ contains
 
     select case(itype_of_other_goveq)
     case (GE_RE)
-       call RichardsODEPressureJacOffDiag_BC(this, rank_of_other_goveq, B, ierr)
+       call OffDiagJacobian_Pressure(this, rank_of_other_goveq, B, ierr)
     case (GE_THERM_SOIL_EBASED)
-       call RichardsODEPressureJacOffDiag_Temp(this, rank_of_other_goveq, B, ierr)
+       call OffDiagJacobian_Temperature(this, rank_of_other_goveq, B, ierr)
     case default
        write(string,*) itype_of_other_goveq
        write(iulog,*) 'Unknown id_of_other_goveq = ' // trim(string)
@@ -2020,7 +2020,7 @@ contains
   end subroutine RichardsODEPressureDivergenceDeriv
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEPressureJacOffDiag_BC(this, rank_of_other_goveq, &
+  subroutine OffDiagJacobian_Pressure(this, rank_of_other_goveq, &
                                               B, ierr)
     !
     ! !DESCRIPTION:
@@ -2185,10 +2185,39 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine RichardsODEPressureJacOffDiag_BC
+  end subroutine OffDiagJacobian_Pressure
 
   !------------------------------------------------------------------------
-  subroutine RichardsODEPressureJacOffDiag_Temp(this, rank_of_other_goveq, B, ierr)
+  subroutine OffDiagJacobian_Temperature(this, rank_of_other_goveq, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of residual equation with respect to
+    ! temperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) :: this
+    PetscInt                                 :: rank_of_other_goveq
+    Mat                                      :: B
+    PetscErrorCode                           :: ierr
+    !
+    ! !LOCAL VARIABLES
+    PetscBool                                :: coupling_via_BC
+
+    call OffDiagJacobian_Temperature_ForBoundaryAuxVars( &
+         this, rank_of_other_goveq, B, coupling_via_BC, ierr)
+
+    if (coupling_via_BC) return
+
+    call OffDiagJacobian_Temperature_ForInternalAuxVars( &
+         this, rank_of_other_goveq, B, ierr)
+
+  end subroutine OffDiagJacobian_Temperature
+
+  !------------------------------------------------------------------------
+  subroutine OffDiagJacobian_Temperature_ForBoundaryAuxVars(this, &
+       rank_of_other_goveq, B, coupling_via_BC, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of residual equation with respect to
@@ -2207,6 +2236,7 @@ contains
     class(goveqn_richards_ode_pressure_type) :: this
     PetscInt                                 :: rank_of_other_goveq
     Mat                                      :: B
+    PetscBool, intent(out)                   :: coupling_via_BC
     PetscErrorCode                           :: ierr
     !
     ! !LOCAL VARIABLES
@@ -2225,23 +2255,11 @@ contains
     PetscBool                                :: internal_conn
     PetscInt                                 :: cond_type
     PetscInt                                 :: ieqn
-    PetscReal                                :: por
-    PetscReal                                :: den
-    PetscReal                                :: sat
-    PetscReal                                :: dpor_dT
-    PetscReal                                :: dden_dT
-    PetscReal                                :: dsat_dT
-    PetscReal                                :: derivative
-    PetscReal                                :: dtInv
-    PetscBool                                :: coupling_via_BC
-    PetscBool                                :: eqns_are_coupled
     PetscBool                                :: cur_cond_used
-    PetscInt                                 :: ivar
     type(condition_type),pointer             :: cur_cond
     class(connection_set_type), pointer      :: cur_conn_set
 
     coupling_via_BC  = PETSC_FALSE
-    eqns_are_coupled = PETSC_FALSE
     compute_deriv    = PETSC_TRUE
 
     sum_conn = 0
@@ -2258,7 +2276,8 @@ contains
 
                 cur_cond_used = PETSC_TRUE
 
-                if (.not.(cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn))) coupling_via_BC = PETSC_TRUE
+                if (.not.(cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn))) &
+                     coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
 
@@ -2321,8 +2340,60 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-    if (coupling_via_BC) return
+  end subroutine OffDiagJacobian_Temperature_ForBoundaryAuxVars
 
+  !------------------------------------------------------------------------
+  subroutine OffDiagJacobian_Temperature_ForInternalAuxVars(this, &
+       rank_of_other_goveq, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of residual equation with respect to
+    ! temperature
+    !
+    ! !USES:
+    use RichardsMod               , only : RichardsFluxDerivativeWrtTemperature
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_NULL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) :: this
+    PetscInt                                 :: rank_of_other_goveq
+    Mat                                      :: B
+    PetscErrorCode                           :: ierr
+    !
+    ! !LOCAL VARIABLES
+    PetscInt                                 :: iconn
+    PetscInt                                 :: sum_conn
+    PetscInt                                 :: cell_id_dn
+    PetscInt                                 :: cell_id_up
+    PetscInt                                 :: cell_id
+    PetscInt                                 :: row
+    PetscInt                                 :: col
+    PetscReal                                :: dummy_var
+    PetscReal                                :: Jup
+    PetscReal                                :: Jdn
+    PetscReal                                :: val
+    PetscBool                                :: compute_deriv
+    PetscBool                                :: internal_conn
+    PetscInt                                 :: cond_type
+    PetscInt                                 :: ieqn
+    PetscReal                                :: por
+    PetscReal                                :: den
+    PetscReal                                :: sat
+    PetscReal                                :: dpor_dT
+    PetscReal                                :: dden_dT
+    PetscReal                                :: dsat_dT
+    PetscReal                                :: derivative
+    PetscReal                                :: dtInv
+    PetscBool                                :: cur_cond_used
+    PetscInt                                 :: ivar
+    type(condition_type),pointer             :: cur_cond
+    class(connection_set_type), pointer      :: cur_conn_set
+
+    compute_deriv    = PETSC_TRUE
 
     dtInv = 1.d0 / this%dtime
 
@@ -2408,7 +2479,7 @@ contains
        cur_conn_set => cur_conn_set%next
     enddo
 
-  end subroutine RichardsODEPressureJacOffDiag_Temp
+  end subroutine OffDiagJacobian_Temperature_ForInternalAuxVars
 
   !------------------------------------------------------------------------
   subroutine RichardsODEComputeLateralFlux(this)
