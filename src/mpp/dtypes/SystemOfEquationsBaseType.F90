@@ -883,7 +883,7 @@ contains
     allocate(itype_of_other_goveqs(num_other_goveqs))
     do jj = 1, num_other_goveqs
        call this%SetPointerToIthGovEqn(id_of_other_goveqs(jj), other_goveq)
-       itype_of_other_goveqs(jj) = other_goveq%id
+       itype_of_other_goveqs(jj) = other_goveq%itype
     enddo
 
     call cur_goveq%AddCouplingBC(                   &

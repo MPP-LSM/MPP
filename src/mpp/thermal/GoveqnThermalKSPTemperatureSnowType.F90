@@ -74,7 +74,7 @@ contains
     call this%Create()
 
     this%name       = "Snow thermal equation based on temperature"
-    this%id         = GE_THERM_SNOW_TBASED
+    this%itype      = GE_THERM_SNOW_TBASED
     this%mesh_itype = MESH_CLM_SNOW_COL
 
     nullify(this%aux_vars_in)

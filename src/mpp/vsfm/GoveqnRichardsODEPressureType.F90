@@ -97,7 +97,7 @@ contains
     call this%Create()
 
     this%name         = "Richards Equation ODE"
-    this%id           = GE_RE
+    this%itype        = GE_RE
     this%mesh_itype   = MESH_CLM_SOIL_COL
 
     nullify(this%soe_auxvars_bc_offset)

@@ -74,7 +74,7 @@ contains
     call this%Create()
 
     this%name         = "Standing surface water thermal equation based on temperature"
-    this%id           = GE_THERM_SSW_TBASED
+    this%itype        = GE_THERM_SSW_TBASED
     this%mesh_itype   = MESH_CLM_SSW_COL
 
     nullify(this%aux_vars_in)

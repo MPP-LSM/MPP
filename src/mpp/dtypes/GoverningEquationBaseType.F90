@@ -26,7 +26,7 @@ module GoverningEquationBaseType
   type, public :: goveqn_base_type
 
      character (len=256)             :: name                                 ! name of governing equation (GE)
-     PetscInt                        :: id                                   ! identifier
+     PetscInt                        :: itype                                ! identifier
      PetscInt                        :: rank_in_soe_list                     ! rank of governing equation in SoE list
      class(mesh_type),pointer        :: mesh                                 ! pointer to the mesh
      PetscInt                        :: mesh_itype                           ! type of mesh
@@ -84,7 +84,7 @@ contains
     class(goveqn_base_type) :: this
 
     this%name             = ""
-    this%id               = -1
+    this%itype            = -1
     this%rank_in_soe_list = -1
     this%mesh_itype       = 0
     this%mesh_rank        = 0
@@ -275,7 +275,7 @@ contains
 
     write(iulog,*)'    ---------------------------------------------------------'
     write(iulog,*)'    Goveqn_name       : ',trim(this%name)
-    write(iulog,*)'    Goveqn_id         : ',this%id
+    write(iulog,*)'    Goveqn_id         : ',this%itype
     write(iulog,*)'    Goveqn_mesh_itype : ',this%mesh_itype
     write(iulog,*)' '
 

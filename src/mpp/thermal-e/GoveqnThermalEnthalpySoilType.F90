@@ -89,7 +89,7 @@ contains
     call this%Create()
 
     this%name       = "Soil thermal equation based on enthalpy"
-    this%id         = GE_THERM_SOIL_EBASED
+    this%itype      = GE_THERM_SOIL_EBASED
     this%mesh_itype = MESH_CLM_SOIL_COL
 
     nullify(this%aux_vars_in)

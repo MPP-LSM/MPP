@@ -325,7 +325,7 @@ contains
                   X_subvecs(col),                     &
                   B_submats(row,col),                 &
                   B_submats(row,col),                 &
-                  cur_goveq_2%id,                     &
+                  cur_goveq_2%itype,                  &
                   cur_goveq_2%rank_in_soe_list,       &
                   ierr); CHKERRQ(ierr)
 
@@ -335,7 +335,7 @@ contains
                   X_subvecs(row),                     &
                   B_submats(col,row),                 &
                   B_submats(col,row),                 &
-                  cur_goveq_1%id,                     &
+                  cur_goveq_1%itype,                  &
                   cur_goveq_1%rank_in_soe_list,       &
                   ierr); CHKERRQ(ierr)
           end if
