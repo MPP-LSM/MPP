@@ -1268,7 +1268,7 @@ contains
     use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
     use MultiPhysicsProbConstants , only : COND_NULL
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
-    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    use RichardsMod               , only : RichardsFlux
     !
     implicit none
     !
@@ -1518,6 +1518,7 @@ contains
     PetscReal                                :: Jdn
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
     PetscReal                                :: val
     PetscReal                                :: mflux
@@ -1529,7 +1530,8 @@ contains
 
     ! Interior cells
     cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -1541,6 +1543,7 @@ contains
 
           internal_conn = PETSC_TRUE
           cond_type     = COND_NULL
+          swap_order    = PETSC_FALSE
 
           if ((.not.geq_soil%mesh%is_active(cell_id_up)) .or. &
               (.not.geq_soil%mesh%is_active(cell_id_dn))) cycle
@@ -1551,6 +1554,7 @@ contains
                cur_conn_set%conn(iconn),                     &
                compute_deriv,                                &
                internal_conn,                                &
+               swap_order,                                   &
                cond_type,                                    &
                mflux,                                        &
                dmflux_dT_up,                                 &
@@ -1611,7 +1615,8 @@ contains
 
     ! Boundary cells
     cur_cond => geq_soil%boundary_conditions%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_cond)) exit
 
@@ -1636,6 +1641,7 @@ contains
                   cur_conn_set%conn(iconn),                    &
                   compute_deriv,                               &
                   internal_conn,                               &
+                  swap_order,                                  &
                   cond_type,                                   &
                   mflux,                                       &
                   dmflux_dT_up,                                &
@@ -1758,6 +1764,7 @@ contains
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
     PetscBool                                :: cur_cond_used
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
     PetscReal                                :: val
     PetscReal                                :: mflux
@@ -1769,7 +1776,8 @@ contains
 
     ! Boundary cells
     cur_cond => geq_soil%boundary_conditions%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_cond)) exit
 
@@ -1801,6 +1809,7 @@ contains
                         cur_conn_set%conn(iconn),                    &
                         compute_deriv,                               &
                         internal_conn,                               &
+                        swap_order,                                  &
                         cond_type,                                   &
                         mflux,                                       &
                         dmflux_dT_up,                                &
@@ -1858,16 +1867,6 @@ contains
     ! !DESCRIPTION:
     ! Computes the derivative of energy residual equation w.r.t to pressure
     !
-    ! !USES:
-    use ConditionType             , only : condition_type
-    use ConnectionSetType         , only : connection_set_type
-    use MultiPhysicsProbConstants , only : COND_NULL
-    use ThermalEnthalpyMod        , only : ThermalEnthalpyFluxDerivativeWrtPressure
-    use RichardsMod               , only : RichardsFlux
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
-    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
-    !
     implicit none
     !
     ! !ARGUMENTS
@@ -1904,7 +1903,7 @@ contains
     use RichardsMod               , only : RichardsFlux
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
-    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    use RichardsMod               , only : RichardsFlux
     use RichardsMod               , only : RichardsFlux_Internal
     !
     implicit none
@@ -2136,7 +2135,7 @@ contains
     use RichardsMod               , only : RichardsFlux
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
-    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    use RichardsMod               , only : RichardsFlux
     !
     implicit none
     !

@@ -2183,39 +2183,20 @@ contains
                    internal_conn = PETSC_FALSE
                    cond_type     = cur_cond%itype
 
-                   if (.not.cur_cond%swap_order) then
+                   call RichardsFluxDerivativeWrtTemperature( &
+                        this%aux_vars_bc(sum_conn),           &
+                        this%aux_vars_in(cell_id),            &
+                        cur_conn_set%conn(iconn),             &
+                        compute_deriv,                        &
+                        internal_conn,                        &
+                        cur_cond%swap_order,                  &
+                        cond_type,                            &
+                        dummy_var,                            &
+                        Jup,                                  &
+                        Jdn                                   &
+                        )
 
-                      call RichardsFluxDerivativeWrtTemperature( &
-                           this%aux_vars_bc(sum_conn),           &
-                           this%aux_vars_in(cell_id),            &
-                           cur_conn_set%conn(iconn),             &
-                           compute_deriv,                        &
-                           internal_conn,                        &
-                           cond_type,                            &
-                           dummy_var,                            &
-                           Jup,                                  &
-                           Jdn                                   &
-                           )
-
-                      val = Jup
-
-                   else
-
-                      call RichardsFluxDerivativeWrtTemperature( &
-                           this%aux_vars_in(cell_id),            &
-                           this%aux_vars_bc(sum_conn),           &
-                           cur_conn_set%conn(iconn),             &
-                           compute_deriv,                        &
-                           internal_conn,                        &
-                           cond_type,                            &
-                           dummy_var,                            &
-                           Jup,                                  &
-                           Jdn                                   &
-                           )
-
-                      val = -Jdn
-
-                   endif
+                   val = Jup
 
                    row = cell_id - 1
                    col = cur_conn_set%conn(iconn)%GetIDUp() - 1
@@ -2283,6 +2264,7 @@ contains
     PetscReal                                :: derivative
     PetscReal                                :: dtInv
     PetscBool                                :: cur_cond_used
+    PetscBool                                :: swap_order
     PetscInt                                 :: ivar
     type(condition_type),pointer             :: cur_cond
     class(connection_set_type), pointer      :: cur_conn_set
@@ -2320,7 +2302,8 @@ contains
 
     ! Interior cells
     cur_conn_set => this%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -2336,16 +2319,17 @@ contains
           if ( (.not. this%mesh%is_active(cell_id_up)) .or. &
                (.not. this%mesh%is_active(cell_id_dn)) ) cycle
 
-          call RichardsFluxDerivativeWrtTemperature(      &
-               this%aux_vars_in(cell_id_up),     &
-               this%aux_vars_in(cell_id_dn),     &
-               cur_conn_set%conn(iconn),                  &
-               compute_deriv,                             &
-               internal_conn,                             &
-               cond_type,                                 &
-               dummy_var,                                 &
-               Jup,                                       &
-               Jdn                                        &
+          call RichardsFluxDerivativeWrtTemperature( &
+               this%aux_vars_in(cell_id_up),         &
+               this%aux_vars_in(cell_id_dn),         &
+               cur_conn_set%conn(iconn),             &
+               compute_deriv,                        &
+               internal_conn,                        &
+               swap_order,                           &
+               cond_type,                            &
+               dummy_var,                            &
+               Jup,                                  &
+               Jdn                                   &
                )
 
           row = cell_id_up - 1
