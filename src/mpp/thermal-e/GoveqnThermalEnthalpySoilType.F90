@@ -1904,7 +1904,6 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
     use RichardsMod               , only : RichardsFlux
-    use RichardsMod               , only : RichardsFlux_Internal
     !
     implicit none
     !
@@ -2001,7 +2000,7 @@ contains
                            cur_conn_set%conn(iconn),        &
                            compute_deriv,                   &
                            internal_conn,                   &
-                           swap_order, &
+                           swap_order,                      &
                            cond_type,                       &
                            mflux,                           &
                            dmflux_dP_up,                    &
@@ -2046,12 +2045,13 @@ contains
 
                    else
 
-                      call RichardsFlux_Internal(                    &
-                           geq_soil%aux_vars_in(cell_id  ), &
+                      call RichardsFlux(                    &
                            geq_soil%aux_vars_bc(sum_conn ), &
+                           geq_soil%aux_vars_in(cell_id  ), &
                            cur_conn_set%conn(iconn),        &
                            compute_deriv,                   &
                            internal_conn,                   &
+                           swap_order,                      &
                            cond_type,                       &
                            mflux,                           &
                            dmflux_dP_up,                    &
