@@ -1492,6 +1492,7 @@ contains
     PetscReal                                :: dummy_var2
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
     type(condition_type),pointer             :: cur_cond
     class(connection_set_type), pointer      :: cur_conn_set
@@ -1500,7 +1501,8 @@ contains
 
     ! Interior cells
     cur_conn_set => this%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -1526,6 +1528,7 @@ contains
                   cur_conn_set%conn(iconn),     &
                   compute_deriv,                &
                   internal_conn,                &
+                  swap_order,                   &
                   cond_type,                    &
                   flux,                         &
                   dummy_var1,                   &
@@ -1591,6 +1594,7 @@ contains
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order,             &
                      cond_type,                       &
                      flux,                            &
                      dummy_var1,                      &
@@ -1623,11 +1627,12 @@ contains
              case (DARCY_FLUX_TYPE)
 
                 call RichardsFlux(                    &
-                     this%aux_vars_in(cell_id ),      &
                      this%aux_vars_bc(sum_conn),      &
+                     this%aux_vars_in(cell_id ),      &
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order,             &
                      cond_type,                       &
                      flux,                            &
                      dummy_var1,                      &
@@ -1648,12 +1653,13 @@ contains
                      dummy_var2                       &
                      )
 
+                flux = -flux
+
              case default
                 write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
                 call endrun(msg=errMsg(__FILE__,__LINE__))
              end select
 
-             flux = -flux
           endif
 
           ff(cell_id) = ff(cell_id) + flux;
@@ -1772,6 +1778,7 @@ contains
     PetscReal                                :: dP
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
     type(condition_type),pointer             :: cur_cond
     class(connection_set_type), pointer      :: cur_conn_set
@@ -1780,7 +1787,8 @@ contains
 
     ! Interior cells
     cur_conn_set => this%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -1806,6 +1814,7 @@ contains
                   cur_conn_set%conn(iconn),        &
                   compute_deriv,                   &
                   internal_conn,                   &
+                  swap_order,                      &
                   cond_type,                       &
                   dummy_var,                       &
                   Jup,                             &
@@ -1885,6 +1894,7 @@ contains
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order, &
                      cond_type,                       &
                      dummy_var,                       &
                      Jup,                             &
@@ -1917,16 +1927,18 @@ contains
              case (DARCY_FLUX_TYPE)
 
                 call RichardsFlux(                    &
-                     this%aux_vars_in(cell_id ),      &
                      this%aux_vars_bc(sum_conn),      &
+                     this%aux_vars_in(cell_id ),      &
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order, &
                      cond_type,                       &
                      dummy_var,                       &
                      Jup,                             &
                      Jdn                              &
                      )
+                val = -Jdn
 
              case (CONDUCTANCE_FLUX_TYPE)
                 call RichardsFluxConductanceModel(    &
@@ -1941,13 +1953,13 @@ contains
                      Jup,                             &
                      Jdn                              &
                      )
+                val = Jup
 
              case default
                 write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
                 call endrun(msg=errMsg(__FILE__,__LINE__))
              end select
 
-             val = Jup
           endif
 
           row = cell_id - 1
@@ -2102,6 +2114,7 @@ contains
                               cur_conn_set%conn(iconn),        &
                               compute_deriv,                   &
                               internal_conn,                   &
+                              cur_cond%swap_order, &
                               cond_type,                       &
                               dummy_var,                       &
                               Jup,                             &
@@ -2136,16 +2149,18 @@ contains
                       case (DARCY_FLUX_TYPE)
 
                          call RichardsFlux(                    &
-                              this%aux_vars_in(cell_id ),      &
                               this%aux_vars_bc(sum_conn),      &
+                              this%aux_vars_in(cell_id),       &
                               cur_conn_set%conn(iconn),        &
                               compute_deriv,                   &
                               internal_conn,                   &
+                              cur_cond%swap_order, &
                               cond_type,                       &
                               dummy_var,                       &
                               Jup,                             &
                               Jdn                              &
                               )
+                      val = -Jup
 
                       case (CONDUCTANCE_FLUX_TYPE)
                          call RichardsFluxConductanceModel(    &
@@ -2160,12 +2175,12 @@ contains
                               Jup,                             &
                               Jdn                              &
                               )
+                      val = Jdn
 
                       case default
                          write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
                          call endrun(msg=errMsg(__FILE__,__LINE__))
                       end select
-                      val = Jdn
                    endif
 
                    row = cell_id - 1
@@ -2522,6 +2537,7 @@ contains
     type(condition_type),pointer             :: lateral_cond
     class(connection_set_type), pointer      :: cur_conn_set
     PetscBool                                :: lateral_cond_found
+    PetscBool                                :: swap_order
     PetscErrorCode                           :: ierr
     PetscViewer :: viewer
     character(len=256) :: string
@@ -2578,16 +2594,17 @@ contains
 
           case (DARCY_FLUX_TYPE)
 
-             call RichardsFlux( &
-                  this%aux_vars_in(cell_id_up),     &
-                  this%aux_vars_in(cell_id_dn),     &
-                  cur_conn_set%conn(iconn),                  &
-                  compute_deriv,                             &
-                  internal_conn,                             &
-                  cond_type,                                 &
-                  flux,                                      &
-                  dummy_var1,                                &
-                  dummy_var2                                 &
+             call RichardsFlux(                 &
+                  this%aux_vars_in(cell_id_up), &
+                  this%aux_vars_in(cell_id_dn), &
+                  cur_conn_set%conn(iconn),     &
+                  compute_deriv,                &
+                  internal_conn,                &
+                  swap_order,                   &
+                  cond_type,                    &
+                  flux,                         &
+                  dummy_var1,                   &
+                  dummy_var2                    &
                   )
 
           case (CONDUCTANCE_FLUX_TYPE)

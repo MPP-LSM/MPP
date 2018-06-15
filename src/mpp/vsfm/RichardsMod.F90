@@ -17,6 +17,7 @@ module RichardsMod
 
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: RichardsFlux
+  public :: RichardsFlux_Internal
   public :: RichardsFluxDerivativeWrtTemperature
   public :: RichardsFluxConductanceModel
   !
@@ -25,6 +26,94 @@ module RichardsMod
 contains
 
   subroutine RichardsFlux( &
+       aux_var_up,         &
+       aux_var_dn,         &
+       conn_up2dn,         &
+       compute_deriv,      &
+       internal_conn,      &
+       swap_order,         &
+       cond_type,          &
+       flux,               &
+       dflux_dP_up,        &
+       dflux_dP_dn         &
+       )
+
+    !
+    ! !DESCRIPTION:
+    ! Based on the primary (P) and secondary (kr, den, etc) values of upwind and downwind
+    ! control volumes, this subroutine computes:
+    !  - Two-point flux for Richards equation, and
+    !  - (optinal) Derivative of the flux w.r.t. to upwind and downwind pressure.
+    !
+    ! Negative flux implies flow occurs from upwind to downwind control volume.
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants  , only : GRAVITY_CONSTANT, PRESSURE_REF
+    use MultiPhysicsProbConstants  , only : COND_DIRICHLET, COND_MASS_FLUX, COND_MASS_RATE
+    use MultiPhysicsProbConstants  , only : COND_DIRICHLET_FRM_OTR_GOVEQ, COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants  , only : FMWH2O
+    use ConnectionSetType          , only : connection_type
+    use RichardsODEPressureAuxType , only : rich_ode_pres_auxvar_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(rich_ode_pres_auxvar_type) , intent(in)  :: aux_var_up
+    class(rich_ode_pres_auxvar_type) , intent(in)  :: aux_var_dn
+    type(connection_type)            , intent(in)  :: conn_up2dn
+    PetscBool                        , intent(in)  :: compute_deriv
+    PetscBool                        , intent(in)  :: internal_conn
+    PetscBool                        , intent(in)  :: swap_order
+    PetscInt                         , intent(in)  :: cond_type
+    PetscReal                        , intent(out) :: flux
+    PetscReal                        , intent(out) :: dflux_dP_up
+    PetscReal                        , intent(out) :: dflux_dP_dn
+
+    PetscReal                                      :: f
+    PetscReal                                      :: df_dP_up
+    PetscReal                                      :: df_dP_dn
+
+    if (.not.swap_order) then
+
+       call RichardsFlux_Internal( &
+            aux_var_up    , &
+            aux_var_dn    ,        &
+            conn_up2dn    ,        &
+            compute_deriv ,        &
+            internal_conn ,        &
+            cond_type     ,        &
+            f             ,        &
+            df_dP_up      ,        &
+            df_dP_dn               &
+            )
+
+       flux        = f
+       dflux_dP_up = df_dP_up
+       dflux_dP_dn = df_dP_dn
+
+    else
+       call RichardsFlux_Internal( &
+            aux_var_dn    ,        &
+            aux_var_up    ,        &
+            conn_up2dn    ,        &
+            compute_deriv ,        &
+            internal_conn ,        &
+            cond_type     ,        &
+            f             ,        &
+            df_dP_up      ,        &
+            df_dP_dn               &
+            )
+
+       flux        = -f
+       dflux_dP_up = -df_dP_dn
+       dflux_dP_dn = -df_dP_up
+    endif
+
+  end subroutine RichardsFlux
+
+  !------------------------------------------------------------------------------
+
+  subroutine RichardsFlux_Internal( &
        aux_var_up,         &
        aux_var_dn,         &
        conn_up2dn,         &
@@ -246,7 +335,7 @@ contains
 
     endif
 
-  end subroutine RichardsFlux
+  end subroutine RichardsFlux_Internal
 
   !------------------------------------------------------------------------------
   subroutine RichardsFluxDerivativeWrtTemperature( &

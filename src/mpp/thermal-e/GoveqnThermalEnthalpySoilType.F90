@@ -1293,13 +1293,15 @@ contains
     PetscReal                                :: dummy_var2
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
 
     compute_deriv = PETSC_FALSE
 
     ! Interior cells
     cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -1321,6 +1323,7 @@ contains
                cur_conn_set%conn(iconn),         &
                compute_deriv,                    &
                internal_conn,                    &
+               swap_order,                       &
                cond_type,                        &
                mflux,                            &
                dummy_var1,                       &
@@ -1367,7 +1370,8 @@ contains
 
     ! Boundary cells
     cur_cond => geq_soil%boundary_conditions%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_cond)) exit
 
@@ -1392,6 +1396,7 @@ contains
                   cur_conn_set%conn(iconn),       &
                   compute_deriv,                  &
                   internal_conn,                  &
+                  swap_order,                     &
                   cond_type,                      &
                   mflux,                          &
                   dummy_var1,                     &
@@ -1900,6 +1905,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
     use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    use RichardsMod               , only : RichardsFlux_Internal
     !
     implicit none
     !
@@ -1996,6 +2002,7 @@ contains
                            cur_conn_set%conn(iconn),        &
                            compute_deriv,                   &
                            internal_conn,                   &
+                           swap_order, &
                            cond_type,                       &
                            mflux,                           &
                            dmflux_dP_up,                    &
@@ -2040,7 +2047,7 @@ contains
 
                    else
 
-                      call RichardsFlux(                    &
+                      call RichardsFlux_Internal(                    &
                            geq_soil%aux_vars_in(cell_id  ), &
                            geq_soil%aux_vars_bc(sum_conn ), &
                            cur_conn_set%conn(iconn),        &
@@ -2228,7 +2235,8 @@ contains
 
     ! Interior cells
     cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -2250,6 +2258,7 @@ contains
                cur_conn_set%conn(iconn),         &
                compute_deriv,                    &
                internal_conn,                    &
+               swap_order,                       &
                cond_type,                        &
                mflux,                            &
                dmflux_dP_up,                     &
