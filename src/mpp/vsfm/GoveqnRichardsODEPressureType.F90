@@ -1544,6 +1544,7 @@ contains
                   cur_conn_set%conn(iconn),        &
                   compute_deriv,                   &
                   internal_conn,                   &
+                  swap_order,                   &
                   cond_type,                       &
                   flux,                            &
                   dummy_var1,                      &
@@ -1609,6 +1610,7 @@ contains
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order,             &
                      cond_type,                       &
                      flux,                            &
                      dummy_var1,                      &
@@ -1641,19 +1643,18 @@ contains
 
              case (CONDUCTANCE_FLUX_TYPE)
                 call RichardsFluxConductanceModel(    &
+                     this%aux_vars_bc(sum_conn),      &
                      this%aux_vars_in(cell_id ),      &
-                     this%aux_vars_bc(sum_conn ),     &
                      this%aux_vars_conn_bc(sum_conn), &
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order,             &
                      cond_type,                       &
                      flux,                            &
                      dummy_var1,                      &
                      dummy_var2                       &
                      )
-
-                flux = -flux
 
              case default
                 write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
@@ -1829,6 +1830,7 @@ contains
                   cur_conn_set%conn(iconn),        &
                   compute_deriv,                   &
                   internal_conn,                   &
+                  swap_order,                      &
                   cond_type,                       &
                   dummy_var,                       &
                   Jup,                             &
@@ -1894,7 +1896,7 @@ contains
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
-                     cur_cond%swap_order, &
+                     cur_cond%swap_order,             &
                      cond_type,                       &
                      dummy_var,                       &
                      Jup,                             &
@@ -1909,6 +1911,7 @@ contains
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order,             &
                      cond_type,                       &
                      dummy_var,                       &
                      Jup,                             &
@@ -1942,18 +1945,19 @@ contains
 
              case (CONDUCTANCE_FLUX_TYPE)
                 call RichardsFluxConductanceModel(    &
-                     this%aux_vars_in(cell_id ),      &
                      this%aux_vars_bc(sum_conn ),     &
+                     this%aux_vars_in(cell_id ),      &
                      this%aux_vars_conn_bc(sum_conn), &
                      cur_conn_set%conn(iconn),        &
                      compute_deriv,                   &
                      internal_conn,                   &
+                     cur_cond%swap_order,             &
                      cond_type,                       &
                      dummy_var,                       &
                      Jup,                             &
                      Jdn                              &
                      )
-                val = Jup
+                val = -Jdn
 
              case default
                 write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
@@ -2114,7 +2118,7 @@ contains
                               cur_conn_set%conn(iconn),        &
                               compute_deriv,                   &
                               internal_conn,                   &
-                              cur_cond%swap_order, &
+                              cur_cond%swap_order,             &
                               cond_type,                       &
                               dummy_var,                       &
                               Jup,                             &
@@ -2129,6 +2133,7 @@ contains
                               cur_conn_set%conn(iconn),        &
                               compute_deriv,                   &
                               internal_conn,                   &
+                              cur_cond%swap_order,             &
                               cond_type,                       &
                               dummy_var,                       &
                               Jup,                             &
@@ -2154,7 +2159,7 @@ contains
                               cur_conn_set%conn(iconn),        &
                               compute_deriv,                   &
                               internal_conn,                   &
-                              cur_cond%swap_order, &
+                              cur_cond%swap_order,             &
                               cond_type,                       &
                               dummy_var,                       &
                               Jup,                             &
@@ -2164,18 +2169,19 @@ contains
 
                       case (CONDUCTANCE_FLUX_TYPE)
                          call RichardsFluxConductanceModel(    &
-                              this%aux_vars_in(cell_id ),      &
                               this%aux_vars_bc(sum_conn ),     &
+                              this%aux_vars_in(cell_id ),      &
                               this%aux_vars_conn_bc(sum_conn), &
                               cur_conn_set%conn(iconn),        &
                               compute_deriv,                   &
                               internal_conn,                   &
+                              cur_cond%swap_order,             &
                               cond_type,                       &
                               dummy_var,                       &
                               Jup,                             &
                               Jdn                              &
                               )
-                      val = Jdn
+                      val = -Jup
 
                       case default
                          write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
