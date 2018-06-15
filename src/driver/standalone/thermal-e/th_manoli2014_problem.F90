@@ -927,7 +927,6 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil mass equation',      &
          unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
@@ -959,7 +958,6 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil energy equation',    &
          unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
@@ -993,7 +991,6 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root mass equation',      &
          unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
@@ -1027,7 +1024,6 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root energy equation',    &
          unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
@@ -1055,10 +1051,10 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root mass equation',     &
          unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
+         icoupling_of_other_goveqns = icoupling_others, &
+         region_type=SOIL_TOP_CELLS)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)
@@ -1082,10 +1078,10 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root energy equation',   &
          unit='K',                                 &
-         region_type=SOIL_TOP_CELLS,                &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
+         icoupling_of_other_goveqns = icoupling_others, &
+         region_type=SOIL_TOP_CELLS)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)
@@ -1109,10 +1105,10 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem mass equation',     &
          unit='K',                                  &
-         region_type=SOIL_BOTTOM_CELLS,             &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
+         icoupling_of_other_goveqns = icoupling_others, &
+         region_type=SOIL_BOTTOM_CELLS)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)
@@ -1136,10 +1132,10 @@ contains
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem energy equation',   &
          unit='K',                                  &
-         region_type=SOIL_BOTTOM_CELLS,             &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
+         icoupling_of_other_goveqns = icoupling_others, &
+         region_type=SOIL_BOTTOM_CELLS)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)

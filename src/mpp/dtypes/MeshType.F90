@@ -51,6 +51,7 @@ module MeshType
 
      type(connection_set_list_type) :: intrn_conn_set_list
      type(connection_set_list_type) :: lateral_conn_set_list
+     type(connection_set_list_type) :: conditions_conn_set_list
 
    contains
      procedure, public :: Init
@@ -120,6 +121,7 @@ contains
 
     call this%intrn_conn_set_list%Init()
     call this%lateral_conn_set_list%Init()
+    call this%conditions_conn_set_list%Init()
 
   end subroutine Init
 
@@ -163,7 +165,8 @@ contains
 
     call this%intrn_conn_set_list%Copy(inp_mesh%intrn_conn_set_list)
     call this%lateral_conn_set_list%Copy(inp_mesh%lateral_conn_set_list)
-    
+    call this%conditions_conn_set_list%Copy(inp_mesh%conditions_conn_set_list)
+
   end subroutine MeshCopy
 
   !------------------------------------------------------------------------
@@ -248,6 +251,7 @@ contains
 
     call mesh%intrn_conn_set_list%Init()
     call mesh%lateral_conn_set_list%Init()
+    call mesh%conditions_conn_set_list%Init()
 
     call MeshSetConnectionSet(mesh, CONN_SET_INTERNAL,           &
          vert_nconn,  vert_conn_id_up, vert_conn_id_dn,         &
@@ -1267,6 +1271,7 @@ contains
     !
     use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
     use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
+    use MultiPhysicsProbConstants , only : CONN_SET_CONDITIONS
     use ConnectionSetType         , only : connection_set_type
     use ConnectionSetType         , only : ConnectionSetNew
     !
@@ -1299,6 +1304,8 @@ contains
        call this%intrn_conn_set_list%AddSet(conn_set)
     case (CONN_SET_LATERAL)
        call this%lateral_conn_set_list%AddSet(conn_set)
+    case (CONN_SET_CONDITIONS)
+       call this%conditions_conn_set_list%AddSet(conn_set)
     case default
        write(iulog,*)'Unknown connection set type = ',conn_type
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1331,6 +1338,7 @@ contains
 
     call this%intrn_conn_set_list%Destroy()
     call this%lateral_conn_set_list%Destroy()
+    call this%conditions_conn_set_list%Destroy()
 
   end subroutine Clean
 

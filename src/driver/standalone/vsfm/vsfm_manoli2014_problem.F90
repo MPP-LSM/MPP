@@ -914,7 +914,6 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in soil equation',   &
          unit               = 'Pa',                         &
-         region_type        = SOIL_TOP_CELLS,               &
          num_other_goveqs   = num_other_goveqns,            &
          id_of_other_goveqs = ieqn_others,                  &
          conn_set           = conn_set)
@@ -931,7 +930,6 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Soil BC in root equation', &
          unit               = 'Pa', &
-         region_type        = SOIL_TOP_CELLS, &
          num_other_goveqs   = num_other_goveqns, &
          id_of_other_goveqs = ieqn_others, &
          conn_set           = conn_set)
@@ -942,9 +940,9 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Xylem BC in root equation', &
          unit               = 'Pa', &
-         region_type        = SOIL_TOP_CELLS, &
          num_other_goveqs   = num_other_goveqns, &
-         id_of_other_goveqs = ieqn_others)
+         id_of_other_goveqs = ieqn_others, &
+         region_type        = SOIL_TOP_CELLS)
 
     ieqn           = 3
     ieqn_others(1) = 2
@@ -952,9 +950,9 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in xylem equation', &
          unit               = 'Pa', &
-         region_type        = SOIL_BOTTOM_CELLS, &
          num_other_goveqs   = num_other_goveqns, &
-         id_of_other_goveqs = ieqn_others)
+         id_of_other_goveqs = ieqn_others, &
+         region_type        = SOIL_BOTTOM_CELLS)
 
     deallocate(soil_dz        )
     deallocate(root_zc        )

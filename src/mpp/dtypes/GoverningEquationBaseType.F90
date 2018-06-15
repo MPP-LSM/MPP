@@ -470,34 +470,8 @@ contains
 
     cond => ConditionNew()
 
-    cond%name         = trim(name)
-    cond%units        = trim(unit)
-    cond%itype        = cond_type
-
-    allocate(cond%conn_set)
-
-    ! Check the optional arguments
-    if (.not.present(conn_set) .and. .not.present(region_type)) then
-       write(iulog,*) 'Neither region_type nor connection set is defined while adding a BC'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-    if (present(conn_set) .and. present(region_type)) then
-       write(iulog,*) 'Both region_type and connection set are defined while adding a BC.' // &
-       ' Only one can be defined.'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    endif
-
-    if (present(region_type)) then
-       cond%region_itype = region_type
-       call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
-    else
-       cond%conn_set => conn_set
-       cond%ncells = conn_set%num_connections
-       nullify(conn_set)
-    endif
-
-    allocate(cond%value(cond%ncells))
-    cond%value(:) = 0.d0
+    call ConditionMinimalSetup(cond, this%mesh, name, unit, cond_type, &
+         region_type, conn_set)
 
     select case (ss_or_bc_type)
     case (COND_BC)
@@ -520,9 +494,9 @@ contains
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseAddCouplingBC(this, name, unit,    &
-       region_type, num_other_goveqs, id_of_other_goveqs, &
+       num_other_goveqs, id_of_other_goveqs, &
        itype_of_other_goveqs, icoupling_of_other_goveqns, &
-       conn_set)
+       region_type, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds boundary condition to the governing equation that is
@@ -543,33 +517,19 @@ contains
     class(goveqn_base_type)                                      :: this
     character(len =*)         , intent(in)                       :: name
     character(len =*)         , intent(in)                       :: unit
-    PetscInt                  , intent(in)                       :: region_type
     PetscInt                  , intent(in)                       :: num_other_goveqs
     PetscInt                  , intent(in), pointer              :: id_of_other_goveqs(:)
     PetscInt                  , intent(in), pointer              :: itype_of_other_goveqs(:)
     PetscBool                 , intent(in), pointer, optional    :: icoupling_of_other_goveqns(:)
+    PetscInt                  , intent(in), optional             :: region_type
     type(connection_set_type) , intent(inout), pointer, optional :: conn_set
     !
     type(condition_type)      , pointer                          :: cond
 
     cond => ConditionNew()
 
-    cond%name         = trim(name)
-    cond%units        = trim(unit)
-    cond%itype        = COND_DIRICHLET_FRM_OTR_GOVEQ
-    cond%region_itype = region_type
-
-    allocate(cond%conn_set)
-    if (.not. present(conn_set)) then
-       call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
-    else
-       cond%conn_set => conn_set
-       cond%ncells = conn_set%num_connections
-       nullify(conn_set)
-    endif
-
-    allocate(cond%value(cond%ncells))
-    cond%value(:) = 0.d0
+    call ConditionMinimalSetup(cond, this%mesh, name, unit, COND_DIRICHLET_FRM_OTR_GOVEQ, &
+         region_type, conn_set)
 
     cond%num_other_goveqs = num_other_goveqs
 
@@ -588,6 +548,63 @@ contains
     call this%boundary_conditions%AddCondition(cond)
 
   end subroutine GoveqnBaseAddCouplingBC
+
+  !------------------------------------------------------------------------
+  subroutine ConditionMinimalSetup(cond, mesh, name, unit, cond_type, region_type, conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Does the minimal setup of a condition_type
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : ConditionNew
+    use MeshType                  , only : MeshCreateConnectionSet
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use ConnectionSetType         , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(condition_type), pointer :: cond
+    class(mesh_type), pointer        :: mesh
+    character(len =*)                           :: name
+    character(len =*)                           :: unit
+    PetscInt                                    :: cond_type
+    PetscInt, optional                          :: region_type
+    type(connection_set_type),pointer, optional :: conn_set
+
+    cond%name         = trim(name)
+    cond%units        = trim(unit)
+    cond%itype        = cond_type
+
+    allocate(cond%conn_set)
+
+    ! Check the optional arguments
+    if (.not.present(conn_set) .and. .not.present(region_type)) then
+       write(iulog,*) 'Neither region_type nor connection set is defined while adding a BC'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+    if (present(conn_set) .and. present(region_type)) then
+       write(iulog,*) 'Both region_type and connection set are defined while adding a BC.' // &
+       ' Only one can be defined.'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    if (present(region_type)) then
+       cond%region_itype = region_type
+       call MeshCreateConnectionSet(mesh, cond%region_itype, cond%conn_set, cond%ncells)
+    else
+       cond%conn_set => conn_set
+       cond%ncells = conn_set%num_connections
+       nullify(conn_set)
+    endif
+
+    allocate(cond%value(cond%ncells))
+    cond%value(:) = 0.d0
+
+  end subroutine ConditionMinimalSetup
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseUpdateConditionConnSet(this, icond, &

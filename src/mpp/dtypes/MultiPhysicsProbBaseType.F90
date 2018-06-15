@@ -1012,13 +1012,15 @@ contains
     name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
     id_of_other_goveqs(1) = ieqn_2
     call this%soe%AddCouplingBCsInGovEqn(ieqn_1, &
-         name, '[K]', iregion_1, num_other_goveqs, id_of_other_goveqs)
+         name, '[K]', num_other_goveqs, id_of_other_goveqs, &
+         region_type = iregion_1)
 
     write(name,*) ieqn_1
     name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
     id_of_other_goveqs(1) = ieqn_1
     call this%soe%AddCouplingBCsInGovEqn(ieqn_2,  &
-         name, '[K]', iregion_2, num_other_goveqs, id_of_other_goveqs)
+         name, '[K]', num_other_goveqs, id_of_other_goveqs, &
+         region_type = iregion_2)
 
     deallocate(id_of_other_goveqs)
 

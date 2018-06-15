@@ -841,8 +841,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine SOEBaseAddCouplingBCsInGovEqn(this, igoveq, name, unit, &
-       region_type, num_other_goveqs, id_of_other_goveqs, &
-       icoupling_of_other_goveqns, conn_set)
+       num_other_goveqs, id_of_other_goveqs, &
+       icoupling_of_other_goveqns, region_type, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds coupling boundary conditions to igoveq governing equation
@@ -858,10 +858,10 @@ contains
     PetscInt                  , intent(in)          :: igoveq
     character(len =*)         , intent(in)          :: name
     character(len =*)         , intent(in)          :: unit
-    PetscInt                  , intent(in)          :: region_type
     PetscInt                  , intent(in)          :: num_other_goveqs
     PetscInt                  , pointer, intent(in) :: id_of_other_goveqs(:)
     PetscBool                 , pointer, optional   :: icoupling_of_other_goveqns(:)
+    PetscInt                  , intent(in), optional:: region_type
     type(connection_set_type) , pointer, optional   :: conn_set
     !
     ! !LOCAL VARIABLES
@@ -887,9 +887,10 @@ contains
     enddo
 
     call cur_goveq%AddCouplingBC(                   &
-         name, unit, region_type, num_other_goveqs, &
+         name, unit, num_other_goveqs,              &
          id_of_other_goveqs, itype_of_other_goveqs, &
-         icoupling_of_other_goveqns, conn_set )
+         icoupling_of_other_goveqns, region_type,   &
+         conn_set )
 
     deallocate(itype_of_other_goveqs)
 
