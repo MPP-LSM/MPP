@@ -964,7 +964,7 @@ contains
     ieqn = 1
     call vsfm_mpp_vertical%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_SEEPAGE_BC, &
-         SOIL_TOP_CELLS, conn_set)
+         conn_set=conn_set)
 
     !icond = 1
     !call vsfm_mpp_lateral%GovEqnUpdateConditionConnSet(ieqn, icond, COND_BC, &

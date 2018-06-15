@@ -463,7 +463,7 @@ contains
     character(len =*)                           :: name
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
-    PetscInt                                    :: region_type
+    PetscInt, optional                          :: region_type
     type(connection_set_type),pointer, optional :: conn_set
     !
     type(condition_type), pointer :: cond
@@ -473,10 +473,22 @@ contains
     cond%name         = trim(name)
     cond%units        = trim(unit)
     cond%itype        = cond_type
-    cond%region_itype = region_type
 
     allocate(cond%conn_set)
-    if (.not. present(conn_set)) then
+
+    ! Check the optional arguments
+    if (.not.present(conn_set) .and. .not.present(region_type)) then
+       write(iulog,*) 'Neither region_type nor connection set is defined while adding a BC'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+    if (present(conn_set) .and. present(region_type)) then
+       write(iulog,*) 'Both region_type and connection set are defined while adding a BC.' // &
+       ' Only one can be defined.'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    if (present(region_type)) then
+       cond%region_itype = region_type
        call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
     else
        cond%conn_set => conn_set

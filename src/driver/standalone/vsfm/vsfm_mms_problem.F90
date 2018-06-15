@@ -314,7 +314,6 @@ contains
          name          = 'Pressure BC'           , &
          unit          = 'Pa'                    , &
          cond_type     = COND_DIRICHLET          , &
-         region_type   = SOIL_TOP_CELLS          , &
          conn_set      = conn_set)
 
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn  , &

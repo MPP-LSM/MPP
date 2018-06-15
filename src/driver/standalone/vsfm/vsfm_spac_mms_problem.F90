@@ -492,7 +492,6 @@ contains
          name          = 'Pressure BC for MMS'   , &
          unit          = 'Pa'                    , &
          cond_type     = COND_DIRICHLET          , &
-         region_type   = SOIL_TOP_CELLS          , &
          conn_set      = conn_set)
 
     nullify   (conn_set )
@@ -517,7 +516,6 @@ contains
          name          = 'Pressure BC for MMS'   , &
          unit          = 'Pa'                    , &
          cond_type     = COND_DIRICHLET          , &
-         region_type   = SOIL_TOP_CELLS          , &
          conn_set      = conn_set)
 
     nullify   (conn_set )
@@ -542,7 +540,6 @@ contains
          name          = 'Pressure BC for MMS'   , &
          unit          = 'Pa'                    , &
          cond_type     = COND_DIRICHLET          , &
-         region_type   = SOIL_TOP_CELLS          , &
          conn_set      = conn_set)
 
     nullify   (conn_set )

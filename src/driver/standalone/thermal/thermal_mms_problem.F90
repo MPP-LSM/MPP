@@ -436,7 +436,6 @@ contains
          name               = 'Temp BC'             , &
          unit               = 'T'                   , &
          cond_type          = COND_DIRICHLET        , &
-         region_type        = SOIL_TOP_CELLS        , &
          conn_set           = conn_set)
 
     call thermal_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS, &

@@ -835,7 +835,7 @@ contains
 
     ieqn       = 1
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
-         'Bottom BC', 'Pa', COND_DIRICHLET, SOIL_BOTTOM_CELLS, conn_set)
+         'Bottom BC', 'Pa', COND_DIRICHLET, conn_set=conn_set)
 
     deallocate (conn_id_up   )
     deallocate (conn_id_dn   )

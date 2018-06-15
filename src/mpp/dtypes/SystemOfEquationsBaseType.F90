@@ -914,7 +914,7 @@ contains
     character(len =*)                           :: name
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
-    PetscInt                                    :: region_type
+    PetscInt, optional                          :: region_type
     type(connection_set_type),pointer, optional :: conn_set
     !
     class(goveqn_base_type),pointer             :: cur_goveq
@@ -923,13 +923,8 @@ contains
 
     call this%SetPointerToIthGovEqn(igoveqn, cur_goveq)
 
-    if (.not.present(conn_set)) then
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type)
-    else
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type, conn_set=conn_set)
-    endif
+    call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+         cond_type, region_type, conn_set)
 
   end subroutine SOEBaseAddConditionInGovEqn
 

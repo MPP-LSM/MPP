@@ -383,7 +383,6 @@ contains
     
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, ss_or_bc_type=COND_BC,   &
          name='Root BC in soil equation', unit='Pa', cond_type=COND_DIRICHLET, &
-         region_type=SOIL_TOP_CELLS, &
          conn_set=conn_set)
 
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &
