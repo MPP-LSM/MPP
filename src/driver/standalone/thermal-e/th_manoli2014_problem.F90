@@ -80,6 +80,29 @@ module th_manoli2014_problem
   
   PetscReal, parameter :: press_initial  = 3.5355d3      ! [Pa]
 
+  PetscInt :: num_icpl
+  PetscInt :: max_Iauxvar_cpl
+  PetscInt :: num_bcpl
+  PetscInt :: max_Bauxvar_cpl
+
+  PetscInt, pointer :: i_cpl_data(:,:)
+  PetscInt, pointer :: b_cpl_data(:,:)
+
+  PetscInt :: SOIL_MASS_GE
+  PetscInt :: ROOT_MASS_GE
+  PetscInt :: XYLM_MASS_GE
+  PetscInt :: SOIL_ENTH_GE
+  PetscInt :: ROOT_ENTH_GE
+  PetscInt :: XYLM_ENTH_GE
+
+  PetscInt :: SRX_MASS_GE
+  PetscInt :: SRX_ENTH_GE
+
+  PetscInt :: ROOT_REGION_IN_SOIL_MESH
+  PetscInt :: SOIL_REGION_IN_ROOT_MESH
+  PetscInt :: XYLM_REGION_IN_ROOT_MESH
+  PetscInt :: ROOT_REGION_IN_XYLM_MESH
+
   public :: run_th_manoli2014_problem
 
 contains
@@ -173,9 +196,11 @@ contains
 
     ! 2. Add all meshes needed for the MPP
     call add_meshes()
+    call add_connection_sets_to_meshes()
 
     ! 3. Add all governing equations
     call add_goveqns()
+    call setup_goveqn_connectivity()
 
     ! 4. Add boundary and source-sink conditions to all governing equations
     call add_conditions_to_goveqns()
@@ -802,9 +827,19 @@ contains
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for heat transport based for Soil', MESH_CLM_SOIL_COL)
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for heat transport based for Root', MESH_SPAC_ROOT_COL)
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for heat transport based for Xylem', MESH_SPAC_XYLEM_COL)
+
+       SOIL_MASS_GE = 1
+       ROOT_MASS_GE = 2
+       XYLM_MASS_GE = 3
+       SOIL_ENTH_GE = 4
+       ROOT_ENTH_GE = 5
+       XYLM_ENTH_GE = 6
     else
        call th_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE for Soil+Root+Xylem', MESH_CLM_SOIL_COL)
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for Soil+Root+Xylem', MESH_CLM_SOIL_COL)
+
+       SRX_MASS_GE = 1
+       SRX_ENTH_GE = 2
     endif
 
     call th_mpp%SetMeshesOfGoveqns()
@@ -812,7 +847,104 @@ contains
   end subroutine add_goveqns
 
   !------------------------------------------------------------------------
-  subroutine add_conditions_to_goveqns()
+
+  subroutine setup_goveqn_connectivity()
+    !
+    ! !DESCRIPTION:
+    !
+    implicit none
+    !
+    PetscInt :: ii
+
+    if (single_pde_formulation) then
+
+       num_icpl        = 1
+       max_Iauxvar_cpl = 2
+       num_bcpl        = 0
+       max_Bauxvar_cpl = 0
+
+       allocate(i_cpl_data(num_icpl, max_Iauxvar_cpl))
+
+       ii = 1; i_cpl_data(1,1) = SRX_MASS_GE; i_cpl_data(1,2) = SRX_ENTH_GE
+
+    else
+
+       num_icpl        = 3
+       max_Iauxvar_cpl = 2
+       num_bcpl        = 8
+       max_Bauxvar_cpl = 2
+
+       allocate(i_cpl_data(num_icpl, max_Iauxvar_cpl))
+
+       ii = 1; i_cpl_data(ii,1) = SOIL_MASS_GE; i_cpl_data(ii,2) = SOIL_ENTH_GE
+       ii = 2; i_cpl_data(ii,1) = ROOT_MASS_GE; i_cpl_data(ii,2) = ROOT_ENTH_GE
+       ii = 3; i_cpl_data(ii,1) = XYLM_MASS_GE; i_cpl_data(ii,2) = XYLM_ENTH_GE
+
+       allocate(b_cpl_data(num_bcpl, max_Bauxvar_cpl + 3))
+
+       !b_cpl_data:
+       !    Col-1: Base equation id
+       !    Col-2: Connection set ID for the region
+       !    Col-3: Number of coupling equations
+       !    Col-4: Rank of 1st coupling equation
+       !    Col-5: Rank of 2nd coupling equation
+       !    Col-6: ...
+       !    Col-7: Rank of the n-th coupling equation
+
+       b_cpl_data(1,1) = SOIL_MASS_GE
+       b_cpl_data(1,2) = ROOT_REGION_IN_SOIL_MESH
+       b_cpl_data(1,3) = 2
+       b_cpl_data(1,4) = ROOT_MASS_GE
+       b_cpl_data(1,5) = ROOT_ENTH_GE
+
+       b_cpl_data(2,1) = SOIL_ENTH_GE
+       b_cpl_data(2,2) = ROOT_REGION_IN_SOIL_MESH
+       b_cpl_data(2,3) = 2
+       b_cpl_data(2,4) = ROOT_MASS_GE
+       b_cpl_data(2,5) = ROOT_ENTH_GE
+
+       b_cpl_data(3,1) = ROOT_MASS_GE
+       b_cpl_data(3,2) = SOIL_REGION_IN_ROOT_MESH
+       b_cpl_data(3,3) = 2
+       b_cpl_data(3,4) = SOIL_MASS_GE
+       b_cpl_data(3,5) = SOIL_ENTH_GE
+
+       b_cpl_data(4,1) = ROOT_ENTH_GE
+       b_cpl_data(4,2) = SOIL_REGION_IN_ROOT_MESH
+       b_cpl_data(4,3) = 2
+       b_cpl_data(4,4) = SOIL_MASS_GE
+       b_cpl_data(4,5) = SOIL_ENTH_GE
+
+       b_cpl_data(5,1) = ROOT_MASS_GE
+       b_cpl_data(5,2) = XYLM_REGION_IN_ROOT_MESH
+       b_cpl_data(5,3) = 2
+       b_cpl_data(5,4) = XYLM_MASS_GE
+       b_cpl_data(5,5) = XYLM_ENTH_GE
+
+       b_cpl_data(6,1) = ROOT_ENTH_GE
+       b_cpl_data(6,2) = ROOT_REGION_IN_XYLM_MESH
+       b_cpl_data(6,3) = 2
+       b_cpl_data(6,4) = XYLM_MASS_GE
+       b_cpl_data(6,5) = XYLM_ENTH_GE
+
+       b_cpl_data(7,1) = XYLM_MASS_GE
+       b_cpl_data(7,2) = ROOT_REGION_IN_XYLM_MESH
+       b_cpl_data(7,3) = 2
+       b_cpl_data(7,4) = ROOT_MASS_GE
+       b_cpl_data(7,5) = ROOT_ENTH_GE
+
+       b_cpl_data(8,1) = XYLM_ENTH_GE
+       b_cpl_data(8,2) = ROOT_REGION_IN_XYLM_MESH
+       b_cpl_data(8,3) = 2
+       b_cpl_data(8,4) = ROOT_MASS_GE
+       b_cpl_data(8,5) = ROOT_ENTH_GE
+
+    endif
+
+  end subroutine setup_goveqn_connectivity
+
+  !------------------------------------------------------------------------
+  subroutine add_connection_sets_to_meshes()
     !
     ! !DESCRIPTION:
     !
@@ -823,9 +955,8 @@ contains
     use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
     use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
     use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use MultiPhysicsProbConstants , only : CONN_SET_CONDITIONS
     use ConnectionSetType         , only : connection_set_type
     use MeshType                  , only : MeshCreateConnectionSet
     !
@@ -852,8 +983,6 @@ contains
     PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
     class(connection_set_type) , pointer :: conn_set
-
-    if (single_pde_formulation) return
 
     ncells_root  = nx_root*ny_root*nz_root
 
@@ -902,7 +1031,72 @@ contains
        itype(kk)      = CONN_VERTICAL
     enddo
 
+    ROOT_REGION_IN_SOIL_MESH = 1
+    call th_mpp%meshes(1)%SetConnectionSet(CONN_SET_CONDITIONS, &
+         nconn,  id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    SOIL_REGION_IN_ROOT_MESH = 1
+    unit_vec(:,1) = 1.d0
+    call th_mpp%meshes(2)%SetConnectionSet(CONN_SET_CONDITIONS, &
+         nconn,  id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    XYLM_REGION_IN_ROOT_MESH = 2
     allocate(conn_set)
+    call MeshCreateConnectionSet(th_mpp%meshes(2), SOIL_TOP_CELLS, conn_set, nconn)
+    call th_mpp%meshes(2)%conditions_conn_set_list%AddSet(conn_set)
+    nullify(conn_set)
+
+    ROOT_REGION_IN_XYLM_MESH = 1
+    allocate(conn_set)
+    call MeshCreateConnectionSet(th_mpp%meshes(3), SOIL_BOTTOM_CELLS, conn_set, nconn)
+    call th_mpp%meshes(3)%conditions_conn_set_list%AddSet(conn_set)
+    nullify(conn_set)
+
+    deallocate(soil_dz        )
+    deallocate(root_zc        )
+    deallocate(root_len_den   )
+    deallocate(root_surf_area )
+    deallocate(id_up          )
+    deallocate(id_dn          )
+    deallocate(dist_up        )
+    deallocate(dist_dn        )
+    deallocate(area           )
+    deallocate(itype          )
+    deallocate(unit_vec       )
+
+  end subroutine add_connection_sets_to_meshes
+
+  !------------------------------------------------------------------------
+  subroutine add_conditions_to_goveqns()
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use MultiPhysicsProbTH        , only : th_mpp
+    use MultiPhysicsProbConstants , only : ALL_CELLS
+    use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
+    use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use ConnectionSetType         , only : connection_set_type
+    use MeshType                  , only : MeshCreateConnectionSet
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    PetscInt                            :: ieqn, num_ieqn_others
+    PetscInt                  , pointer :: ieqn_others(:)
+    PetscBool                 , pointer :: icoupling_others(:)
+    class(connection_set_type) , pointer :: conn_set
+
+    if (single_pde_formulation) return
+
+    allocate(conn_set)
+
+    call th_mpp%meshes(1)%conditions_conn_set_list%GetConnectionSet(ROOT_REGION_IN_SOIL_MESH, conn_set)
 
     ! BoundaryCondition:
     ! SOIL mass ---> ROOT mass
@@ -920,10 +1114,6 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil mass equation',      &
          unit='Pa',                                 &
@@ -951,10 +1141,9 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
+    allocate(conn_set)
+    call th_mpp%meshes(1)%conditions_conn_set_list%GetConnectionSet(ROOT_REGION_IN_SOIL_MESH, conn_set)
+
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil energy equation',    &
          unit='Pa',                                 &
@@ -982,12 +1171,9 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    unit_vec(:,1) = 1.d0
+    allocate(conn_set)
+    call th_mpp%meshes(2)%conditions_conn_set_list%GetConnectionSet(SOIL_REGION_IN_ROOT_MESH, conn_set)
 
-    call MeshCreateConnectionSet(th_mpp%meshes(2), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root mass equation',      &
          unit='Pa',                                 &
@@ -1015,12 +1201,9 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
-    unit_vec(:,1) = 1.d0
+    allocate(conn_set)
+    call th_mpp%meshes(2)%conditions_conn_set_list%GetConnectionSet(SOIL_REGION_IN_ROOT_MESH, conn_set)
 
-    call MeshCreateConnectionSet(th_mpp%meshes(2), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Soil BC in root energy equation',    &
          unit='Pa',                                 &
@@ -1048,13 +1231,16 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
+    allocate(conn_set)
+    call th_mpp%meshes(2)%conditions_conn_set_list%GetConnectionSet(XYLM_REGION_IN_ROOT_MESH, conn_set)
+
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root mass equation',     &
          unit='Pa',                                 &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
-         region_type=SOIL_TOP_CELLS)
+         conn_set=conn_set)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)
@@ -1075,13 +1261,16 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
+    allocate(conn_set)
+    call th_mpp%meshes(2)%conditions_conn_set_list%GetConnectionSet(XYLM_REGION_IN_ROOT_MESH, conn_set)
+
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Xylem BC in root energy equation',   &
          unit='K',                                 &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
-         region_type=SOIL_TOP_CELLS)
+         conn_set=conn_set)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)
@@ -1102,13 +1291,16 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
+    allocate(conn_set)
+    call th_mpp%meshes(3)%conditions_conn_set_list%GetConnectionSet(ROOT_REGION_IN_XYLM_MESH, conn_set)
+
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem mass equation',     &
          unit='K',                                  &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
-         region_type=SOIL_BOTTOM_CELLS)
+         conn_set=conn_set)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)
@@ -1129,28 +1321,19 @@ contains
     icoupling_others(2) = PETSC_FALSE
     icoupling_others(3) = PETSC_TRUE
 
+    allocate(conn_set)
+    call th_mpp%meshes(3)%conditions_conn_set_list%GetConnectionSet(ROOT_REGION_IN_XYLM_MESH, conn_set)
+
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem energy equation',   &
          unit='K',                                  &
          num_other_goveqs=num_ieqn_others,         &
          id_of_other_goveqs=ieqn_others,            &
          icoupling_of_other_goveqns = icoupling_others, &
-         region_type=SOIL_BOTTOM_CELLS)
+         conn_set=conn_set)
 
     deallocate(ieqn_others     )
     deallocate(icoupling_others)
-
-    deallocate(soil_dz        )
-    deallocate(root_zc        )
-    deallocate(root_len_den   )
-    deallocate(root_surf_area )
-    deallocate(id_up          )
-    deallocate(id_dn          )
-    deallocate(dist_up        )
-    deallocate(dist_dn        )
-    deallocate(area           )
-    deallocate(itype          )
-    deallocate(unit_vec       )
 
   end subroutine add_conditions_to_goveqns
 

@@ -1264,7 +1264,7 @@ contains
   !------------------------------------------------------------------------
 
   subroutine MeshSetConnectionSet(this, conn_type, nconn, id_up, id_dn, &
-       dist_up, dist_dn, area, itype)
+       dist_up, dist_dn, area, itype, unit_vec)
     !
     ! !DESCRIPTION:
     ! Creates a connection set based on information passed
@@ -1287,6 +1287,7 @@ contains
     PetscReal, pointer                 :: dist_dn(:)
     PetscReal, pointer                 :: area(:)
     PetscInt, pointer                  :: itype(:)
+    PetscReal, pointer, optional       :: unit_vec(:,:)
     !
     ! !LOCAL VARIABLES:
     class(connection_set_type),pointer :: conn_set
@@ -1297,7 +1298,7 @@ contains
     PetscReal                          :: dist
 
     call MeshCreateConnectionSet(this, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, conn_set=conn_set)
+         dist_up, dist_dn, area, itype, unit_vec=unit_vec, conn_set=conn_set)
 
     select case(conn_type)
     case (CONN_SET_INTERNAL)
