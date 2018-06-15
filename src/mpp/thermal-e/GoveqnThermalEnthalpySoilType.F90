@@ -1107,10 +1107,10 @@ contains
 
     select case(itype_of_other_goveq)
     case (GE_RE)
-       call ThermalEnthalpySoilJacOffDiag_Pressure(this, rank_of_other_goveq, &
+       call OffDiagJacobian_Pressure(this, rank_of_other_goveq, &
             B, ierr)
     case (GE_THERM_SOIL_EBASED)
-       call ThermalEnthalpySoilJacOffDiag_BC(this, rank_of_other_goveq, &
+       call OffDiagJacobian_Temperature(this, rank_of_other_goveq, &
             B, ierr)
     case default
        write(string,*) itype_of_other_goveq
@@ -1711,7 +1711,7 @@ contains
   end subroutine ThermalEnthalpySoilDivergenceDeriv
 
   !------------------------------------------------------------------------
-  subroutine ThermalEnthalpySoilJacOffDiag_BC(geq_soil, rank_of_other_goveq, B, ierr)
+  subroutine OffDiagJacobian_Temperature(geq_soil, rank_of_other_goveq, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of energy residual equation w.r.t to pressure
@@ -1845,10 +1845,10 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermalEnthalpySoilJacOffDiag_BC
+  end subroutine OffDiagJacobian_Temperature
 
     !------------------------------------------------------------------------
-  subroutine ThermalEnthalpySoilJacOffDiag_Pressure(geq_soil, rank_of_other_goveq, B, ierr)
+  subroutine OffDiagJacobian_Pressure(geq_soil, rank_of_other_goveq, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of energy residual equation w.r.t to pressure
@@ -1869,6 +1869,45 @@ contains
     class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
     PetscInt                                         :: rank_of_other_goveq
     Mat                                              :: B
+    PetscErrorCode                                   :: ierr
+    !
+    ! !LOCAL VARIABLES
+    PetscBool                                :: coupling_via_BC
+
+    call OffDiagJacobian_Pressure_ForBoundaryAuxVars( &
+         geq_soil, rank_of_other_goveq, B, coupling_via_BC, ierr)
+
+    if (coupling_via_BC) return
+
+    call OffDiagJacobian_Pressure_ForInternalAuxVars( &
+         geq_soil, rank_of_other_goveq, B, ierr)
+
+  end subroutine OffDiagJacobian_Pressure
+
+    !------------------------------------------------------------------------
+  subroutine OffDiagJacobian_Pressure_ForBoundaryAuxVars(geq_soil, &
+       rank_of_other_goveq, B, coupling_via_BC, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of energy residual equation w.r.t to pressure
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_NULL
+    use ThermalEnthalpyMod        , only : ThermalEnthalpyFluxDerivativeWrtPressure
+    use RichardsMod               , only : RichardsFlux
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
+    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
+    PetscInt                                         :: rank_of_other_goveq
+    Mat                                              :: B
+    PetscBool, intent (out)                          :: coupling_via_BC
     PetscErrorCode                                   :: ierr
     !
     ! !LOCAL VARIABLES
@@ -1910,7 +1949,6 @@ contains
     PetscReal                                        :: den_soil
     PetscReal                                        :: heat_cap_soil
     PetscReal                                        :: temperature
-    PetscBool                                        :: coupling_via_BC
     PetscBool                                        :: eqns_are_coupled
     PetscInt                                         :: ivar
     PetscBool                                        :: swap_order
@@ -1935,7 +1973,8 @@ contains
 
                 cur_cond_used = PETSC_TRUE
 
-                if (.not.(cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn))) coupling_via_BC = PETSC_TRUE
+                if (.not.(cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn))) &
+                     coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
 
@@ -2072,7 +2111,78 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-    if (coupling_via_BC) return
+
+  end subroutine OffDiagJacobian_Pressure_ForBoundaryAuxVars
+
+    !------------------------------------------------------------------------
+  subroutine OffDiagJacobian_Pressure_ForInternalAuxVars(geq_soil, &
+       rank_of_other_goveq, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of energy residual equation w.r.t to pressure
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_NULL
+    use ThermalEnthalpyMod        , only : ThermalEnthalpyFluxDerivativeWrtPressure
+    use RichardsMod               , only : RichardsFlux
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
+    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
+    PetscInt                                         :: rank_of_other_goveq
+    Mat                                              :: B
+    PetscErrorCode                                   :: ierr
+    !
+    ! !LOCAL VARIABLES
+    type (therm_enthalpy_soil_auxvar_type) , pointer :: aux_vars(:)
+    type(condition_type)                   , pointer :: cur_cond
+    class(connection_set_type)             , pointer :: cur_conn_set
+    PetscInt                                         :: iconn
+    PetscInt                                         :: ieqn
+    PetscInt                                         :: sum_conn
+    PetscInt                                         :: cell_id_dn
+    PetscInt                                         :: cell_id_up
+    PetscInt                                         :: cell_id
+    PetscInt                                         :: row
+    PetscInt                                         :: col
+    PetscInt                                         :: cond_type
+    PetscReal                                        :: flux
+    PetscReal                                        :: area
+    PetscReal                                        :: Jup
+    PetscReal                                        :: Jdn
+    PetscBool                                        :: compute_deriv
+    PetscBool                                        :: internal_conn
+    PetscReal                                        :: val
+    PetscReal                                        :: mflux
+    PetscReal                                        :: eflux
+    PetscReal                                        :: dmflux_dP_up
+    PetscReal                                        :: dmflux_dP_dn
+    PetscReal                                        :: dmflux_dT_up
+    PetscReal                                        :: dmflux_dT_dn
+    PetscReal                                        :: dtInv
+    PetscReal                                        :: por
+    PetscReal                                        :: den
+    PetscReal                                        :: sat
+    PetscReal                                        :: ul
+    PetscReal                                        :: dpor_dP
+    PetscReal                                        :: dden_dP
+    PetscReal                                        :: dsat_dP
+    PetscReal                                        :: dul_dP
+    PetscReal                                        :: derivative
+    PetscReal                                        :: den_soil
+    PetscReal                                        :: heat_cap_soil
+    PetscReal                                        :: temperature
+    PetscInt                                         :: ivar
+    PetscBool                                        :: swap_order
+    PetscBool                                        :: cur_cond_used
+
+    compute_deriv    = PETSC_TRUE
 
     aux_vars => geq_soil%aux_vars_in
 
@@ -2201,7 +2311,7 @@ contains
        cur_conn_set => cur_conn_set%next
     enddo
 
-  end subroutine ThermalEnthalpySoilJacOffDiag_Pressure
+  end subroutine OffDiagJacobian_Pressure_ForInternalAuxVars
 
   !------------------------------------------------------------------------
 
