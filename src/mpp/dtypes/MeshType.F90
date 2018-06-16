@@ -57,16 +57,16 @@ module MeshType
      procedure, public :: Init
      procedure, public :: Clean
      procedure, public :: CreateFromCLMCols
-     procedure, public :: ComputeVolume          => MeshComputeVolume
-     procedure, public :: SetConnectionSet       => MeshSetConnectionSet
-     procedure, public :: SetDimensions          => MeshSetDimensions
-     procedure, public :: SetGeometricAttributes => MeshSetGeometricAttributes
-     procedure, public :: SetGridCellFilter      => MeshSetGridCellFilter
-     procedure, public :: SetID                  => MeshSetID
-     procedure, public :: SetName                => MeshSetName
-     procedure, public :: SetOrientation         => MeshSetOrientation
-     procedure, public :: Copy                   => MeshCopy
-     procedure         :: AllocateMemory         => MeshAllocateMemory
+     procedure, public :: ComputeVolume             => MeshComputeVolume
+     procedure, public :: CreateAndAddConnectionSet => MeshCreateAndAddConnectionSet
+     procedure, public :: SetDimensions             => MeshSetDimensions
+     procedure, public :: SetGeometricAttributes    => MeshSetGeometricAttributes
+     procedure, public :: SetGridCellFilter         => MeshSetGridCellFilter
+     procedure, public :: SetID                     => MeshSetID
+     procedure, public :: SetName                   => MeshSetName
+     procedure, public :: SetOrientation            => MeshSetOrientation
+     procedure, public :: Copy                      => MeshCopy
+     procedure         :: AllocateMemory            => MeshAllocateMemory
   end type mesh_type
 
   public :: MeshCreate
@@ -253,7 +253,7 @@ contains
     call mesh%lateral_conn_set_list%Init()
     call mesh%conditions_conn_set_list%Init()
 
-    call MeshSetConnectionSet(mesh, CONN_SET_INTERNAL,           &
+    call MeshCreateAndAddConnectionSet(mesh, CONN_SET_INTERNAL,           &
          vert_nconn,  vert_conn_id_up, vert_conn_id_dn,         &
          vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area, &
          vert_conn_type)
@@ -1263,7 +1263,7 @@ contains
 
   !------------------------------------------------------------------------
 
-  subroutine MeshSetConnectionSet(this, conn_type, nconn, id_up, id_dn, &
+  subroutine MeshCreateAndAddConnectionSet(this, conn_type, nconn, id_up, id_dn, &
        dist_up, dist_dn, area, itype, unit_vec)
     !
     ! !DESCRIPTION:
@@ -1312,7 +1312,7 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-  end subroutine MeshSetConnectionSet
+  end subroutine MeshCreateAndAddConnectionSet
 
   !------------------------------------------------------------------------
   subroutine Clean(this)

@@ -349,7 +349,7 @@ contains
          nconn, conn_id_up, conn_id_dn, conn_dist_up, conn_dist_dn, &
          conn_area, conn_type)
 
-    call mesh%SetConnectionSet(CONN_SET_INTERNAL, &
+    call mesh%CreateAndAddConnectionSet(CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,          &
          conn_dist_up, conn_dist_dn,  conn_area,  &
          conn_type)

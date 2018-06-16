@@ -375,18 +375,18 @@ contains
     if (vsfm_lateral_model_type == 'none') then
        discretization_type = DISCRETIZATION_VERTICAL_ONLY
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             vert_nconn,  vert_conn_id_up, vert_conn_id_dn, &
             vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area, vert_conn_type)
 
     else if (vsfm_lateral_model_type == 'source_sink') then
        discretization_type = DISCRETIZATION_VERTICAL_WITH_SS
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             vert_nconn,  vert_conn_id_up, vert_conn_id_dn, &
             vert_conn_dist_up, vert_conn_dist_dn, vert_conn_area, vert_conn_type)
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_LATERAL, &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_LATERAL, &
             horz_nconn,  horz_conn_id_up, horz_conn_id_dn, &
             horz_conn_dist_up, horz_conn_dist_dn, horz_conn_area, horz_conn_type)
 
@@ -416,7 +416,7 @@ contains
        comb_conn_area    (vert_nconn+1:comb_nconn) = horz_conn_area    (1:horz_nconn)
        comb_conn_type    (vert_nconn+1:comb_nconn) = horz_conn_type    (1:horz_nconn)
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             comb_nconn,  comb_conn_id_up, comb_conn_id_dn, &
             comb_conn_dist_up, comb_conn_dist_dn, comb_conn_area, comb_conn_type)
 

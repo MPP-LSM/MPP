@@ -417,7 +417,7 @@ contains
 
     nconn = iconn
 
-    call vsfm_mpp_vertical%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp_vertical%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
@@ -475,7 +475,7 @@ contains
 
     nconn = iconn
 
-    call vsfm_mpp_lateral%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp_lateral%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
@@ -778,7 +778,7 @@ contains
     end do
     nconn = iconn
 
-    call vsfm_mpp_vertical%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp_vertical%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
@@ -839,7 +839,7 @@ contains
     end do
     nconn = iconn
 
-    call vsfm_mpp_lateral%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp_lateral%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 

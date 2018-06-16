@@ -416,7 +416,7 @@ contains
     class (mpp_vsfm_type)            :: vsfm_mpp
     PetscInt                         :: imesh
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          this%nconn, &
          this%id_up, &
          this%id_dn,       &

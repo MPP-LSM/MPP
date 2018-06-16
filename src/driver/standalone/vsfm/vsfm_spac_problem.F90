@@ -272,7 +272,7 @@ contains
     end do
     vert_nconn = iconn
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          vert_nconn,  vert_conn_id_up, vert_conn_id_dn,          &
          vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area,  &
          vert_conn_type)

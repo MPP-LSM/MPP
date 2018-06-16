@@ -559,7 +559,7 @@ contains
        end do
        nconn = iconn
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  soil_conn_id_up, soil_conn_id_dn,               &
             soil_conn_dist_up, soil_conn_dist_dn, soil_conn_area,   &
             soil_conn_type)
@@ -599,7 +599,7 @@ contains
        end do
        nconn = iconn
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  root_conn_id_up, root_conn_id_dn,               &
             root_conn_dist_up, root_conn_dist_dn, root_conn_area,   &
             root_conn_type)
@@ -639,7 +639,7 @@ contains
        end do
        nconn = iconn
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL,  &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL,  &
             nconn,  xylem_conn_id_up, xylem_conn_id_dn,              &
             xylem_conn_dist_up, xylem_conn_dist_dn, xylem_conn_area, &
             xylem_conn_type)
@@ -719,7 +719,7 @@ contains
 
        nconn = iconn
 
-       call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  srx_conn_id_up, srx_conn_id_dn,                 &
             srx_conn_dist_up, srx_conn_dist_dn, srx_conn_area,      &
             srx_conn_type)

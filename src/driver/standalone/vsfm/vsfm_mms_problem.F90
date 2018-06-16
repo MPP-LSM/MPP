@@ -224,7 +224,7 @@ contains
          nconn, conn_id_up, conn_id_dn, conn_dist_up, conn_dist_dn, &
          conn_area, conn_type)
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,          &
          conn_dist_up, conn_dist_dn,  conn_area,  &
          conn_type)

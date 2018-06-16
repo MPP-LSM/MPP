@@ -50,7 +50,7 @@ module MultiPhysicsProbBaseType
      procedure, public :: MeshSetGeometricAttributes    => MPPMeshSetGeometricAttributes
      procedure, public :: MeshSetGridCellFilter         => MPPMeshSetGridCellFilter
      procedure, public :: MeshComputeVolume             => MPPMeshComputeVolume
-     procedure, public :: MeshSetConnectionSet          => MPPMeshSetConnectionSet
+     procedure, public :: CreateAndAddConnectionSet     => MPPCreateAndAddConnectionSet
      procedure, public :: AddGovEqn                     => MPPAddGovEqn
      procedure, public :: AddGovEqnWithMeshRank         => MPPAddGovEqnWithMeshRank
      procedure, public :: SetMeshesOfGoveqns            => MPPSetMeshesOfGoveqns
@@ -343,7 +343,7 @@ contains
   end subroutine MPPMeshComputeVolume
 
   !------------------------------------------------------------------------
-  subroutine MPPMeshSetConnectionSet(this, imesh, conn_type, nconn, id_up, id_dn, &
+  subroutine MPPCreateAndAddConnectionSet(this, imesh, conn_type, nconn, id_up, id_dn, &
        dist_up, dist_dn, area, itype, unit_vec)
     !
     ! !DESCRIPTION:
@@ -365,10 +365,10 @@ contains
     PetscReal, pointer, optional      :: unit_vec(:,:)
 
     call CheckMeshIndex(this, imesh)
-    call this%meshes(imesh)%SetConnectionSet(conn_type, nconn, id_up, id_dn, &
+    call this%meshes(imesh)%CreateAndAddConnectionSet(conn_type, nconn, id_up, id_dn, &
          dist_up, dist_dn, area, itype, unit_vec=unit_vec)
 
-  end subroutine MPPMeshSetConnectionSet
+  end subroutine MPPCreateAndAddConnectionSet
 
   !------------------------------------------------------------------------
   subroutine CheckMeshIndex(this, imesh)
