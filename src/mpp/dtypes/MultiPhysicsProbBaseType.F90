@@ -344,7 +344,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine MPPMeshSetConnectionSet(this, imesh, conn_type, nconn, id_up, id_dn, &
-       dist_up, dist_dn, area, itype)
+       dist_up, dist_dn, area, itype, unit_vec)
     !
     ! !DESCRIPTION:
     ! Set connection set for a mesh
@@ -362,10 +362,11 @@ contains
     PetscReal, pointer                :: dist_dn(:)
     PetscReal, pointer                :: area(:)
     PetscInt, pointer                 :: itype(:)
+    PetscReal, pointer, optional      :: unit_vec(:,:)
 
     call CheckMeshIndex(this, imesh)
     call this%meshes(imesh)%SetConnectionSet(conn_type, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype)
+         dist_up, dist_dn, area, itype, unit_vec=unit_vec)
 
   end subroutine MPPMeshSetConnectionSet
 

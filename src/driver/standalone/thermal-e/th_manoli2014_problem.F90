@@ -88,6 +88,11 @@ module th_manoli2014_problem
   PetscInt, pointer :: i_cpl_data(:,:)
   PetscInt, pointer :: b_cpl_data(:,:)
 
+  PetscInt :: SOIL_MESH
+  PetscInt :: ROOT_MESH
+  PetscInt :: XYLM_MESH
+  PetscInt :: SRX_MESH
+
   PetscInt :: SOIL_MASS_GE
   PetscInt :: ROOT_MASS_GE
   PetscInt :: XYLM_MASS_GE
@@ -376,6 +381,11 @@ contains
 
     PetscErrorCode :: ierr
 
+    SOIL_MESH = 0
+    ROOT_MESH = 0
+    XYLM_MESH = 0
+    SRX_MESH  = 0
+
     call mpp_varpar_set_nlevsoi(nz_soil)
     call mpp_varpar_set_nlevgrnd(nz_soil)
 
@@ -580,6 +590,7 @@ contains
        end do
        nconn = iconn
 
+       SOIL_MESH = imesh
        call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  soil_conn_id_up, soil_conn_id_dn,             &
             soil_conn_dist_up, soil_conn_dist_dn, soil_conn_area, &
@@ -620,6 +631,7 @@ contains
        end do
        nconn = iconn
 
+       ROOT_MESH = imesh
        call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  root_conn_id_up, root_conn_id_dn,             &
             root_conn_dist_up, root_conn_dist_dn, root_conn_area, &
@@ -660,6 +672,7 @@ contains
        end do
        nconn = iconn
 
+       XYLM_MESH = imesh
        call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL,     &
             nconn,  xylem_conn_id_up, xylem_conn_id_dn,               &
             xylem_conn_dist_up, xylem_conn_dist_dn,  xylem_conn_area, &
@@ -740,6 +753,7 @@ contains
 
        nconn = iconn
 
+       SRX_MESH = imesh
        call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  srx_conn_id_up, srx_conn_id_dn,               &
             srx_conn_dist_up, srx_conn_dist_dn, srx_conn_area,    &
@@ -1032,12 +1046,12 @@ contains
     enddo
 
     ROOT_REGION_IN_SOIL_MESH = 1
-    call th_mpp%meshes(1)%SetConnectionSet(CONN_SET_CONDITIONS, &
+    call th_mpp%MeshSetConnectionSet(SOIL_MESH, CONN_SET_CONDITIONS, &
          nconn,  id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
 
     SOIL_REGION_IN_ROOT_MESH = 1
     unit_vec(:,1) = 1.d0
-    call th_mpp%meshes(2)%SetConnectionSet(CONN_SET_CONDITIONS, &
+    call th_mpp%MeshSetConnectionSet(ROOT_MESH, CONN_SET_CONDITIONS, &
          nconn,  id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
 
     XYLM_REGION_IN_ROOT_MESH = 2
