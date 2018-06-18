@@ -19,6 +19,7 @@ module RichardsMod
   public :: RichardsFlux
   public :: RichardsFlux_Internal
   public :: RichardsFluxDerivativeWrtTemperature
+  public :: RichardsFluxDerivativeWrtTemperature_Internal
   public :: RichardsFluxConductanceModel
   !
   !------------------------------------------------------------------------------

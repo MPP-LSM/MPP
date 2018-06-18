@@ -1115,7 +1115,7 @@ contains
     ! BoundaryCondition:
     ! SOIL mass ---> ROOT mass
     !           ---> ROOT temperature
-    num_ieqn_others = 3
+    num_ieqn_others = 2
 
     allocate(ieqn_others(     num_ieqn_others))
     allocate(icoupling_others(num_ieqn_others))
@@ -1123,10 +1123,10 @@ contains
     ieqn            = 1
     ieqn_others(1)  = 2
     ieqn_others(2)  = 5
-    ieqn_others(3)  = 4
+    !ieqn_others(3)  = 4
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
+    !icoupling_others(3) = PETSC_TRUE
 
     call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in soil mass equation',      &
@@ -1172,7 +1172,7 @@ contains
     ! BoundaryCondition:
     ! Root mass ---> Soil mass
     !           ---> Soil temperature
-    num_ieqn_others = 3
+    num_ieqn_others = 2
 
     allocate(ieqn_others(     num_ieqn_others))
     allocate(icoupling_others(num_ieqn_others))
@@ -1180,10 +1180,10 @@ contains
     ieqn            = 2
     ieqn_others(1)  = 1
     ieqn_others(2)  = 4
-    ieqn_others(3)  = 5
+    !ieqn_others(3)  = 5
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
+    !icoupling_others(3) = PETSC_TRUE
 
     allocate(conn_set)
     call th_mpp%meshes(2)%conditions_conn_set_list%GetConnectionSet(SOIL_REGION_IN_ROOT_MESH, conn_set)
@@ -1232,7 +1232,7 @@ contains
     ! BoundaryCondition:
     ! Root mass ---> Xylem mass
     !           ---> Xylem temperature
-    num_ieqn_others = 3
+    num_ieqn_others = 2
 
     allocate(ieqn_others(     num_ieqn_others))
     allocate(icoupling_others(num_ieqn_others))
@@ -1240,10 +1240,10 @@ contains
     ieqn            = 2
     ieqn_others(1)  = 3
     ieqn_others(2)  = 6
-    ieqn_others(3)  = 6
+    !ieqn_others(3)  = 6
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
+    !icoupling_others(3) = PETSC_TRUE
 
     allocate(conn_set)
     call th_mpp%meshes(2)%conditions_conn_set_list%GetConnectionSet(XYLM_REGION_IN_ROOT_MESH, conn_set)
@@ -1292,7 +1292,7 @@ contains
     ! BoundaryCondition:
     ! Xylem mass ---> Root mass
     !            ---> Root temperature
-    num_ieqn_others = 3
+    num_ieqn_others = 2
 
     allocate(ieqn_others(     num_ieqn_others))
     allocate(icoupling_others(num_ieqn_others))
@@ -1300,10 +1300,10 @@ contains
     ieqn            = 3
     ieqn_others(1)  = 2
     ieqn_others(2)  = 5
-    ieqn_others(3)  = 3
+    !ieqn_others(3)  = 3
     icoupling_others(1) = PETSC_FALSE
     icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
+    !icoupling_others(3) = PETSC_TRUE
 
     allocate(conn_set)
     call th_mpp%meshes(3)%conditions_conn_set_list%GetConnectionSet(ROOT_REGION_IN_XYLM_MESH, conn_set)
