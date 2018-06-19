@@ -1246,6 +1246,110 @@ contains
   end subroutine ComputeCouplingBCInfo
 
   !------------------------------------------------------------------------
+  subroutine ComputeCouplingGEInfo(ieqn, num_icpl, max_Iauxvar_cpl, num_bcpl, max_Bauxvar_cpl, &
+         i_cpl_data, b_cpl_data, nvars_for_coupling, var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
+    !
+    use MultiPhysicsProbTH            , only : th_mpp
+    use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
+    use MultiPhysicsProbConstants     , only : VAR_PRESSURE
+    use MultiPhysicsProbConstants     , only : VAR_TEMPERATURE
+    use GoverningEquationBaseType
+    use GoveqnRichardsODEPressureType
+    use RichardsODEPressureAuxType
+    !
+    implicit none
+    !
+    integer                         :: ieqn
+    PetscInt                        :: num_icpl
+    PetscInt                        :: max_Iauxvar_cpl
+    PetscInt                        :: num_bcpl
+    PetscInt                        :: max_Bauxvar_cpl
+    PetscInt , pointer              :: i_cpl_data(:,:)
+    PetscInt , pointer              :: b_cpl_data(:,:)
+    integer                         :: nvars_for_coupling
+    integer  , pointer              :: var_ids_for_coupling(:)
+    integer  , pointer              :: goveqn_ids_for_coupling(:)
+    integer  , pointer              :: is_bc(:)
+    !
+    PetscInt                        :: ii, jj
+    PetscBool                       :: ieqn_found
+    class(goveqn_base_type),pointer :: cur_goveq
+
+    nvars_for_coupling = 0
+
+    do ii = 1, num_icpl
+       ieqn_found = PETSC_FALSE
+       do jj = 1, max_Iauxvar_cpl
+          if (i_cpl_data(ii,jj) == ieqn) ieqn_found = PETSC_TRUE
+       end do
+       if (ieqn_found) then
+          do jj = 1, max_Iauxvar_cpl
+             if (i_cpl_data(ii,jj) /= ieqn) nvars_for_coupling = nvars_for_coupling + 1
+          end do
+       end if
+    end do
+
+    do ii = 1, num_bcpl
+       if (b_cpl_data(ii,1) == ieqn) &
+            nvars_for_coupling = nvars_for_coupling + b_cpl_data(ii,4)
+    end do
+
+    allocate (var_ids_for_coupling    (nvars_for_coupling))
+    allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+    allocate (is_bc                   (nvars_for_coupling))
+
+    nvars_for_coupling = 0
+
+    do ii = 1, num_icpl
+       ieqn_found = PETSC_FALSE
+       do jj = 1, max_Iauxvar_cpl
+          if (i_cpl_data(ii,jj) == ieqn) ieqn_found = PETSC_TRUE
+       end do
+       if (ieqn_found) then
+          do jj = 1, max_Iauxvar_cpl
+             if (i_cpl_data(ii,jj) /= ieqn) then
+                nvars_for_coupling = nvars_for_coupling + 1
+                goveqn_ids_for_coupling(nvars_for_coupling) = i_cpl_data(ii,jj)
+                is_bc                  (nvars_for_coupling) = 0
+             end if
+          end do
+       end if
+    end do
+
+    do ii = 1, num_bcpl
+       if (b_cpl_data(ii,1) == ieqn) then
+          do jj = 1, b_cpl_data(ii,4)
+             nvars_for_coupling = nvars_for_coupling + 1
+             goveqn_ids_for_coupling(nvars_for_coupling) = b_cpl_data(ii,4+jj)
+             is_bc                  (nvars_for_coupling) = 1
+          end do
+       end if
+    end do
+
+    do ii = 1, nvars_for_coupling
+
+       cur_goveq => th_mpp%soe%goveqns
+       do jj = 1, goveqn_ids_for_coupling(ii) - 1
+          cur_goveq => cur_goveq%next
+       end do
+
+       select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)          
+          var_ids_for_coupling(ii) = VAR_PRESSURE
+
+       class is (goveqn_thermal_enthalpy_soil_type)
+          var_ids_for_coupling(ii) = VAR_TEMPERATURE
+
+       class default
+          write(*,*)'SPACMPPSetupPetscSNESSetup: Unknown goveq type.'
+          stop
+       end select
+
+    enddo
+    
+  end subroutine ComputeCouplingGEInfo
+
+  !------------------------------------------------------------------------
   subroutine allocate_auxvars()
     !
     ! !DESCRIPTION:
@@ -1262,233 +1366,22 @@ contains
     integer, pointer  :: goveqn_ids_for_coupling(:)
     integer, pointer  :: is_bc(:)
 
-    if (.not. single_pde_formulation) then
-       !
-       ! SOIL mass ---> ROOT mass
-       !           ---> ROOT temperature
-       !           ---> SOIL temperuature
-       ieqn               = 1
-       nvars_for_coupling = 3
+    do ieqn = 1, th_mpp%soe%ngoveqns
 
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       var_ids_for_coupling    (2) = VAR_TEMPERATURE
-       var_ids_for_coupling    (3) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 2
-       goveqn_ids_for_coupling (2) = 5
-       goveqn_ids_for_coupling (3) = 4
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
+       call ComputeCouplingGEInfo(ieqn, num_icpl, max_Iauxvar_cpl, num_bcpl, &
+            max_Bauxvar_cpl, i_cpl_data, b_cpl_data, nvars_for_coupling,     &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
+       if (nvars_for_coupling > 0) then
 
-       !
-       ! SOIL temperature ---> ROOT temperature
-       !                  ---> ROOT mass
-       !                  ---> SOIL mass
-       ieqn               = 4
-       nvars_for_coupling = 3
+          call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
+               var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       var_ids_for_coupling    (2) = VAR_PRESSURE
-       var_ids_for_coupling    (3) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 5
-       goveqn_ids_for_coupling (2) = 2
-       goveqn_ids_for_coupling (3) = 1
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! ROOT mass ---> SOIL  mass
-       !           ---> XYLEM mass
-       !           ---> SOIL  temperature
-       !           ---> XYLEM temperature
-       !           ---> ROOT  temperature
-       !
-       !
-       ieqn               = 2
-       nvars_for_coupling = 5
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       var_ids_for_coupling    (2) = VAR_PRESSURE
-       var_ids_for_coupling    (3) = VAR_TEMPERATURE
-       var_ids_for_coupling    (4) = VAR_TEMPERATURE
-       var_ids_for_coupling    (5) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 1
-       goveqn_ids_for_coupling (2) = 3
-       goveqn_ids_for_coupling (3) = 4
-       goveqn_ids_for_coupling (4) = 6
-       goveqn_ids_for_coupling (5) = 5
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 1
-       is_bc                   (4) = 1
-       is_bc                   (5) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! ROOT temperature ---> SOIL  temperature
-       !                  ---> XYLEM temperature
-       !                  ---> SOIL  mass
-       !                  ---> XYLEM mass
-       !                  ---> ROOT  mass
-       !
-       !
-       ieqn               = 5
-       nvars_for_coupling = 5
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       var_ids_for_coupling    (2) = VAR_TEMPERATURE
-       var_ids_for_coupling    (3) = VAR_PRESSURE
-       var_ids_for_coupling    (4) = VAR_PRESSURE
-       var_ids_for_coupling    (5) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 4
-       goveqn_ids_for_coupling (2) = 6
-       goveqn_ids_for_coupling (3) = 1
-       goveqn_ids_for_coupling (4) = 3
-       goveqn_ids_for_coupling (5) = 2
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 1
-       is_bc                   (4) = 1
-       is_bc                   (5) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! XYLEM mass ---> ROOT  mass
-       !            ---> ROOT  temperature
-       !            ---> XYLEM temperature
-       !
-       ieqn               = 3
-       nvars_for_coupling = 3
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       var_ids_for_coupling    (2) = VAR_TEMPERATURE
-       var_ids_for_coupling    (3) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 2
-       goveqn_ids_for_coupling (2) = 5
-       goveqn_ids_for_coupling (3) = 6
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! XYLEM temperature ---> ROOT  temperature
-       !                   ---> ROOT  mass
-       !                   ---> XYLEM mass
-       !
-       ieqn               = 6
-       nvars_for_coupling = 3
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       var_ids_for_coupling    (2) = VAR_PRESSURE
-       var_ids_for_coupling    (3) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 5
-       goveqn_ids_for_coupling (2) = 2
-       goveqn_ids_for_coupling (3) = 3
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-    else
-
-       ! mass equation (id=1) needs temperature from energy equation (id=2)
-       ieqn = 1
-       nvars_for_coupling = 1
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 2
-       is_bc                   (1) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-
-       ! energy equation (id=2) needs pressure from energy equation (id=1)
-       ieqn = 2
-       nvars_for_coupling = 1
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 1
-       is_bc                   (1) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-
-    endif
+          deallocate(var_ids_for_coupling   )
+          deallocate(goveqn_ids_for_coupling)
+          deallocate (is_bc                 )
+       end if
+    end do
 
     !
     ! Allocate auxvars
