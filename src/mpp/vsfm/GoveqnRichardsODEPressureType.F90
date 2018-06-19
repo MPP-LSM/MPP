@@ -2201,6 +2201,10 @@ contains
                    row = cell_id - 1
                    col = cur_conn_set%conn(iconn)%GetIDUp() - 1
 
+                   if (cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn)) then
+                      col = row
+                   endif
+
                    call MatSetValuesLocal(B, 1, row, 1, col, val, ADD_VALUES, ierr); CHKERRQ(ierr)
 
                 enddo
