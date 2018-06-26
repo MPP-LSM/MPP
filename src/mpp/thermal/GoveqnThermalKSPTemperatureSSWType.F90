@@ -74,7 +74,7 @@ contains
     call this%Create()
 
     this%name         = "Standing surface water thermal equation based on temperature"
-    this%id           = GE_THERM_SSW_TBASED
+    this%itype        = GE_THERM_SSW_TBASED
     this%mesh_itype   = MESH_CLM_SSW_COL
 
     nullify(this%aux_vars_in)
@@ -792,7 +792,7 @@ contains
   !------------------------------------------------------------------------
 
   subroutine ThermKSPTempSSWComputeOperatorsOffDiag(this, A, B, &
-       itype_of_other_goveq, list_id_of_other_goveq, ierr)
+       itype_of_other_goveq, rank_of_other_goveq, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -810,7 +810,7 @@ contains
     Mat                                     :: A
     Mat                                     :: B
     PetscInt                                :: itype_of_other_goveq
-    PetscInt                                :: list_id_of_other_goveq
+    PetscInt                                :: rank_of_other_goveq
     PetscErrorCode                          :: ierr
 
     !
@@ -839,7 +839,7 @@ contains
 
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
           do ieqn = 1, cur_cond%num_other_goveqs
-             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+             if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
                 do iconn = 1, cur_conn_set%num_connections
 

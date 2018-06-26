@@ -80,6 +80,34 @@ module th_manoli2014_problem
   
   PetscReal, parameter :: press_initial  = 3.5355d3      ! [Pa]
 
+  PetscInt :: num_icpl
+  PetscInt :: max_Iauxvar_cpl
+  PetscInt :: num_bcpl
+  PetscInt :: max_Bauxvar_cpl
+
+  PetscInt, pointer :: i_cpl_data(:,:)
+  PetscInt, pointer :: b_cpl_data(:,:)
+
+  PetscInt :: SOIL_MESH
+  PetscInt :: ROOT_MESH
+  PetscInt :: XYLM_MESH
+  PetscInt :: SRX_MESH
+
+  PetscInt :: SOIL_MASS_GE
+  PetscInt :: ROOT_MASS_GE
+  PetscInt :: XYLM_MASS_GE
+  PetscInt :: SOIL_ENTH_GE
+  PetscInt :: ROOT_ENTH_GE
+  PetscInt :: XYLM_ENTH_GE
+
+  PetscInt :: SRX_MASS_GE
+  PetscInt :: SRX_ENTH_GE
+
+  PetscInt :: ROOT_REGION_IN_SOIL_MESH
+  PetscInt :: SOIL_REGION_IN_ROOT_MESH
+  PetscInt :: XYLM_REGION_IN_ROOT_MESH
+  PetscInt :: ROOT_REGION_IN_XYLM_MESH
+
   public :: run_th_manoli2014_problem
 
 contains
@@ -173,9 +201,11 @@ contains
 
     ! 2. Add all meshes needed for the MPP
     call add_meshes()
+    call add_connection_sets_to_meshes()
 
     ! 3. Add all governing equations
     call add_goveqns()
+    call setup_goveqn_connectivity()
 
     ! 4. Add boundary and source-sink conditions to all governing equations
     call add_conditions_to_goveqns()
@@ -350,6 +380,11 @@ contains
     PetscReal           :: dist_x, dist_y, dist_z, dist
 
     PetscErrorCode :: ierr
+
+    SOIL_MESH = 0
+    ROOT_MESH = 0
+    XYLM_MESH = 0
+    SRX_MESH  = 0
 
     call mpp_varpar_set_nlevsoi(nz_soil)
     call mpp_varpar_set_nlevgrnd(nz_soil)
@@ -555,7 +590,8 @@ contains
        end do
        nconn = iconn
 
-       call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       SOIL_MESH = imesh
+       call th_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  soil_conn_id_up, soil_conn_id_dn,             &
             soil_conn_dist_up, soil_conn_dist_dn, soil_conn_area, &
             soil_conn_type)
@@ -595,7 +631,8 @@ contains
        end do
        nconn = iconn
 
-       call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       ROOT_MESH = imesh
+       call th_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  root_conn_id_up, root_conn_id_dn,             &
             root_conn_dist_up, root_conn_dist_dn, root_conn_area, &
             root_conn_type)
@@ -635,7 +672,8 @@ contains
        end do
        nconn = iconn
 
-       call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL,     &
+       XYLM_MESH = imesh
+       call th_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL,     &
             nconn,  xylem_conn_id_up, xylem_conn_id_dn,               &
             xylem_conn_dist_up, xylem_conn_dist_dn,  xylem_conn_area, &
             xylem_conn_type)
@@ -715,7 +753,8 @@ contains
 
        nconn = iconn
 
-       call th_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+       SRX_MESH = imesh
+       call th_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
             nconn,  srx_conn_id_up, srx_conn_id_dn,               &
             srx_conn_dist_up, srx_conn_dist_dn, srx_conn_area,    &
             srx_conn_type)
@@ -802,9 +841,19 @@ contains
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for heat transport based for Soil', MESH_CLM_SOIL_COL)
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for heat transport based for Root', MESH_SPAC_ROOT_COL)
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for heat transport based for Xylem', MESH_SPAC_XYLEM_COL)
+
+       SOIL_MASS_GE = 1
+       ROOT_MASS_GE = 2
+       XYLM_MASS_GE = 3
+       SOIL_ENTH_GE = 4
+       ROOT_ENTH_GE = 5
+       XYLM_ENTH_GE = 6
     else
        call th_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE for Soil+Root+Xylem', MESH_CLM_SOIL_COL)
        call th_mpp%AddGovEqn(GE_THERM_SOIL_EBASED, 'Enthalpy-based ODE for Soil+Root+Xylem', MESH_CLM_SOIL_COL)
+
+       SRX_MASS_GE = 1
+       SRX_ENTH_GE = 2
     endif
 
     call th_mpp%SetMeshesOfGoveqns()
@@ -812,7 +861,113 @@ contains
   end subroutine add_goveqns
 
   !------------------------------------------------------------------------
-  subroutine add_conditions_to_goveqns()
+
+  subroutine setup_goveqn_connectivity()
+    !
+    ! !DESCRIPTION:
+    !
+    implicit none
+    !
+    PetscInt :: ii
+
+    if (single_pde_formulation) then
+
+       num_icpl        = 1
+       max_Iauxvar_cpl = 2
+       num_bcpl        = 0
+       max_Bauxvar_cpl = 0
+
+       allocate(i_cpl_data(num_icpl, max_Iauxvar_cpl))
+
+       ii = 1; i_cpl_data(1,1) = SRX_MASS_GE; i_cpl_data(1,2) = SRX_ENTH_GE
+
+    else
+
+       num_icpl        = 3
+       max_Iauxvar_cpl = 2
+       num_bcpl        = 8
+       max_Bauxvar_cpl = 2
+
+       allocate(i_cpl_data(num_icpl, max_Iauxvar_cpl))
+
+       ii = 1; i_cpl_data(ii,1) = SOIL_MASS_GE; i_cpl_data(ii,2) = SOIL_ENTH_GE
+       ii = 2; i_cpl_data(ii,1) = ROOT_MASS_GE; i_cpl_data(ii,2) = ROOT_ENTH_GE
+       ii = 3; i_cpl_data(ii,1) = XYLM_MASS_GE; i_cpl_data(ii,2) = XYLM_ENTH_GE
+
+       allocate(b_cpl_data(num_bcpl, max_Bauxvar_cpl + 4))
+
+       !b_cpl_data:
+       !    Col-1: Base equation id
+       !    Col-2: Mesh id
+       !    Col-3: Connection set ID for the region
+       !    Col-4: Number of coupling equations
+       !    Col-5: Rank of 1st coupling equation
+       !    Col-6: Rank of 2nd coupling equation
+       !    Col-7: ...
+       !    Col-8: Rank of the n-th coupling equation
+
+       b_cpl_data(1,1) = SOIL_MASS_GE
+       b_cpl_data(1,2) = SOIL_MESH
+       b_cpl_data(1,3) = ROOT_REGION_IN_SOIL_MESH
+       b_cpl_data(1,4) = 2
+       b_cpl_data(1,5) = ROOT_MASS_GE
+       b_cpl_data(1,6) = ROOT_ENTH_GE
+
+       b_cpl_data(2,1) = SOIL_ENTH_GE
+       b_cpl_data(2,2) = SOIL_MESH
+       b_cpl_data(2,3) = ROOT_REGION_IN_SOIL_MESH
+       b_cpl_data(2,4) = 2
+       b_cpl_data(2,5) = ROOT_MASS_GE
+       b_cpl_data(2,6) = ROOT_ENTH_GE
+
+       b_cpl_data(3,1) = ROOT_MASS_GE
+       b_cpl_data(3,2) = ROOT_MESH
+       b_cpl_data(3,3) = SOIL_REGION_IN_ROOT_MESH
+       b_cpl_data(3,4) = 2
+       b_cpl_data(3,5) = SOIL_MASS_GE
+       b_cpl_data(3,6) = SOIL_ENTH_GE
+
+       b_cpl_data(4,1) = ROOT_ENTH_GE
+       b_cpl_data(4,2) = ROOT_MESH
+       b_cpl_data(4,3) = SOIL_REGION_IN_ROOT_MESH
+       b_cpl_data(4,4) = 2
+       b_cpl_data(4,5) = SOIL_MASS_GE
+       b_cpl_data(4,6) = SOIL_ENTH_GE
+
+       b_cpl_data(5,1) = ROOT_MASS_GE
+       b_cpl_data(5,2) = ROOT_MESH
+       b_cpl_data(5,3) = XYLM_REGION_IN_ROOT_MESH
+       b_cpl_data(5,4) = 2
+       b_cpl_data(5,5) = XYLM_MASS_GE
+       b_cpl_data(5,6) = XYLM_ENTH_GE
+
+       b_cpl_data(6,1) = ROOT_ENTH_GE
+       b_cpl_data(6,2) = ROOT_MESH
+       b_cpl_data(6,3) = XYLM_REGION_IN_ROOT_MESH
+       b_cpl_data(6,4) = 2
+       b_cpl_data(6,5) = XYLM_MASS_GE
+       b_cpl_data(6,6) = XYLM_ENTH_GE
+
+       b_cpl_data(7,1) = XYLM_MASS_GE
+       b_cpl_data(7,2) = XYLM_MESH
+       b_cpl_data(7,3) = ROOT_REGION_IN_XYLM_MESH
+       b_cpl_data(7,4) = 2
+       b_cpl_data(7,5) = ROOT_MASS_GE
+       b_cpl_data(7,6) = ROOT_ENTH_GE
+
+       b_cpl_data(8,1) = XYLM_ENTH_GE
+       b_cpl_data(8,2) = XYLM_MESH
+       b_cpl_data(8,3) = ROOT_REGION_IN_XYLM_MESH
+       b_cpl_data(8,4) = 2
+       b_cpl_data(8,5) = ROOT_MASS_GE
+       b_cpl_data(8,6) = ROOT_ENTH_GE
+
+    endif
+
+  end subroutine setup_goveqn_connectivity
+
+  !------------------------------------------------------------------------
+  subroutine add_connection_sets_to_meshes()
     !
     ! !DESCRIPTION:
     !
@@ -823,9 +978,8 @@ contains
     use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
     use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
     use MultiPhysicsProbConstants , only : COND_BC
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use MultiPhysicsProbConstants , only : CONN_SET_CONDITIONS
     use ConnectionSetType         , only : connection_set_type
     use MeshType                  , only : MeshCreateConnectionSet
     !
@@ -852,8 +1006,6 @@ contains
     PetscInt                  , pointer :: itype(:)
     PetscReal                 , pointer :: unit_vec(:,:)
     class(connection_set_type) , pointer :: conn_set
-
-    if (single_pde_formulation) return
 
     ncells_root  = nx_root*ny_root*nz_root
 
@@ -902,239 +1054,26 @@ contains
        itype(kk)      = CONN_VERTICAL
     enddo
 
+    ROOT_REGION_IN_SOIL_MESH = 1
+    call th_mpp%CreateAndAddConnectionSet(SOIL_MESH, CONN_SET_CONDITIONS, &
+         nconn,  id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    SOIL_REGION_IN_ROOT_MESH = 1
+    unit_vec(:,1) = 1.d0
+    call th_mpp%CreateAndAddConnectionSet(ROOT_MESH, CONN_SET_CONDITIONS, &
+         nconn,  id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec)
+
+    XYLM_REGION_IN_ROOT_MESH = 2
     allocate(conn_set)
+    call MeshCreateConnectionSet(th_mpp%meshes(2), SOIL_TOP_CELLS, conn_set, nconn)
+    call th_mpp%meshes(2)%conditions_conn_set_list%AddSet(conn_set)
+    nullify(conn_set)
 
-    ! BoundaryCondition:
-    ! SOIL mass ---> ROOT mass
-    !           ---> ROOT temperature
-    num_ieqn_others = 2
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 1
-    ieqn_others(1)  = 2
-    ieqn_others(2)  = 5
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-
-    call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Root BC in soil mass equation',      &
-         unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others, &
-         conn_set=conn_set)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
-
-    ! BoundaryCondition:
-    ! SOIL temperature ---> ROOT temperature
-    !                  ---> ROOT mass
-    num_ieqn_others = 3
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 4
-    ieqn_others(1)  = 5
-    ieqn_others(2)  = 2
-    ieqn_others(3)  = 1
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
-
-    call MeshCreateConnectionSet(th_mpp%meshes(1), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Root BC in soil energy equation',    &
-         unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others, &
-         conn_set=conn_set)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
-
-    ! BoundaryCondition:
-    ! Root mass ---> Soil mass
-    !           ---> Soil temperature
-    num_ieqn_others = 2
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 2
-    ieqn_others(1)  = 1
-    ieqn_others(2)  = 4
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-
-    unit_vec(:,1) = 1.d0
-
-    call MeshCreateConnectionSet(th_mpp%meshes(2), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Soil BC in root mass equation',      &
-         unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others, &
-         conn_set=conn_set)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
-
-    ! BoundaryCondition:
-    ! Root temperature ---> Soil temperature
-    !                  ---> Soil mass
-    num_ieqn_others = 3
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 5
-    ieqn_others(1)  = 4
-    ieqn_others(2)  = 1
-    ieqn_others(3)  = 2
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
-
-    unit_vec(:,1) = 1.d0
-
-    call MeshCreateConnectionSet(th_mpp%meshes(2), &
-         nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, unit_vec, conn_set)
-    
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Soil BC in root energy equation',    &
-         unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others, &
-         conn_set=conn_set)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
-
-    ! BoundaryCondition:
-    ! Root mass ---> Xylem mass
-    !           ---> Xylem temperature
-    num_ieqn_others = 2
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 2
-    ieqn_others(1)  = 3
-    ieqn_others(2)  = 6
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Xylem BC in root mass equation',     &
-         unit='Pa',                                 &
-         region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
-
-    ! BoundaryCondition:
-    ! Root temperature ---> Xylem temperature
-    !                  ---> Xylem mass
-    num_ieqn_others = 3
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 5
-    ieqn_others(1)  = 6
-    ieqn_others(2)  = 3
-    ieqn_others(3)  = 2
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
-
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Xylem BC in root energy equation',   &
-         unit='K',                                 &
-         region_type=SOIL_TOP_CELLS,                &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
-
-    ! BoundaryCondition:
-    ! Xylem mass ---> Root mass
-    !            ---> Root temperature
-    num_ieqn_others = 2
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 3
-    ieqn_others(1)  = 2
-    ieqn_others(2)  = 5
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Root BC in xylem mass equation',     &
-         unit='K',                                  &
-         region_type=SOIL_BOTTOM_CELLS,             &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
-
-    ! BoundaryCondition:
-    ! Xylem temperature ---> Root temperature
-    !                   ---> Root mass
-    num_ieqn_others = 3
-
-    allocate(ieqn_others(     num_ieqn_others))
-    allocate(icoupling_others(num_ieqn_others))
-
-    ieqn            = 6
-    ieqn_others(1)  = 5
-    ieqn_others(2)  = 2
-    ieqn_others(3)  = 3
-    icoupling_others(1) = PETSC_FALSE
-    icoupling_others(2) = PETSC_FALSE
-    icoupling_others(3) = PETSC_TRUE
-
-    call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Root BC in xylem energy equation',   &
-         unit='K',                                  &
-         region_type=SOIL_BOTTOM_CELLS,             &
-         num_other_goveqs=num_ieqn_others,         &
-         id_of_other_goveqs=ieqn_others,            &
-         icoupling_of_other_goveqns = icoupling_others)
-
-    deallocate(ieqn_others     )
-    deallocate(icoupling_others)
+    ROOT_REGION_IN_XYLM_MESH = 1
+    allocate(conn_set)
+    call MeshCreateConnectionSet(th_mpp%meshes(3), SOIL_BOTTOM_CELLS, conn_set, nconn)
+    call th_mpp%meshes(3)%conditions_conn_set_list%AddSet(conn_set)
+    nullify(conn_set)
 
     deallocate(soil_dz        )
     deallocate(root_zc        )
@@ -1148,7 +1087,267 @@ contains
     deallocate(itype          )
     deallocate(unit_vec       )
 
+  end subroutine add_connection_sets_to_meshes
+
+  !------------------------------------------------------------------------
+  subroutine add_conditions_to_goveqns()
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use MultiPhysicsProbTH        , only : th_mpp
+    use MultiPhysicsProbConstants , only : ALL_CELLS
+    use MultiPhysicsProbConstants , only : SOIL_TOP_CELLS
+    use MultiPhysicsProbConstants , only : SOIL_BOTTOM_CELLS
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants , only : CONN_VERTICAL
+    use ConnectionSetType         , only : connection_set_type
+    use MeshType                  , only : MeshCreateConnectionSet
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    PetscInt                            :: ieqn, num_ieqn_others
+    PetscInt                  , pointer :: ieqn_others(:)
+    PetscBool                 , pointer :: icoupling_others(:)
+    PetscInt                            :: ibc
+    PetscInt                            :: jj
+    PetscInt                            :: mesh_id
+    PetscInt                            :: region_id
+    class(connection_set_type) , pointer :: conn_set
+    character(len=256) :: bc_name
+    character(len=256) :: eqn_1_string
+    character(len=256) :: eqn_2_string
+
+    if (single_pde_formulation) return
+
+    do ibc = 1, num_bcpl
+       allocate(conn_set)
+
+       call ComputeCouplingBCInfo(ibc, num_icpl, max_Iauxvar_cpl, num_bcpl, max_Bauxvar_cpl, &
+            i_cpl_data, b_cpl_data, mesh_id, region_id, ieqn, num_ieqn_others, ieqn_others, &
+            icoupling_others)
+
+       call th_mpp%meshes(mesh_id)%conditions_conn_set_list%GetConnectionSet(region_id, conn_set)
+
+       write(eqn_1_string,*)ieqn
+       bc_name = 'Coupling equation ' // trim(adjustl(eqn_1_string)) // ' with'
+
+       if (num_ieqn_others == 1) then
+          write(eqn_2_string,*)ieqn_others
+          bc_name = trim(bc_name) // ' equation ' // trim(adjustl(eqn_2_string))
+       else
+          bc_name = trim(bc_name) // ' equations '
+          do jj = 1, num_ieqn_others-1
+             write(eqn_2_string,*)ieqn_others(jj)
+             bc_name = trim(bc_name) // ' ' // trim(adjustl(eqn_2_string)) // ','
+          enddo
+          write(eqn_2_string,*)ieqn_others(jj)
+          bc_name = trim(bc_name) // ' and ' // trim(adjustl(eqn_2_string))
+       endif
+
+       call th_mpp%soe%AddCouplingBCsInGovEqn(ieqn,      &
+            name=trim(bc_name),                          &
+            unit='',                                     &
+            num_other_goveqs=num_ieqn_others,            &
+            id_of_other_goveqs=ieqn_others,              &
+            icoupling_of_other_goveqns=icoupling_others, &
+            conn_set=conn_set)
+
+       deallocate(ieqn_others)
+       deallocate(icoupling_others)
+       nullify(conn_set)
+    enddo
+
   end subroutine add_conditions_to_goveqns
+
+  !------------------------------------------------------------------------
+  subroutine ComputeCouplingBCInfo(ibc, num_icpl, max_Iauxvar_cpl, num_bcpl, max_Bauxvar_cpl, &
+         i_cpl_data, b_cpl_data, mesh_id, region_id, eqn_id, num_ieqn_others, ieqn_others, icoupling_others)
+    !
+    ! !DESCRIPTION:
+    !
+    implicit none
+    !
+    PetscInt                         :: ibc
+    PetscInt                         :: num_icpl
+    PetscInt                         :: max_Iauxvar_cpl
+    PetscInt                         :: num_bcpl
+    PetscInt                         :: max_Bauxvar_cpl
+    PetscInt  , pointer              :: i_cpl_data(:,:)
+    PetscInt  , pointer              :: b_cpl_data(:,:)
+    PetscInt  , intent(out)          :: mesh_id
+    PetscInt  , intent(out)          :: region_id
+    PetscInt  , intent(out)          :: eqn_id
+    PetscInt  , intent(out)          :: num_ieqn_others
+    PetscInt  , pointer, intent(out) :: ieqn_others(:)
+    PetscBool , pointer, intent(out) :: icoupling_others(:)
+    !
+    PetscInt :: ii, jj, row
+
+    !b_cpl_data:
+    !    Col-1: Base equation id
+    !    Col-2: Mesh id
+    !    Col-3: Connection set ID for the region
+    !    Col-4: Number of coupling equations
+    !    Col-5: Rank of 1st coupling equation
+    !    Col-6: Rank of 2nd coupling equation
+    !    Col-7: ...
+    !    Col-8: Rank of the n-th coupling equation
+    
+    eqn_id    = b_cpl_data(ibc,1)
+    mesh_id   = b_cpl_data(ibc,2)
+    region_id = b_cpl_data(ibc,3)
+
+    ! Check if the eqn_id is coupled to other equations via
+    ! internal auxvars
+    row = 0
+    do ii = 1, num_icpl
+       do jj = 1, max_Iauxvar_cpl
+          if (i_cpl_data(ii,jj) == eqn_id) then
+             row = ii
+             exit
+          endif
+       enddo
+    enddo
+
+    ! Compute the total number of equations that are coupled
+    ! for the given boundary condition
+    if (row > 0) then
+       do jj = 1, max_Iauxvar_cpl
+          if (i_cpl_data(row,jj) /= eqn_id .and. i_cpl_data(row,jj) > 0) then
+             num_ieqn_others = b_cpl_data(ibc,4) + 1
+          end if
+       end do
+    else
+       num_ieqn_others = b_cpl_data(ibc,4)
+    endif
+
+    allocate(ieqn_others(num_ieqn_others))
+    allocate(icoupling_others(num_ieqn_others))
+
+    do ii = 1, b_cpl_data(ibc,4)
+       ieqn_others(ii)      = b_cpl_data(ibc,4+ii)
+       icoupling_others(ii) = PETSC_FALSE
+    enddo
+
+    ii = b_cpl_data(ibc,4)
+    do jj = 1, max_Iauxvar_cpl
+       if (i_cpl_data(row,jj) /= eqn_id .and. i_cpl_data(row,jj) > 0) then
+          ii                   = ii + 1
+          ieqn_others(ii)      = i_cpl_data(row,jj)
+          icoupling_others(ii) = PETSC_TRUE
+       endif
+    enddo
+
+  end subroutine ComputeCouplingBCInfo
+
+  !------------------------------------------------------------------------
+  subroutine ComputeCouplingGEInfo(ieqn, num_icpl, max_Iauxvar_cpl, num_bcpl, max_Bauxvar_cpl, &
+         i_cpl_data, b_cpl_data, nvars_for_coupling, var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
+    !
+    use MultiPhysicsProbTH            , only : th_mpp
+    use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
+    use MultiPhysicsProbConstants     , only : VAR_PRESSURE
+    use MultiPhysicsProbConstants     , only : VAR_TEMPERATURE
+    use GoverningEquationBaseType
+    use GoveqnRichardsODEPressureType
+    use RichardsODEPressureAuxType
+    !
+    implicit none
+    !
+    integer                         :: ieqn
+    PetscInt                        :: num_icpl
+    PetscInt                        :: max_Iauxvar_cpl
+    PetscInt                        :: num_bcpl
+    PetscInt                        :: max_Bauxvar_cpl
+    PetscInt , pointer              :: i_cpl_data(:,:)
+    PetscInt , pointer              :: b_cpl_data(:,:)
+    integer                         :: nvars_for_coupling
+    integer  , pointer              :: var_ids_for_coupling(:)
+    integer  , pointer              :: goveqn_ids_for_coupling(:)
+    integer  , pointer              :: is_bc(:)
+    !
+    PetscInt                        :: ii, jj
+    PetscBool                       :: ieqn_found
+    class(goveqn_base_type),pointer :: cur_goveq
+
+    nvars_for_coupling = 0
+
+    do ii = 1, num_icpl
+       ieqn_found = PETSC_FALSE
+       do jj = 1, max_Iauxvar_cpl
+          if (i_cpl_data(ii,jj) == ieqn) ieqn_found = PETSC_TRUE
+       end do
+       if (ieqn_found) then
+          do jj = 1, max_Iauxvar_cpl
+             if (i_cpl_data(ii,jj) /= ieqn) nvars_for_coupling = nvars_for_coupling + 1
+          end do
+       end if
+    end do
+
+    do ii = 1, num_bcpl
+       if (b_cpl_data(ii,1) == ieqn) &
+            nvars_for_coupling = nvars_for_coupling + b_cpl_data(ii,4)
+    end do
+
+    allocate (var_ids_for_coupling    (nvars_for_coupling))
+    allocate (goveqn_ids_for_coupling (nvars_for_coupling))
+    allocate (is_bc                   (nvars_for_coupling))
+
+    nvars_for_coupling = 0
+
+    do ii = 1, num_icpl
+       ieqn_found = PETSC_FALSE
+       do jj = 1, max_Iauxvar_cpl
+          if (i_cpl_data(ii,jj) == ieqn) ieqn_found = PETSC_TRUE
+       end do
+       if (ieqn_found) then
+          do jj = 1, max_Iauxvar_cpl
+             if (i_cpl_data(ii,jj) /= ieqn) then
+                nvars_for_coupling = nvars_for_coupling + 1
+                goveqn_ids_for_coupling(nvars_for_coupling) = i_cpl_data(ii,jj)
+                is_bc                  (nvars_for_coupling) = 0
+             end if
+          end do
+       end if
+    end do
+
+    do ii = 1, num_bcpl
+       if (b_cpl_data(ii,1) == ieqn) then
+          do jj = 1, b_cpl_data(ii,4)
+             nvars_for_coupling = nvars_for_coupling + 1
+             goveqn_ids_for_coupling(nvars_for_coupling) = b_cpl_data(ii,4+jj)
+             is_bc                  (nvars_for_coupling) = 1
+          end do
+       end if
+    end do
+
+    do ii = 1, nvars_for_coupling
+
+       cur_goveq => th_mpp%soe%goveqns
+       do jj = 1, goveqn_ids_for_coupling(ii) - 1
+          cur_goveq => cur_goveq%next
+       end do
+
+       select type(cur_goveq)
+       class is (goveqn_richards_ode_pressure_type)          
+          var_ids_for_coupling(ii) = VAR_PRESSURE
+
+       class is (goveqn_thermal_enthalpy_soil_type)
+          var_ids_for_coupling(ii) = VAR_TEMPERATURE
+
+       class default
+          write(*,*)'SPACMPPSetupPetscSNESSetup: Unknown goveq type.'
+          stop
+       end select
+
+    enddo
+    
+  end subroutine ComputeCouplingGEInfo
 
   !------------------------------------------------------------------------
   subroutine allocate_auxvars()
@@ -1167,233 +1366,22 @@ contains
     integer, pointer  :: goveqn_ids_for_coupling(:)
     integer, pointer  :: is_bc(:)
 
-    if (.not. single_pde_formulation) then
-       !
-       ! SOIL mass ---> ROOT mass
-       !           ---> ROOT temperature
-       !           ---> SOIL temperuature
-       ieqn               = 1
-       nvars_for_coupling = 3
+    do ieqn = 1, th_mpp%soe%ngoveqns
 
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       var_ids_for_coupling    (2) = VAR_TEMPERATURE
-       var_ids_for_coupling    (3) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 2
-       goveqn_ids_for_coupling (2) = 5
-       goveqn_ids_for_coupling (3) = 4
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
+       call ComputeCouplingGEInfo(ieqn, num_icpl, max_Iauxvar_cpl, num_bcpl, &
+            max_Bauxvar_cpl, i_cpl_data, b_cpl_data, nvars_for_coupling,     &
             var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
+       if (nvars_for_coupling > 0) then
 
-       !
-       ! SOIL temperature ---> ROOT temperature
-       !                  ---> ROOT mass
-       !                  ---> SOIL mass
-       ieqn               = 4
-       nvars_for_coupling = 3
+          call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
+               var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
 
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       var_ids_for_coupling    (2) = VAR_PRESSURE
-       var_ids_for_coupling    (3) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 5
-       goveqn_ids_for_coupling (2) = 2
-       goveqn_ids_for_coupling (3) = 1
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! ROOT mass ---> SOIL  mass
-       !           ---> XYLEM mass
-       !           ---> SOIL  temperature
-       !           ---> XYLEM temperature
-       !           ---> ROOT  temperature
-       !
-       !
-       ieqn               = 2
-       nvars_for_coupling = 5
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       var_ids_for_coupling    (2) = VAR_PRESSURE
-       var_ids_for_coupling    (3) = VAR_TEMPERATURE
-       var_ids_for_coupling    (4) = VAR_TEMPERATURE
-       var_ids_for_coupling    (5) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 1
-       goveqn_ids_for_coupling (2) = 3
-       goveqn_ids_for_coupling (3) = 4
-       goveqn_ids_for_coupling (4) = 6
-       goveqn_ids_for_coupling (5) = 5
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 1
-       is_bc                   (4) = 1
-       is_bc                   (5) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! ROOT temperature ---> SOIL  temperature
-       !                  ---> XYLEM temperature
-       !                  ---> SOIL  mass
-       !                  ---> XYLEM mass
-       !                  ---> ROOT  mass
-       !
-       !
-       ieqn               = 5
-       nvars_for_coupling = 5
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       var_ids_for_coupling    (2) = VAR_TEMPERATURE
-       var_ids_for_coupling    (3) = VAR_PRESSURE
-       var_ids_for_coupling    (4) = VAR_PRESSURE
-       var_ids_for_coupling    (5) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 4
-       goveqn_ids_for_coupling (2) = 6
-       goveqn_ids_for_coupling (3) = 1
-       goveqn_ids_for_coupling (4) = 3
-       goveqn_ids_for_coupling (5) = 2
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 1
-       is_bc                   (4) = 1
-       is_bc                   (5) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! XYLEM mass ---> ROOT  mass
-       !            ---> ROOT  temperature
-       !            ---> XYLEM temperature
-       !
-       ieqn               = 3
-       nvars_for_coupling = 3
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       var_ids_for_coupling    (2) = VAR_TEMPERATURE
-       var_ids_for_coupling    (3) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 2
-       goveqn_ids_for_coupling (2) = 5
-       goveqn_ids_for_coupling (3) = 6
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-       !
-       ! XYLEM temperature ---> ROOT  temperature
-       !                   ---> ROOT  mass
-       !                   ---> XYLEM mass
-       !
-       ieqn               = 6
-       nvars_for_coupling = 3
-
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       var_ids_for_coupling    (2) = VAR_PRESSURE
-       var_ids_for_coupling    (3) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 5
-       goveqn_ids_for_coupling (2) = 2
-       goveqn_ids_for_coupling (3) = 3
-       is_bc                   (1) = 1
-       is_bc                   (2) = 1
-       is_bc                   (3) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-       deallocate (is_bc                 )
-
-    else
-
-       ! mass equation (id=1) needs temperature from energy equation (id=2)
-       ieqn = 1
-       nvars_for_coupling = 1
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-       allocate (is_bc                   (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_TEMPERATURE
-       goveqn_ids_for_coupling (1) = 2
-       is_bc                   (1) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-
-       ! energy equation (id=2) needs pressure from energy equation (id=1)
-       ieqn = 2
-       nvars_for_coupling = 1
-       allocate (var_ids_for_coupling    (nvars_for_coupling))
-       allocate (goveqn_ids_for_coupling (nvars_for_coupling))
-
-       var_ids_for_coupling    (1) = VAR_PRESSURE
-       goveqn_ids_for_coupling (1) = 1
-       is_bc                   (1) = 0
-
-       call th_mpp%GovEqnSetBothCouplingVars(ieqn, nvars_for_coupling, &
-            var_ids_for_coupling, goveqn_ids_for_coupling, is_bc)
-
-       deallocate(var_ids_for_coupling   )
-       deallocate(goveqn_ids_for_coupling)
-
-    endif
+          deallocate(var_ids_for_coupling   )
+          deallocate(goveqn_ids_for_coupling)
+          deallocate (is_bc                 )
+       end if
+    end do
 
     !
     ! Allocate auxvars

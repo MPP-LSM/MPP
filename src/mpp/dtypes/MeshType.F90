@@ -51,21 +51,22 @@ module MeshType
 
      type(connection_set_list_type) :: intrn_conn_set_list
      type(connection_set_list_type) :: lateral_conn_set_list
+     type(connection_set_list_type) :: conditions_conn_set_list
 
    contains
      procedure, public :: Init
      procedure, public :: Clean
      procedure, public :: CreateFromCLMCols
-     procedure, public :: ComputeVolume          => MeshComputeVolume
-     procedure, public :: SetConnectionSet       => MeshSetConnectionSet
-     procedure, public :: SetDimensions          => MeshSetDimensions
-     procedure, public :: SetGeometricAttributes => MeshSetGeometricAttributes
-     procedure, public :: SetGridCellFilter      => MeshSetGridCellFilter
-     procedure, public :: SetID                  => MeshSetID
-     procedure, public :: SetName                => MeshSetName
-     procedure, public :: SetOrientation         => MeshSetOrientation
-     procedure, public :: Copy                   => MeshCopy
-     procedure         :: AllocateMemory         => MeshAllocateMemory
+     procedure, public :: ComputeVolume             => MeshComputeVolume
+     procedure, public :: CreateAndAddConnectionSet => MeshCreateAndAddConnectionSet
+     procedure, public :: SetDimensions             => MeshSetDimensions
+     procedure, public :: SetGeometricAttributes    => MeshSetGeometricAttributes
+     procedure, public :: SetGridCellFilter         => MeshSetGridCellFilter
+     procedure, public :: SetID                     => MeshSetID
+     procedure, public :: SetName                   => MeshSetName
+     procedure, public :: SetOrientation            => MeshSetOrientation
+     procedure, public :: Copy                      => MeshCopy
+     procedure         :: AllocateMemory            => MeshAllocateMemory
   end type mesh_type
 
   public :: MeshCreate
@@ -120,6 +121,7 @@ contains
 
     call this%intrn_conn_set_list%Init()
     call this%lateral_conn_set_list%Init()
+    call this%conditions_conn_set_list%Init()
 
   end subroutine Init
 
@@ -163,7 +165,8 @@ contains
 
     call this%intrn_conn_set_list%Copy(inp_mesh%intrn_conn_set_list)
     call this%lateral_conn_set_list%Copy(inp_mesh%lateral_conn_set_list)
-    
+    call this%conditions_conn_set_list%Copy(inp_mesh%conditions_conn_set_list)
+
   end subroutine MeshCopy
 
   !------------------------------------------------------------------------
@@ -248,8 +251,9 @@ contains
 
     call mesh%intrn_conn_set_list%Init()
     call mesh%lateral_conn_set_list%Init()
+    call mesh%conditions_conn_set_list%Init()
 
-    call MeshSetConnectionSet(mesh, CONN_SET_INTERNAL,           &
+    call MeshCreateAndAddConnectionSet(mesh, CONN_SET_INTERNAL,           &
          vert_nconn,  vert_conn_id_up, vert_conn_id_dn,         &
          vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area, &
          vert_conn_type)
@@ -1259,14 +1263,15 @@ contains
 
   !------------------------------------------------------------------------
 
-  subroutine MeshSetConnectionSet(this, conn_type, nconn, id_up, id_dn, &
-       dist_up, dist_dn, area, itype)
+  subroutine MeshCreateAndAddConnectionSet(this, conn_type, nconn, id_up, id_dn, &
+       dist_up, dist_dn, area, itype, unit_vec)
     !
     ! !DESCRIPTION:
     ! Creates a connection set based on information passed
     !
     use MultiPhysicsProbConstants , only : CONN_SET_INTERNAL
     use MultiPhysicsProbConstants , only : CONN_SET_LATERAL
+    use MultiPhysicsProbConstants , only : CONN_SET_CONDITIONS
     use ConnectionSetType         , only : connection_set_type
     use ConnectionSetType         , only : ConnectionSetNew
     !
@@ -1282,6 +1287,7 @@ contains
     PetscReal, pointer                 :: dist_dn(:)
     PetscReal, pointer                 :: area(:)
     PetscInt, pointer                  :: itype(:)
+    PetscReal, pointer, optional       :: unit_vec(:,:)
     !
     ! !LOCAL VARIABLES:
     class(connection_set_type),pointer :: conn_set
@@ -1292,19 +1298,21 @@ contains
     PetscReal                          :: dist
 
     call MeshCreateConnectionSet(this, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype, conn_set=conn_set)
+         dist_up, dist_dn, area, itype, unit_vec=unit_vec, conn_set=conn_set)
 
     select case(conn_type)
     case (CONN_SET_INTERNAL)
        call this%intrn_conn_set_list%AddSet(conn_set)
     case (CONN_SET_LATERAL)
        call this%lateral_conn_set_list%AddSet(conn_set)
+    case (CONN_SET_CONDITIONS)
+       call this%conditions_conn_set_list%AddSet(conn_set)
     case default
        write(iulog,*)'Unknown connection set type = ',conn_type
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-  end subroutine MeshSetConnectionSet
+  end subroutine MeshCreateAndAddConnectionSet
 
   !------------------------------------------------------------------------
   subroutine Clean(this)
@@ -1331,6 +1339,7 @@ contains
 
     call this%intrn_conn_set_list%Destroy()
     call this%lateral_conn_set_list%Destroy()
+    call this%conditions_conn_set_list%Destroy()
 
   end subroutine Clean
 

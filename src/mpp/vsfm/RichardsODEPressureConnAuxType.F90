@@ -14,21 +14,22 @@ module RichardsODEPressureConnAuxType
 
   type, public :: rich_ode_pres_conn_auxvar_type
 
-     PetscReal :: pressure_up ! [Pa]
-     PetscReal :: pressure_dn ! [Pa]
-     PetscReal :: kr
+     PetscReal :: pressure_up               ! [Pa]
+     PetscReal :: pressure_dn               ! [Pa]
+     PetscReal :: kr                        ! [-] used in CONDUCTANCE_CAMPBELL_TYPE
 
      PetscInt  :: flux_type
      PetscInt  :: conductance_type
-     PetscReal :: conductance
-     PetscReal :: conductance_up
-     PetscReal :: conductance_dn
-     PetscReal :: dkr_dP_up
-     PetscReal :: dkr_dP_dn
+
+     PetscReal :: conductance               ! used in CONDUCTANCE_CAMPBELL_TYPE
+     PetscReal :: conductance_up            ! used in CONDUCTANCE_MANOLI_TYPE
+     PetscReal :: conductance_dn            ! used in CONDUCTANCE_MANOLI_TYPE
+     PetscReal :: dkr_dP_up                 ! used in CONDUCTANCE_CAMPBELL_TYPE
+     PetscReal :: dkr_dP_dn                 ! used in CONDUCTANCE_CAMPBELL_TYPE
      PetscReal :: krg
      PetscReal :: dkrg_dP_up
      PetscReal :: dkrg_dP_dn
-     PetscReal :: conductance_upwind_weight
+     PetscReal :: conductance_upwind_weight ! used in CONDUCTANCE_CAMPBELL_TYPE
 
      type(saturation_params_type) :: satParams_up
      type(saturation_params_type) :: satParams_dn

@@ -26,7 +26,7 @@ module GoverningEquationBaseType
   type, public :: goveqn_base_type
 
      character (len=256)             :: name                                 ! name of governing equation (GE)
-     PetscInt                        :: id                                   ! identifier
+     PetscInt                        :: itype                                ! identifier
      PetscInt                        :: rank_in_soe_list                     ! rank of governing equation in SoE list
      class(mesh_type),pointer        :: mesh                                 ! pointer to the mesh
      PetscInt                        :: mesh_itype                           ! type of mesh
@@ -61,6 +61,7 @@ module GoverningEquationBaseType
      procedure, public :: GetMeshIType                      => GoveqnBaseGetMeshIType
      procedure, public :: GetMeshGridCellIsActive           => GoveqnBaseGetMeshGridCellIsActive
      procedure, public :: GetConnIDDnForCondsExcptCondItype => GoveqnBaseGetConnIDDnForCondsExcptCondItype
+     procedure, public :: IsCoupledToOtherEquation          => GoveqnIsCoupledToOtherEquation
   end type goveqn_base_type
   !------------------------------------------------------------------------
 
@@ -75,7 +76,6 @@ contains
     ! Initialze a GE object
     !
     ! !USES:
-    use ConditionType        , only : ConditionListInit
     use CouplingVariableType , only : CouplingVariableListCreate
     !
     implicit none
@@ -84,15 +84,15 @@ contains
     class(goveqn_base_type) :: this
 
     this%name             = ""
-    this%id               = -1
+    this%itype            = -1
     this%rank_in_soe_list = -1
     this%mesh_itype       = 0
     this%mesh_rank        = 0
     this%dtime            = 0.d0
 
     nullify(this%mesh)
-    call ConditionListInit(this%boundary_conditions )
-    call ConditionListInit(this%source_sinks        )
+    call this%boundary_conditions%Init()
+    call this%source_sinks%Init()
 
     call CouplingVariableListCreate(this%coupling_vars)
 
@@ -107,7 +107,6 @@ contains
     ! Release allocated memory
     !
     ! !USES:
-    use ConditionType        , only : ConditionListClean
     use CouplingVariableType , only : CouplingVariableListDestroy
     !
     implicit none
@@ -115,8 +114,8 @@ contains
     ! !ARGUMENTS
     class(goveqn_base_type) :: this
 
-    call ConditionListClean          (this%boundary_conditions )
-    call ConditionListClean          (this%source_sinks        )
+    call this%boundary_conditions%Clean()
+    call this%source_sinks%Clean()
     call CouplingVariableListDestroy (this%coupling_vars       )
 
   end subroutine GoveqnBaseDestroy
@@ -142,8 +141,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseComputeOffDiagJacobian(this, X_1, X_2, A, B, &
-       id_of_other_goveq, &
-       list_id_of_other_goveq, &
+       itype_of_other_goveq, &
+       rank_of_other_goveq, &
        ierr)
     !
     ! !DESCRIPTION:
@@ -158,8 +157,8 @@ contains
     Vec                     :: X_2
     Mat                     :: A
     Mat                     :: B
-    PetscInt                :: id_of_other_goveq
-    PetscInt                :: list_id_of_other_goveq
+    PetscInt                :: itype_of_other_goveq
+    PetscInt                :: rank_of_other_goveq
     PetscErrorCode          :: ierr
 
     write(iulog,*)'GoveqnBaseJacobianOffDiag must be extended by child class.'
@@ -226,7 +225,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseComputeOperatorsOffDiag(this, A, B, &
-       itype_of_other_goveq, list_id_of_other_goveq, ierr)
+       itype_of_other_goveq, rank_of_other_goveq, ierr)
     !
     ! !DESCRIPTION:
     ! Dummy subroutine for PETSc KSP Operator matrix
@@ -238,7 +237,7 @@ contains
     Mat                     :: A
     Mat                     :: B
     PetscInt                :: itype_of_other_goveq
-    PetscInt                :: list_id_of_other_goveq
+    PetscInt                :: rank_of_other_goveq
     PetscErrorCode          :: ierr
 
     write(iulog,*)'GoveqnBaseComputeOperatorsOffDiag must be extended by child class.'
@@ -268,7 +267,6 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
-    use ConditionType        , only : ConditionListPrintInfo
     use CouplingVariableType , only : CouplingVariableListPrintInfo
     implicit none
     !
@@ -277,14 +275,14 @@ contains
 
     write(iulog,*)'    ---------------------------------------------------------'
     write(iulog,*)'    Goveqn_name       : ',trim(this%name)
-    write(iulog,*)'    Goveqn_id         : ',this%id
+    write(iulog,*)'    Goveqn_id         : ',this%itype
     write(iulog,*)'    Goveqn_mesh_itype : ',this%mesh_itype
     write(iulog,*)' '
 
     write(iulog,*)'    BC'
-    call ConditionListPrintInfo(this%boundary_conditions)
+    call this%boundary_conditions%PrintInfo()
     write(iulog,*)'    SS'
-    call ConditionListPrintInfo(this%source_sinks)
+    call this%source_sinks%PrintInfo()
     write(iulog,*)'    Coupling Vars'
     call CouplingVariableListPrintInfo(this%coupling_vars)
 
@@ -316,7 +314,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetNumCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -334,12 +331,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetNumCondsExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, num_conds)
+       call this%boundary_conditions%GetNumCondsExcptCondItype( &
+            cond_itype_to_exclude, num_conds)
 
     case (COND_SS)
-       call CondListGetNumCondsExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, num_conds)
+       call this%source_sinks%GetNumCondsExcptCondItype( &
+            cond_itype_to_exclude, num_conds)
 
     case default
        write(string,*) cond_type
@@ -358,7 +355,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetNumCellsForCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -380,12 +376,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetNumCellsForCondsExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, ncells_for_conds)
+       call this%boundary_conditions%GetNumCellsForCondsExcptCondItype( &
+            cond_itype_to_exclude, ncells_for_conds)
 
     case (COND_SS)
-       call CondListGetNumCellsForCondsExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, ncells_for_conds)
+       call this%source_sinks%GetNumCellsForCondsExcptCondItype( &
+            cond_itype_to_exclude, ncells_for_conds)
 
     case default
        write(string,*) cond_type
@@ -405,7 +401,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetCondNamesExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     use MultiPhysicsProbConstants , only : COND_NULL
@@ -429,12 +424,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetCondNamesExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, cond_names)
+       call this%boundary_conditions%GetCondNamesExcptCondItype( &
+            cond_itype_to_exclude, cond_names)
 
     case (COND_SS)
-       call CondListGetCondNamesExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, cond_names)
+       call this%source_sinks%GetCondNamesExcptCondItype( &
+            cond_itype_to_exclude, cond_names)
 
     case default
        write(string,*) cond_type
@@ -453,7 +448,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionListAddCondition
     use ConditionType             , only : ConditionNew
     use MeshType                  , only : MeshCreateConnectionSet
     use MultiPhysicsProbConstants , only : COND_BC
@@ -469,29 +463,15 @@ contains
     character(len =*)                           :: name
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
-    PetscInt                                    :: region_type
+    PetscInt, optional                          :: region_type
     type(connection_set_type),pointer, optional :: conn_set
     !
     type(condition_type), pointer :: cond
 
     cond => ConditionNew()
 
-    cond%name         = trim(name)
-    cond%units        = trim(unit)
-    cond%itype        = cond_type
-    cond%region_itype = region_type
-
-    allocate(cond%conn_set)
-    if (.not. present(conn_set)) then
-       call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
-    else
-       cond%conn_set => conn_set
-       cond%ncells = conn_set%num_connections
-       nullify(conn_set)
-    endif
-
-    allocate(cond%value(cond%ncells))
-    cond%value(:) = 0.d0
+    call ConditionMinimalSetup(cond, this%mesh, name, unit, cond_type, &
+         region_type, conn_set)
 
     select case (ss_or_bc_type)
     case (COND_BC)
@@ -499,10 +479,10 @@ contains
           write(iulog,*) 'Call AddCouplingBC'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
-       call ConditionListAddCondition(this%boundary_conditions, cond)
+       call this%boundary_conditions%AddCondition(cond)
 
     case (COND_SS)
-       call ConditionListAddCondition(this%source_sinks, cond)
+       call this%source_sinks%AddCondition(cond)
 
     case default
        write(iulog,*) 'Unknown condition type'
@@ -514,9 +494,9 @@ contains
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseAddCouplingBC(this, name, unit,    &
-       region_type, num_other_goveqs, id_of_other_goveqs, &
+       num_other_goveqs, id_of_other_goveqs, &
        itype_of_other_goveqs, icoupling_of_other_goveqns, &
-       conn_set)
+       region_type, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds boundary condition to the governing equation that is
@@ -524,7 +504,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionListAddCondition
     use ConditionType             , only : ConditionNew
     use MeshType                  , only : MeshCreateConnectionSet
     use MultiPhysicsProbConstants , only : COND_BC
@@ -538,25 +517,84 @@ contains
     class(goveqn_base_type)                                      :: this
     character(len =*)         , intent(in)                       :: name
     character(len =*)         , intent(in)                       :: unit
-    PetscInt                  , intent(in)                       :: region_type
     PetscInt                  , intent(in)                       :: num_other_goveqs
     PetscInt                  , intent(in), pointer              :: id_of_other_goveqs(:)
     PetscInt                  , intent(in), pointer              :: itype_of_other_goveqs(:)
     PetscBool                 , intent(in), pointer, optional    :: icoupling_of_other_goveqns(:)
+    PetscInt                  , intent(in), optional             :: region_type
     type(connection_set_type) , intent(inout), pointer, optional :: conn_set
     !
     type(condition_type)      , pointer                          :: cond
 
     cond => ConditionNew()
 
+    call ConditionMinimalSetup(cond, this%mesh, name, unit, COND_DIRICHLET_FRM_OTR_GOVEQ, &
+         region_type, conn_set)
+
+    cond%num_other_goveqs = num_other_goveqs
+
+    allocate (cond%rank_of_other_goveqs                     (cond%num_other_goveqs))
+    allocate (cond%itype_of_other_goveqs                    (cond%num_other_goveqs))
+    allocate (cond%swap_order_of_other_goveqs               (cond%num_other_goveqs))
+    allocate (cond%is_the_other_GE_coupled_via_int_auxvars  (cond%num_other_goveqs))
+
+    cond%rank_of_other_goveqs  (:) = id_of_other_goveqs(:)
+    cond%itype_of_other_goveqs (:) = itype_of_other_goveqs(:)
+
+    if (present(icoupling_of_other_goveqns)) then
+       cond%is_the_other_GE_coupled_via_int_auxvars(:) = icoupling_of_other_goveqns(:)
+    endif
+
+    call this%boundary_conditions%AddCondition(cond)
+
+  end subroutine GoveqnBaseAddCouplingBC
+
+  !------------------------------------------------------------------------
+  subroutine ConditionMinimalSetup(cond, mesh, name, unit, cond_type, region_type, conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Does the minimal setup of a condition_type
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : ConditionNew
+    use MeshType                  , only : MeshCreateConnectionSet
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use ConnectionSetType         , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(condition_type), pointer :: cond
+    class(mesh_type), pointer        :: mesh
+    character(len =*)                           :: name
+    character(len =*)                           :: unit
+    PetscInt                                    :: cond_type
+    PetscInt, optional                          :: region_type
+    type(connection_set_type),pointer, optional :: conn_set
+
     cond%name         = trim(name)
     cond%units        = trim(unit)
-    cond%itype        = COND_DIRICHLET_FRM_OTR_GOVEQ
-    cond%region_itype = region_type
+    cond%itype        = cond_type
 
     allocate(cond%conn_set)
-    if (.not. present(conn_set)) then
-       call MeshCreateConnectionSet(this%mesh, cond%region_itype, cond%conn_set, cond%ncells)
+
+    ! Check the optional arguments
+    if (.not.present(conn_set) .and. .not.present(region_type)) then
+       write(iulog,*) 'Neither region_type nor connection set is defined while adding a BC'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+    if (present(conn_set) .and. present(region_type)) then
+       write(iulog,*) 'Both region_type and connection set are defined while adding a BC.' // &
+       ' Only one can be defined.'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    if (present(region_type)) then
+       cond%region_itype = region_type
+       call MeshCreateConnectionSet(mesh, cond%region_itype, cond%conn_set, cond%ncells)
     else
        cond%conn_set => conn_set
        cond%ncells = conn_set%num_connections
@@ -566,23 +604,7 @@ contains
     allocate(cond%value(cond%ncells))
     cond%value(:) = 0.d0
 
-    cond%num_other_goveqs = num_other_goveqs
-
-    allocate (cond%list_id_of_other_goveqs                  (cond%num_other_goveqs))
-    allocate (cond%itype_of_other_goveqs                    (cond%num_other_goveqs))
-    allocate (cond%swap_order_of_other_goveqs               (cond%num_other_goveqs))
-    allocate (cond%coupled_via_intauxvar_with_other_goveqns (cond%num_other_goveqs))
-
-    cond%list_id_of_other_goveqs (:) = id_of_other_goveqs(:)
-    cond%itype_of_other_goveqs   (:) = itype_of_other_goveqs(:)
-
-    if (present(icoupling_of_other_goveqns)) then
-       cond%coupled_via_intauxvar_with_other_goveqns(:) = icoupling_of_other_goveqns(:)
-    endif
-
-    call ConditionListAddCondition(this%boundary_conditions, cond)
-
-  end subroutine GoveqnBaseAddCouplingBC
+  end subroutine ConditionMinimalSetup
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseUpdateConditionConnSet(this, icond, &
@@ -594,7 +616,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : ConditionListAddCondition
     use ConditionType             , only : ConditionNew
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
@@ -734,7 +755,6 @@ contains
     !
     ! !USES:
     use ConditionType             , only : condition_type
-    use ConditionType             , only : CondListGetConnIDDnForCondsExcptCondItype
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
     !
@@ -753,12 +773,12 @@ contains
     ! Choose the condition type
     select case (cond_type)
     case (COND_BC)
-       call CondListGetConnIDDnForCondsExcptCondItype( &
-            this%boundary_conditions, cond_itype_to_exclude, num_cells, cell_id_dn)
+       call this%boundary_conditions%GetConnIDDnForCondsExcptCondItype( &
+            cond_itype_to_exclude, num_cells, cell_id_dn)
 
     case (COND_SS)
-       call CondListGetConnIDDnForCondsExcptCondItype( &
-            this%source_sinks, cond_itype_to_exclude, num_cells, cell_id_dn)
+       call this%source_sinks%GetConnIDDnForCondsExcptCondItype( &
+            cond_itype_to_exclude, num_cells, cell_id_dn)
 
     case default
        write(string,*) cond_type
@@ -767,6 +787,40 @@ contains
     end select
 
   end subroutine GoveqnBaseGetConnIDDnForCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnIsCoupledToOtherEquation(this, rank_of_other_goveqn, is_coupled)
+    !
+    ! !DESCRIPTION:
+    ! Returns if the given governing equation is coupled to other equation
+    ! that the rank = rank_of_other_goveqn
+    !
+    use CouplingVariableType      , only : coupling_variable_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)               :: this
+    PetscInt                              :: rank_of_other_goveqn
+    !
+    PetscBool                             :: is_coupled
+    type(coupling_variable_type), pointer :: cpl_var
+
+    is_coupled = PETSC_FALSE
+
+    cpl_var => this%coupling_vars%first
+    do
+       if (.not.associated(cpl_var)) exit
+
+       if (cpl_var%rank_of_coupling_goveqn == rank_of_other_goveqn) then
+          is_coupled = PETSC_TRUE
+          exit
+       endif
+
+       cpl_var => cpl_var%next
+    enddo
+
+  end subroutine GoveqnIsCoupledToOtherEquation
 
 #endif
 

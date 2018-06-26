@@ -52,6 +52,7 @@ module SystemOfEquationsVSFMType
      procedure, public :: GetDataForCLM          => VSFMSOEGetDataForCLM
      procedure, public :: PostSolve              => VSFMSOEPostSolve
      procedure, public :: PostStepDT             => VSFMSPostStepDT
+     procedure, public :: PrintInfo              => VSFMSOEPrintInfo
      procedure, public :: PreStepDT              => VSFMSPreStepDT
      procedure, public :: GetConditionNames      => VSFMSGetConditionNames
      procedure, public :: SetDataFromCLMForGhost => VSFMSOESetDataFromCLMForGhost
@@ -253,6 +254,7 @@ contains
     PetscInt                        :: col
     PetscInt                        :: nDM
     PetscInt                        :: icell
+    PetscBool                       :: are_eqns_coupled
 
     IS,pointer                      :: is(:)
     DM, pointer                     :: dms(:)
@@ -312,25 +314,31 @@ contains
 
           col = col + 1
 
-          ! J = dF_1/dx_2
-          call cur_goveq_1%ComputeOffDiagJacobian( &
-               X_subvecs(row),                     &
-               X_subvecs(col),                     &
-               B_submats(row,col),                 &
-               B_submats(row,col),                 &
-               cur_goveq_2%id,                     &
-               cur_goveq_2%rank_in_soe_list,       &
-               ierr); CHKERRQ(ierr)
+          call cur_goveq_1%IsCoupledToOtherEquation(cur_goveq_2%rank_in_soe_list, &
+               are_eqns_coupled)
 
-          ! J = dF_2/dx_1
-          call cur_goveq_2%ComputeOffDiagJacobian( &
-               X_subvecs(col),                     &
-               X_subvecs(row),                     &
-               B_submats(col,row),                 &
-               B_submats(col,row),                 &
-               cur_goveq_1%id,                     &
-               cur_goveq_1%rank_in_soe_list,       &
-               ierr); CHKERRQ(ierr)
+          if (are_eqns_coupled) then
+
+             ! J = dF_1/dx_2
+             call cur_goveq_1%ComputeOffDiagJacobian( &
+                  X_subvecs(row),                     &
+                  X_subvecs(col),                     &
+                  B_submats(row,col),                 &
+                  B_submats(row,col),                 &
+                  cur_goveq_2%itype,                  &
+                  cur_goveq_2%rank_in_soe_list,       &
+                  ierr); CHKERRQ(ierr)
+
+             ! J = dF_2/dx_1
+             call cur_goveq_2%ComputeOffDiagJacobian( &
+                  X_subvecs(col),                     &
+                  X_subvecs(row),                     &
+                  B_submats(col,row),                 &
+                  B_submats(col,row),                 &
+                  cur_goveq_1%itype,                  &
+                  cur_goveq_1%rank_in_soe_list,       &
+                  ierr); CHKERRQ(ierr)
+          end if
 
           cur_goveq_2 => cur_goveq_2%next
        enddo
@@ -521,7 +529,7 @@ contains
   end subroutine VSFMSOESetAuxVars
 
   !------------------------------------------------------------------------
-  subroutine VSFMSOEBasePrintInfo(this)
+  subroutine VSFMSOEPrintInfo(this)
     !
     ! !DESCRIPTION:
     ! Display information about the VSFM problem
@@ -549,11 +557,13 @@ contains
        cur_goveqn => cur_goveqn%next
     enddo
 
-    write(iulog,*)'  No. of aux_vars_in : ',size(this%aux_vars_in)
+    write(iulog,*)'  No. of aux_vars_in : ',this%num_auxvars_in
+    write(iulog,*)'  No. of aux_vars_bc : ',this%num_auxvars_bc
+    write(iulog,*)'  No. of aux_vars_ss : ',this%num_auxvars_ss
     write(iulog,*)''
     write(iulog,*)'++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
 
-  end subroutine VSFMSOEBasePrintInfo
+  end subroutine VSFMSOEPrintInfo
 
   !------------------------------------------------------------------------
   subroutine VSFMSOEPreSolve(this)
@@ -1353,11 +1363,13 @@ contains
     !
     use GoverningEquationBaseType     , only : goveqn_base_type
     use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+    use RichardsODEPressureConnAuxType, only : rich_ode_pres_conn_auxvar_type
     use ConnectionSetType             , only : connection_set_type
     use ConditionType                 , only : condition_type
     use RichardsODEPressureAuxType
     use SaturationFunction
     use MultiPhysicsProbConstants     , only : MPP_VSFM_SNES_CLM
+    use MultiPhysicsProbConstants     , only : VAR_CONDUCTANCE_UP
     use CouplingVariableType          , only : coupling_variable_type
     !
     implicit none
@@ -1374,6 +1386,8 @@ contains
     type(condition_type),pointer                        :: cur_cond_2
     type (rich_ode_pres_auxvar_type), pointer           :: aux_vars_bc_1(:)
     type (rich_ode_pres_auxvar_type), pointer           :: aux_vars_bc_2(:)
+    type (rich_ode_pres_conn_auxvar_type), pointer      :: aux_vars_conn_bc_1(:)
+    type (rich_ode_pres_conn_auxvar_type), pointer      :: aux_vars_conn_bc_2(:)
     type (rich_ode_pres_auxvar_type)                    :: tmp_aux_var_bc_1
     type (rich_ode_pres_auxvar_type)                    :: tmp_aux_var_bc_2
     type (coupling_variable_type), pointer              :: cpl_var_1
@@ -1400,15 +1414,17 @@ contains
 
     select type(cur_goveq_1)
     class is (goveqn_richards_ode_pressure_type)
-        aux_vars_bc_1 => cur_goveq_1%aux_vars_bc
+       aux_vars_bc_1      => cur_goveq_1%aux_vars_bc
+       aux_vars_conn_bc_1 => cur_goveq_1%aux_vars_conn_bc
     class default
-        write(iulog,*)'VSFMSOEUpdateBCConnections: Unknown class'
-        call endrun(msg=errMsg(__FILE__, __LINE__))
+       write(iulog,*)'VSFMSOEUpdateBCConnections: Unknown class'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
     select type(cur_goveq_2)
     class is (goveqn_richards_ode_pressure_type)
-        aux_vars_bc_2 => cur_goveq_2%aux_vars_bc
+        aux_vars_bc_2     => cur_goveq_2%aux_vars_bc
+       aux_vars_conn_bc_2 => cur_goveq_2%aux_vars_conn_bc
     class default
         write(iulog,*)'VSFMSOEUpdateBCConnections: Unknown class'
         call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -1559,6 +1575,38 @@ contains
 
                 call RichODEPressureAuxVarCopy(aux_vars_bc_1(sum_conn_1), tmp_aux_var_bc_2)
                 call RichODEPressureAuxVarCopy(aux_vars_bc_2(sum_conn_2), tmp_aux_var_bc_1)
+
+                if (aux_vars_conn_bc_1(sum_conn_1)%flux_type /= &
+                     aux_vars_conn_bc_2(sum_conn_2)%flux_type ) then
+                   write(iulog,*)'Connection flux type do not match'
+                   write(iulog,*)'aux_vars_conn_bc_1(sum_conn_1)%flux_type: ', &
+                        sum_conn_1,aux_vars_conn_bc_1(sum_conn_1)%flux_type
+                   write(iulog,*)'aux_vars_conn_bc_2(sum_conn_2)%flux_type: ', &
+                        sum_conn_2,aux_vars_conn_bc_2(sum_conn_2)%flux_type
+                   call endrun(msg=errMsg(__FILE__, __LINE__))
+                end if
+
+                if (aux_vars_conn_bc_1(sum_conn_1)%conductance_type /= &
+                     aux_vars_conn_bc_2(sum_conn_2)%conductance_type ) then
+                   write(iulog,*)'Connection flux type do not match'
+                   write(iulog,*)'aux_vars_conn_bc_1(sum_conn_1)%conductance_type: ', &
+                        sum_conn_1,aux_vars_conn_bc_1(sum_conn_1)%conductance_type
+                   write(iulog,*)'aux_vars_conn_bc_2(sum_conn_2)%conductance_type: ', &
+                        sum_conn_2,aux_vars_conn_bc_2(sum_conn_2)%flux_type
+                   call endrun(msg=errMsg(__FILE__, __LINE__))
+                end if
+
+                call aux_vars_conn_bc_1(sum_conn_1)%satParams_up%Copy( &
+                     aux_vars_conn_bc_2(sum_conn_2)%satParams_dn)
+
+                call aux_vars_conn_bc_2(sum_conn_2)%satParams_up%Copy( &
+                     aux_vars_conn_bc_1(sum_conn_1)%satParams_dn)
+
+                call aux_vars_conn_bc_1(sum_conn_1)%SetRealValue(VAR_CONDUCTANCE_UP, &
+                     aux_vars_conn_bc_2(sum_conn_2)%conductance_dn)
+
+                call aux_vars_conn_bc_2(sum_conn_2)%SetRealValue(VAR_CONDUCTANCE_UP, &
+                     aux_vars_conn_bc_1(sum_conn_1)%conductance_dn)
 
              enddo ! iauxvar
 

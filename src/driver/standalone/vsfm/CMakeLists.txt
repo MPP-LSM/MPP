@@ -11,6 +11,7 @@ set(VSFM_DRIVER_SOURCES
   vsfm_manoli2014.F90
   vsfm_mms.F90
   vsfm_mms_problem.F90
+  vsfm_spac_mms.F90
   )
 
 set(VSFM_PROBLEM_SOURCES
@@ -26,6 +27,7 @@ set(VSFM_PROBLEM_SOURCES
   vsfm_mms_problem.F90
   vsfm_mms_steady_state_soil_only_1D.F90
   vsfm_mms_vars.F90
+  vsfm_spac_mms_problem.F90
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
@@ -47,32 +49,34 @@ set(MPP_LIBRARIES vsfm_problems; ${MPP_LIBRARIES} PARENT_SCOPE)
 set(MPP_LIBRARIES vsfm_problems; ${MPP_LIBRARIES})
 
 include(add_mpp_executable)
-add_mpp_executable(vsfm_celia1990 vsfm_celia1990.F90)
-add_mpp_executable(vsfm_wt_dynamics vsfm_wt_dynamics.F90)
-add_mpp_executable(vsfm_sy1991 vsfm_sy1991.F90)
-add_mpp_executable(vsfm_spac vsfm_spac.F90)
-add_mpp_executable(vsfm_spac_campbell vsfm_spac_campbell.F90)
-add_mpp_executable(vsfm_spac_fetch2 vsfm_spac_fetch2.F90)
-add_mpp_executable(vsfm_spac_on_hillslope vsfm_spac_on_hillslope.F90)
-add_mpp_executable(vsfm_vchannel vsfm_vchannel.F90)
-add_mpp_executable(vsfm_vchannel_operator_split vsfm_vchannel_operator_split.F90)
-add_mpp_executable(vsfm_manoli2014 vsfm_manoli2014.F90)
-add_mpp_executable(vsfm_mms vsfm_mms.F90)
+add_mpp_executable(vsfm_celia1990		 vsfm_celia1990.F90)
+add_mpp_executable(vsfm_wt_dynamics		 vsfm_wt_dynamics.F90)
+add_mpp_executable(vsfm_sy1991			 vsfm_sy1991.F90)
+add_mpp_executable(vsfm_spac			 vsfm_spac.F90)
+add_mpp_executable(vsfm_spac_campbell		 vsfm_spac_campbell.F90)
+add_mpp_executable(vsfm_spac_fetch2		 vsfm_spac_fetch2.F90)
+add_mpp_executable(vsfm_spac_on_hillslope	 vsfm_spac_on_hillslope.F90)
+add_mpp_executable(vsfm_vchannel		 vsfm_vchannel.F90)
+add_mpp_executable(vsfm_vchannel_operator_split  vsfm_vchannel_operator_split.F90)
+add_mpp_executable(vsfm_manoli2014		 vsfm_manoli2014.F90)
+add_mpp_executable(vsfm_mms			 vsfm_mms.F90)
+add_mpp_executable(vsfm_spac_mms		 vsfm_spac_mms.F90)
 
 if (NOT CMAKE_INSTALL_PREFIX STREQUAL "INSTALL_DISABLED")
   install(TARGETS vsfm_problems DESTINATION lib)
 
-  install(TARGETS vsfm_celia1990 DESTINATION bin)
-  install(TARGETS vsfm_wt_dynamics DESTINATION bin)
-  install(TARGETS vsfm_sy1991 DESTINATION bin)
-  install(TARGETS vsfm_spac DESTINATION bin)
-  install(TARGETS vsfm_spac_campbell DESTINATION bin)
-  install(TARGETS vsfm_spac_fetch2 DESTINATION bin)
-  install(TARGETS vsfm_spac_on_hillslope DESTINATION bin)
-  install(TARGETS vsfm_vchannel DESTINATION bin)
-  install(TARGETS vsfm_vchannel_operator_split DESTINATION bin)
-  install(TARGETS vsfm_manoli2014 DESTINATION bin)
-  install(TARGETS vsfm_mms DESTINATION bin)
+  install(TARGETS vsfm_celia1990		DESTINATION bin)
+  install(TARGETS vsfm_wt_dynamics		DESTINATION bin)
+  install(TARGETS vsfm_sy1991			DESTINATION bin)
+  install(TARGETS vsfm_spac			DESTINATION bin)
+  install(TARGETS vsfm_spac_campbell		DESTINATION bin)
+  install(TARGETS vsfm_spac_fetch2		DESTINATION bin)
+  install(TARGETS vsfm_spac_on_hillslope	DESTINATION bin)
+  install(TARGETS vsfm_vchannel			DESTINATION bin)
+  install(TARGETS vsfm_vchannel_operator_split	DESTINATION bin)
+  install(TARGETS vsfm_manoli2014		DESTINATION bin)
+  install(TARGETS vsfm_mms			DESTINATION bin)
+  install(TARGETS vsfm_spac_mms			DESTINATION bin)
 
   file(GLOB HEADERS *.mod)
   install(FILES ${HEADERS} DESTINATION include/mpp/driver)

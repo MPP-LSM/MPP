@@ -272,7 +272,7 @@ contains
     end do
     vert_nconn = iconn
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          vert_nconn,  vert_conn_id_up, vert_conn_id_dn,          &
          vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area,  &
          vert_conn_type)
@@ -383,7 +383,6 @@ contains
     
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, ss_or_bc_type=COND_BC,   &
          name='Root BC in soil equation', unit='Pa', cond_type=COND_DIRICHLET, &
-         region_type=SOIL_TOP_CELLS, &
          conn_set=conn_set)
 
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_SS,   &

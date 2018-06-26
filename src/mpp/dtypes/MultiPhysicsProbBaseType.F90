@@ -50,7 +50,7 @@ module MultiPhysicsProbBaseType
      procedure, public :: MeshSetGeometricAttributes    => MPPMeshSetGeometricAttributes
      procedure, public :: MeshSetGridCellFilter         => MPPMeshSetGridCellFilter
      procedure, public :: MeshComputeVolume             => MPPMeshComputeVolume
-     procedure, public :: MeshSetConnectionSet          => MPPMeshSetConnectionSet
+     procedure, public :: CreateAndAddConnectionSet     => MPPCreateAndAddConnectionSet
      procedure, public :: AddGovEqn                     => MPPAddGovEqn
      procedure, public :: AddGovEqnWithMeshRank         => MPPAddGovEqnWithMeshRank
      procedure, public :: SetMeshesOfGoveqns            => MPPSetMeshesOfGoveqns
@@ -343,8 +343,8 @@ contains
   end subroutine MPPMeshComputeVolume
 
   !------------------------------------------------------------------------
-  subroutine MPPMeshSetConnectionSet(this, imesh, conn_type, nconn, id_up, id_dn, &
-       dist_up, dist_dn, area, itype)
+  subroutine MPPCreateAndAddConnectionSet(this, imesh, conn_type, nconn, id_up, id_dn, &
+       dist_up, dist_dn, area, itype, unit_vec)
     !
     ! !DESCRIPTION:
     ! Set connection set for a mesh
@@ -362,12 +362,13 @@ contains
     PetscReal, pointer                :: dist_dn(:)
     PetscReal, pointer                :: area(:)
     PetscInt, pointer                 :: itype(:)
+    PetscReal, pointer, optional      :: unit_vec(:,:)
 
     call CheckMeshIndex(this, imesh)
-    call this%meshes(imesh)%SetConnectionSet(conn_type, nconn, id_up, id_dn, &
-         dist_up, dist_dn, area, itype)
+    call this%meshes(imesh)%CreateAndAddConnectionSet(conn_type, nconn, id_up, id_dn, &
+         dist_up, dist_dn, area, itype, unit_vec=unit_vec)
 
-  end subroutine MPPMeshSetConnectionSet
+  end subroutine MPPCreateAndAddConnectionSet
 
   !------------------------------------------------------------------------
   subroutine CheckMeshIndex(this, imesh)
@@ -686,7 +687,7 @@ contains
           ! Is this the appropriate BC?
           if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
              do ieqn = 1, cur_cond_1%num_other_goveqs
-                if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
+                if (cur_cond_1%rank_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
                    bc_found = PETSC_TRUE
                    exit
                 endif
@@ -722,7 +723,7 @@ contains
           ! Is this the appropriate BC?
           if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
              do ieqn = 1, cur_cond_2%num_other_goveqs
-                if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
+                if (cur_cond_2%rank_of_other_goveqs(ieqn) == igoveqn ) then
                    bc_found = PETSC_TRUE
                    exit
                 endif
@@ -901,7 +902,7 @@ contains
              ! Is this the appropriate BC?
              if (cur_cond_1%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
                 do ieqn = 1, cur_cond_1%num_other_goveqs
-                   if (cur_cond_1%list_id_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
+                   if (cur_cond_1%rank_of_other_goveqs(ieqn) == goveqn_ids(ivar) ) then
                       bc_found = PETSC_TRUE
                       exit
                    endif
@@ -937,7 +938,7 @@ contains
              ! Is this the appropriate BC?
              if (cur_cond_2%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
                 do ieqn = 1, cur_cond_2%num_other_goveqs
-                   if (cur_cond_2%list_id_of_other_goveqs(ieqn) == igoveqn ) then
+                   if (cur_cond_2%rank_of_other_goveqs(ieqn) == igoveqn ) then
                       bc_found = PETSC_TRUE
                       exit
                    endif
@@ -1012,13 +1013,15 @@ contains
     name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
     id_of_other_goveqs(1) = ieqn_2
     call this%soe%AddCouplingBCsInGovEqn(ieqn_1, &
-         name, '[K]', iregion_1, num_other_goveqs, id_of_other_goveqs)
+         name, '[K]', num_other_goveqs, id_of_other_goveqs, &
+         region_type = iregion_1)
 
     write(name,*) ieqn_1
     name = 'BC_for_coupling_with_equation_' // trim(adjustl(name))
     id_of_other_goveqs(1) = ieqn_1
     call this%soe%AddCouplingBCsInGovEqn(ieqn_2,  &
-         name, '[K]', iregion_2, num_other_goveqs, id_of_other_goveqs)
+         name, '[K]', num_other_goveqs, id_of_other_goveqs, &
+         region_type = iregion_2)
 
     deallocate(id_of_other_goveqs)
 

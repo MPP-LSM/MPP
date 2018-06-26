@@ -2,7 +2,10 @@ module ConnectionSetType
 
 #ifdef USE_PETSC_LIB
 
-  use ArrayDimThree, only : array_dim3_type
+  use ArrayDimThree   , only : array_dim3_type
+  use mpp_varctl      , only : iulog
+  use mpp_abortutils  , only : endrun
+  use mpp_shr_log_mod , only : errMsg => shr_log_errMsg
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -63,10 +66,11 @@ module ConnectionSetType
      class(connection_set_type), pointer :: first
      class(connection_set_type), pointer :: last
    contains
-     procedure, public :: Init   => ConnectionSetListInit
-     procedure, public :: AddSet => ConnectionSetListAddSet
-     procedure, public :: Copy   => ConnectionSetListCopy
-     procedure, public :: Destroy=> ConnectionSetListDestroy
+     procedure, public :: Init             => ConnectionSetListInit
+     procedure, public :: AddSet           => ConnectionSetListAddSet
+     procedure, public :: Copy             => ConnectionSetListCopy
+     procedure, public :: Destroy          => ConnectionSetListDestroy
+     procedure, public :: GetConnectionSet => ConnectionSetListGetConnectionSet
   end type connection_set_list_type
 
   public :: ConnectionSetNew
@@ -641,6 +645,45 @@ contains
     endif
     
   end subroutine ConnectionSetListCopy
+
+  !------------------------------------------------------------------------
+  subroutine ConnectionSetListGetConnectionSet(this, conn_set_rank, conn_set)
+    !
+    ! !DESCRIPTION:
+    ! Get a copye of the conn_set_rank in the connection list
+    !
+    implicit none
+    ! !ARGUMENTS
+    !
+    class(connection_set_list_type) , intent(inout) :: this
+    PetscInt                        , intent(in)    :: conn_set_rank
+    class(connection_set_type) , pointer, intent(out)   :: conn_set
+    !
+    PetscInt                        :: ii
+    class(connection_set_type), pointer :: conn_set_local
+
+    if (conn_set_rank < 1) then
+       write(iulog,*)'Invalid rank of connection set'
+       write(iulog,*)'conn_set_rank       = ',conn_set_rank
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    if (conn_set_rank > this%num_connection_list) then
+       write(iulog,*)'The rank of connection set to copy exceeds the maximum ' // &
+       'number of connections persent in the list'
+       write(iulog,*)'conn_set_rank       = ',conn_set_rank
+       write(iulog,*)'num_connection_list = ',this%num_connection_list
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    conn_set_local => this%first
+    do ii = 1, conn_set_rank-1
+       conn_set_local => conn_set_local%next
+    enddo
+
+    call conn_set%Copy(conn_set_local)
+
+  end subroutine ConnectionSetListGetConnectionSet
 
   !------------------------------------------------------------------------
 #endif

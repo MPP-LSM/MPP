@@ -507,7 +507,7 @@ contains
     end do
 
     imesh = 1
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn_xylem,  vert_conn_id_up_xylem, vert_conn_id_dn_xylem,          &
          vert_conn_dist_up_xylem, vert_conn_dist_dn_xylem,  vert_conn_area_xylem,  &
          vert_conn_type_xylem)
@@ -675,7 +675,7 @@ contains
     end do
 
     imesh = 1
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn_xylem,  vert_conn_id_up_xylem, vert_conn_id_dn_xylem,          &
          vert_conn_dist_up_xylem, vert_conn_dist_dn_xylem,  vert_conn_area_xylem,  &
          vert_conn_type_xylem)
@@ -835,7 +835,7 @@ contains
 
     ieqn       = 1
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
-         'Bottom BC', 'Pa', COND_DIRICHLET, SOIL_BOTTOM_CELLS, conn_set)
+         'Bottom BC', 'Pa', COND_DIRICHLET, conn_set=conn_set)
 
     deallocate (conn_id_up   )
     deallocate (conn_id_dn   )

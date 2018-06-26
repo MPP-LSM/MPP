@@ -439,14 +439,14 @@ contains
     end do
 
     imesh = 1
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn_xylem,  vert_conn_id_up_xylem, vert_conn_id_dn_xylem,          &
          vert_conn_dist_up_xylem, vert_conn_dist_dn_xylem,  vert_conn_area_xylem,  &
          vert_conn_type_xylem)
 
     imesh = 3
     vert_nconn = nconn_soil
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn_soil,  vert_conn_id_up_soil, vert_conn_id_dn_soil,          &
          vert_conn_dist_up_soil, vert_conn_dist_dn_soil,  vert_conn_area_soil,  &
          vert_conn_type_soil)
@@ -663,7 +663,7 @@ contains
     
     vert_nconn = iconn
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          vert_nconn,  vert_conn_id_up, vert_conn_id_dn,          &
          vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area,  &
          vert_conn_type)
@@ -814,7 +814,6 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in xylem equation'  , &
          unit               = 'Pa'                         , &
-         region_type        = SOIL_TOP_CELLS               , &
          num_other_goveqs   = num_other_goveqs             , &
          id_of_other_goveqs = ieqn_others                  , &
          conn_set           = conn_set)
@@ -837,7 +836,6 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Xylem BC in root equation'  , &
          unit               = 'Pa'                         , &
-         region_type        = SOIL_TOP_CELLS               , &
          num_other_goveqs   = num_other_goveqs             , &
          id_of_other_goveqs = ieqn_others                  , &
          conn_set           = conn_set)
@@ -851,7 +849,6 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Soil BC in root equation'   , &
          unit               = 'Pa'                         , &
-         region_type        = SOIL_TOP_CELLS               , &
          num_other_goveqs   = num_other_goveqs             , &
          id_of_other_goveqs = ieqn_others                  , &
          conn_set           = conn_set)
@@ -874,7 +871,6 @@ contains
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn( ieqn   , &
          name               = 'Root BC in soil equation'   , &
          unit               = 'Pa'                         , &
-         region_type        = SOIL_TOP_CELLS               , &
          num_other_goveqs   = num_other_goveqs             , &
          id_of_other_goveqs = ieqn_others                  , &
          conn_set           = conn_set)

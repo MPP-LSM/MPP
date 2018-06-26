@@ -841,8 +841,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine SOEBaseAddCouplingBCsInGovEqn(this, igoveq, name, unit, &
-       region_type, num_other_goveqs, id_of_other_goveqs, &
-       icoupling_of_other_goveqns, conn_set)
+       num_other_goveqs, id_of_other_goveqs, &
+       icoupling_of_other_goveqns, region_type, conn_set)
     !
     ! !DESCRIPTION:
     ! Adds coupling boundary conditions to igoveq governing equation
@@ -858,10 +858,10 @@ contains
     PetscInt                  , intent(in)          :: igoveq
     character(len =*)         , intent(in)          :: name
     character(len =*)         , intent(in)          :: unit
-    PetscInt                  , intent(in)          :: region_type
     PetscInt                  , intent(in)          :: num_other_goveqs
     PetscInt                  , pointer, intent(in) :: id_of_other_goveqs(:)
     PetscBool                 , pointer, optional   :: icoupling_of_other_goveqns(:)
+    PetscInt                  , intent(in), optional:: region_type
     type(connection_set_type) , pointer, optional   :: conn_set
     !
     ! !LOCAL VARIABLES
@@ -883,36 +883,14 @@ contains
     allocate(itype_of_other_goveqs(num_other_goveqs))
     do jj = 1, num_other_goveqs
        call this%SetPointerToIthGovEqn(id_of_other_goveqs(jj), other_goveq)
-       itype_of_other_goveqs(jj) = other_goveq%id
+       itype_of_other_goveqs(jj) = other_goveq%itype
     enddo
 
-    if (.not.present(conn_set)) then
-       if (.not.present(icoupling_of_other_goveqns)) then
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type, num_other_goveqs,             &
-               id_of_other_goveqs, itype_of_other_goveqs )
-       else
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type, num_other_goveqs,             &
-               id_of_other_goveqs, itype_of_other_goveqs,             &
-               icoupling_of_other_goveqns=icoupling_of_other_goveqns)
-       end if
-    else
-       if (.not.present(icoupling_of_other_goveqns)) then
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type,                               &
-               num_other_goveqs, id_of_other_goveqs,                  &
-               itype_of_other_goveqs,                                 &
-               conn_set=conn_set)
-       else
-          call cur_goveq%AddCouplingBC(                               &
-               name, unit, region_type,                               &
-               num_other_goveqs, id_of_other_goveqs,                  &
-               itype_of_other_goveqs,                                 &
-               icoupling_of_other_goveqns=icoupling_of_other_goveqns, &
-               conn_set=conn_set)
-       end if
-    endif
+    call cur_goveq%AddCouplingBC(                   &
+         name, unit, num_other_goveqs,              &
+         id_of_other_goveqs, itype_of_other_goveqs, &
+         icoupling_of_other_goveqns, region_type,   &
+         conn_set )
 
     deallocate(itype_of_other_goveqs)
 
@@ -937,7 +915,7 @@ contains
     character(len =*)                           :: name
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
-    PetscInt                                    :: region_type
+    PetscInt, optional                          :: region_type
     type(connection_set_type),pointer, optional :: conn_set
     !
     class(goveqn_base_type),pointer             :: cur_goveq
@@ -946,13 +924,8 @@ contains
 
     call this%SetPointerToIthGovEqn(igoveqn, cur_goveq)
 
-    if (.not.present(conn_set)) then
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type)
-    else
-       call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
-            cond_type, region_type, conn_set=conn_set)
-    endif
+    call cur_goveq%AddCondition(ss_or_bc_type, name, unit, &
+         cond_type, region_type, conn_set)
 
   end subroutine SOEBaseAddConditionInGovEqn
 

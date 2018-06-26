@@ -285,7 +285,7 @@ subroutine add_meshes()
   end do
   vert_nconn = iconn
 
-  call thermal_enthalpy_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+  call thermal_enthalpy_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
        vert_nconn,  vert_conn_id_up, vert_conn_id_dn,                      &
        vert_conn_dist_up, vert_conn_dist_dn,  vert_conn_area,              &
        vert_conn_type)
@@ -389,7 +389,7 @@ subroutine add_conditions_to_goveqns()
 
   call thermal_enthalpy_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at top', 'K', COND_DIRICHLET, &
-       SOIL_TOP_CELLS, conn_set=conn_set)
+       conn_set=conn_set)
 
   id_up(1)      = 0
   id_dn(1)      = nx
@@ -407,7 +407,7 @@ subroutine add_conditions_to_goveqns()
 
   call thermal_enthalpy_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
        'Constant temperature condition at bottom', 'K', COND_DIRICHLET, &
-       SOIL_BOTTOM_CELLS, conn_set=conn_set)
+       conn_set=conn_set)
 
   deallocate(id_up   )
   deallocate(id_dn   )

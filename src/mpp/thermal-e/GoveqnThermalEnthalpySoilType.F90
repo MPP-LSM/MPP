@@ -89,7 +89,7 @@ contains
     call this%Create()
 
     this%name       = "Soil thermal equation based on enthalpy"
-    this%id         = GE_THERM_SOIL_EBASED
+    this%itype      = GE_THERM_SOIL_EBASED
     this%mesh_itype = MESH_CLM_SOIL_COL
 
     nullify(this%aux_vars_in)
@@ -1079,7 +1079,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine ThermEnthalpySoilComputeOffDiagJacobian(this, X_1, X_2, A, B, &
-       id_of_other_goveq, list_id_of_other_goveq,        &
+       itype_of_other_goveq, rank_of_other_goveq,        &
        ierr)
     !
     ! !DESCRIPTION:
@@ -1098,22 +1098,22 @@ contains
     Vec                                      :: X_2
     Mat                                      :: A
     Mat                                      :: B
-    PetscInt                                 :: id_of_other_goveq
-    PetscInt                                 :: list_id_of_other_goveq
+    PetscInt                                 :: itype_of_other_goveq
+    PetscInt                                 :: rank_of_other_goveq
     PetscErrorCode                           :: ierr
     !
     ! LOCAL VARIABLES
     character(len=256)                       :: string
 
-    select case(id_of_other_goveq)
+    select case(itype_of_other_goveq)
     case (GE_RE)
-       call ThermalEnthalpySoilJacOffDiag_Pressure(this, list_id_of_other_goveq, &
+       call OffDiagJacobian_Pressure(this, rank_of_other_goveq, &
             B, ierr)
     case (GE_THERM_SOIL_EBASED)
-       call ThermalEnthalpySoilJacOffDiag_BC(this, list_id_of_other_goveq, &
+       call OffDiagJacobian_Temperature(this, rank_of_other_goveq, &
             B, ierr)
     case default
-       write(string,*) id_of_other_goveq
+       write(string,*) itype_of_other_goveq
        write(iulog,*) 'Unknown id_of_other_goveq = ' // trim(string)
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
@@ -1268,7 +1268,7 @@ contains
     use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
     use MultiPhysicsProbConstants , only : COND_NULL
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
-    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
+    use RichardsMod               , only : RichardsFlux
     !
     implicit none
     !
@@ -1293,13 +1293,15 @@ contains
     PetscReal                                :: dummy_var2
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
 
     compute_deriv = PETSC_FALSE
 
     ! Interior cells
     cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -1321,6 +1323,7 @@ contains
                cur_conn_set%conn(iconn),         &
                compute_deriv,                    &
                internal_conn,                    &
+               swap_order,                       &
                cond_type,                        &
                mflux,                            &
                dummy_var1,                       &
@@ -1367,7 +1370,8 @@ contains
 
     ! Boundary cells
     cur_cond => geq_soil%boundary_conditions%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_cond)) exit
 
@@ -1392,6 +1396,7 @@ contains
                   cur_conn_set%conn(iconn),       &
                   compute_deriv,                  &
                   internal_conn,                  &
+                  swap_order,                     &
                   cond_type,                      &
                   mflux,                          &
                   dummy_var1,                     &
@@ -1513,6 +1518,7 @@ contains
     PetscReal                                :: Jdn
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
     PetscReal                                :: val
     PetscReal                                :: mflux
@@ -1524,7 +1530,8 @@ contains
 
     ! Interior cells
     cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -1536,6 +1543,7 @@ contains
 
           internal_conn = PETSC_TRUE
           cond_type     = COND_NULL
+          swap_order    = PETSC_FALSE
 
           if ((.not.geq_soil%mesh%is_active(cell_id_up)) .or. &
               (.not.geq_soil%mesh%is_active(cell_id_dn))) cycle
@@ -1546,6 +1554,7 @@ contains
                cur_conn_set%conn(iconn),                     &
                compute_deriv,                                &
                internal_conn,                                &
+               swap_order,                                   &
                cond_type,                                    &
                mflux,                                        &
                dmflux_dT_up,                                 &
@@ -1606,7 +1615,8 @@ contains
 
     ! Boundary cells
     cur_cond => geq_soil%boundary_conditions%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_cond)) exit
 
@@ -1631,6 +1641,7 @@ contains
                   cur_conn_set%conn(iconn),                    &
                   compute_deriv,                               &
                   internal_conn,                               &
+                  swap_order,                                  &
                   cond_type,                                   &
                   mflux,                                       &
                   dmflux_dT_up,                                &
@@ -1711,7 +1722,7 @@ contains
   end subroutine ThermalEnthalpySoilDivergenceDeriv
 
   !------------------------------------------------------------------------
-  subroutine ThermalEnthalpySoilJacOffDiag_BC(geq_soil, list_id_of_other_goveq, B, ierr)
+  subroutine OffDiagJacobian_Temperature(geq_soil, rank_of_other_goveq, B, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of energy residual equation w.r.t to pressure
@@ -1731,7 +1742,7 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_thermal_enthalpy_soil_type) :: geq_soil
-    PetscInt                                 :: list_id_of_other_goveq
+    PetscInt                                 :: rank_of_other_goveq
     Mat                                      :: B
     PetscErrorCode                           :: ierr
     !
@@ -1753,6 +1764,7 @@ contains
     PetscBool                                :: compute_deriv
     PetscBool                                :: internal_conn
     PetscBool                                :: cur_cond_used
+    PetscBool                                :: swap_order
     PetscInt                                 :: cond_type
     PetscReal                                :: val
     PetscReal                                :: mflux
@@ -1764,7 +1776,8 @@ contains
 
     ! Boundary cells
     cur_cond => geq_soil%boundary_conditions%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_cond)) exit
 
@@ -1774,7 +1787,7 @@ contains
 
           do ieqn = 1, cur_cond%num_other_goveqs
 
-             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+             if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
                 cur_cond_used = PETSC_TRUE
 
@@ -1796,6 +1809,7 @@ contains
                         cur_conn_set%conn(iconn),                    &
                         compute_deriv,                               &
                         internal_conn,                               &
+                        swap_order,                                  &
                         cond_type,                                   &
                         mflux,                                       &
                         dmflux_dT_up,                                &
@@ -1845,10 +1859,38 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermalEnthalpySoilJacOffDiag_BC
+  end subroutine OffDiagJacobian_Temperature
 
     !------------------------------------------------------------------------
-  subroutine ThermalEnthalpySoilJacOffDiag_Pressure(geq_soil, list_id_of_other_goveq, B, ierr)
+  subroutine OffDiagJacobian_Pressure(geq_soil, rank_of_other_goveq, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of energy residual equation w.r.t to pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
+    PetscInt                                         :: rank_of_other_goveq
+    Mat                                              :: B
+    PetscErrorCode                                   :: ierr
+    !
+    ! !LOCAL VARIABLES
+    PetscBool                                :: coupling_via_BC
+
+    call OffDiagJacobian_Pressure_ForBoundaryAuxVars( &
+         geq_soil, rank_of_other_goveq, B, coupling_via_BC, ierr)
+
+    if (coupling_via_BC) return
+
+    call OffDiagJacobian_Pressure_ForInternalAuxVars( &
+         geq_soil, rank_of_other_goveq, B, ierr)
+
+  end subroutine OffDiagJacobian_Pressure
+
+    !------------------------------------------------------------------------
+  subroutine OffDiagJacobian_Pressure_ForBoundaryAuxVars(geq_soil, &
+       rank_of_other_goveq, B, coupling_via_BC, ierr)
     !
     ! !DESCRIPTION:
     ! Computes the derivative of energy residual equation w.r.t to pressure
@@ -1861,22 +1903,22 @@ contains
     use RichardsMod               , only : RichardsFlux
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
-    use RichardsMod               , only : RichardsFlux, RichardsFluxDerivativeWrtTemperature
-    use CouplingVariableType      , only : coupling_variable_type
+    use RichardsMod               , only : RichardsFlux
+    use RichardsMod               , only : RichardsFlux_Internal
     !
     implicit none
     !
     ! !ARGUMENTS
     class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
-    PetscInt                                         :: list_id_of_other_goveq
+    PetscInt                                         :: rank_of_other_goveq
     Mat                                              :: B
+    PetscBool, intent (out)                          :: coupling_via_BC
     PetscErrorCode                                   :: ierr
     !
     ! !LOCAL VARIABLES
     type (therm_enthalpy_soil_auxvar_type) , pointer :: aux_vars(:)
     type(condition_type)                   , pointer :: cur_cond
     class(connection_set_type)             , pointer :: cur_conn_set
-    type(coupling_variable_type)           , pointer :: cpl_var
     PetscInt                                         :: iconn
     PetscInt                                         :: ieqn
     PetscInt                                         :: sum_conn
@@ -1912,7 +1954,6 @@ contains
     PetscReal                                        :: den_soil
     PetscReal                                        :: heat_cap_soil
     PetscReal                                        :: temperature
-    PetscBool                                        :: coupling_via_BC
     PetscBool                                        :: eqns_are_coupled
     PetscInt                                         :: ivar
     PetscBool                                        :: swap_order
@@ -1922,20 +1963,6 @@ contains
     eqns_are_coupled = PETSC_FALSE
     compute_deriv    = PETSC_TRUE
 
-    ! Are the two equations coupled?
-    cpl_var => geq_soil%coupling_vars%first
-    do
-       if (.not.associated(cpl_var)) exit
-       
-       if (cpl_var%rank_of_coupling_goveqn == list_id_of_other_goveq) then          
-          eqns_are_coupled = PETSC_TRUE
-          exit
-       endif
-       cpl_var => cpl_var%next
-    enddo
-
-    if (.not.eqns_are_coupled) return
- 
     sum_conn = 0
     cur_cond => geq_soil%boundary_conditions%first
     do
@@ -1947,11 +1974,12 @@ contains
 
           do ieqn = 1, cur_cond%num_other_goveqs
 
-             if (cur_cond%list_id_of_other_goveqs(ieqn) == list_id_of_other_goveq) then
+             if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
 
                 cur_cond_used = PETSC_TRUE
 
-                if (.not.(cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn))) coupling_via_BC = PETSC_TRUE
+                if (.not.(cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn))) &
+                     coupling_via_BC = PETSC_TRUE
 
                 cur_conn_set => cur_cond%conn_set
 
@@ -1973,6 +2001,7 @@ contains
                            cur_conn_set%conn(iconn),        &
                            compute_deriv,                   &
                            internal_conn,                   &
+                           swap_order,                      &
                            cond_type,                       &
                            mflux,                           &
                            dmflux_dP_up,                    &
@@ -2009,7 +2038,7 @@ contains
                            Jdn                                          &
                            )
 
-                      if (cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn)) then
+                      if (cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn)) then
                          val = Jdn
                       else
                          val = Jup
@@ -2017,7 +2046,7 @@ contains
 
                    else
 
-                      call RichardsFlux(                    &
+                      call RichardsFlux_Internal(                    &
                            geq_soil%aux_vars_in(cell_id  ), &
                            geq_soil%aux_vars_bc(sum_conn ), &
                            cur_conn_set%conn(iconn),        &
@@ -2059,7 +2088,7 @@ contains
                            Jdn                                          &
                            )
 
-                      if (cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn)) then
+                      if (cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn)) then
                          val = -Jup
                       else
                          val = -Jdn
@@ -2070,7 +2099,7 @@ contains
                    row = cell_id - 1
                    col = cur_conn_set%conn(iconn)%GetIDUp() - 1
 
-                   if (cur_cond%coupled_via_intauxvar_with_other_goveqns(ieqn)) then
+                   if (cur_cond%is_the_other_GE_coupled_via_int_auxvars(ieqn)) then
                       col = row
                    endif
 
@@ -2088,7 +2117,78 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-    if (coupling_via_BC) return
+
+  end subroutine OffDiagJacobian_Pressure_ForBoundaryAuxVars
+
+    !------------------------------------------------------------------------
+  subroutine OffDiagJacobian_Pressure_ForInternalAuxVars(geq_soil, &
+       rank_of_other_goveq, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes the derivative of energy residual equation w.r.t to pressure
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : COND_NULL
+    use ThermalEnthalpyMod        , only : ThermalEnthalpyFluxDerivativeWrtPressure
+    use RichardsMod               , only : RichardsFlux
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use ThermalEnthalpyMod        , only : ThermalEnthalpyFlux
+    use RichardsMod               , only : RichardsFlux
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)         :: geq_soil
+    PetscInt                                         :: rank_of_other_goveq
+    Mat                                              :: B
+    PetscErrorCode                                   :: ierr
+    !
+    ! !LOCAL VARIABLES
+    type (therm_enthalpy_soil_auxvar_type) , pointer :: aux_vars(:)
+    type(condition_type)                   , pointer :: cur_cond
+    class(connection_set_type)             , pointer :: cur_conn_set
+    PetscInt                                         :: iconn
+    PetscInt                                         :: ieqn
+    PetscInt                                         :: sum_conn
+    PetscInt                                         :: cell_id_dn
+    PetscInt                                         :: cell_id_up
+    PetscInt                                         :: cell_id
+    PetscInt                                         :: row
+    PetscInt                                         :: col
+    PetscInt                                         :: cond_type
+    PetscReal                                        :: flux
+    PetscReal                                        :: area
+    PetscReal                                        :: Jup
+    PetscReal                                        :: Jdn
+    PetscBool                                        :: compute_deriv
+    PetscBool                                        :: internal_conn
+    PetscReal                                        :: val
+    PetscReal                                        :: mflux
+    PetscReal                                        :: eflux
+    PetscReal                                        :: dmflux_dP_up
+    PetscReal                                        :: dmflux_dP_dn
+    PetscReal                                        :: dmflux_dT_up
+    PetscReal                                        :: dmflux_dT_dn
+    PetscReal                                        :: dtInv
+    PetscReal                                        :: por
+    PetscReal                                        :: den
+    PetscReal                                        :: sat
+    PetscReal                                        :: ul
+    PetscReal                                        :: dpor_dP
+    PetscReal                                        :: dden_dP
+    PetscReal                                        :: dsat_dP
+    PetscReal                                        :: dul_dP
+    PetscReal                                        :: derivative
+    PetscReal                                        :: den_soil
+    PetscReal                                        :: heat_cap_soil
+    PetscReal                                        :: temperature
+    PetscInt                                         :: ivar
+    PetscBool                                        :: swap_order
+    PetscBool                                        :: cur_cond_used
+
+    compute_deriv    = PETSC_TRUE
 
     aux_vars => geq_soil%aux_vars_in
 
@@ -2134,7 +2234,8 @@ contains
 
     ! Interior cells
     cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
-    sum_conn = 0
+    sum_conn   = 0
+    swap_order = PETSC_FALSE
     do
        if (.not.associated(cur_conn_set)) exit
 
@@ -2156,6 +2257,7 @@ contains
                cur_conn_set%conn(iconn),         &
                compute_deriv,                    &
                internal_conn,                    &
+               swap_order,                       &
                cond_type,                        &
                mflux,                            &
                dmflux_dP_up,                     &
@@ -2217,7 +2319,7 @@ contains
        cur_conn_set => cur_conn_set%next
     enddo
 
-  end subroutine ThermalEnthalpySoilJacOffDiag_Pressure
+  end subroutine OffDiagJacobian_Pressure_ForInternalAuxVars
 
   !------------------------------------------------------------------------
 

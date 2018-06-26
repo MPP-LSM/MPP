@@ -433,7 +433,7 @@ contains
 
     nconn = iconn
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
@@ -777,7 +777,7 @@ contains
     end do
     nconn = iconn
 
-    call vsfm_mpp%MeshSetConnectionSet(imesh, CONN_SET_INTERNAL, &
+    call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn,  conn_id_up, conn_id_dn,                         &
          conn_dist_up, conn_dist_dn,  conn_area, conn_type)
 
@@ -902,7 +902,7 @@ contains
     ieqn = 1
     call vsfm_mpp%soe%AddConditionInGovEqn(ieqn, COND_BC,   &
          'Constant head condition at top', 'Pa', COND_SEEPAGE_BC, &
-         SOIL_TOP_CELLS, conn_set)
+         conn_set=conn_set)
 
     deallocate (conn_id_up   )
     deallocate (conn_id_dn   )
