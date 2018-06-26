@@ -658,16 +658,20 @@ contains
     do
        if (.not.associated(cur_goveqn)) exit
        mesh_rank = cur_goveqn%mesh_rank
+
+       if (mesh_rank <= 0) then
+          call endrun(msg='ERROR SystemOfEquationsBaseType: '// &
+               'Invalid mesh rank associated with governing equation: ' // &
+               trim(cur_goveqn%name))
+       endif
+
        if (mesh_rank > nmesh) then
           call endrun(msg='ERROR SystemOfEquationsBaseType: '// &
                'Rank of mesh associated with governing equation ' // &
                'exceeds no. of meshes in the list')
        endif
 
-       do imesh = 1, mesh_rank
-          cur_mesh => meshes(imesh)
-       enddo
-
+       cur_mesh => meshes(mesh_rank)
        cur_goveqn%mesh => cur_mesh
        cur_goveqn%mesh_itype = cur_mesh%itype
 
