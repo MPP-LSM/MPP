@@ -437,21 +437,6 @@ contains
     allocate(filter_xylem (ncells_xylem ))
     allocate(vol_xylem    (ncells_xylem ))
     
-    filter_xylem (:) = 1
-    area_xylem   (:) = local_Asapwood
-    dx_xylem     (:) = sqrt(local_Asapwood)
-    dy_xylem     (:) = sqrt(local_Asapwood)
-    dz_xylem     (:) = dz
-    xc_xylem     (:) = sqrt(local_Asapwood)/2.d0
-    yc_xylem     (:) = sqrt(local_Asapwood)/2.d0
-
-    zc_xylem(1)  = -0.17d0 + local_nz * dz
-    vol_xylem(1) = area_xylem(1) * dz
-    do kk = 2, local_nz
-       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1)) + local_nz * dz
-       vol_xylem(kk) = area_xylem(kk) * dz
-    enddo
-
     call set_xylem_geometric_attributes( &
          1, local_nz, local_Asapwood,   &
          filter_xylem, area_xylem, vol_xylem, &
@@ -952,8 +937,6 @@ contains
     use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_PRESSURE
     use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_EXPONENT
     use EOSWaterMod               , only : DENSITY_TGDPB01
-    use SaturationFunction        , only : SAT_FUNC_FETCH2
-    use SaturationFunction        , only : RELPERM_FUNC_WEIBULL
     !
     implicit none
     !
@@ -975,7 +958,8 @@ contains
     PetscInt  , pointer   :: vsfm_filter(:)
     PetscInt  , pointer   :: satfunc_type(:)
     PetscInt  , pointer   :: relperm_type(:)
-    PetscReal , pointer   :: ss_auxvar_value(:)
+    PetscReal , pointer   :: ss_exponent(:)
+    PetscReal , pointer   :: ss_pressure(:)
     PetscReal , pointer   :: weibull_d(:)
     PetscReal , pointer   :: weibull_c(:)
     PetscInt              :: ieqn
@@ -990,35 +974,27 @@ contains
     allocate (relperm_type   (local_nz))
     allocate (weibull_d      (local_nz))
     allocate (weibull_c      (local_nz))
-    allocate(ss_auxvar_value (local_nz))
+    allocate (ss_exponent    (local_nz))
 
-    por          (1 : local_nz ) = local_porosity
+    call set_xylem_material_properties(1, local_nz,       &
+         local_porosity, local_phi88, local_phi50,        &
+         local_kmax, local_c1, local_c2, local_c3,        &
+         local_phis50,                                    &
+         por, satfunc_type, alpha, lambda, sat_res, perm, &
+         relperm_type, weibull_d, weibull_c, ss_exponent, &
+         ss_pressure)
+
     call VSFMMPPSetSoilPorosity(vsfm_mpp, 1, por)
-
-    satfunc_type (1 : local_nz ) = SAT_FUNC_FETCH2
-    alpha        (1 : local_nz ) = local_phi88
-    lambda       (1 : local_nz ) = local_phi50
-    sat_res      (1 : local_nz ) = 0.d0
     call VSFMMPPSetSaturationFunction(vsfm_mpp, 1, satfunc_type, &
          alpha, lambda, sat_res)
-
-
-    perm         (1 : local_nz ) = local_kmax  * vis / rho * 1.125d0
     call VSFMMPPSetSoilPermeability(vsfm_mpp, 1, perm, perm, perm)
-
-    relperm_type (:) = RELPERM_FUNC_WEIBULL
-    weibull_d    (:) = local_c1
-    weibull_c    (:) = local_c2
-    
     call VSFMMPPSetRelativePermeability(vsfm_mpp, 1, relperm_type, weibull_d, weibull_c)
 
-    ss_auxvar_value(:) = local_c3
     call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
-         VAR_POT_MASS_SINK_EXPONENT, ss_auxvar_value)
+         VAR_POT_MASS_SINK_EXPONENT, ss_exponent)
 
-    ss_auxvar_value(:) = local_phis50
     call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
-         VAR_POT_MASS_SINK_PRESSURE, ss_auxvar_value)
+         VAR_POT_MASS_SINK_PRESSURE, ss_pressure)
 
     deallocate(por          )
     deallocate(sat_res      )
@@ -1029,7 +1005,8 @@ contains
     deallocate(relperm_type )
     deallocate(weibull_c    )
     deallocate(weibull_d    )
-    deallocate(ss_auxvar_value)
+    deallocate(ss_exponent  )
+    deallocate(ss_pressure  )
 
   end subroutine set_material_properties_for_single_tree
 
@@ -1061,7 +1038,8 @@ contains
     PetscInt  , pointer   :: vsfm_filter(:)
     PetscInt  , pointer   :: satfunc_type(:)
     PetscInt  , pointer   :: relperm_type(:)
-    PetscReal , pointer   :: ss_auxvar_value(:)
+    PetscReal , pointer   :: ss_exponent(:)
+    PetscReal , pointer   :: ss_pressure(:)
     PetscReal , pointer   :: weibull_d(:)
     PetscReal , pointer   :: weibull_c(:)
     PetscInt              :: ieqn
@@ -1078,36 +1056,39 @@ contains
     allocate (relperm_type   (nz))
     allocate (weibull_d      (nz))
     allocate (weibull_c      (nz))
-    allocate(ss_auxvar_value (nz))
+    allocate (ss_exponent    (nz))
+    allocate (ss_pressure    (nz))
 
-    por(1:oak_nz ) = porosity; por(oak_nz+1:oak_nz+pine_nz ) = porosity
+    call set_xylem_material_properties(1, oak_nz,         &
+         porosity, oak_phi88, oak_phi50,                  &
+         oak_kmax, oak_c1, oak_c2, oak_c3,                &
+         oak_phis50,                                      &
+         por, satfunc_type, alpha, lambda, sat_res, perm, &
+         relperm_type, weibull_d, weibull_c, ss_exponent, &
+         ss_pressure)
+
+    call set_xylem_material_properties(oak_nz+1, nz,      &
+         porosity, pine_phi88, pine_phi50,                &
+         pine_kmax, pine_c1, pine_c2, pine_c3,            &
+         pine_phis50,                                     &
+         por, satfunc_type, alpha, lambda, sat_res, perm, &
+         relperm_type, weibull_d, weibull_c, ss_exponent, &
+         ss_pressure)
 
     call VSFMMPPSetSoilPorosity(vsfm_mpp, 1, por)
 
-    satfunc_type (1:oak_nz ) = SAT_FUNC_FETCH2 ; satfunc_type (oak_nz+1:oak_nz+pine_nz ) = SAT_FUNC_FETCH2
-    alpha        (1:oak_nz ) = oak_phi88       ; alpha        (oak_nz+1:oak_nz+pine_nz ) = pine_phi88
-    lambda       (1:oak_nz ) = oak_phi50       ; lambda       (oak_nz+1:oak_nz+pine_nz ) = pine_phi50
-    sat_res      (1:oak_nz ) = 0.d0            ; sat_res      (oak_nz+1:oak_nz+pine_nz ) = 0.d0;
     call VSFMMPPSetSaturationFunction(vsfm_mpp, 1, satfunc_type, &
          alpha, lambda, sat_res)
 
-
-    perm (1:oak_nz ) = oak_kmax  * vis / rho; perm (oak_nz+1:oak_nz+pine_nz ) = pine_kmax  * vis / rho
     call VSFMMPPSetSoilPermeability(vsfm_mpp, 1, perm, perm, perm)
-
-    relperm_type (1:oak_nz) = RELPERM_FUNC_WEIBULL ; relperm_type (oak_nz+1:oak_nz+pine_nz) = RELPERM_FUNC_WEIBULL
-    weibull_d    (1:oak_nz) = oak_c1               ; weibull_d    (oak_nz+1:oak_nz+pine_nz) = pine_c1
-    weibull_c    (1:oak_nz) = oak_c2               ; weibull_c    (oak_nz+1:oak_nz+pine_nz) = pine_c2
     
     call VSFMMPPSetRelativePermeability(vsfm_mpp, 1, relperm_type, weibull_d, weibull_c)
 
-    ss_auxvar_value(1:oak_nz) = oak_c3; ss_auxvar_value(oak_nz+1:oak_nz+pine_nz) = pine_c3
     call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
-         VAR_POT_MASS_SINK_EXPONENT, ss_auxvar_value)
+         VAR_POT_MASS_SINK_EXPONENT, ss_exponent)
 
-    ss_auxvar_value(1:oak_nz) = oak_phis50; ss_auxvar_value(oak_nz+1:oak_nz+pine_nz) = pine_phis50
     call VSFMMPPSetSourceSinkAuxVarRealValue(vsfm_mpp, 1, &
-         VAR_POT_MASS_SINK_PRESSURE, ss_auxvar_value)
+         VAR_POT_MASS_SINK_PRESSURE, ss_pressure)
 
     deallocate(por          )
     deallocate(sat_res      )
@@ -1118,9 +1099,62 @@ contains
     deallocate(relperm_type )
     deallocate(weibull_c    )
     deallocate(weibull_d    )
-    deallocate(ss_auxvar_value)
+    deallocate(ss_exponent  )
+    deallocate(ss_pressure  )
 
   end subroutine set_material_properties_for_two_trees
+
+  !------------------------------------------------------------------------
+  subroutine set_xylem_material_properties(ibeg, iend,     &
+         local_porosity, local_phi88, local_phi50,         &
+         local_kmax, local_c1, local_c2, local_c3,         &
+         local_phis50,                                     &
+         por, satfunc_type, alpha, lambda, sat_res, perm,  &
+         relperm_type, weibull_d, weibull_c, ss_exponent,  &
+         ss_pressure)
+
+    use SaturationFunction        , only : SAT_FUNC_FETCH2
+    use SaturationFunction        , only : RELPERM_FUNC_WEIBULL
+
+    implicit none
+
+    PetscInt            :: ibeg, iend
+    PetscReal           :: local_porosity
+    PetscReal           :: local_phi88
+    PetscReal           :: local_phi50
+    PetscReal           :: local_kmax
+    PetscReal           :: local_c1
+    PetscReal           :: local_c2
+    PetscReal           :: local_c3
+    PetscReal           :: local_phis50
+    PetscReal , pointer :: por(:)
+    PetscReal , pointer :: alpha(:)
+    PetscReal , pointer :: lambda(:)
+    PetscReal , pointer :: sat_res(:)
+    PetscReal , pointer :: perm(:)
+    PetscInt  , pointer :: vsfm_filter(:)
+    PetscInt  , pointer :: satfunc_type(:)
+    PetscInt  , pointer :: relperm_type(:)
+    PetscReal , pointer :: ss_exponent(:)
+    PetscReal , pointer :: ss_pressure(:)
+    PetscReal , pointer :: weibull_d(:)
+    PetscReal , pointer :: weibull_c(:)
+
+    por          (ibeg:iend ) = local_porosity
+
+    satfunc_type (ibeg:iend ) = SAT_FUNC_FETCH2
+    alpha        (ibeg:iend ) = local_phi88
+    lambda       (ibeg:iend ) = local_phi50
+    sat_res      (ibeg:iend ) = 0.d0
+
+    perm         (ibeg:iend ) = local_kmax  * vis / rho! * 1.125d0
+    relperm_type (ibeg:iend ) = RELPERM_FUNC_WEIBULL
+    weibull_d    (ibeg:iend ) = local_c1
+    weibull_c    (ibeg:iend ) = local_c2
+    ss_exponent  (ibeg:iend ) = local_c3
+    ss_pressure  (ibeg:iend ) = local_phis50
+
+  end subroutine set_xylem_material_properties
 
   !------------------------------------------------------------------------
   subroutine set_initial_conditions()
