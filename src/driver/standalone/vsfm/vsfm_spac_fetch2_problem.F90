@@ -47,6 +47,8 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_c3       = 10.3d0   ! -
   PetscReal , parameter :: pine_kmax     = 1.2d-6   ! s
 
+  PetscInt :: neqns
+
   character(len=256) :: problem_type
 
   character(len=256) :: ic_filename
@@ -74,7 +76,7 @@ contains
     !
     PetscBool          :: converged
     PetscInt           :: converged_reason
-    PetscInt           :: nz
+    PetscInt           :: nET
     PetscErrorCode     :: ierr
     PetscReal          :: dtime
     PetscReal          :: time
@@ -161,11 +163,11 @@ contains
 
     select case(trim(problem_type))
     case ('oak')
-       nz       = oak_nz
+       nET       = oak_nz
     case ('pine')
-       nz       = pine_nz
+       nET       = pine_nz
     case ('oak_and_pine')
-       nz       = oak_nz + pine_nz
+       nET      = oak_nz + pine_nz
     case default
        write(*,*)'Unsupported problem_type'
        stop
@@ -178,7 +180,7 @@ contains
     call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
     call VecGetSize(ET, vec_size, ierr); CHKERRQ(ierr)
 
-    ntimes = vec_size/nz
+    ntimes = vec_size/nET
     if (nstep > ntimes) then
        write(*,*)'ERROR: Value for nstep exceeds the number of timesteps ' // &
             'for which potential ET data is available.'
@@ -207,7 +209,7 @@ contains
     call Init()
 
     time = 0.d0
-    call VecCreateSeq(PETSC_COMM_SELF, nstep*nz, Actual_ET, ierr)
+    call VecCreateSeq(PETSC_COMM_SELF, nstep*nET, Actual_ET, ierr)
     call VecGetArrayF90(Actual_ET, act_et_p, ierr)
 
     call PetscViewerBinaryOpen(PETSC_COMM_SELF,'init.bin',FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
@@ -218,11 +220,11 @@ contains
 
        select case(trim(problem_type))
        case ('oak')
-          call set_bondary_conditions_for_single_tree(nz, istep, ET, SoilBC)
+          call set_boundary_conditions_for_single_tree(nET, istep, ET, SoilBC)
        case ('pine')
-          call set_bondary_conditions_for_single_tree(nz, istep, ET, SoilBC)
+          call set_boundary_conditions_for_single_tree(nET, istep, ET, SoilBC)
        case ('oak_and_pine')
-          call set_bondary_conditions_for_two_trees(nz, istep, ET, SoilBC)
+          call set_boundary_conditions_for_two_trees(nET, istep, ET, SoilBC)
        case default
           write(*,*)'Unsupported problem_type'
           stop
@@ -242,11 +244,11 @@ contains
        if (print_actual_et) then
           select case(trim(problem_type))
           case ('oak')
-             call diagnose_actual_sink_for_single_tree(nz, istep, act_et_p)
+             call diagnose_actual_sink_for_single_tree(nET, istep, act_et_p)
           case ('pine')
-             call diagnose_actual_sink_for_single_tree(nz, istep, act_et_p)
+             call diagnose_actual_sink_for_single_tree(nET, istep, act_et_p)
           case ('oak_and_pine')
-             call diagnose_actual_sink_for_single_tree(nz, istep, act_et_p)
+             call diagnose_actual_sink_for_single_tree(nET, istep, act_et_p)
           case default
              write(*,*)'Unsupported problem_type'
              stop
@@ -278,26 +280,15 @@ contains
     use SystemOfEquationsVSFMType , only : VSFMSOEUpdateConnections
     !
     implicit none
-    !
 
     ! 1. Initialize the multi-physics-problem (MPP)
     call initialize_mpp()
 
     ! 2. Add all meshes needed for the MPP
-    select case(trim(problem_type))
-    case ('oak')
-       call add_mesh_for_single_tree(oak_nz, oak_Asapwood)
-    case ('pine')
-       call add_mesh_for_single_tree(pine_nz, pine_Asapwood)
-    case ('oak_and_pine')
-       call add_mesh_for_two_trees()
-    case default
-       write(*,*)'Unsupported problem_type'
-       stop
-    end select
+    call add_meshes()
 
     ! 3. Add all governing equations
-    call add_goveqn()
+    call add_goveqn(neqns)
 
     ! 4. Add boundary and source-sink conditions to all governing equations
     select case(trim(problem_type))
@@ -308,7 +299,7 @@ contains
     case ('oak_and_pine')
        call add_conditions_to_goveqns_for_two_trees()
     case default
-       write(*,*)'Unsupported problem_type'
+       write(*,*)'Error while adding condition. Unsupported problem_type : ',trim(problem_type)
        stop
     end select
 
@@ -380,7 +371,38 @@ contains
   end subroutine initialize_mpp
 
   !------------------------------------------------------------------------
-  subroutine add_mesh_for_single_tree(local_nz, local_Asapwood)
+  subroutine add_meshes()
+    !
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+
+    implicit none
+
+    select case(trim(problem_type))
+    case ('oak')
+       neqns = 1
+       call vsfm_mpp%SetNumMeshes(neqns)
+       call add_xylem_mesh_for_single_tree(1, oak_nz, oak_Asapwood)
+
+    case ('pine')
+       neqns = 1
+       call vsfm_mpp%SetNumMeshes(neqns)
+       call add_xylem_mesh_for_single_tree(1, pine_nz, pine_Asapwood)
+
+    case ('oak_and_pine')
+       neqns = 1
+       call vsfm_mpp%SetNumMeshes(neqns)
+       call add_xylem_mesh_for_two_trees()
+
+    case default
+       write(*,*)'Error while adding mesh. Unsupported problem_type : ',trim(problem_type)
+       stop
+
+    end select
+
+  end subroutine add_meshes
+
+  !------------------------------------------------------------------------
+  subroutine add_xylem_mesh_for_single_tree(imesh, local_nz, local_Asapwood)
     !
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
@@ -402,11 +424,12 @@ contains
     !
     implicit none
     !
+    PetscInt, intent(in):: imesh
     PetscInt            :: local_nz
     PetscReal           :: local_Asapwood
 
     !
-    PetscInt            :: imesh, kk
+    PetscInt            :: kk
     PetscInt            :: nlev
     PetscInt            :: iconn, vert_nconn
 
@@ -461,16 +484,16 @@ contains
        vol_xylem(kk) = area_xylem(kk) * dz
     enddo
 
+    call set_xylem_geometric_attributes( &
+         1, local_nz, local_Asapwood,   &
+         filter_xylem, area_xylem, vol_xylem, &
+         dx_xylem, dy_xylem, dz_xylem, &
+         xc_xylem, yc_xylem, zc_xylem)
+
     call mpp_varpar_set_nlevsoi(local_nz)
     call mpp_varpar_set_nlevgrnd(local_nz)
 
-    !
-    ! Set up the meshes
-    !    
-    call vsfm_mpp%SetNumMeshes(1)
-
     ! Xylem Mesh
-    imesh        = 1
     call vsfm_mpp%MeshSetName                (imesh, 'Xylem mesh')
     call vsfm_mpp%MeshSetOrientation         (imesh, MESH_ALONG_GRAVITY)
     call vsfm_mpp%MeshSetID                  (imesh, MESH_CLM_SOIL_COL)
@@ -506,7 +529,6 @@ contains
        vert_conn_type_xylem(iconn)    = CONN_VERTICAL
     end do
 
-    imesh = 1
     call vsfm_mpp%CreateAndAddConnectionSet(imesh, CONN_SET_INTERNAL, &
          nconn_xylem,  vert_conn_id_up_xylem, vert_conn_id_dn_xylem,          &
          vert_conn_dist_up_xylem, vert_conn_dist_dn_xylem,  vert_conn_area_xylem,  &
@@ -529,11 +551,11 @@ contains
     deallocate (vert_conn_area_xylem    )
     deallocate (vert_conn_type_xylem    )
 
-  end subroutine add_mesh_for_single_tree
+  end subroutine add_xylem_mesh_for_single_tree
 
   !------------------------------------------------------------------------
 
-  subroutine add_mesh_for_two_trees()
+  subroutine add_xylem_mesh_for_two_trees()
     !
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbConstants , only : MESH_ALONG_GRAVITY
@@ -582,6 +604,8 @@ contains
     PetscReal , pointer :: vert_conn_area_xylem(:)    !
     PetscInt  , pointer :: vert_conn_type_xylem(:)    !
 
+    PetscInt :: ibeg, iend
+    PetscReal :: Asapwood
     PetscErrorCode      :: ierr
 
     ncells_ghost = 0
@@ -596,36 +620,23 @@ contains
     allocate(area_xylem   (ncells_xylem ))
     allocate(filter_xylem (ncells_xylem ))
     allocate(vol_xylem    (ncells_xylem ))
-    
-    filter_xylem (:) = 1
-    area_xylem   (1:oak_nz) = oak_Asapwood            ;area_xylem   (oak_nz+1:oak_nz+pine_nz) = pine_Asapwood;
-    dx_xylem     (1:oak_nz) = sqrt(oak_Asapwood)      ;dx_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood);
-    dy_xylem     (1:oak_nz) = sqrt(oak_Asapwood)      ;dy_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood);
-    dz_xylem     (:) = dz
-    xc_xylem     (1:oak_nz) = sqrt(oak_Asapwood)/2.d0 ;xc_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood)/2.d0;
-    yc_xylem     (1:oak_nz) = sqrt(oak_Asapwood)/2.d0 ;yc_xylem     (oak_nz+1:oak_nz+pine_nz) = sqrt(pine_Asapwood)/2.d0;
 
-    zc_xylem(1)  = 0.17d0 + oak_nz * dz
-    vol_xylem(1) = area_xylem(1) * dz
-    do kk = 2, oak_nz
-       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1)) + oak_nz * dz
-       vol_xylem(kk) = area_xylem(kk) * dz
-    enddo
+    ibeg = 1; iend = oak_nz; Asapwood = oak_Asapwood
+    call set_xylem_geometric_attributes( &
+         ibeg, iend, Asapwood, &
+         filter_xylem, area_xylem, vol_xylem, &
+         dx_xylem, dy_xylem, dz_xylem, &
+         xc_xylem, yc_xylem, zc_xylem)
 
-    zc_xylem(oak_nz+1)  = 0.17d0 + pine_nz * dz
-    vol_xylem(oak_nz+1) = area_xylem(oak_nz+1) * dz
-    do kk = oak_nz+2, oak_nz+pine_nz
-       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - 1-oak_nz)) + pine_nz * dz
-       vol_xylem(kk) = area_xylem(kk) * dz
-    enddo
+    ibeg = 1 + oak_nz; iend = oak_nz + pine_nz; Asapwood = pine_Asapwood
+    call set_xylem_geometric_attributes( &
+         ibeg, iend, Asapwood, &
+         filter_xylem, area_xylem, vol_xylem, &
+         dx_xylem, dy_xylem, dz_xylem, &
+         xc_xylem, yc_xylem, zc_xylem)
 
     call mpp_varpar_set_nlevsoi(oak_nz + pine_nz)
     call mpp_varpar_set_nlevgrnd(oak_nz+ pine_nz)
-
-    !
-    ! Set up the meshes
-    !    
-    call vsfm_mpp%SetNumMeshes(1)
 
     ! Xylem Mesh
     imesh        = 1
@@ -697,11 +708,52 @@ contains
     deallocate (vert_conn_area_xylem    )
     deallocate (vert_conn_type_xylem    )
 
-  end subroutine add_mesh_for_two_trees
+  end subroutine add_xylem_mesh_for_two_trees
+
+  !------------------------------------------------------------------------
+  subroutine set_xylem_geometric_attributes(ibeg, iend, Asapwood, &
+       filter_xylem, area_xylem, vol_xylem, &
+       dx_xylem, dy_xylem, dz_xylem, &
+       xc_xylem, yc_xylem, zc_xylem)
+
+    implicit none
+
+    PetscInt            :: ibeg, iend
+    PetscReal           :: Asapwood
+    PetscReal , pointer :: xc_xylem(:)
+    PetscReal , pointer :: yc_xylem(:)
+    PetscReal , pointer :: zc_xylem(:)
+    PetscReal , pointer :: dx_xylem(:)
+    PetscReal , pointer :: dy_xylem(:)
+    PetscReal , pointer :: dz_xylem(:)
+    PetscReal , pointer :: area_xylem(:)
+    PetscReal , pointer :: vol_xylem(:)
+    PetscInt  , pointer :: filter_xylem(:)
+
+    PetscInt            :: kk, nz
+
+    filter_xylem (ibeg:iend) = 1
+    area_xylem   (ibeg:iend) = Asapwood
+    dx_xylem     (ibeg:iend) = sqrt(Asapwood)
+    dy_xylem     (ibeg:iend) = sqrt(Asapwood)
+    dz_xylem     (ibeg:iend) = dz
+    xc_xylem     (ibeg:iend) = sqrt(Asapwood)/2.d0
+    yc_xylem     (ibeg:iend) = sqrt(Asapwood)/2.d0
+
+    nz = iend - ibeg + 1
+
+    zc_xylem(ibeg)  = -0.17d0 + nz * dz
+    vol_xylem(ibeg) = area_xylem(ibeg) * dz
+    do kk = ibeg+1, iend
+       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - ibeg)) + nz * dz
+       vol_xylem(kk) = area_xylem(kk) * dz
+    enddo
+
+  end subroutine set_xylem_geometric_attributes
 
   !------------------------------------------------------------------------
 
-  subroutine add_goveqn()
+  subroutine add_goveqn(neqns)
     !
     ! !DESCRIPTION:
     !
@@ -714,9 +766,15 @@ contains
     ! !ARGUMENTS
     implicit none
 
-    call vsfm_mpp%AddGovEqn(GE_RE, 'Richards Equation ODE', MESH_CLM_SOIL_COL)
+    PetscInt, intent(in) :: neqns
 
-    call vsfm_mpp%SetMeshesOfGoveqns()
+    PetscInt :: irank
+
+    do irank = 1, neqns
+       call vsfm_mpp%AddGovEqnWithMeshRank(GE_RE, 'Richards Equation ODE', irank)
+    end do
+
+    call vsfm_mpp%SetMeshesOfGoveqnsByMeshRank()
 
   end subroutine add_goveqn
 
@@ -1189,7 +1247,7 @@ contains
   end subroutine set_initial_conditions_for_two_trees
 
   !------------------------------------------------------------------------
-  subroutine set_bondary_conditions_for_single_tree(nz, nstep, ET, SoilBC)
+  subroutine set_boundary_conditions_for_single_tree(nz, nstep, ET, SoilBC)
     !
     ! !DESCRIPTION:
     !
@@ -1238,10 +1296,10 @@ contains
     deallocate(bc_value)
     call VecRestoreArrayF90(SoilBC, soilbc_p, ierr)
 
-  end subroutine set_bondary_conditions_for_single_tree
+  end subroutine set_boundary_conditions_for_single_tree
 
   !------------------------------------------------------------------------
-  subroutine set_bondary_conditions_for_two_trees(nz, nstep, ET, SoilBC)
+  subroutine set_boundary_conditions_for_two_trees(nz, nstep, ET, SoilBC)
     !
     ! !DESCRIPTION:
     !
@@ -1293,7 +1351,7 @@ contains
     deallocate(bc_value)
     call VecRestoreArrayF90(SoilBC, soilbc_p, ierr)
 
-  end subroutine set_bondary_conditions_for_two_trees
+  end subroutine set_boundary_conditions_for_two_trees
 
   !------------------------------------------------------------------------
   subroutine diagnose_actual_sink_for_single_tree(nz, nstep, act_et_p)
