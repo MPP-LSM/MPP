@@ -291,17 +291,7 @@ contains
     call add_goveqn(neqns)
 
     ! 4. Add boundary and source-sink conditions to all governing equations
-    select case(trim(problem_type))
-    case ('oak')
-       call add_conditions_to_goveqns_for_single_tree()
-    case ('pine')
-       call add_conditions_to_goveqns_for_single_tree()
-    case ('oak_and_pine')
-       call add_conditions_to_goveqns_for_two_trees()
-    case default
-       write(*,*)'Error while adding condition. Unsupported problem_type : ',trim(problem_type)
-       stop
-    end select
+    call add_conditions_to_goveqns()
 
     ! 5. Allocate memory to hold auxvars
     call allocate_auxvars()
@@ -310,32 +300,10 @@ contains
     call vsfm_mpp%SetupProblem()
 
     ! 7. Add material properities associated with all governing equations
-    select case(trim(problem_type))
-    case ('oak')
-       call set_material_properties_for_single_tree(oak_nz, porosity, oak_phi88, oak_phi50, &
-            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50)
-    case ('pine')
-       call set_material_properties_for_single_tree(pine_nz, porosity, pine_phi88, pine_phi50, &
-            pine_kmax, pine_c1, pine_c2, pine_c3, pine_phis50)
-    case ('oak_and_pine')
-       call set_material_properties_for_two_trees()
-    case default
-       write(*,*)'Unsupported problem_type'
-       stop
-    end select
+    call set_material_properties()
 
     ! 8. Set initial conditions
-    select case(trim(problem_type))
-    case ('oak')
-       call set_initial_conditions_for_single_tree(oak_nz)
-    case ('pine')
-       call set_initial_conditions_for_single_tree(pine_nz)
-    case ('oak_and_pine')
-       call set_initial_conditions_for_two_trees()
-    case default
-       write(*,*)'Unsupported problem_type'
-       stop
-    end select
+    call set_initial_conditions()
 
   end subroutine Init
 
@@ -779,6 +747,28 @@ contains
   end subroutine add_goveqn
 
   !------------------------------------------------------------------------
+  subroutine add_conditions_to_goveqns()
+
+    implicit none
+
+    select case(trim(problem_type))
+    case ('oak')
+       call add_conditions_to_goveqns_for_single_tree()
+
+    case ('pine')
+       call add_conditions_to_goveqns_for_single_tree()
+
+    case ('oak_and_pine')
+       call add_conditions_to_goveqns_for_two_trees()
+
+    case default
+       write(*,*)'Error while adding condition. Unsupported problem_type : ',trim(problem_type)
+       stop
+
+    end select
+
+  end subroutine add_conditions_to_goveqns
+  !------------------------------------------------------------------------
   subroutine add_conditions_to_goveqns_for_single_tree()
     !
     ! !DESCRIPTION:
@@ -921,6 +911,32 @@ contains
 
   end subroutine allocate_auxvars
 
+  !------------------------------------------------------------------------
+  subroutine set_material_properties()
+
+    implicit none
+
+    select case(trim(problem_type))
+    case ('oak')
+       call set_material_properties_for_single_tree(   &
+            oak_nz, porosity, oak_phi88, oak_phi50,    &
+            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50)
+
+    case ('pine')
+       call set_material_properties_for_single_tree(   &
+            pine_nz, porosity, pine_phi88, pine_phi50, &
+            pine_kmax, pine_c1, pine_c2, pine_c3, pine_phis50)
+
+    case ('oak_and_pine')
+       call set_material_properties_for_two_trees()
+
+    case default
+       write(*,*)'Unsupported problem_type'
+       stop
+
+    end select
+
+  end subroutine set_material_properties
   !------------------------------------------------------------------------
   subroutine set_material_properties_for_single_tree(local_nz, local_porosity, &
        local_phi88, local_phi50, local_kmax, local_c1, local_c2, local_c3, local_phis50)
@@ -1105,6 +1121,28 @@ contains
     deallocate(ss_auxvar_value)
 
   end subroutine set_material_properties_for_two_trees
+
+  !------------------------------------------------------------------------
+  subroutine set_initial_conditions()
+
+    implicit none
+
+    select case(trim(problem_type))
+    case ('oak')
+       call set_initial_conditions_for_single_tree(oak_nz)
+
+    case ('pine')
+       call set_initial_conditions_for_single_tree(pine_nz)
+
+    case ('oak_and_pine')
+       call set_initial_conditions_for_two_trees()
+
+    case default
+       write(*,*)'Unsupported problem_type'
+       stop
+
+    end select
+  end subroutine set_initial_conditions
 
   !------------------------------------------------------------------------
   subroutine set_initial_conditions_for_single_tree(nz)
