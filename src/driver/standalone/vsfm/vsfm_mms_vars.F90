@@ -38,5 +38,6 @@ module vsfm_mms_vars
   PetscInt  , parameter :: DATA_SATFUNC_ALPHA        = 10
   PetscInt  , parameter :: DATA_SATFUNC_LAMBDA       = 11
   PetscInt  , parameter :: DATA_RES_SAT              = 12
+  PetscInt  , parameter :: DATA_INITIAL_PRESSURE     = 13
 
 end module vsfm_mms_vars

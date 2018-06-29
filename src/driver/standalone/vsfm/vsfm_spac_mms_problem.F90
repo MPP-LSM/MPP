@@ -1374,14 +1374,32 @@ contains
     PetscReal          :: Se
     PetscInt           :: ii
     PetscReal, pointer :: pressure_ic(:)
+    PetscReal, pointer :: soil_ic(:),root_ic(:),xylm_ic(:)
     PetscErrorCode     :: ierr
 
+    allocate(soil_ic(num_soil))
+    allocate(root_ic(num_root))
+    allocate(xylm_ic(num_xylm))
+
+    call set_variable_for_problem(SOIL_INITIAL_PRESSURE, soil_ic)
+    call set_variable_for_problem(ROOT_INITIAL_PRESSURE, root_ic)
+    call set_variable_for_problem(XYLM_INITIAL_PRESSURE, xylm_ic)
+
     call VecGetArrayF90(vsfm_mpp%soe%solver%soln, pressure_ic, ierr); CHKERRQ(ierr)
-    pressure_ic = 99325.d0
+
+    pressure_ic(1                   :num_soil                   ) = soil_ic(:)
+    pressure_ic(1+num_soil          :num_soil+num_root          ) = root_ic(:)
+    pressure_ic(1+num_soil+num_root :num_soil+num_root+num_xylm ) = xylm_ic(:)
+
     call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, pressure_ic, ierr); CHKERRQ(ierr)
+
     call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
     call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
     
+    deallocate(soil_ic)
+    deallocate(root_ic)
+    deallocate(xylm_ic)
+
   end subroutine set_initial_conditions
 
   !------------------------------------------------------------------------
@@ -1857,44 +1875,47 @@ contains
     case (SOIL_PERMEABILITY)
        do ii = 1, num_soil
           xx = x_soil_min + dx_soil/2.d0 + (ii-1)*dx_soil
-          call compute_soil_permeability_or_deriv(xx, val=data_1d(ii))
+          call compute_soil_permeability_or_deriv(xx, val=data_1D(ii))
        end do
 
     case (SOIL_SATFUNC_ALPHA)
        do ii = 1, num_soil
           xx = x_soil_min + dx_soil/2.d0 + (ii-1)*dx_soil
-          call compute_soil_alpha_or_deriv(xx, val=data_1d(ii))
+          call compute_soil_alpha_or_deriv(xx, val=data_1D(ii))
        end do
 
     case (SOIL_SATFUNC_LAMBDA)
        do ii = 1, num_soil
           xx = x_soil_min + dx_soil/2.d0 + (ii-1)*dx_soil
-          call compute_soil_lambda_or_deriv(xx, val=data_1d(ii))
+          call compute_soil_lambda_or_deriv(xx, val=data_1D(ii))
        end do
 
     case (SOIL_RES_SAT)
        do ii = 1, num_soil
           xx = x_soil_min + dx_soil/2.d0 + (ii-1)*dx_soil
-          call compute_soil_residualsat_or_deriv(xx, val=data_1d(ii))
+          call compute_soil_residualsat_or_deriv(xx, val=data_1D(ii))
        end do
 
     case (SOIL_CONDUCTANCE_VAL)
-       data_1d(:) = 1.d-11
+       data_1D(:) = 1.d-11
 
     case (SOIL_INITIAL_PRESSURE)
+       P = 0.d0
        do ii = 1, num_soil
           xx = x_soil_min + dx_soil/2.d0 + (ii-1)*dx_soil
-          call compute_soil_pressure_or_deriv(xx, val=data_1d(ii))
+          call compute_soil_pressure_or_deriv(xx, val=data_1D(ii))
+          P = P + 1.d0/num_soil*data_1D(ii)
        end do
+       data_1D(:) = P
 
     case (SOIL_BC_PRESSURE)
        ii = 1
        xx = x_soil_min
-       call compute_soil_pressure_or_deriv(xx, val=data_1d(ii))
+       call compute_soil_pressure_or_deriv(xx, val=data_1D(ii))
 
        ii = 2
        xx = x_soil_max
-       call compute_soil_pressure_or_deriv(xx, val=data_1d(ii))
+       call compute_soil_pressure_or_deriv(xx, val=data_1D(ii))
 
     case (SOIL_MASS_SOURCE)
        do ii = 1, num_soil
@@ -1978,14 +1999,16 @@ contains
        end do
 
     case (ROOT_CONDUCTANCE_VAL)
-       data_1d(:) = 2.d-11
+       data_1D(:) = 2.d-11
 
     case (ROOT_INITIAL_PRESSURE)
+       P = 0.d0
        do ii = 1, num_root
           xx = x_root_min + dx_root/2.d0 + (ii-1)*dx_root
           call compute_root_pressure_or_deriv (xx, data_1D(ii))
-          !call compute_soil_pressure_or_deriv (xx, data_1D(ii))
+          P = P + 1.d0/num_root*data_1D(ii)
        end do
+       data_1D(:) = P
 
     case (ROOT_BC_PRESSURE)
        xx = x_root_min
@@ -2099,13 +2122,16 @@ contains
        data_1D(num_xylm+1:2*num_xylm) = xylm_phis50
 
     case (XYLM_CONDUCTANCE_VAL)
-       data_1d(:) = 3.d-11
+       data_1D(:) = 3.d-11
 
     case (XYLM_INITIAL_PRESSURE)
+       P = 0.d0
        do ii = 1, num_xylm
           xx          = x_xylm_min + dx_xylm/2.d0 + (ii-1)*dx_xylm
           call compute_xylm_pressure_or_deriv(xx, data_1D(ii))
+          P = P + 1.d0/num_xylm*data_1D(ii)
        end do
+       data_1D(:) = P
 
     case (XYLM_BC_PRESSURE)
        xx = x_xylm_max

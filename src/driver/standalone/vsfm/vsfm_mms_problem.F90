@@ -411,9 +411,8 @@ contains
 
     allocate(pressure_ic(ncells))
 
-    call set_variable_for_problem(problem_type, DATA_PRESSURE, data_1D=pressure_ic)
+    call set_variable_for_problem(problem_type, DATA_INITIAL_PRESSURE, data_1D=pressure_ic)
 
-    pressure_ic = 90000.d0
     call vsfm_mpp%Restart(pressure_ic)
     
     deallocate(pressure_ic)

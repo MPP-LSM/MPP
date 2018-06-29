@@ -210,6 +210,14 @@ contains
           call compute_pressure_or_deriv(x, val=data_1D(ii))
        end do
 
+    case (DATA_INITIAL_PRESSURE)
+       P = 0.d0
+       do ii = 1, nx
+          x     = soil_xc_3d(ii,jj,kk)
+          call compute_pressure_or_deriv(x, val=data_1D(ii))
+          P = P + 1.d0/nx*data_1D(ii)
+       end do
+       data_1D(:) = P
     case (DATA_POROSITY)
        do ii = 1, nx
           data_1D(ii) = 0.d0
