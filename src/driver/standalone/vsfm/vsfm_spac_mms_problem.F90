@@ -51,6 +51,7 @@ module vsfm_spac_mms_problem
   PetscReal , parameter :: xylm_c1             = 1.7d6             ! Pa
   PetscReal , parameter :: xylm_c2             = 3.0d0             ! -
   PetscReal , parameter :: xylm_c3             = 12.3d0            ! -
+  PetscReal , parameter :: max_pet             = 2.d-4
   
   PetscInt  , parameter :: SOIL_XC               = 001
   PetscInt  , parameter :: SOIL_YC               = 002
@@ -105,6 +106,7 @@ module vsfm_spac_mms_problem
   PetscInt  , parameter :: XYLM_CONDUCTANCE_VAL  = 217
   PetscInt  , parameter :: XYLM_INITIAL_PRESSURE = 218
   PetscInt  , parameter :: XYLM_BC_PRESSURE      = 219
+  PetscInt  , parameter :: XYLM_PET              = 220
 
   PetscReal, pointer :: soil_root_flux(:)
 
@@ -1499,7 +1501,7 @@ contains
        call base_soe%SetDataFromCLM(AUXVAR_SS, VAR_BC_SS_CONDITION, 2, root_ss)
        call base_soe%SetDataFromCLM(AUXVAR_SS, VAR_BC_SS_CONDITION, 3, xylm_ss)
 
-       xylm_ss(:) = 0.d0
+       call set_variable_for_problem(XYLM_PET, xylm_ss)
        call base_soe%SetDataFromCLM(AUXVAR_SS, VAR_BC_SS_CONDITION, 4, xylm_ss)
 
     end select
@@ -1521,7 +1523,7 @@ contains
      PetscReal, intent(out), optional :: d2val_dx2
      !
      PetscReal, parameter             :: a0 =  1000.d0
-     PetscReal, parameter             :: a1 = -2000.d0
+     PetscReal, parameter             :: a1 = -20000.d0
      PetscReal                        :: num, den
 
      num     = x          - x_soil_min
@@ -1612,7 +1614,7 @@ contains
      PetscReal, intent(out), optional :: d2val_dx2
      !
      PetscReal, parameter             :: a0 =  1000.d0
-     PetscReal, parameter             :: a1 = -2000.d0
+     PetscReal, parameter             :: a1 = -20000.d0
      PetscReal                        :: num, den
 
      num     = x          - x_xylm_min
@@ -1725,7 +1727,7 @@ contains
      PetscReal, intent(out), optional :: d2val_dx2
      !
      PetscReal, parameter             :: a0 =  1000.d0
-     PetscReal, parameter             :: a1 = -2000.d0
+     PetscReal, parameter             :: a1 = -20000.d0
      PetscReal                        :: num, den
 
      num     = x          - x_xylm_min
@@ -2261,8 +2263,14 @@ contains
           data_1D(ii) = &
                -((k*kr/mu)*drho_dx + (rho*kr/mu)*dk_dx + (rho*k/mu)*dkr_dx)*(dP_dx) &
                -(rho*k*kr/mu)*(d2P_dx2)
-          data_1D(ii) = data_1D(ii)*dx_xylm
+          data_1D(ii) = data_1D(ii)*dx_xylm - max_pet*exp(-((P-PRESSURE_REF)/xylm_phis50)**xylm_c3)
 
+       end do
+
+    case (XYLM_PET)
+       do ii = 1, num_xylm
+          xx = x_xylm_min + dx_xylm/2.d0 + (ii-1)*dx_xylm
+          data_1D(ii) = max_pet
        end do
 
     case default
