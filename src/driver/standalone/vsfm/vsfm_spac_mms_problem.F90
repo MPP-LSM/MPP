@@ -47,7 +47,7 @@ module vsfm_spac_mms_problem
   PetscReal , parameter :: xylm_kmax           = 1.6d-6            ! Pa
   PetscReal , parameter :: xylm_phi50          = -2.5d6            ! Pa
   PetscReal , parameter :: xylm_phi88          = -0.5d6            ! Pa
-  PetscReal , parameter :: xylm_phis50         = -0.91d6           ! Pa
+  PetscReal , parameter :: xylm_phis50         = -20500.d0         ! Pa
   PetscReal , parameter :: xylm_c1             = 1.7d6             ! Pa
   PetscReal , parameter :: xylm_c2             = 3.0d0             ! -
   PetscReal , parameter :: xylm_c3             = 12.3d0            ! -
@@ -2198,13 +2198,11 @@ contains
        data_1D(:) = 3.d-11
 
     case (XYLM_INITIAL_PRESSURE)
-       P = 0.d0
        do ii = 1, num_xylm
           xx          = x_xylm_min + dx_xylm/2.d0 + (ii-1)*dx_xylm
-          call compute_xylm_pressure_or_deriv(xx, data_1D(ii))
-          P = P + 1.d0/num_xylm*data_1D(ii)
+          call compute_xylm_pressure_or_deriv(xx, P)
+          data_1D(ii) = P - 0.1d4
        end do
-       data_1D(:) = P
 
     case (XYLM_PRESSURE)
        do ii = 1, num_xylm
