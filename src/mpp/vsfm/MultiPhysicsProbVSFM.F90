@@ -1981,10 +1981,10 @@ contains
              case (SAT_FUNC_VAN_GENUCHTEN)
                 if (set_upwind_auxvar(sum_conn)) then
                    call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_up, &
-                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                        param_3(sum_conn), param_1(sum_conn), param_2(sum_conn))
                 else
                    call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_dn, &
-                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                        param_3(sum_conn), param_1(sum_conn), param_2(sum_conn))
                 endif
 
              case default
@@ -2070,10 +2070,10 @@ contains
              case (SAT_FUNC_VAN_GENUCHTEN)
                 if (set_upwind_auxvar(sum_conn)) then
                    call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_up, &
-                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                        param_3(sum_conn), param_1(sum_conn), param_2(sum_conn))
                 else
                    call SatFunc_Set_VG(conn_aux_vars(sum_conn)%satParams_dn, &
-                        param_3(sum_conn), param_2(sum_conn), param_1(sum_conn))
+                        param_3(sum_conn), param_1(sum_conn), param_2(sum_conn))
                 endif
 
              case (SAT_FUNC_FETCH2)
