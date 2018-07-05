@@ -106,6 +106,8 @@ module vsfm_spac_mms_problem
   PetscInt  , parameter :: XYLM_INITIAL_PRESSURE = 218
   PetscInt  , parameter :: XYLM_BC_PRESSURE      = 219
 
+  PetscReal, pointer :: soil_root_flux(:)
+
   Public :: run_vsfm_spac_mms_problem
 
   
@@ -123,7 +125,15 @@ contains
     character(len=256)  :: true_soln_fname
 
     grid_factor = 2
+    true_soln_fname = ''
     
+    call PetscOptionsGetInt( PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-grid_factor', grid_factor, flg, ierr)
+    CHKERRQ(ierr)
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-view_true_solution', true_soln_fname, flg, ierr)
+
     call Init()
 
     ! Preform Pre-StepDT operations
@@ -137,6 +147,10 @@ contains
 
     call vsfm_mpp%soe%StepDT(1.d0, 1, &
          converged, converged_reason, ierr); CHKERRQ(ierr)
+
+    if (len(trim(adjustl(true_soln_fname)))>0) then
+       call save_true_solution(vsfm_mpp, true_soln_fname)
+    end if
 
   end subroutine run_vsfm_spac_mms_problem
 
@@ -1224,15 +1238,16 @@ contains
 
     ! Set downwind values
     set_upwind_auxvar(:) = PETSC_FALSE
+    dn_satfunc_type(:) = SAT_FUNC_VAN_GENUCHTEN
     call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp , &
          eqn_id, AUXVAR_CONN_BC                    , &
          set_upwind_auxvar, dn_satfunc_type, dn_alpha    , &
          dn_lambda, dn_residual_sat)
 
-    call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp , &
-         eqn_id, AUXVAR_CONN_BC                    , &
-         set_upwind_auxvar, dn_relperm_type, dn_weibull_d_val, &
-         dn_weibull_c_val, dn_weibull_d_val)
+    !call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp , &
+    !     eqn_id, AUXVAR_CONN_BC                    , &
+    !     set_upwind_auxvar, dn_relperm_type, dn_weibull_d_val, &
+    !     dn_weibull_c_val, dn_weibull_d_val)
     
     ! Set connection flux type
     call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, eqn_id, AUXVAR_CONN_BC, &
@@ -1607,6 +1622,12 @@ contains
      if (present(dval_dx  )) dval_dx   =  a0*(2.d0*PI/den)        *cos(num/den*PI*2.d0)
      if (present(d2val_dx2)) d2val_dx2 = -a0*((2.d0*PI/den)**2.d0)*sin(num/den*PI*2.d0)
 
+     num     = x          - x_root_min
+     den     = x_root_max - x_root_min
+     if (present(val      )) val       =  -a0                 *sin(num/den*PI) + a1 + PRESSURE_REF
+     if (present(dval_dx  )) dval_dx   =  -a0*(PI/den)        *cos(num/den*PI)
+     if (present(d2val_dx2)) d2val_dx2 = a0*((PI/den)**2.d0)*sin(num/den*PI)
+
    end subroutine compute_root_pressure_or_deriv
 
   !------------------------------------------------------------------------
@@ -1714,6 +1735,10 @@ contains
      if (present(dval_dx  )) dval_dx   =  a0*(2.d0*PI/den)        *cos(num/den*PI*2.d0)
      if (present(d2val_dx2)) d2val_dx2 = -a0*((2.d0*PI/den)**2.d0)*sin(num/den*PI*2.d0)
      
+     if (present(val      )) val       =  a0                 *sin(num/den*PI) + a1 + PRESSURE_REF
+     if (present(dval_dx  )) dval_dx   =  a0*(PI/den)        *cos(num/den*PI)
+     if (present(d2val_dx2)) d2val_dx2 =  -a0*((PI/den)**2.d0)*sin(num/den*PI)
+
    end subroutine compute_xylm_pressure_or_deriv
 
   !------------------------------------------------------------------------
@@ -1843,6 +1868,8 @@ contains
     use SaturationFunction       , only : SatFunc_Set_Weibull_RelPerm
     use SaturationFunction       , only : SatFunc_PressToSat
     use SaturationFunction       , only : SatFunc_PressToRelPerm
+    use RichardsODEPressureConnAuxType, only : rich_ode_pres_conn_auxvar_type
+    use MultiPhysicsProbConstants , only : CONDUCTANCE_MANOLI_TYPE
     !
     implicit none
     !
@@ -1866,7 +1893,10 @@ contains
     PetscReal                    :: dden_dT, dmu_dT
     PetscReal                    :: sat_res, se
     PetscReal                    :: dkr_dP
+    PetscReal                    :: P_bc, p0_bc, m_bc, sat_res_bc, cond_bc, rho_bc
+    PetscReal                    :: cond,area
     type(saturation_params_type) :: satParam
+    type (rich_ode_pres_conn_auxvar_type) :: auxvar_conn
 
     select case(data_type)
     case (SOIL_POROSITY)
@@ -1908,6 +1938,12 @@ contains
        end do
        data_1D(:) = P
 
+    case (SOIL_PRESSURE)
+       do ii = 1, num_soil
+          xx = x_soil_min + dx_soil/2.d0 + (ii-1)*dx_soil
+          call compute_soil_pressure_or_deriv(xx, val=data_1D(ii))
+       end do
+
     case (SOIL_BC_PRESSURE)
        ii = 1
        xx = x_soil_min
@@ -1918,6 +1954,7 @@ contains
        call compute_soil_pressure_or_deriv(xx, val=data_1D(ii))
 
     case (SOIL_MASS_SOURCE)
+       allocate(soil_root_flux(num_soil))
        do ii = 1, num_soil
 
           xx      = x_soil_min + dx_soil/2.d0 + (ii-1)*dx_soil
@@ -1939,7 +1976,35 @@ contains
           call SatFunc_Set_VG(satParam, sat_res, p0, m)
           call SatFunc_PressToSat(satParam, P, se, dse_dP)
           call SatFunc_PressToRelPerm(satParam, P, 1.d0, kr, dkr_dP)
+
+          call compute_root_pressure_or_deriv     (xx, val=P_bc)
+          !call compute_root_alpha_or_deriv        (xx, val=p0_bc)
+          !call compute_root_lambda_or_deriv       (xx, val=m_bc)
+          !call compute_root_residualsat_or_deriv  (xx, val=sat_res_bc)
+          p0_bc=p0; m_bc=m; sat_res_bc=sat_res;
+          cond = 1.d-11
+          cond_bc = 2.d-11
+
+          call auxvar_conn%Init()
+
+          auxvar_conn%conductance_type = CONDUCTANCE_MANOLI_TYPE
+          auxvar_conn%pressure_dn      = P
+          auxvar_conn%pressure_up      = P_bc
+          auxvar_conn%conductance_dn   = cond
+          auxvar_conn%conductance_up   = cond_bc
+
+          call SatFunc_Set_VG(auxvar_conn%satParams_dn, sat_res   , p0   , m)
+          call SatFunc_Set_VG(auxvar_conn%satParams_up, sat_res_bc, p0_bc, m_bc)
+
+          call auxvar_conn%AuxVarCompute()
+          call Density(P, 298.15d0, DENSITY_TGDPB01,  rho_bc, drho_dP, dden_dT)
+          rho_bc = rho_bc*FMWH2O
+          area = 1.d0
+          soil_root_flux(ii) = -0.5d0*(rho + rho_bc)*auxvar_conn%krg*(P_bc - P)*area
           
+          call Density(P, 298.15d0, DENSITY_TGDPB01,  rho, drho_dP, dden_dT)
+          rho = rho*FMWH2O
+
           dkr_dse   = &
                0.5d0 * se**(-0.5d0) *( 1.d0 - (1.d0 - se **(1.d0/m))**m)**2.d0 + &
                se**(0.5d0) * 2.d0   *( 1.d0 - (1.d0 - se **(1.d0/m))**m) * (1.d0 - se**(1.d0/m)) * se**(1.d0/m - 1.d0)
@@ -1953,6 +2018,7 @@ contains
                -((k*kr/mu)*drho_dx + (rho*kr/mu)*dk_dx + (rho*k/mu)*dkr_dx)*(dP_dx) &
                -(rho*k*kr/mu)*(d2P_dx2)
           data_1D(ii) = data_1D(ii)*dx_soil
+          data_1D(ii) = data_1D(ii) + soil_root_flux(ii)
        end do
 
     case (ROOT_POROSITY)
@@ -2010,11 +2076,16 @@ contains
        end do
        data_1D(:) = P
 
+    case (ROOT_PRESSURE)
+       do ii = 1, num_root
+          xx = x_root_min + dx_root/2.d0 + (ii-1)*dx_root
+          call compute_root_pressure_or_deriv (xx, data_1D(ii))
+       end do
+
     case (ROOT_BC_PRESSURE)
        xx = x_root_min
        ii = 1
        call compute_root_pressure_or_deriv(xx, data_1D(ii))
-       !call compute_soil_pressure_or_deriv(xx, data_1D(ii))
 
     case (ROOT_MASS_SOURCE)
        do ii = 1, num_root
@@ -2063,7 +2134,7 @@ contains
                -((k*kr/mu)*drho_dx + (rho*kr/mu)*dk_dx + (rho*k/mu)*dkr_dx)*(dP_dx) &
                -(rho*k*kr/mu)*(d2P_dx2)
           data_1D(ii) = data_1D(ii)*dx_root
-          !         1  2  3  4          5   6     7   8
+          data_1D(ii) = data_1D(ii) - soil_root_flux(ii)
 
        end do
 
@@ -2133,11 +2204,16 @@ contains
        end do
        data_1D(:) = P
 
+    case (XYLM_PRESSURE)
+       do ii = 1, num_xylm
+          xx          = x_xylm_min + dx_xylm/2.d0 + (ii-1)*dx_xylm
+          call compute_xylm_pressure_or_deriv(xx, data_1D(ii))
+       end do
+
     case (XYLM_BC_PRESSURE)
        xx = x_xylm_max
        ii = 1
        call compute_xylm_pressure_or_deriv(xx, data_1D(ii))
-       !call compute_soil_pressure_or_deriv(xx, data_1D(ii))
 
     case (XYLM_MASS_SOURCE)
        do ii = 1, num_xylm
@@ -2196,5 +2272,63 @@ contains
     end select
 
   end subroutine set_variable_for_problem
+
+  !------------------------------------------------------------------------
+  subroutine save_true_solution(vsfm_mpp, true_soln_filename)
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbConstants    , only : AUXVAR_SS
+    use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
+    use SystemOfEquationsBaseType    , only : sysofeqns_base_type
+    use SystemOfEquationsThermalType , only : sysofeqns_thermal_type
+    use petscvec
+    !
+    implicit none
+    !
+    type(mpp_vsfm_type) :: vsfm_mpp
+    character(len=256)                   :: true_soln_filename
+    !
+    PetscInt                             :: soe_auxvar_id
+    PetscReal                  , pointer :: val(:)
+    Vec                                  :: true_soln
+    PetscViewer                          :: viewer
+    class(sysofeqns_base_type) , pointer :: base_soe
+    character(len=256)                   :: string
+    PetscReal, pointer                   :: soil_p(:),root_p(:),xylm_p(:)
+    PetscErrorCode                       :: ierr
+
+    base_soe => vsfm_mpp%soe
+
+    allocate(soil_p(num_soil))
+    allocate(root_p(num_root))
+    allocate(xylm_p(num_xylm))
+
+    call set_variable_for_problem(SOIL_PRESSURE, soil_p)
+    call set_variable_for_problem(ROOT_PRESSURE, root_p)
+    call set_variable_for_problem(XYLM_PRESSURE, xylm_p)
+
+    string = trim(true_soln_filename)
+
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+
+    call VecDuplicate(vsfm_mpp%soe%solver%soln, true_soln, ierr); CHKERRQ(ierr)
+
+    call VecGetArrayF90(true_soln, val, ierr); CHKERRQ(ierr)
+
+    val(1                   :num_soil                   ) = soil_p(:)
+    val(1+num_soil          :num_soil+num_root          ) = root_p(:)
+    val(1+num_soil+num_root :num_soil+num_root+num_xylm ) = xylm_p(:)
+
+    call VecRestoreArrayF90(true_soln, val, ierr); CHKERRQ(ierr)
+
+    call VecView(true_soln,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+    deallocate(soil_p)
+    deallocate(root_p)
+    deallocate(xylm_p)
+
+  end subroutine save_true_solution
 
 end module vsfm_spac_mms_problem
