@@ -243,9 +243,9 @@ contains
     num_root = num_xylm/2;
     num_soil = num_root;
     
-    x_xylm_min =  0.d0; x_xylm_max = 5.d0;
+    !x_xylm_min =  0.d0; x_xylm_max = 5.d0;
     !x_xylm_min = -5.d0; x_xylm_max = 0.d0;
-    num_xylm = num_root;
+    !num_xylm = num_root;
 
     dx_xylm = (x_xylm_max - x_xylm_min)/num_xylm
     dx_root = (x_root_max - x_root_min)/num_root
@@ -1630,8 +1630,8 @@ contains
      PetscReal, intent(out), optional :: dval_dx
      PetscReal, intent(out), optional :: d2val_dx2
      !
-     PetscReal, parameter             :: a0 =  1000.d0
-     PetscReal, parameter             :: a1 = -20000.d0
+     PetscReal, parameter             :: a0 =  2000.d0
+     PetscReal, parameter             :: a1 = -25000.d0
      PetscReal                        :: num, den
 
      num     = x          - x_xylm_min
@@ -1743,8 +1743,8 @@ contains
      PetscReal, intent(out), optional :: dval_dx
      PetscReal, intent(out), optional :: d2val_dx2
      !
-     PetscReal, parameter             :: a0 =  1000.d0
-     PetscReal, parameter             :: a1 = -20000.d0
+     PetscReal, parameter             :: a0 =  2000.d0
+     PetscReal, parameter             :: a1 = -25000.d0
      PetscReal                        :: num, den
 
      num     = x          - x_xylm_min
@@ -1754,9 +1754,9 @@ contains
      if (present(dval_dx  )) dval_dx   =  a0*(2.d0*PI/den)        *cos(num/den*PI*2.d0)
      if (present(d2val_dx2)) d2val_dx2 = -a0*((2.d0*PI/den)**2.d0)*sin(num/den*PI*2.d0)
      
-     if (present(val      )) val       =  a0                 *sin(num/den*PI) + a1 + PRESSURE_REF
-     if (present(dval_dx  )) dval_dx   =  a0*(PI/den)        *cos(num/den*PI)
-     if (present(d2val_dx2)) d2val_dx2 =  -a0*((PI/den)**2.d0)*sin(num/den*PI)
+     !if (present(val      )) val       =  a0                 *sin(num/den*PI) + a1 + PRESSURE_REF
+     !if (present(dval_dx  )) dval_dx   =  a0*(PI/den)        *cos(num/den*PI)
+     !if (present(d2val_dx2)) d2val_dx2 =  -a0*((PI/den)**2.d0)*sin(num/den*PI)
 
    end subroutine compute_xylm_pressure_or_deriv
 
