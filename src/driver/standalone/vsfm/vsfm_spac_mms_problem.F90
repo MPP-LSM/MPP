@@ -1138,6 +1138,7 @@ contains
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSoilPermeability
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetRelativePermeability
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetRelativePermeabilityAuxVarConn
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnIntValue
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnRealValue
     use SaturationFunction        , only : SAT_FUNC_VAN_GENUCHTEN
@@ -1258,7 +1259,7 @@ contains
          set_upwind_auxvar, dn_satfunc_type, dn_alpha    , &
          dn_lambda, dn_residual_sat)
 
-    call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp , &
+    call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp , &
          eqn_id, AUXVAR_CONN_BC                    , &
          set_upwind_auxvar, dn_relperm_type, dn_weibull_d_val, &
          dn_weibull_c_val, dn_weibull_d_val)

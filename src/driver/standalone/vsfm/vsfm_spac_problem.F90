@@ -579,7 +579,7 @@ contains
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnRealValue 
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnIntValue
-    use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetRelativePermeabilityAuxVarConn
     use MultiPhysicsProbConstants , only : AUXVAR_CONN_INTERNAL
     use MultiPhysicsProbConstants , only : AUXVAR_CONN_BC
     use MultiPhysicsProbConstants , only : VAR_FLUX_TYPE
@@ -690,7 +690,7 @@ contains
     call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, VAR_CONDUCTANCE, cond_conn_in        )
     call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_BC      , VAR_CONDUCTANCE, cond_conn_bc        )
 
-    call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_BC, upwind_auxvar_conn_bc, &
+    call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_BC, upwind_auxvar_conn_bc, &
          satfunc_itype_conn_bc, campbell_he_conn_bc, campbell_n_conn_bc)
         
     deallocate(cond_conn_in      )
