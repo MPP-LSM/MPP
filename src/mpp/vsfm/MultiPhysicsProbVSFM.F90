@@ -1293,7 +1293,7 @@ contains
     ! Set soil properties for internal auxvars
     do icell = 1, size(param_1)
 
-       call SetRelativePermeability(ode_aux_vars_in(icell)%satParams, &
+       call ode_aux_vars_in(icell)%satParams%SetRelPerm( &
             relperm_type(icell), param_1(icell), param_2(icell))
     end do
 
@@ -1348,37 +1348,6 @@ contains
 
   end subroutine VSFMMPPSetRelativePermeability
 
-  !------------------------------------------------------------------------
-  subroutine SetRelativePermeability(satParam, relperm_type, param_1, param_2)
-    !
-    use SaturationFunction , only : saturation_params_type
-    use SaturationFunction , only : RELPERM_FUNC_MUALEM
-    use SaturationFunction , only : RELPERM_FUNC_WEIBULL
-    use SaturationFunction , only : RELPERM_FUNC_CAMPBELL
-    use SaturationFunction , only : SatFunc_Set_Weibull_RelPerm
-    use SaturationFunction , only : SatFunc_Set_Campbell_RelPerm
-    !
-    implicit none
-    !
-    type(saturation_params_type) , intent(inout) :: satParam
-    PetscInt                                     :: relperm_type
-    PetscReal                                    :: param_1, param_2
-
-    select case (relperm_type)
-    case (RELPERM_FUNC_MUALEM)
-
-    case (RELPERM_FUNC_WEIBULL)
-       call SatFunc_Set_Weibull_RelPerm(satParam, param_1, param_2)
-
-    case (RELPERM_FUNC_CAMPBELL)
-       call SatFunc_Set_Campbell_RelPerm(satParam, param_1, param_2)
-
-    case default
-       call endrun(msg='ERROR:: Unknown relperm_type ' // &
-            errMsg(__FILE__, __LINE__))
-    end select
-
-  end subroutine SetRelativePermeability
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetDensityType(this, igoveqn, density_type)
     !
@@ -1644,7 +1613,7 @@ contains
 
     do icell = 1, size(alpha)
 
-       call SetSaturationFunction(ode_aux_vars_in(icell)%satParams, &
+       call ode_aux_vars_in(icell)%satParams%SetSatFunc( &
             vsfm_satfunc_type(icell), alpha(icell), lambda(icell), sat_res(icell))
     end do
 
@@ -1700,54 +1669,6 @@ contains
     enddo
 
   end subroutine VSFMMPPSetSaturationFunction
-
-  !------------------------------------------------------------------------
-  subroutine SetSaturationFunction(satParam, satfunc_type, alpha, lambda, sat_res)
-    !
-    use SaturationFunction            , only : saturation_params_type
-    use SaturationFunction            , only : SatFunc_Set_BC
-    use SaturationFunction            , only : SatFunc_Set_SBC_bz2
-    use SaturationFunction            , only : SatFunc_Set_SBC_bz3
-    use SaturationFunction            , only : SatFunc_Set_VG
-    use SaturationFunction            , only : SatFunc_Set_FETCH2
-    use SaturationFunction            , only : SatFunc_Set_Chuang
-    use SaturationFunction            , only : SAT_FUNC_VAN_GENUCHTEN
-    use SaturationFunction            , only : SAT_FUNC_BROOKS_COREY
-    use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2
-    use SaturationFunction            , only : SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3
-    use SaturationFunction            , only : SAT_FUNC_FETCH2
-    use SaturationFunction            , only : SAT_FUNC_CHUANG
-    !
-    implicit none
-    !
-    type(saturation_params_type) , intent(inout) :: satParam
-    PetscInt  :: satfunc_type
-    PetscReal :: alpha, lambda, sat_res
-
-    select case (satfunc_type)
-    case (SAT_FUNC_BROOKS_COREY)
-       call SatFunc_Set_BC(satParam, sat_res, alpha, lambda)
-
-    case (SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2)
-       call SatFunc_Set_SBC_bz2(satParam, sat_res, alpha, lambda, -0.9d0/alpha)
-
-    case (SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3)
-       call SatFunc_Set_SBC_bz3(satParam, sat_res, alpha, lambda, -0.9d0/alpha)
-
-    case (SAT_FUNC_VAN_GENUCHTEN)
-       call SatFunc_Set_VG(satParam, sat_res, alpha, lambda)
-
-    case (SAT_FUNC_FETCH2)
-       call SatFunc_Set_FETCH2(satParam, alpha, lambda)
-
-    case (SAT_FUNC_CHUANG)
-       call SatFunc_Set_Chuang(satParam, alpha, lambda)
-
-    case default
-       call endrun(msg='ERROR:: Unknown vsfm_satfunc_type ' // &
-            errMsg(__FILE__, __LINE__))
-    end select
-  end subroutine SetSaturationFunction
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetSourceSinkAuxVarRealValue(this, igoveqn, &
@@ -1922,11 +1843,11 @@ contains
 
              if (satfunc_itype(sum_conn) > 0) then
                 if (set_upwind_auxvar(sum_conn)) then
-                   call SetSaturationFunction(conn_aux_vars(sum_conn)%satParams_up, &
+                   call conn_aux_vars(sum_conn)%satParams_up%SetSatFunc( &
                         satfunc_itype(sum_conn), param_1(sum_conn), &
                         param_2(sum_conn), param_3(sum_conn))
                 else
-                   call SetSaturationFunction(conn_aux_vars(sum_conn)%satParams_dn, &
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetSatFunc( &
                         satfunc_itype(sum_conn), param_1(sum_conn), &
                         param_2(sum_conn), param_3(sum_conn))
                 endif
@@ -1961,11 +1882,11 @@ contains
 
              if (satfunc_itype(sum_conn) > 0) then
                 if (set_upwind_auxvar(sum_conn)) then
-                   call SetSaturationFunction(conn_aux_vars(sum_conn)%satParams_up, &
+                   call conn_aux_vars(sum_conn)%satParams_up%SetSatFunc( &
                         satfunc_itype(sum_conn), param_1(sum_conn), &
                         param_2(sum_conn), param_3(sum_conn))
                 else
-                   call SetSaturationFunction(conn_aux_vars(sum_conn)%satParams_dn, &
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetSatFunc( &
                         satfunc_itype(sum_conn), param_1(sum_conn), &
                         param_2(sum_conn), param_3(sum_conn))
                 endif
@@ -2070,10 +1991,10 @@ contains
 
              if (relperm_itype(sum_conn) > 0) then
                 if (set_upwind_auxvar(sum_conn)) then
-                   call SetRelativePermeability(conn_aux_vars(sum_conn)%satParams_up, &
+                   call conn_aux_vars(sum_conn)%satParams_up%SetRelPerm( &
                         relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
                 else
-                   call SetRelativePermeability(conn_aux_vars(sum_conn)%satParams_dn, &
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetRelPerm( &
                         relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
                 endif
              endif
@@ -2107,10 +2028,10 @@ contains
 
              if (relperm_itype(sum_conn) > 0) then
                 if (set_upwind_auxvar(sum_conn)) then
-                   call SetRelativePermeability(conn_aux_vars(sum_conn)%satParams_up, &
+                   call conn_aux_vars(sum_conn)%satParams_up%SetRelPerm( &
                         relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
                 else
-                   call SetRelativePermeability(conn_aux_vars(sum_conn)%satParams_dn, &
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetRelPerm( &
                         relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
                 endif
              endif

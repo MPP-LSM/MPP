@@ -41,6 +41,8 @@ module SaturationFunction
      PetscReal :: fetch2_phi88, fetch2_phi50      ! Xylem shape parameters for water potential [Pa] at 88% and 50% saturation. Negative values.
      PetscReal :: chuang_phi0, chuang_p           ! Empirical coefficients for xylem water content. chuang_phi0 is positive number
    contains
+     procedure, public :: SetSatFunc
+     procedure, public :: SetRelPerm
      procedure, public :: Copy    => SatFunc_Copy
      procedure, public :: Init    => SatFunc_Init
   end type saturation_params_type
@@ -1385,6 +1387,70 @@ contains
     endif
 
   end subroutine SatFunc_SatToPc_Chuang
+
+  !------------------------------------------------------------------------
+  subroutine SetSatFunc(this, satfunc_type, alpha, lambda, sat_res)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(saturation_params_type) , intent(inout) :: this
+    PetscInt                                      :: satfunc_type
+    PetscReal                                     :: alpha, lambda, sat_res
+
+    select case (satfunc_type)
+    case (SAT_FUNC_BROOKS_COREY)
+       call SatFunc_Set_BC(this, sat_res, alpha, lambda)
+
+    case (SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ2)
+       call SatFunc_Set_SBC_bz2(this, sat_res, alpha, lambda, -0.9d0/alpha)
+
+    case (SAT_FUNC_SMOOTHED_BROOKS_COREY_BZ3)
+       call SatFunc_Set_SBC_bz3(this, sat_res, alpha, lambda, -0.9d0/alpha)
+
+    case (SAT_FUNC_VAN_GENUCHTEN)
+       call SatFunc_Set_VG(this, sat_res, alpha, lambda)
+
+    case (SAT_FUNC_FETCH2)
+       call SatFunc_Set_FETCH2(this, alpha, lambda)
+
+    case (SAT_FUNC_CHUANG)
+       call SatFunc_Set_Chuang(this, alpha, lambda)
+
+    case default
+       call endrun(msg='ERROR:: Unknown vsfm_satfunc_type ' // &
+            errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine SetSatFunc
+
+  !------------------------------------------------------------------------
+  subroutine SetRelPerm(this, relperm_type, param_1, param_2)
+    !
+    implicit none
+    !
+    class(saturation_params_type) , intent(inout) :: this
+    PetscInt                                      :: relperm_type
+    PetscReal                                     :: param_1, param_2
+
+    select case (relperm_type)
+    case (RELPERM_FUNC_MUALEM)
+
+    case (RELPERM_FUNC_WEIBULL)
+       call SatFunc_Set_Weibull_RelPerm(this, param_1, param_2)
+
+    case (RELPERM_FUNC_CAMPBELL)
+       call SatFunc_Set_Campbell_RelPerm(this, param_1, param_2)
+
+    case default
+       call endrun(msg='ERROR:: Unknown relperm_type ' // &
+            errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine SetRelPerm
 
   !------------------------------------------------------------------------
   !
