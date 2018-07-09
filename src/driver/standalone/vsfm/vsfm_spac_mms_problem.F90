@@ -1262,7 +1262,7 @@ contains
     call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp , &
          eqn_id, AUXVAR_CONN_BC                    , &
          set_upwind_auxvar, dn_relperm_type, dn_weibull_d_val, &
-         dn_weibull_c_val, dn_weibull_d_val)
+         dn_weibull_c_val)
 #endif
     
     ! Set connection flux type

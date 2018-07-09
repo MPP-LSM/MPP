@@ -1158,70 +1158,7 @@ contains
           call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
 
-    if (goveq_richards_ode_pres%mesh%ncells_local /= size(perm_x)) then
-       write(iulog,*) 'No. of values for soil permeability is not equal to no. of grid cells.'
-       write(iulog,*) 'No. of soil porosity values = ',size(perm_x)
-       write(iulog,*) 'No. of grid cells           = ',goveq_richards_ode_pres%mesh%ncells_local
-    endif
-
-    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-    do icell = 1, size(perm_x)
-       ode_aux_vars_in(icell)%perm(1) = perm_x(icell)
-       ode_aux_vars_in(icell)%perm(2) = perm_y(icell)
-       ode_aux_vars_in(icell)%perm(3) = perm_z(icell)
-    enddo
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
-    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
-          enddo
-          
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set soil properties for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
-    cur_cond        => goveq_richards_ode_pres%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          ode_aux_vars_ss(sum_conn)%perm (:) = ode_aux_vars_in(ghosted_id)%perm(:)
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call goveq_richards_ode_pres%SetSoilPermeability(perm_x, perm_y, perm_z)
 
   end subroutine VSFMMPPSetSoilPermeability
 
@@ -1282,69 +1219,8 @@ contains
           call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
 
-    if (goveq_richards_ode_pres%mesh%ncells_local /= size(relperm_type)) then
-       write(iulog,*) 'No. of values for relative permeability is not equal to no. of grid cells.'
-       write(iulog,*) 'No. of rel. perm. values = ',size(relperm_type)
-       write(iulog,*) 'No. of grid cells        = ',goveq_richards_ode_pres%mesh%ncells_local
-    endif
-
-    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-    do icell = 1, size(param_1)
-
-       call ode_aux_vars_in(icell)%satParams%SetRelPerm( &
-            relperm_type(icell), param_1(icell), param_2(icell))
-    end do
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
-    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-          enddo
-
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set satParams for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
-    cur_cond        => goveq_richards_ode_pres%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-          call ode_aux_vars_ss(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call goveq_richards_ode_pres%SetRelativePermeability(relperm_type, &
+           param_1, param_2)
 
   end subroutine VSFMMPPSetRelativePermeability
 
@@ -1461,75 +1337,7 @@ contains
           call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
 
-    if (goveq_richards_ode_pres%mesh%ncells_local /= size(por)) then
-       write(iulog,*) 'No. of values for soil porosity is not equal to no. of grid cells.'
-       write(iulog,*) 'No. of soil porosity values = ',size(por)
-       write(iulog,*) 'No. of grid cells           = ',goveq_richards_ode_pres%mesh%ncells_local
-    endif
-
-    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-    do icell = 1, size(por)
-       ode_aux_vars_in(icell)%por = por(icell)
-       call PorosityFunctionSetConstantModel(ode_aux_vars_in(icell)%porParams, &
-            ode_aux_vars_in(icell)%por)
-    enddo
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
-    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
-             ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-
-             ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
-             ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
-
-          enddo
-       end if
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set soil properties for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
-    cur_cond        => goveq_richards_ode_pres%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          ode_aux_vars_ss(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
-          ode_aux_vars_ss(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call goveq_richards_ode_pres%SetSoilPorosity(por)
 
   end subroutine VSFMMPPSetSoilPorosity
 
@@ -1601,72 +1409,8 @@ contains
           call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
 
-    if (goveq_richards_ode_pres%mesh%ncells_local /= size(alpha)) then
-       write(iulog,*) 'No. of values for saturation function is not equal to no. of grid cells.'
-       write(iulog,*) 'No. of soil sat. func. values = ',size(alpha)
-       write(iulog,*) 'No. of grid cells             = ',goveq_richards_ode_pres%mesh%ncells_local
-    endif
-
-    ode_aux_vars_in => goveq_richards_ode_pres%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-
-    do icell = 1, size(alpha)
-
-       call ode_aux_vars_in(icell)%satParams%SetSatFunc( &
-            vsfm_satfunc_type(icell), alpha(icell), lambda(icell), sat_res(icell))
-    end do
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => goveq_richards_ode_pres%aux_vars_bc
-    cur_cond        => goveq_richards_ode_pres%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-          enddo
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set soil properties for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => goveq_richards_ode_pres%aux_vars_ss
-    cur_cond        => goveq_richards_ode_pres%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          call ode_aux_vars_ss(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call goveq_richards_ode_pres%SetSaturationFunction( &
+           vsfm_satfunc_type, alpha, lambda, sat_res)
 
   end subroutine VSFMMPPSetSaturationFunction
 
@@ -1824,89 +1568,14 @@ contains
           call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
 
-
-    select case(auxvar_conn_type)
-    case (AUXVAR_CONN_INTERNAL)
-       conn_aux_vars => goveq_richards_ode_pres%aux_vars_conn_in
-       cur_conn_set  => goveq_richards_ode_pres%mesh%intrn_conn_set_list%first
-       sum_conn = 0
-       do
-          if (.not.associated(cur_conn_set)) exit
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-
-             if (sum_conn > size(param_1)) then
-                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             end if
-
-             if (satfunc_itype(sum_conn) > 0) then
-                if (set_upwind_auxvar(sum_conn)) then
-                   call conn_aux_vars(sum_conn)%satParams_up%SetSatFunc( &
-                        satfunc_itype(sum_conn), param_1(sum_conn), &
-                        param_2(sum_conn), param_3(sum_conn))
-                else
-                   call conn_aux_vars(sum_conn)%satParams_dn%SetSatFunc( &
-                        satfunc_itype(sum_conn), param_1(sum_conn), &
-                        param_2(sum_conn), param_3(sum_conn))
-                endif
-             endif
-
-          end do
-
-          cur_conn_set => cur_conn_set%next
-
-       end do
-
-    case(AUXVAR_CONN_BC)
-
-       ! Set soil properties for boundary-condition auxvars
-       sum_conn = 0
-       conn_aux_vars => goveq_richards_ode_pres%aux_vars_conn_bc
-       cur_cond      => goveq_richards_ode_pres%boundary_conditions%first
-
-       do
-          if (.not.associated(cur_cond)) exit
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn   = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             if (sum_conn> size(param_1)) then
-                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
-                write(iulog,*) sum_conn,size(param_1)
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             endif
-
-             if (satfunc_itype(sum_conn) > 0) then
-                if (set_upwind_auxvar(sum_conn)) then
-                   call conn_aux_vars(sum_conn)%satParams_up%SetSatFunc( &
-                        satfunc_itype(sum_conn), param_1(sum_conn), &
-                        param_2(sum_conn), param_3(sum_conn))
-                else
-                   call conn_aux_vars(sum_conn)%satParams_dn%SetSatFunc( &
-                        satfunc_itype(sum_conn), param_1(sum_conn), &
-                        param_2(sum_conn), param_3(sum_conn))
-                endif
-             endif
-
-          enddo
-          cur_cond => cur_cond%next
-       enddo
-
-    case default
-       write(iulog,*)'Only supports AUXVAR_CONN_BC type'
-       call endrun(msg=errMsg(__FILE__,__LINE__))
-
-    end select
+    call goveq_richards_ode_pres%SetSaturationFunctionAuxVarConn( &
+       auxvar_conn_type, set_upwind_auxvar, satfunc_itype, param_1, param_2, param_3)
 
   end subroutine VSFMMPPSetSaturationFunctionAuxVarConn
 
   !------------------------------------------------------------------------
   subroutine VSFMMPPSetRelativePermeabilityAuxVarConn(this, igoveqn, &
-       auxvar_conn_type, set_upwind_auxvar, relperm_itype, param_1, param_2, param_3)
+       auxvar_conn_type, set_upwind_auxvar, relperm_itype, param_1, param_2)
     !
     ! !DESCRIPTION:
     !
@@ -1931,7 +1600,6 @@ contains
     PetscInt                                  , pointer, intent(in) :: relperm_itype(:)
     PetscReal                                 , pointer, intent(in) :: param_1(:)
     PetscReal                                 , pointer, intent(in) :: param_2(:)
-    PetscReal                      , optional , pointer, intent(in) :: param_3(:)
     !
     ! !LOCAL VARIABLES:
     class (goveqn_richards_ode_pressure_type) , pointer             :: goveq_richards_ode_pres
@@ -1972,79 +1640,8 @@ contains
           call endrun(msg=errMsg(__FILE__,__LINE__))
     end select
 
-
-    select case(auxvar_conn_type)
-    case (AUXVAR_CONN_INTERNAL)
-       conn_aux_vars => goveq_richards_ode_pres%aux_vars_conn_in
-       cur_conn_set  => goveq_richards_ode_pres%mesh%intrn_conn_set_list%first
-       sum_conn = 0
-       do
-          if (.not.associated(cur_conn_set)) exit
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-
-             if (sum_conn > size(param_1)) then
-                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             end if
-
-             if (relperm_itype(sum_conn) > 0) then
-                if (set_upwind_auxvar(sum_conn)) then
-                   call conn_aux_vars(sum_conn)%satParams_up%SetRelPerm( &
-                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
-                else
-                   call conn_aux_vars(sum_conn)%satParams_dn%SetRelPerm( &
-                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
-                endif
-             endif
-
-          end do
-
-          cur_conn_set => cur_conn_set%next
-
-       end do
-
-    case(AUXVAR_CONN_BC)
-
-       ! Set soil properties for boundary-condition auxvars
-       sum_conn = 0
-       conn_aux_vars => goveq_richards_ode_pres%aux_vars_conn_bc
-       cur_cond      => goveq_richards_ode_pres%boundary_conditions%first
-
-       do
-          if (.not.associated(cur_cond)) exit
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn   = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             if (sum_conn> size(param_1)) then
-                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
-                write(iulog,*) sum_conn,size(param_1)
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             endif
-
-             if (relperm_itype(sum_conn) > 0) then
-                if (set_upwind_auxvar(sum_conn)) then
-                   call conn_aux_vars(sum_conn)%satParams_up%SetRelPerm( &
-                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
-                else
-                   call conn_aux_vars(sum_conn)%satParams_dn%SetRelPerm( &
-                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
-                endif
-             endif
-
-          enddo
-          cur_cond => cur_cond%next
-       enddo
-
-    case default
-       write(iulog,*)'Only supports AUXVAR_CONN_BC type'
-       call endrun(msg=errMsg(__FILE__,__LINE__))
-
-    end select
+    call goveq_richards_ode_pres%SetRelativePermeabilityAuxVarConn( &
+           auxvar_conn_type, set_upwind_auxvar, relperm_itype, param_1, param_2)
 
   end subroutine VSFMMPPSetRelativePermeabilityAuxVarConn
 #endif

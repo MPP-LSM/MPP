@@ -2535,7 +2535,7 @@ subroutine set_conn_property_for_eqn(eqn_id, conn, conn_type)
   ! For upwind cells, set relative permeability parameters
   call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp, eqn_id, conn_type, &
        set_upwind_auxvar, conn%relperm_up_itype, conn%relperm_up_param_1, &
-       conn%relperm_up_param_2, conn%relperm_up_param_2)
+       conn%relperm_up_param_2)
 
   set_upwind_auxvar(:) = PETSC_FALSE
   ! For downwind cells, set saturation parameters
@@ -2546,7 +2546,7 @@ subroutine set_conn_property_for_eqn(eqn_id, conn, conn_type)
   ! For downwind cells, set relative permeability parameters
   call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp, eqn_id, conn_type, &
        set_upwind_auxvar, conn%relperm_dn_itype, conn%relperm_dn_param_1, &
-       conn%relperm_dn_param_2, conn%relperm_dn_param_3)
+       conn%relperm_dn_param_2)
 
   ! Set connection flux type
   call VSFMMPPSetAuxVarConnIntValue(vsfm_mpp, eqn_id, conn_type, &
