@@ -2848,10 +2848,7 @@ contains
     ! Set soil permeability values
     !
     ! !USES:
-    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
-    use ConditionType                 , only : condition_type
-    use ConnectionSetType             , only : connection_set_type
-    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetAbsPerm
     !
     implicit none
     !
@@ -2861,18 +2858,6 @@ contains
     PetscReal                                 , pointer, intent(in) :: perm_x(:)
     PetscReal                                 , pointer, intent(in) :: perm_y(:)
     PetscReal                                 , pointer, intent(in) :: perm_z(:)
-    !
-    ! !LOCAL VARIABLES:
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
-    PetscInt                                                        :: icell
-    PetscInt                                                        :: ii
-    type(condition_type)                      , pointer             :: cur_cond
-    type(connection_set_type)                 , pointer             :: cur_conn_set
-    PetscInt                                                        :: ghosted_id
-    PetscInt                                                        :: sum_conn
-    PetscInt                                                        :: iconn
 
     if (this%mesh%ncells_local /= size(perm_x)) then
        write(iulog,*) 'No. of values for soil permeability is not equal to no. of grid cells.'
@@ -2880,64 +2865,8 @@ contains
        write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
     endif
 
-    ode_aux_vars_in => this%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-    do icell = 1, size(perm_x)
-       ode_aux_vars_in(icell)%perm(1) = perm_x(icell)
-       ode_aux_vars_in(icell)%perm(2) = perm_y(icell)
-       ode_aux_vars_in(icell)%perm(3) = perm_z(icell)
-    enddo
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => this%aux_vars_bc
-    cur_cond        => this%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ode_aux_vars_bc(sum_conn)%perm(:) = ode_aux_vars_in(ghosted_id)%perm(:)
-          enddo
-          
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set soil properties for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => this%aux_vars_ss
-    cur_cond        => this%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          ode_aux_vars_ss(sum_conn)%perm (:) = ode_aux_vars_in(ghosted_id)%perm(:)
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call RichardsODEPressureAuxVarSetAbsPerm(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, perm_x, perm_y, perm_z)
 
   end subroutine RichardsODESetSoilPermeability
 
@@ -2948,10 +2877,7 @@ contains
     ! Set soil permeability values
     !
     ! !USES:
-    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
-    use ConditionType                 , only : condition_type
-    use ConnectionSetType             , only : connection_set_type
-    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetRelPerm
     !
     implicit none
     !
@@ -2961,18 +2887,6 @@ contains
     PetscInt                                  , pointer, intent(in) :: relperm_type(:)
     PetscReal                                 , pointer, intent(in) :: param_1(:)
     PetscReal                                 , pointer, intent(in) :: param_2(:)
-    !
-    ! !LOCAL VARIABLES:
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
-    PetscInt                                                        :: icell
-    PetscInt                                                        :: igov
-    type(condition_type)                      , pointer             :: cur_cond
-    type(connection_set_type)                 , pointer             :: cur_conn_set
-    PetscInt                                                        :: ghosted_id
-    PetscInt                                                        :: sum_conn
-    PetscInt                                                        :: iconn
 
     if (this%mesh%ncells_local /= size(relperm_type)) then
        write(iulog,*) 'No. of values for relative permeability is not equal to no. of grid cells.'
@@ -2980,63 +2894,8 @@ contains
        write(iulog,*) 'No. of grid cells        = ',this%mesh%ncells_local
     endif
 
-    ode_aux_vars_in => this%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-    do icell = 1, size(param_1)
-
-       call ode_aux_vars_in(icell)%satParams%SetRelPerm( &
-            relperm_type(icell), param_1(icell), param_2(icell))
-    end do
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => this%aux_vars_bc
-    cur_cond        => this%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-          enddo
-
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set satParams for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => this%aux_vars_ss
-    cur_cond        => this%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-          call ode_aux_vars_ss(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call RichardsODEPressureAuxVarSetRelPerm(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, relperm_type, param_1, param_2)
 
   end subroutine RichardsODESetRelativePermeability
 
@@ -3047,11 +2906,7 @@ contains
     ! Set soil porosity value
     !
     ! !USES:
-    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
-    use ConditionType                 , only : condition_type
-    use ConnectionSetType             , only : connection_set_type
-    use PorosityFunctionMod           , only : PorosityFunctionSetConstantModel
-    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetPorosity
     !
     implicit none
     !
@@ -3059,18 +2914,6 @@ contains
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
     PetscReal                                 , pointer, intent(in) :: por(:)
-    !
-    ! !LOCAL VARIABLES:
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
-    PetscInt                                                        :: icell
-    PetscInt                                                        :: ii
-    type(condition_type)                      , pointer             :: cur_cond
-    type(connection_set_type)                 , pointer             :: cur_conn_set
-    PetscInt                                                        :: ghosted_id
-    PetscInt                                                        :: sum_conn
-    PetscInt                                                        :: iconn
 
     if (this%mesh%ncells_local /= size(por)) then
        write(iulog,*) 'No. of values for soil porosity is not equal to no. of grid cells.'
@@ -3078,106 +2921,30 @@ contains
        write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
     endif
 
-    ode_aux_vars_in => this%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-    do icell = 1, size(por)
-       ode_aux_vars_in(icell)%por = por(icell)
-       call PorosityFunctionSetConstantModel(ode_aux_vars_in(icell)%porParams, &
-            ode_aux_vars_in(icell)%por)
-    enddo
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => this%aux_vars_bc
-    cur_cond        => this%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
-             ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-
-             ode_aux_vars_bc(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
-             ode_aux_vars_bc(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
-
-          enddo
-       end if
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set soil properties for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => this%aux_vars_ss
-    cur_cond        => this%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          ode_aux_vars_ss(sum_conn)%por       = ode_aux_vars_in(ghosted_id)%por
-          ode_aux_vars_ss(sum_conn)%porParams = ode_aux_vars_in(ghosted_id)%porParams
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call RichardsODEPressureAuxVarSetPorosity(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+              this%boundary_conditions, this%source_sinks, por)
 
   end subroutine RichardsODESetSoilPorosity
 
   !------------------------------------------------------------------------
-  subroutine RichardsODESetSaturationFunction(this, vsfm_satfunc_type, &
+  subroutine RichardsODESetSaturationFunction(this, satfunc_type, &
        alpha, lambda, sat_res)
     !
     ! !DESCRIPTION:
     ! Set saturation function
     !
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetSatFunc
     ! !USES:
-    use RichardsODEPressureAuxType    , only : rich_ode_pres_auxvar_type
-    use ConditionType                 , only : condition_type
-    use ConnectionSetType             , only : connection_set_type
-    use MultiPhysicsProbConstants     , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     !
     implicit none
     !
     !
     ! !ARGUMENTS
     class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
-    PetscInt                                  , pointer, intent(in) :: vsfm_satfunc_type(:)
+    PetscInt                                  , pointer, intent(in) :: satfunc_type(:)
     PetscReal                                 , pointer, intent(in) :: alpha(:)
     PetscReal                                 , pointer, intent(in) :: lambda(:)
     PetscReal                                 , pointer, intent(in) :: sat_res(:)
-    !
-    ! !LOCAL VARIABLES:
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_in(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_bc(:)
-    type (rich_ode_pres_auxvar_type)          , pointer             :: ode_aux_vars_ss(:)
-    PetscInt                                                        :: icell
-    PetscInt                                                        :: ii
-    type(condition_type)                      , pointer             :: cur_cond
-    type(connection_set_type)                 , pointer             :: cur_conn_set
-    PetscInt                                                        :: ghosted_id
-    PetscInt                                                        :: sum_conn
-    PetscInt                                                        :: iconn
 
     if (this%mesh%ncells_local /= size(alpha)) then
        write(iulog,*) 'No. of values for saturation function is not equal to no. of grid cells.'
@@ -3185,66 +2952,8 @@ contains
        write(iulog,*) 'No. of grid cells             = ',this%mesh%ncells_local
     endif
 
-    ode_aux_vars_in => this%aux_vars_in
-
-    ! Set soil properties for internal auxvars
-
-    do icell = 1, size(alpha)
-
-       call ode_aux_vars_in(icell)%satParams%SetSatFunc( &
-            vsfm_satfunc_type(icell), alpha(icell), lambda(icell), sat_res(icell))
-    end do
-
-    ! Set soil properties for boundary-condition auxvars
-    sum_conn = 0
-    ode_aux_vars_bc => this%aux_vars_bc
-    cur_cond        => this%boundary_conditions%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
-          cur_conn_set => cur_cond%conn_set
-
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-          enddo
-       else
-          cur_conn_set => cur_cond%conn_set
-
-          ghosted_id = 1
-          do iconn = 1, cur_conn_set%num_connections
-             sum_conn = sum_conn + 1
-
-             call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-          enddo
-       endif
-       cur_cond => cur_cond%next
-    enddo
-
-    ! Set soil properties for source-sink auxvars
-    sum_conn = 0
-
-    ode_aux_vars_ss => this%aux_vars_ss
-    cur_cond        => this%source_sinks%first
-
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          call ode_aux_vars_ss(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
+    call RichardsODEPressureAuxVarSetSatFunc(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, satfunc_type, alpha, lambda, sat_res)
 
   end subroutine RichardsODESetSaturationFunction
 

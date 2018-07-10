@@ -65,6 +65,16 @@ module GoveqnThermalEnthalpySoilType
 
      procedure, public :: CreateVectors           => ThermEnthalpySoilCreateVectors
 
+     procedure, public :: SetSoilPermeability     => ThermEnthalpySetSoilPermeability
+     procedure, public :: SetRelativePermeability => ThermEnthalpySetRelativePermeability
+     procedure, public :: SetSoilPorosity         => ThermEnthalpySetSoilPorosity
+     procedure, public :: SetSaturationFunction   => ThermEnthalpySetSaturationFunction
+     procedure, public :: SetHeatCapacity         => ThermEnthalpySetHeatCapacity
+     procedure, public :: SetThermalCondWet       => ThermEnthalpySetThermalCondWet
+     procedure, public :: SetThermalCondDry       => ThermEnthalpySetThermalCondDry
+     procedure, public :: SetThermalAlpha         => ThermEnthalpySetThermalAlpha
+     procedure, public :: SetSoilDensity          => ThermEnthalpySetSoilDensity
+
   end type goveqn_thermal_enthalpy_soil_type
 
   !------------------------------------------------------------------------
@@ -681,7 +691,7 @@ contains
        enddo
 
     case default
-       write(iulog,*) 'RichardsODESetDataInSOEAuxVar: soe_avar_type not supported'
+       write(iulog,*) 'ThermEnthalpySetDataInSOEAuxVar: soe_avar_type not supported'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
@@ -2396,6 +2406,252 @@ contains
     CHKERRQ(ierr)
 
   end subroutine ThermEnthalpySoilCreateVectors
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetSoilPermeability(this, perm_x, perm_y, perm_z)
+    !
+    ! !DESCRIPTION:
+    ! Set soil permeability values
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxVarSetAbsPerm
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: perm_x(:)
+    PetscReal                                 , pointer, intent(in) :: perm_y(:)
+    PetscReal                                 , pointer, intent(in) :: perm_z(:)
+
+    if (this%mesh%ncells_local /= size(perm_x)) then
+       write(iulog,*) 'No. of values for soil permeability is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(perm_x)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxVarSetAbsPerm(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, perm_x, perm_y, perm_z)
+
+  end subroutine ThermEnthalpySetSoilPermeability
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetRelativePermeability(this, relperm_type, param_1, param_2)
+    !
+    ! !DESCRIPTION:
+    ! Set soil permeability values
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxVarSetRelPerm
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscInt                                  , pointer, intent(in) :: relperm_type(:)
+    PetscReal                                 , pointer, intent(in) :: param_1(:)
+    PetscReal                                 , pointer, intent(in) :: param_2(:)
+
+    if (this%mesh%ncells_local /= size(relperm_type)) then
+       write(iulog,*) 'No. of values for relative permeability is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of rel. perm. values = ',size(relperm_type)
+       write(iulog,*) 'No. of grid cells        = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxVarSetRelPerm(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, relperm_type, param_1, param_2)
+
+  end subroutine ThermEnthalpySetRelativePermeability
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetSoilPorosity(this, por)
+    !
+    ! !DESCRIPTION:
+    ! Set soil porosity value
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxVarSetPorosity
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: por(:)
+
+    if (this%mesh%ncells_local /= size(por)) then
+       write(iulog,*) 'No. of values for soil porosity is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(por)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxVarSetPorosity(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+              this%boundary_conditions, this%source_sinks, por)
+
+  end subroutine ThermEnthalpySetSoilPorosity
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetSaturationFunction(this, satfunc_type, &
+       alpha, lambda, sat_res)
+    !
+    ! !DESCRIPTION:
+    ! Set saturation function
+    !
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxVarSetSatFunc
+    ! !USES:
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscInt                                  , pointer, intent(in) :: satfunc_type(:)
+    PetscReal                                 , pointer, intent(in) :: alpha(:)
+    PetscReal                                 , pointer, intent(in) :: lambda(:)
+    PetscReal                                 , pointer, intent(in) :: sat_res(:)
+
+    if (this%mesh%ncells_local /= size(alpha)) then
+       write(iulog,*) 'No. of values for saturation function is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil sat. func. values = ',size(alpha)
+       write(iulog,*) 'No. of grid cells             = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxVarSetSatFunc(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, satfunc_type, alpha, lambda, sat_res)
+
+  end subroutine ThermEnthalpySetSaturationFunction
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetHeatCapacity(this, data)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxSetHeatCap
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: data(:)
+
+    if (this%mesh%ncells_local /= size(data)) then
+       write(iulog,*) 'No. of values for heat capacity is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(data)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxSetHeatCap(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, data)
+
+  end subroutine ThermEnthalpySetHeatCapacity
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetThermalCondWet(this, data)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxSetThermalCondWet
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: data(:)
+
+    if (this%mesh%ncells_local /= size(data)) then
+       write(iulog,*) 'No. of values for wet thermal conductivity is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(data)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxSetThermalCondWet(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, data)
+
+  end subroutine ThermEnthalpySetThermalCondWet
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetThermalCondDry(this, data)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxSetThermalCondDry
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: data(:)
+
+    if (this%mesh%ncells_local /= size(data)) then
+       write(iulog,*) 'No. of values for dry thermal conductivity is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(data)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxSetThermalCondDry(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, data)
+
+  end subroutine ThermEnthalpySetThermalCondDry
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetThermalAlpha(this, data)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxSetThermalAlpha
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: data(:)
+
+    if (this%mesh%ncells_local /= size(data)) then
+       write(iulog,*) 'No. of values for thermal alpha is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(data)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxSetThermalAlpha(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, data)
+
+  end subroutine ThermEnthalpySetThermalAlpha
+
+  !------------------------------------------------------------------------
+  subroutine ThermEnthalpySetSoilDensity(this, data)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use ThermalEnthalpySoilAuxMod  , only : ThermalEnthalpySoilAuxSetSoilDensity
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_enthalpy_soil_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: data(:)
+
+    if (this%mesh%ncells_local /= size(data)) then
+       write(iulog,*) 'No. of values for soil density is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(data)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call ThermalEnthalpySoilAuxSetSoilDensity(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, data)
+
+  end subroutine ThermEnthalpySetSoilDensity
 
 #endif
   
