@@ -30,9 +30,9 @@ module ThermalEnthalpySoilAuxType
      PetscReal                    :: dsat_dT                  ! [K^{-1}]
 
      PetscReal                    :: Kel                      ! Kersten number liquid [-]
-     PetscReal                    :: therm_cond_wet           ! wet thermal conductivity [J s^{-1} m^{-3} K^{-1}]
-     PetscReal                    :: therm_cond_dry           ! dry thermal conductivity [J s^{-1} m^{-3} K^{-1}]
-     PetscReal                    :: therm_cond               ! thermal conductivity [J s^{-1} m^{-3} K^{-1}]
+     PetscReal                    :: therm_cond_wet           ! wet thermal conductivity [J s^{-1} m^{-1} K^{-1}]
+     PetscReal                    :: therm_cond_dry           ! dry thermal conductivity [J s^{-1} m^{-1} K^{-1}]
+     PetscReal                    :: therm_cond               ! thermal conductivity [J s^{-1} m^{-1} K^{-1}]
      PetscReal                    :: therm_alpha
 
      PetscReal                    :: den_soil                 ! [kg m^{-3}]
