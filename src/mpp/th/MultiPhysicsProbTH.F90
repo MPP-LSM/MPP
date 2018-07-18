@@ -754,8 +754,17 @@ contains
             cond_itype_to_exclude,num_ss, ncells_for_ss)
        igoveqn = igoveqn + 1
 
-       soe%soe_auxvars_bc_ncells_per_goveqn(igoveqn) = num_bc
-       soe%soe_auxvars_ss_ncells_per_goveqn(igoveqn) = num_ss
+       soe%soe_auxvars_bc_ncells_per_goveqn(igoveqn) = 0
+       soe%soe_auxvars_ss_ncells_per_goveqn(igoveqn) = 0
+
+       do icond = 1, num_bc
+          soe%soe_auxvars_bc_ncells_per_goveqn(igoveqn) = &
+             soe%soe_auxvars_bc_ncells_per_goveqn(igoveqn) + ncells_for_bc(icond)
+       enddo
+       do icond = 1, num_ss
+          soe%soe_auxvars_ss_ncells_per_goveqn(igoveqn) = &
+             soe%soe_auxvars_ss_ncells_per_goveqn(igoveqn) + ncells_for_ss(icond)
+       enddo
 
        iauxvar_beg = iauxvar_end + 1
        iauxvar_end = iauxvar_end + cur_goveq%mesh%ncells_all
