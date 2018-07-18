@@ -53,7 +53,10 @@ module GoveqnRichardsODEPressureType
      procedure, public :: GetFromSOEAuxVarsIntrn    => RichardsODEPressureGetFromSOEAuxVarsIntrn
      procedure, public :: SetFromSOEAuxVarsIntrn    => RichardsODEPressureSetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC       => RichardsODEPressureGetFromSOEAuxVarsBC
+     procedure, public :: SetFromSOEAuxVarsBC       => RichardsODEPressureSetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS       => RichardsODEPressureGetFromSOEAuxVarsSS
+     procedure, public :: SetFromSOEAuxVarsSS       => RichardsODEPressureSetFromSOEAuxVarsSS
+
      procedure, public :: GetDataFromSOEAuxVar      => RichardsODEPressureGetDataFromSOEAuxVar
 
      procedure, public :: SetDataInSOEAuxVar        => RichardsODEPressureSetDataInSOEAuxVar
@@ -590,24 +593,24 @@ contains
           end if
        enddo
 
-       case (VAR_FRAC_LIQ_SAT)
-          do iauxvar = 1, nauxvar
-             if (this%mesh%is_active(iauxvar)) then
-                ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
-             end if
-          enddo
+    case (VAR_FRAC_LIQ_SAT)
+       do iauxvar = 1, nauxvar
+          if (this%mesh%is_active(iauxvar)) then
+             ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
+          end if
+       enddo
 
-       case (VAR_PRESSURE)
-          do iauxvar = 1, nauxvar
-             if (this%mesh%is_active(iauxvar)) then
-                ge_avars(iauxvar)%pressure = data(iauxvar)
-             end if
-          enddo
+    case (VAR_PRESSURE)
+       do iauxvar = 1, nauxvar
+          if (this%mesh%is_active(iauxvar)) then
+             ge_avars(iauxvar)%pressure = data(iauxvar)
+          end if
+       enddo
 
-       case default
-          write(iulog,*) 'Unknown var_type = ', var_type
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       end select
+    case default
+       write(iulog,*) 'Unknown var_type = ', var_type
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
 
   end subroutine RichardsODEPressureSetFromSOEAuxVarsIntrn
 
@@ -727,6 +730,89 @@ contains
 
   end subroutine RichardsODEPressureGetFromSOEAuxVarsBC
 
+  !------------------------------------------------------------------------
+  subroutine RichardsODEPressureSetFromSOEAuxVarsBC(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Sets values in GE auxiliary variables of boundary condition
+    !
+    ! !USES:
+    use ConditionType                , only : condition_type
+    use ConnectionSetType            , only : connection_set_type
+    use SystemOfEquationsVSFMAuxType , only : sysofeqns_vsfm_auxvar_type
+    use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
+    use MultiPhysicsProbConstants    , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants    , only : VAR_PRESSURE
+    use MultiPhysicsProbConstants    , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants    , only : COND_MASS_FLUX
+    use MultiPhysicsProbConstants    , only : COND_MASS_RATE
+    use MultiPhysicsProbConstants    , only : COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants    , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) , intent(inout)         :: this
+    PetscInt                                 , intent(in)            :: var_type
+    PetscInt                                 , intent(in)            :: ndata
+    PetscReal                                , intent(in), pointer   :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt                                                         :: iauxvar
+    PetscInt                                                         :: nauxvar
+    type(rich_ode_pres_auxvar_type)          , dimension(:), pointer :: ge_avars
+    integer                                                          :: iconn
+    integer                                                          :: sum_conn
+    type(condition_type)                     , pointer               :: cur_cond
+    class(connection_set_type)               , pointer               :: cur_conn_set
+    PetscInt                                                         :: num_bc
+    PetscInt                                                         :: icond
+    character(len=256)                                               :: string
+
+    ge_avars => this%aux_vars_bc
+
+    nauxvar = size(ge_avars)
+    if( nauxvar /= ndata ) then
+       write(iulog,*) 'size(ge_avars) /= ndata'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    sum_conn = 0
+    cur_cond => this%boundary_conditions%first
+    do
+       if (.not.associated(cur_cond)) exit
+
+       cur_conn_set => cur_cond%conn_set
+
+       if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          sum_conn = sum_conn + cur_conn_set%num_connections
+          cur_cond => cur_cond%next
+          cycle
+       end if
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          select case(cur_cond%itype)
+          case (COND_DIRICHLET)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             !if (var_type == VAR_PRESSURE       ) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             !if (var_type == VAR_TEMPERATURE    ) ge_avars(sum_conn)%temperature     = data(sum_conn)
+          case (COND_MASS_RATE, COND_MASS_FLUX)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+          case (COND_SEEPAGE_BC)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+          case default
+             write(string,*) cur_cond%itype
+             write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+       end do
+
+       cur_cond => cur_cond%next
+
+    end do
+    
+  end subroutine RichardsODEPressureSetFromSOEAuxVarsBC
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureGetFromSOEAuxVarsSS(this, soe_avars)
@@ -832,6 +918,74 @@ contains
 
   end subroutine RichardsODEPressureGetFromSOEAuxVarsSS
 
+  !------------------------------------------------------------------------
+  subroutine RichardsODEPressureSetFromSOEAuxVarsSS(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Sets values in GE auxiliary variables of boundary condition
+    !
+    ! !USES:
+    use ConditionType                , only : condition_type
+    use ConnectionSetType            , only : connection_set_type
+    use SystemOfEquationsVSFMAuxType , only : sysofeqns_vsfm_auxvar_type
+    use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
+    use MultiPhysicsProbConstants    , only : COND_MASS_RATE
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_CAMPBELL
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_FETCH2
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) , intent(inout)         :: this
+    PetscInt                                 , intent(in)            :: var_type
+    PetscInt                                 , intent(in)            :: ndata
+    PetscReal                                , intent(in), pointer   :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt                                                         :: iauxvar
+    PetscInt                                                         :: nauxvar
+    type(rich_ode_pres_auxvar_type)          , dimension(:), pointer :: ge_avars
+    integer                                                          :: iconn
+    integer                                                          :: sum_conn
+    type(condition_type)                     , pointer               :: cur_cond
+    class(connection_set_type)               , pointer               :: cur_conn_set
+    PetscInt                                                         :: num_bc
+    PetscInt                                                         :: icond
+    character(len=256)                                               :: string
+
+    ge_avars => this%aux_vars_ss
+
+    nauxvar = size(ge_avars)
+    if( nauxvar /= ndata ) then
+       write(iulog,*) 'size(ge_avars) /= ndata'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    sum_conn = 0
+    cur_cond => this%source_sinks%first
+    do
+       if (.not.associated(cur_cond)) exit
+
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          select case(cur_cond%itype)
+          case (COND_MASS_RATE, COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
+             !if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             if (var_type == VAR_BC_SS_CONDITION) cur_cond%value(iconn) = data(sum_conn)
+          case default
+             write(string,*) cur_cond%itype
+             write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+       end do
+
+       cur_cond => cur_cond%next
+
+    end do
+    
+  end subroutine RichardsODEPressureSetFromSOEAuxVarsSS
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureGetDataFromSOEAuxVar(this, soe_avar_type, soe_avars, &

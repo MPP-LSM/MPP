@@ -465,15 +465,12 @@ contains
           data_counter = data_counter + 1
 
           select case(cur_cond%itype)
-          case (COND_DIRICHLET, COND_HEAT_FLUX)
-             select case(var_type)
-                case (VAR_BC_SS_CONDITION)
-                   ge_avars(sum_conn)%condition_value =  data(data_counter)
-
-                case default
-                   write(iulog,*) 'Unknown var_type ',var_type
-                   call endrun(msg=errMsg(__FILE__, __LINE__))
-                end select
+          case (COND_DIRICHLET)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(data_counter)
+             !if (var_type == VAR_PRESSURE       ) ge_avars(sum_conn)%pressure        = data(data_counter)
+             !if (var_type == VAR_TEMPERATURE    ) ge_avars(sum_conn)%condition_value = data(data_counter)
+          case (COND_HEAT_FLUX)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value =  data(data_counter)
 
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
@@ -610,7 +607,7 @@ contains
 
     ge_avars => this%aux_vars_ss
 
-    nauxvar = size(this%aux_vars_bc)
+    nauxvar = size(this%aux_vars_ss)
     if( ndata > nauxvar ) then
        write(iulog,*) 'ndata > size(this%aux_vars_bc)'
        call endrun(msg=errMsg(__FILE__, __LINE__))
