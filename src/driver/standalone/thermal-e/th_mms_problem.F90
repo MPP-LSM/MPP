@@ -945,6 +945,7 @@ contains
 
     problem_type = STEADY_STATE_SOIL_ONLY_1D
     density_type = DENSITY_IFC67
+    density_type = DENSITY_CONSTANT
     int_energy_enthalpy_type = INT_ENERGY_ENTHALPY_IFC67
 
     xlim = x_max - x_min
@@ -1173,7 +1174,12 @@ contains
     PetscReal             :: dH_dx
     PetscReal             :: Ke, dKe_dx, kdry, dkdry_dx, kwet, dkwet_dx
     PetscReal             :: U, H, dU_dT, dH_dT, dU_dP, dH_dP
+    PetscReal             :: x_ppert, P_ppert, T_ppert
+    PetscReal             :: x_npert, P_npert, T_npert
+    PetscReal             :: rho_ppert, drho_ppert_dP, dden_ppert_dT
+    PetscReal             :: rho_npert, drho_npert_dP, dden_npert_dT
     PetscReal , parameter :: g = GRAVITY_CONSTANT
+    PetscReal , parameter :: pert = 1.d-6
     type(saturation_params_type) :: satParam
     !-----------------------------------------------------------------------
 
@@ -1240,21 +1246,23 @@ contains
     case (DATA_MASS_SOURCE)
        do ii = 1, nx
           x     = soil_xc_3d(ii,jj,kk)
+          x_ppert= x + pert
+          x_npert= x - pert
 
           call compute_permeability_or_deriv(x, val=k , dval_dx=dk_dx)
           call compute_alpha_or_deriv       (x, val=p0, dval_dx=dp0_dx)
           call compute_lambda_or_deriv      (x, val=m)
           call compute_pressure_or_deriv    (x, val=P, dval_dx=dP_dx, d2val_dx2=d2P_dx2)
-          call compute_temperature_or_deriv (x, val=T)
+          call compute_temperature_or_deriv (x, val=T, dval_dx=dT_dx)
           call compute_residualsat_or_deriv (x, val=sat_res)
 
           call Viscosity(P, T, mu, dmu_dP, dmu_dT)
-          call Density(  P, T, DENSITY_TGDPB01,  rho, drho_dP, dden_dT)
-          call Density(  P, T, DENSITY_CONSTANT,  rho, drho_dP, dden_dT)
+          call Density(  P, T, density_type,  rho, drho_dP, dden_dT)
 
           rho     = rho     * FMWH2O
           drho_dP = drho_dP * FMWH2O
           d2rho_dP2 = 0.d0
+          d2rho_dT2 = 0.d0
 
           call SatFunc_Set_VG(satParam, sat_res, p0, m)
           call SatFunc_PressToSat(satParam, P, se, dse_dP)
@@ -1266,8 +1274,19 @@ contains
           dse_dp0   = 0.d0
           
           dkr_dx    = dkr_dP * dP_dx + dkr_dse * dse_dp0 * dp0_dx
-          drho_dx   = drho_dP * dP_dx
-          d2rho_dx2 = d2rho_dP2 * dP_dx + drho_dP * d2P_dx2
+
+          call compute_pressure_or_deriv    (x_ppert, val=P_ppert)
+          call compute_temperature_or_deriv (x_ppert, val=T_ppert)
+          call Density(  P_ppert, T_ppert, density_type,  rho_ppert, drho_ppert_dP, dden_ppert_dT)
+          call compute_pressure_or_deriv    (x_npert, val=P_npert)
+          call compute_temperature_or_deriv (x_npert, val=T_npert)
+          call Density(  P_npert, T_npert, density_type,  rho_npert, drho_npert_dP, dden_npert_dT)
+
+          rho_ppert     = rho_ppert * FMWH2O
+          rho_npert     = rho_npert * FMWH2O
+
+          drho_dx   = (rho_ppert - rho_npert)/pert/2.d0
+          d2rho_dx2 = (rho_ppert + rho_npert - 2.d0*rho)/pert/pert
 
           data_1D(ii) = &
                -((k*kr/mu)*drho_dx + (rho*kr/mu)*dk_dx + (rho*k/mu)*dkr_dx)*(dP_dx) &
@@ -1313,6 +1332,7 @@ contains
           T = T + 1.d0/nx*data_1D(ii)
        end do
        data_1D(:) = T
+       data_1D(:) = 290.d0
 
      case (DATA_TEMPERATURE_BC)
         count = 0
@@ -1330,6 +1350,7 @@ contains
     case (DATA_HEAT_SOURCE)
        do ii = 1, nx
           x     = soil_xc_3d(ii,jj,kk)
+          x_ppert= x + pert
 
           call compute_permeability_or_deriv(x, val=k , dval_dx=dk_dx)
           call compute_alpha_or_deriv       (x, val=p0, dval_dx=dp0_dx)
@@ -1363,8 +1384,19 @@ contains
           dse_dp0   = 0.d0
           
           dkr_dx    = dkr_dP * dP_dx !+ dkr_dse * dse_dp0 * dp0_dx
-          drho_dx   = drho_dP * dP_dx + drho_dT * dT_dx
-          d2rho_dx2 = d2rho_dP2 * dP_dx + drho_dP * d2P_dx2 + d2rho_dT2 * dT_dx + drho_dT * d2T_dx2
+
+          call compute_pressure_or_deriv    (x_ppert, val=P_ppert)
+          call compute_temperature_or_deriv (x_ppert, val=T_ppert)
+          call Density(  P_ppert, T_ppert, density_type,  rho_ppert, drho_ppert_dP, dden_ppert_dT)
+          call compute_pressure_or_deriv    (x_npert, val=P_npert)
+          call compute_temperature_or_deriv (x_npert, val=T_npert)
+          call Density(  P_npert, T_npert, density_type,  rho_npert, drho_npert_dP, dden_npert_dT)
+
+          rho_ppert     = rho_ppert * FMWH2O
+          rho_npert     = rho_npert * FMWH2O
+
+          drho_dx   = (rho_ppert - rho_npert)/pert/2.d0
+          d2rho_dx2 = (rho_ppert + rho_npert - 2.d0*rho)/pert/pert
 
           rhoq      = -rho*(k*kr/mu*dP_dx)
           drhoq_dx  = &
@@ -1373,14 +1405,14 @@ contains
 
 
           Ke        = (se + 1.d-6)**(alpha)
-          dKe_dx    = alpha*((se+1.d0)**(alpha-1))*dse_dP*dP_dx
+          dKe_dx    = alpha*((se+1.d-6)**(alpha-1.d0))*dse_dP*dP_dx
 
           kappa     = kwet*Ke + kdry*(1.d0-Ke)
           dkappa_dx = dkwet_dx*Ke + dkdry_dx*(1.d0-Ke) + (kwet-kdry)*dKe_dx
 
           dH_dx     = dH_dP*dP_dx + dH_dT*dT_dx
 
-          data_1D(ii) = -(drhoq_dx*H/FMWH2O + rhoq*dH_dx/FMWH2O - dkappa_dx*dT_dx - kappa*d2T_dx2)*dx!*0.d0
+          data_1D(ii) = -(drhoq_dx*H/FMWH2O + rhoq*dH_dx/FMWH2O - dkappa_dx*dT_dx - kappa*d2T_dx2)*dx
 
        end do
 
