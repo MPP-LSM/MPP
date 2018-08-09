@@ -632,7 +632,8 @@ contains
 
     inp_conn_set => inp_list%first
 
-    if (associated(inp_conn_set)) then
+    do
+       if (.not.associated(inp_conn_set)) exit
 
        allocate(conn_set)
        call conn_set%Copy(inp_conn_set)
@@ -642,7 +643,7 @@ contains
        nullify(conn_set)
        
        inp_conn_set => inp_conn_set%next
-    endif
+    enddo
     
   end subroutine ConnectionSetListCopy
 
