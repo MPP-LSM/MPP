@@ -1441,10 +1441,6 @@ contains
              call endrun(msg=errMsg(__FILE__, __LINE__))
           end select
 
-          ! GB: Get rid of setting values for Temperature
-          temperature = 273.15d0 + 25.d0
-          this%aux_vars_bc(sum_conn)%temperature = temperature
-
           call this%aux_vars_bc(sum_conn)%AuxVarCompute()
 
           ! Set values for 'connection' auxvars
