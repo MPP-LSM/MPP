@@ -6,9 +6,11 @@ module ThermalEnthalpyMod
 #include <petsc/finclude/petsc.h>
 
   ! !USES:
-  use mpp_varctl      , only : iulog
-  use mpp_abortutils  , only : endrun
-  use mpp_shr_log_mod , only : errMsg => shr_log_errMsg
+  use mpp_varctl                 , only : iulog
+  use mpp_abortutils             , only : endrun
+  use mpp_shr_log_mod            , only : errMsg => shr_log_errMsg
+  use ThermalEnthalpySoilAuxType , only : therm_enthalpy_soil_auxvar_type
+  use ConnectionSetType          , only : connection_type
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -23,24 +25,12 @@ module ThermalEnthalpyMod
 contains
 
   subroutine ThermalEnthalpyFlux( &
-       T_up,                      &
-       h_up,                      &
-       dh_up_dT_up,               &
-       den_up,                    &
-       dden_up_dT_up,             &
-       therm_cond_up,             &
-       T_dn,                      &
-       h_dn,                      &
-       dh_dn_dT_dn,               &
-       den_dn,                    &
-       dden_dn_dT_dn,             &
-       therm_cond_dn,             &
+       aux_var_up,                &
+       aux_var_dn,                &
        mflux,                     &
        dmflux_dT_up,              &
        dmflux_dT_dn,              &
-       area,                      &
-       dist_up,                   &
-       dist_dn,                   &
+       conn_up2dn,                &
        compute_deriv,             &
        internal_conn,             &
        cond_type,                 &
@@ -60,24 +50,12 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    PetscReal, intent(in)  :: T_up
-    PetscReal, intent(in)  :: h_up
-    PetscReal, intent(in)  :: dh_up_dT_up
-    PetscReal, intent(in)  :: den_up
-    PetscReal, intent(in)  :: dden_up_dT_up
-    PetscReal, intent(in)  :: therm_cond_up
-    PetscReal, intent(in)  :: T_dn
-    PetscReal, intent(in)  :: h_dn
-    PetscReal, intent(in)  :: dh_dn_dT_dn
-    PetscReal, intent(in)  :: den_dn
-    PetscReal, intent(in)  :: dden_dn_dT_dn
-    PetscReal, intent(in)  :: therm_cond_dn
+    type (therm_enthalpy_soil_auxvar_type) , intent(in)  :: aux_var_up
+    type (therm_enthalpy_soil_auxvar_type) , intent(in)  :: aux_var_dn
     PetscReal, intent(in)  :: mflux
     PetscReal, intent(in)  :: dmflux_dT_up
     PetscReal, intent(in)  :: dmflux_dT_dn
-    PetscReal, intent(in)  :: area
-    PetscReal, intent(in)  :: dist_up
-    PetscReal, intent(in)  :: dist_dn
+    type(connection_type)                  , intent(in)  :: conn_up2dn
     PetscBool, intent(in)  :: compute_deriv
     PetscBool, intent(in)  :: internal_conn
     PetscInt,  intent(in)  :: cond_type
@@ -86,6 +64,21 @@ contains
     PetscReal, intent(out) :: deflux_dT_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: T_up
+    PetscReal :: h_up
+    PetscReal :: dh_up_dT_up
+    PetscReal :: den_up
+    PetscReal :: dden_up_dT_up
+    PetscReal :: therm_cond_up
+    PetscReal :: T_dn
+    PetscReal :: h_dn
+    PetscReal :: dh_dn_dT_dn
+    PetscReal :: den_dn
+    PetscReal :: dden_dn_dT_dn
+    PetscReal :: therm_cond_dn
+    PetscReal :: area
+    PetscReal :: dist_up
+    PetscReal :: dist_dn
     PetscReal :: upweight
     PetscReal :: den_ave
     PetscReal :: dden_ave_dT_up
@@ -94,6 +87,24 @@ contains
     PetscReal :: h
     PetscReal :: dh_dT_up
     PetscReal :: dh_dT_dn
+
+    T_up                 = aux_var_up%temperature
+    h_up                 = aux_var_up%hl
+    dh_up_dT_up          = aux_var_up%dhl_dT
+    den_up               = aux_var_up%den
+    dden_up_dT_up        = aux_var_up%dden_dT
+    therm_cond_up        = aux_var_up%therm_cond
+
+    T_dn                 = aux_var_dn%temperature
+    h_dn                 = aux_var_dn%hl
+    dh_dn_dT_dn          = aux_var_dn%dhl_dT
+    den_dn               = aux_var_dn%den
+    dden_dn_dT_dn        = aux_var_dn%dden_dT
+    therm_cond_dn        = aux_var_dn%therm_cond
+
+    area                 = conn_up2dn%GetArea()
+    dist_up              = conn_up2dn%GetDistUp()
+    dist_dn              = conn_up2dn%GetDistDn()
 
     if (internal_conn) then
        upweight = dist_up/(dist_up + dist_dn)
@@ -119,12 +130,11 @@ contains
 
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
 
-    if (mflux < 0.d0) then
+    if (mflux <= 0.d0) then
        h = h_up
     else
        h = h_dn
     end if
-
 
     eflux = mflux * h + &
          (-therm_cond_ave_over_dist*(T_up - T_dn)*area)
@@ -156,30 +166,18 @@ contains
 
   !------------------------------------------------------------------------------
   subroutine ThermalEnthalpyFluxDerivativeWrtPressure( &
-       T_up,                      &
-       h_up,                      &
-       dh_up_dP_up,               &
-       den_up,                    &
-       dden_up_dP_up,             &
-       therm_cond_up,             &
-       T_dn,                      &
-       h_dn,                      &
-       dh_dn_dP_dn,               &
-       den_dn,                    &
-       dden_dn_dP_dn,             &
-       therm_cond_dn,             &
-       mflux,                     &
-       dmflux_dP_up,              &
-       dmflux_dP_dn,              &
-       area,                      &
-       dist_up,                   &
-       dist_dn,                   &
-       compute_deriv,             &
-       internal_conn,             &
-       cond_type,                 &
-       eflux,                     &
-       deflux_dP_up,              &
-       deflux_dP_dn               &
+       aux_var_up,                                     &
+       aux_var_dn,                                     &
+       mflux,                                          &
+       dmflux_dP_up,                                   &
+       dmflux_dP_dn,                                   &
+       conn_up2dn,                                     &
+       compute_deriv,                                  &
+       internal_conn,                                  &
+       cond_type,                                      &
+       eflux,                                          &
+       deflux_dP_up,                                   &
+       deflux_dP_dn                                    &
        )
     !
     ! !DESCRIPTION:
@@ -193,40 +191,67 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    PetscReal, intent(in)  :: T_up
-    PetscReal, intent(in)  :: h_up
-    PetscReal, intent(in)  :: dh_up_dP_up
-    PetscReal, intent(in)  :: den_up
-    PetscReal, intent(in)  :: dden_up_dP_up
-    PetscReal, intent(in)  :: therm_cond_up
-    PetscReal, intent(in)  :: T_dn
-    PetscReal, intent(in)  :: h_dn
-    PetscReal, intent(in)  :: dh_dn_dP_dn
-    PetscReal, intent(in)  :: den_dn
-    PetscReal, intent(in)  :: dden_dn_dP_dn
-    PetscReal, intent(in)  :: therm_cond_dn
-    PetscReal, intent(in)  :: mflux
-    PetscReal, intent(in)  :: dmflux_dP_up
-    PetscReal, intent(in)  :: dmflux_dP_dn
-    PetscReal, intent(in)  :: area
-    PetscReal, intent(in)  :: dist_up
-    PetscReal, intent(in)  :: dist_dn
-    PetscBool, intent(in)  :: compute_deriv
-    PetscBool, intent(in)  :: internal_conn
-    PetscInt,  intent(in)  :: cond_type
-    PetscReal, intent(out) :: eflux
-    PetscReal, intent(out) :: deflux_dP_up
-    PetscReal, intent(out) :: deflux_dP_dn
+    type (therm_enthalpy_soil_auxvar_type) , intent(in)  :: aux_var_up
+    type (therm_enthalpy_soil_auxvar_type) , intent(in)  :: aux_var_dn
+    PetscReal                              , intent(in)  :: mflux
+    PetscReal                              , intent(in)  :: dmflux_dP_up
+    PetscReal                              , intent(in)  :: dmflux_dP_dn
+    type(connection_type)                  , intent(in)  :: conn_up2dn
+    PetscBool                              , intent(in)  :: compute_deriv
+    PetscBool                              , intent(in)  :: internal_conn
+    PetscInt                               , intent(in)  :: cond_type
+    PetscReal                              , intent(out) :: eflux
+    PetscReal                              , intent(out) :: deflux_dP_up
+    PetscReal                              , intent(out) :: deflux_dP_dn
     !
     ! !LOCAL VARIABLES
+    PetscReal :: T_up
+    PetscReal :: h_up
+    PetscReal :: dh_up_dP_up
+    PetscReal :: den_up
+    PetscReal :: dden_up_dP_up
+    PetscReal :: therm_cond_up
+    PetscReal :: dtherm_cond_up_dP_up
+    PetscReal :: T_dn
+    PetscReal :: h_dn
+    PetscReal :: dh_dn_dP_dn
+    PetscReal :: den_dn
+    PetscReal :: dden_dn_dP_dn
+    PetscReal :: therm_cond_dn
+    PetscReal :: dtherm_cond_dn_dP_dn
+    PetscReal :: area
+    PetscReal :: dist_up
+    PetscReal :: dist_dn
     PetscReal :: upweight
     PetscReal :: den_ave
     PetscReal :: dden_ave_dP_up
     PetscReal :: dden_ave_dP_dn
+    PetscReal :: dDk_dp_up
+    PetscReal :: dDk_dp_dn
     PetscReal :: therm_cond_ave_over_dist
     PetscReal :: h
     PetscReal :: dh_dP_up
     PetscReal :: dh_dP_dn
+
+    T_up                 = aux_var_up%temperature
+    h_up                 = aux_var_up%hl
+    dh_up_dP_up          = aux_var_up%dhl_dP
+    den_up               = aux_var_up%den
+    dden_up_dP_up        = aux_var_up%dden_dP
+    therm_cond_up        = aux_var_up%therm_cond
+    dtherm_cond_up_dP_up = aux_var_up%dtherm_cond_dP
+
+    T_dn                 = aux_var_dn%temperature
+    h_dn                 = aux_var_dn%hl
+    dh_dn_dP_dn          = aux_var_dn%dhl_dP
+    den_dn               = aux_var_dn%den
+    dden_dn_dP_dn        = aux_var_dn%dden_dP
+    therm_cond_dn        = aux_var_dn%therm_cond
+    dtherm_cond_dn_dP_dn = aux_var_dn%dtherm_cond_dP
+
+    area                 = conn_up2dn%GetArea()
+    dist_up              = conn_up2dn%GetDistUp()
+    dist_dn              = conn_up2dn%GetDistDn()
 
     if (internal_conn) then
        upweight = dist_up/(dist_up + dist_dn)
@@ -250,7 +275,7 @@ contains
 
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
 
-    if (mflux < 0.d0) then
+    if (mflux <= 0.d0) then
        h = h_up
     else
        h = h_dn
@@ -273,12 +298,35 @@ contains
           dh_dP_dn = dh_dn_dP_dn
        endif
 
+       if (internal_conn) then
+          dDk_dp_up = therm_cond_ave_over_dist**2.d0/therm_cond_up**2.d0*dist_up*dtherm_cond_up_dP_up
+          dDk_dp_dn = therm_cond_ave_over_dist**2.d0/therm_cond_dn**2.d0*dist_dn*dtherm_cond_dn_dP_dn
+       else
+          select case(cond_type)
+          case (COND_DIRICHLET)
+             upweight   = 0.d0
+             therm_cond_ave_over_dist = therm_cond_dn/(dist_up + dist_dn)
+             dDk_dp_up = 0.d0
+             dDk_dp_dn = 1.d0/(dist_up + dist_dn)*dtherm_cond_dn_dP_dn
+
+          case (COND_DIRICHLET_FRM_OTR_GOVEQ)
+             dDk_dp_up = therm_cond_ave_over_dist**2.d0/therm_cond_up**2.d0*dist_up*dtherm_cond_up_dP_up
+             dDk_dp_dn = therm_cond_ave_over_dist**2.d0/therm_cond_dn**2.d0*dist_dn*dtherm_cond_dn_dP_dn
+
+          case default
+             write(iulog,*)'Unknown cond_type Add additional code.'
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+       endif
 
        deflux_dP_up = dmflux_dP_up * h        + &
-                      mflux        * dh_dP_up
+                      mflux        * dh_dP_up + &
+                     (-dDk_dp_up*(T_up - T_dn)*area)
+
 
        deflux_dP_dn = dmflux_dP_dn * h        + &
-                      mflux        * dh_dP_dn
+                      mflux        * dh_dP_dn + &
+                     (-dDk_dp_dn*(T_up - T_dn)*area)
     endif
 
   end subroutine ThermalEnthalpyFluxDerivativeWrtPressure
