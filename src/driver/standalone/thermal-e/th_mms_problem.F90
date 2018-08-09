@@ -7,7 +7,9 @@ module th_mms_problem
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbConstants , only : PRESSURE_REF
   use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT
-  use EOSWaterMod               , only : DENSITY_TGDPB01,DENSITY_CONSTANT
+  use EOSWaterMod               , only : DENSITY_TGDPB01,DENSITY_CONSTANT,DENSITY_IFC67
+  use EOSWaterMod               , only : INT_ENERGY_ENTHALPY_CONSTANT
+  use EOSWaterMod               , only : INT_ENERGY_ENTHALPY_IFC67
   use mpp_varcon                , only : denh2o
   use EOSWaterMod               , only : Density, Viscosity
   use MultiPhysicsProbTH        , only : th_mpp
@@ -71,6 +73,9 @@ module th_mms_problem
   PetscInt :: max_Iauxvar_cpl
   PetscInt :: num_bcpl
   PetscInt :: max_Bauxvar_cpl
+
+  PetscInt :: density_type
+  PetscInt :: int_energy_enthalpy_type
 
   PetscInt, pointer :: i_cpl_data(:,:)
   PetscInt, pointer :: b_cpl_data(:,:)
@@ -639,8 +644,7 @@ contains
     allocate(residual_sat    (ncells))
     allocate(satfunc_type    (ncells))
     
-    call goveq_richards%SetDensityType(DENSITY_TGDPB01)
-    call goveq_richards%SetDensityType(DENSITY_CONSTANT)
+    call goveq_richards%SetDensityType(density_type)
 
     satfunc_type(:) = SAT_FUNC_VAN_GENUCHTEN
     call set_variable_for_problem(DATA_POROSITY      , por          )
@@ -696,8 +700,8 @@ contains
     allocate(t_cond_wet   (ncells))
     allocate(t_alpha      (ncells))
     
-    call goveq_enthalpy%SetDensityType(DENSITY_TGDPB01)
-    call goveq_enthalpy%SetDensityType(DENSITY_CONSTANT)
+    call goveq_enthalpy%SetDensityType(density_type)
+    call goveq_enthalpy%SetIntEnergyEnthalpyType(int_energy_enthalpy_type)
 
     satfunc_type(:) = SAT_FUNC_VAN_GENUCHTEN
     call set_variable_for_problem(DATA_POROSITY      , por          )
@@ -940,6 +944,8 @@ contains
     implicit none
 
     problem_type = STEADY_STATE_SOIL_ONLY_1D
+    density_type = DENSITY_IFC67
+    int_energy_enthalpy_type = INT_ENERGY_ENTHALPY_IFC67
 
     xlim = x_max - x_min
     ylim = y_max - y_min
@@ -975,11 +981,23 @@ contains
      !
      PetscReal, parameter             :: g   = GRAVITY_CONSTANT
      PetscReal, parameter             :: a0 = -1000.d0
-     PetscReal, parameter             :: a1 =  2000.d0
+     PetscReal, parameter             :: a1 = -2000.d0
 
-     if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi)*1.d0 + a1 + PRESSURE_REF
-     if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-xlim)/xlim*pi)*1.d0
-     if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*sin((x-xlim)/xlim*pi)*1.d0
+     if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
+     if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-xlim)/xlim*pi)
+     if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*sin((x-xlim)/xlim*pi)
+
+     if (present(val      )) val       =  a0                *cos((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
+     if (present(dval_dx  )) dval_dx   = -a0*PI/xlim        *sin((x-xlim)/xlim*pi)
+     if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*cos((x-xlim)/xlim*pi)
+
+     !if (present(val      )) val       =  a0                          *cos((x-xlim)/xlim*pi*4.d0) + a1 + PRESSURE_REF
+     !if (present(dval_dx  )) dval_dx   = -a0*PI*4.d0/xlim             *sin((x-xlim)/xlim*pi*4.d0)
+     !if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI*4.d0*4.d0/xlim/xlim*cos((x-xlim)/xlim*pi*4.d0)
+
+     !if (present(val      )) val       =  a0*((x-xlim)/xlim) + a1 + PRESSURE_REF
+     !if (present(dval_dx  )) dval_dx   =  a0*(1.d0/xlim)
+     !if (present(d2val_dx2)) d2val_dx2 =  0.d0
      
    end subroutine compute_pressure_or_deriv
 
@@ -1123,7 +1141,6 @@ contains
     !
     ! !DESCRIPTION:
     !
-    use EOSWaterMod              , only : INT_ENERGY_ENTHALPY_CONSTANT
     use EOSWaterMod              , only : Density, Viscosity, InternalEnergyAndEnthalpy
     use MultiPhysicsProbConstants, only : FMWH2O
     use SaturationFunction       , only : saturation_params_type, SatFunc_Set_VG, SatFunc_PressToSat, SatFunc_PressToRelPerm
@@ -1325,8 +1342,7 @@ contains
           call compute_thermalalpha_or_deriv(x, val=alpha)
 
           call Viscosity(P, T, mu, dmu_dP, dmu_dT)
-          call Density(  P, T, DENSITY_TGDPB01,  rho, drho_dP, drho_dT)
-          call Density(  P, T, DENSITY_CONSTANT,  rho, drho_dP, drho_dT)
+          call Density(  P, T, density_type,  rho, drho_dP, drho_dT)
 
           rho     = rho     * FMWH2O
           drho_dP = drho_dP * FMWH2O
@@ -1334,7 +1350,7 @@ contains
           d2rho_dP2 = 0.d0
           d2rho_dT2 = 0.d0
 
-          call InternalEnergyAndEnthalpy(P, T, INT_ENERGY_ENTHALPY_CONSTANT, rho, drho_dT, drho_dP, &
+          call InternalEnergyAndEnthalpy(P, T, int_energy_enthalpy_type, rho, drho_dT, drho_dP, &
                U, H, dU_dT, dH_dT, dU_dP, dH_dP)
 
           call SatFunc_Set_VG(satParam, sat_res, p0, m)
@@ -1364,8 +1380,8 @@ contains
 
           dH_dx     = dH_dP*dP_dx + dH_dT*dT_dx
 
-          data_1D(ii) = -(drhoq_dx*H*1.d0/FMWH2O + rhoq*dH_dx*1.d0/FMWH2O - dkappa_dx*dT_dx - kappa*d2T_dx2)*dx
-          
+          data_1D(ii) = -(drhoq_dx*H/FMWH2O + rhoq*dH_dx/FMWH2O - dkappa_dx*dT_dx - kappa*d2T_dx2)*dx!*0.d0
+
        end do
 
     case default
