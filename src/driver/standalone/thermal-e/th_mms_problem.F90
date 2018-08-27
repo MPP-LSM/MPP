@@ -826,7 +826,7 @@ contains
 
     ieqn = SOIL_MASS_GE
     call th_mpp%soe%SetDataFromCLM(AUXVAR_BC, VAR_BC_SS_CONDITION, ieqn, pres_bc)
-    
+
     ieqn = SOIL_ENTH_GE
     call th_mpp%soe%SetDataFromCLM(AUXVAR_BC, VAR_BC_SS_CONDITION, ieqn, temp_bc)
 
@@ -989,9 +989,9 @@ contains
      if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-xlim)/xlim*pi)
      if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*sin((x-xlim)/xlim*pi)
 
-     if (present(val      )) val       =  a0                *cos((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
-     if (present(dval_dx  )) dval_dx   = -a0*PI/xlim        *sin((x-xlim)/xlim*pi)
-     if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*cos((x-xlim)/xlim*pi)
+     !if (present(val      )) val       =  a0                *cos((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
+     !if (present(dval_dx  )) dval_dx   = -a0*PI/xlim        *sin((x-xlim)/xlim*pi)
+     !if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*cos((x-xlim)/xlim*pi)
 
      !if (present(val      )) val       =  a0                          *cos((x-xlim)/xlim*pi*4.d0) + a1 + PRESSURE_REF
      !if (present(dval_dx  )) dval_dx   = -a0*PI*4.d0/xlim             *sin((x-xlim)/xlim*pi*4.d0)
@@ -1429,7 +1429,7 @@ contains
           dH_dx     = (H_ppert - H)/pert
           dH_dx     = (H_ppert - H_npert)/pert/2.d0
 
-          data_1D(ii) = -(drhoq_dx*H/FMWH2O + rhoq*dH_dx/FMWH2O - dkappa_dx*dT_dx - kappa*d2T_dx2)*dx!*0.d0
+          data_1D(ii) = -(drhoq_dx*H/FMWH2O + rhoq*dH_dx/FMWH2O - dkappa_dx*dT_dx - kappa*d2T_dx2)*dx
 
        end do
 
