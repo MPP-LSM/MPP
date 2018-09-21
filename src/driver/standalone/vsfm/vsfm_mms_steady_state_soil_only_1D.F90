@@ -55,7 +55,11 @@ contains
      PetscReal, parameter             :: a0 = -15000.d0
      PetscReal, parameter             :: a1 = -20000.d0
 
-     if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
+     if (fully_saturated) then
+        if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi) - a1 + PRESSURE_REF
+     else
+        if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
+     end if
      if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-xlim)/xlim*pi)
      if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*sin((x-xlim)/xlim*pi)
      

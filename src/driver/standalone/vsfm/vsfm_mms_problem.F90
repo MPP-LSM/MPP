@@ -72,7 +72,10 @@ contains
     
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-view_liq_saturation', liq_sat_fname, flg, ierr)
-    
+
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         "-fully_saturated", fully_saturated, flg, ierr)
+
     !
     ! Set up problem after command line options
     !
