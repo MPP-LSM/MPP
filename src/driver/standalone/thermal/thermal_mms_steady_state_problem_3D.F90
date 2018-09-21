@@ -144,6 +144,21 @@ module thermal_mms_steady_state_problem_3D
           end do
        end do
        
+    case(DATA_THERMAL_CONDUCTIVITY_1D_VEC)
+       count = 0
+       do kk = 1, nz
+          do jj = 1, ny
+             do ii = 1, nx
+                count   = count + 1
+                x       = soil_xc_3d(ii,jj,kk)
+                y       = soil_yc_3d(ii,jj,kk)
+                z       = soil_zc_3d(ii,jj,kk)
+
+                call compute_thermal_conductivity_or_deriv(x, y, z, l=data_1D(count))
+             end do
+          end do
+       end do
+       
     case (DATA_TEMPERATURE)
        count = 0
 

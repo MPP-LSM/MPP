@@ -21,12 +21,13 @@ module thermal_mms_vars
   PetscInt  , parameter :: STEADY_STATE_2D = 2
   PetscInt  , parameter :: STEADY_STATE_3D = 3
 
-  PetscInt  , parameter :: DATA_XC                   = 1
-  PetscInt  , parameter :: DATA_YC                   = 2
-  PetscInt  , parameter :: DATA_ZC                   = 3
-  PetscInt  , parameter :: DATA_THERMAL_CONDUCTIVITY = 4
-  PetscInt  , parameter :: DATA_TEMPERATURE_BC       = 5
-  PetscInt  , parameter :: DATA_HEAT_SOURCE          = 6
-  PetscInt  , parameter :: DATA_TEMPERATURE          = 7
+  PetscInt  , parameter :: DATA_XC                          = 1
+  PetscInt  , parameter :: DATA_YC                          = 2
+  PetscInt  , parameter :: DATA_ZC                          = 3
+  PetscInt  , parameter :: DATA_THERMAL_CONDUCTIVITY        = 4
+  PetscInt  , parameter :: DATA_TEMPERATURE_BC              = 5
+  PetscInt  , parameter :: DATA_HEAT_SOURCE                 = 6
+  PetscInt  , parameter :: DATA_TEMPERATURE                 = 7
+  PetscInt  , parameter :: DATA_THERMAL_CONDUCTIVITY_1D_VEC = 8
 
 end module thermal_mms_vars

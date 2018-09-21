@@ -48,6 +48,8 @@ contains
     PetscBool          :: flg
     character(len=256) :: string
     character(len=256) :: true_soln_fname
+    character(len=256) :: source_fname
+    character(len=256) :: thermal_cond_fname
     PetscViewer        :: viewer
 
     ! Set default settings
@@ -58,6 +60,8 @@ contains
     dtime             = 3600.d0
     nstep             = 1
     true_soln_fname   = ''
+    source_fname      = ''
+    thermal_cond_fname= ''
 
     cnfac = 0.d0 ! For steady state equation need to set this to 0.d0
     
@@ -82,6 +86,8 @@ contains
     call PetscOptionsGetReal   (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-dt                ',dtime             ,flg,ierr)
     call PetscOptionsGetInt    (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-nstep             ',nstep             ,flg,ierr)
     call PetscOptionsGetString (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-view_true_solution',true_soln_fname   ,flg,ierr)
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-view_source'       ,source_fname      ,flg,ierr)
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-view_thermal_cond' ,thermal_cond_fname,flg,ierr)
 
     select case(problem_type)
     case (STEADY_STATE_1D)
@@ -144,7 +150,19 @@ contains
 
        if (istep == nstep) then
           if (len(trim(adjustl(true_soln_fname)))>0) then
-             call save_true_solution(true_soln_fname)
+             call save_problem_variable(true_soln_fname, DATA_TEMPERATURE)
+          end if
+       end if
+
+       if (istep == nstep) then
+          if (len(trim(adjustl(source_fname)))>0) then
+             call save_problem_variable(source_fname, DATA_HEAT_SOURCE)
+          end if
+       end if
+
+       if (istep == nstep) then
+          if (len(trim(adjustl(thermal_cond_fname)))>0) then
+             call save_problem_variable(thermal_cond_fname, DATA_THERMAL_CONDUCTIVITY_1D_VEC)
           end if
        end if
 
@@ -152,7 +170,7 @@ contains
        call set_boundary_conditions()
 
        call thermal_mpp%soe%StepDT(1.d0, 1, &
-            converged, converged_reason, ierr); CHKERRQ(ierr)
+           converged, converged_reason, ierr); CHKERRQ(ierr)
     end do
 
   end subroutine run_thermal_mms_problem
@@ -713,7 +731,7 @@ contains
   end subroutine set_source_sink_conditions
 
   !------------------------------------------------------------------------
-  subroutine save_true_solution(true_soln_filename)
+  subroutine save_problem_variable(true_soln_filename, variable_id)
     !
     ! !DESCRIPTION:
     !
@@ -726,6 +744,7 @@ contains
     implicit none
     !
     character(len=256)                   :: true_soln_filename
+    PetscInt                             :: variable_id
     !
     PetscInt                             :: soe_auxvar_id
     PetscReal                  , pointer :: val(:)
@@ -745,14 +764,14 @@ contains
 
     call VecGetArrayF90(true_soln, val, ierr); CHKERRQ(ierr)
 
-    call set_variable_for_problem(problem_type, DATA_TEMPERATURE, data_1D=val)
+    call set_variable_for_problem(problem_type, variable_id, data_1D=val)
 
     call VecRestoreArrayF90(true_soln, val, ierr); CHKERRQ(ierr)
 
     call VecView(true_soln,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
-  end subroutine save_true_solution
+  end subroutine save_problem_variable
 
   !------------------------------------------------------------------------
   subroutine set_variable_for_problem(prob_type, data_type, data_1D, data_2D)

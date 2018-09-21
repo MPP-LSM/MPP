@@ -52,8 +52,8 @@ contains
      PetscReal, intent(out), optional :: d2val_dx2
      !
      PetscReal, parameter             :: g   = GRAVITY_CONSTANT
-     PetscReal, parameter             :: a0 = -1000.d0
-     PetscReal, parameter             :: a1 = -2000.d0
+     PetscReal, parameter             :: a0 = -15000.d0
+     PetscReal, parameter             :: a1 = -20000.d0
 
      if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
      if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-xlim)/xlim*pi)
@@ -259,6 +259,21 @@ contains
         x     = soil_xc_3d(ii,jj,kk)+dx/2.d0
         count = count + 1;
         call compute_pressure_or_deriv(x,val=data_1D(count))
+
+    case (DATA_LIQUID_SATURATION)
+       do ii = 1, nx
+          x     = soil_xc_3d(ii,jj,kk)
+
+          call compute_alpha_or_deriv       (x, val=p0, dval_dx=dp0_dx)
+          call compute_lambda_or_deriv      (x, val=m)
+          call compute_pressure_or_deriv    (x, val=P, dval_dx=dP_dx, d2val_dx2=d2P_dx2)
+          call compute_residualsat_or_deriv (x, val=sat_res)
+
+          call SatFunc_Set_VG(satParam, sat_res, p0, m)
+          call SatFunc_PressToSat(satParam, P, se, dse_dP)
+          data_1D(ii) = se
+
+       end do
 
     case (DATA_MASS_SOURCE)
        do ii = 1, nx

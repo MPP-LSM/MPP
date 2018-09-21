@@ -127,9 +127,11 @@ contains
     PetscBool           :: flg
     PetscErrorCode      :: ierr
     character(len=256)  :: true_soln_fname
+    character(len=256)  :: source_fname
 
     grid_factor = 2
     true_soln_fname = ''
+    source_fname    = ''
     
     call PetscOptionsGetInt( PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-grid_factor', grid_factor, flg, ierr)
@@ -137,6 +139,9 @@ contains
 
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-view_true_solution', true_soln_fname, flg, ierr)
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-view_source', source_fname, flg, ierr)
 
     call Init()
 
@@ -153,7 +158,13 @@ contains
          converged, converged_reason, ierr); CHKERRQ(ierr)
 
     if (len(trim(adjustl(true_soln_fname)))>0) then
-       call save_true_solution(vsfm_mpp, true_soln_fname)
+       call save_problem_variable(vsfm_mpp, true_soln_fname, &
+       SOIL_PRESSURE, ROOT_PRESSURE, XYLM_PRESSURE)
+    end if
+
+    if (len(trim(adjustl(source_fname)))>0) then
+       call save_problem_variable(vsfm_mpp, source_fname, &
+       SOIL_MASS_SOURCE, ROOT_MASS_SOURCE, XYLM_MASS_SOURCE)
     end if
 
   end subroutine run_vsfm_spac_mms_problem
@@ -1614,7 +1625,7 @@ contains
      PetscReal, intent(out), optional :: val
      PetscReal, intent(out), optional :: dval_dx
      !
-     PetscReal, parameter :: a0 = 0.5d0
+     PetscReal, parameter :: a0 = 0.0d0
 
      if (present(val    )) val     =  a0
      if (present(dval_dx)) dval_dx =  0.d0
@@ -2350,7 +2361,8 @@ contains
   end subroutine set_variable_for_problem
 
   !------------------------------------------------------------------------
-  subroutine save_true_solution(vsfm_mpp, true_soln_filename)
+  subroutine save_problem_variable(vsfm_mpp, true_soln_filename, &
+              soil_variable_id, root_variable_id, xylm_variable_id)
     !
     ! !DESCRIPTION:
     !
@@ -2364,6 +2376,7 @@ contains
     !
     type(mpp_vsfm_type) :: vsfm_mpp
     character(len=256)                   :: true_soln_filename
+    PetscInt                             :: soil_variable_id, root_variable_id, xylm_variable_id
     !
     PetscInt                             :: soe_auxvar_id
     PetscReal                  , pointer :: val(:)
@@ -2380,9 +2393,9 @@ contains
     allocate(root_p(num_root))
     allocate(xylm_p(num_xylm))
 
-    call set_variable_for_problem(SOIL_PRESSURE, soil_p)
-    call set_variable_for_problem(ROOT_PRESSURE, root_p)
-    call set_variable_for_problem(XYLM_PRESSURE, xylm_p)
+    call set_variable_for_problem(soil_variable_id, soil_p)
+    call set_variable_for_problem(root_variable_id, root_p)
+    call set_variable_for_problem(xylm_variable_id, xylm_p)
 
     string = trim(true_soln_filename)
 
@@ -2405,6 +2418,6 @@ contains
     deallocate(root_p)
     deallocate(xylm_p)
 
-  end subroutine save_true_solution
+  end subroutine save_problem_variable
 
 end module vsfm_spac_mms_problem

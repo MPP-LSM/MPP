@@ -95,9 +95,12 @@ contains
     PetscErrorCode     :: ierr
     PetscReal          :: dtime
     character(len=256) :: true_soln_fname
+    character(len=256) :: source_fname
+    character(len=256) :: perm_fname
 
     call set_default_problem()
     true_soln_fname = ''
+    source_fname = ''
 
     !
     ! Get command line options
@@ -106,6 +109,10 @@ contains
          '-nx', nx, flg, ierr)
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-view_true_solution', true_soln_fname, flg, ierr)
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-view_source', source_fname, flg, ierr)
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-view_permeability', perm_fname, flg, ierr)
 
     call set_problem()
     
@@ -120,6 +127,14 @@ contains
 
     if (len(trim(adjustl(true_soln_fname)))>0) then
        call save_true_solution(true_soln_fname)
+    end if
+
+    if (len(trim(adjustl(source_fname)))>0) then
+       call save_source(source_fname)
+    end if
+
+    if (len(trim(adjustl(perm_fname)))>0) then
+       call save_perm(perm_fname)
     end if
 
   end subroutine run_th_mms_problem
@@ -982,8 +997,8 @@ contains
      PetscReal, intent(out), optional :: d2val_dx2
      !
      PetscReal, parameter             :: g   = GRAVITY_CONSTANT
-     PetscReal, parameter             :: a0 = -1000.d0
-     PetscReal, parameter             :: a1 = -2000.d0
+     PetscReal, parameter             :: a0 = -15000.d0
+     PetscReal, parameter             :: a1 = -20000.d0
 
      if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
      if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-xlim)/xlim*pi)
@@ -1083,7 +1098,7 @@ contains
      PetscReal, intent(out), optional :: val
      PetscReal, intent(out), optional :: dval_dx
      !
-     PetscReal, parameter :: a0 = 0.5d0
+     PetscReal, parameter :: a0 = 0.0d0
 
      if (present(val    )) val     =  a0
      if (present(dval_dx)) dval_dx =  0.d0
@@ -1507,5 +1522,113 @@ contains
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
   end subroutine save_true_solution
+
+  !------------------------------------------------------------------------
+  subroutine save_source(source_filename)
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbConstants    , only : AUXVAR_SS
+    use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
+    use SystemOfEquationsBaseType    , only : sysofeqns_base_type
+    use SystemOfEquationsThermalType , only : sysofeqns_thermal_type
+    use petscvec
+    !
+    implicit none
+    !
+    character(len=256)                   :: source_filename
+    PetscReal , pointer :: v_p(:)
+    Vec                                  :: source
+    PetscViewer                          :: viewer
+    character(len=256)                   :: string
+    PetscErrorCode                       :: ierr
+    PetscInt            :: nDM
+    DM        , pointer :: dms(:)
+    Vec       , pointer :: soln_subvecs(:)
+    PetscInt            :: ii
+
+    string = trim(source_filename)
+
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+
+    call VecDuplicate(th_mpp%soe%solver%soln, source, ierr); CHKERRQ(ierr)
+
+    ! Find number of GEs packed within the SoE
+    call DMCompositeGetNumberDM(th_mpp%soe%solver%dm, nDM, ierr)
+
+    ! Get DMs for each GE
+    allocate (dms(nDM))
+    call DMCompositeGetEntriesArray(th_mpp%soe%solver%dm, dms, ierr)
+
+    ! Allocate vectors for individual GEs
+    allocate(soln_subvecs(nDM))
+
+    ! Get solution vectors for individual GEs
+    call DMCompositeGetAccessArray(th_mpp%soe%solver%dm, &
+         source, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    do ii = 1, nDM
+       call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
+       if (ii == 1) then
+          call set_variable_for_problem(DATA_MASS_SOURCE, v_p)
+       else
+          call set_variable_for_problem(DATA_HEAT_SOURCE, v_p)
+       end if
+       call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
+    enddo
+
+    ! Restore solution vectors for individual GEs
+    call DMCompositeRestoreAccessArray(th_mpp%soe%solver%dm, &
+         source, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    deallocate(dms)
+
+    call VecView(source,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+  end subroutine save_source
+
+  !------------------------------------------------------------------------
+  subroutine save_perm(perm_filename)
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbConstants    , only : AUXVAR_SS
+    use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
+    use SystemOfEquationsBaseType    , only : sysofeqns_base_type
+    use SystemOfEquationsThermalType , only : sysofeqns_thermal_type
+    use petscvec
+    !
+    implicit none
+    !
+    character(len=256)                   :: perm_filename
+    PetscReal , pointer :: v_p(:)
+    Vec                                  :: source
+    PetscViewer                          :: viewer
+    character(len=256)                   :: string
+    PetscErrorCode                       :: ierr
+    PetscInt            :: nDM
+    DM        , pointer :: dms(:)
+    Vec       , pointer :: soln_subvecs(:)
+    PetscInt            :: ii
+
+    string = trim(perm_filename)
+
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+
+    call VecCreate(PETSC_COMM_SELF, source, ierr); CHKERRQ(ierr)
+    call VecSetSizes(source, ncells, PETSC_DECIDE, ierr); CHKERRQ(ierr)
+    call VecSetFromOptions(source, ierr); CHKERRQ(ierr)
+
+    call VecGetArrayF90(source, v_p, ierr)
+    call set_variable_for_problem(DATA_PERMEABILITY, v_p)
+    call VecRestoreArrayF90(source, v_p, ierr)
+
+    call VecView(source,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+  end subroutine save_perm
 
 end module th_mms_problem

@@ -32,6 +32,9 @@ contains
     PetscBool           :: flg
     PetscErrorCode      :: ierr
     character(len=256)  :: true_soln_fname
+    character(len=256)  :: perm_fname
+    character(len=256)  :: source_fname
+    character(len=256)  :: liq_sat_fname
     type(mpp_vsfm_type) :: vsfm_mpp
 
     !
@@ -39,6 +42,8 @@ contains
     !
     call set_default_prob_for_steady_soil_only_1D()
     true_soln_fname = ''
+    perm_fname      = ''
+    source_fname    = ''
 
     !
     ! Get command line options
@@ -58,6 +63,15 @@ contains
 
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-view_true_solution', true_soln_fname, flg, ierr)
+    
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-view_permeability', perm_fname, flg, ierr)
+    
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-view_source', source_fname, flg, ierr)
+    
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-view_liq_saturation', liq_sat_fname, flg, ierr)
     
     !
     ! Set up problem after command line options
@@ -83,7 +97,19 @@ contains
          converged, converged_reason, ierr); CHKERRQ(ierr)
 
     if (len(trim(adjustl(true_soln_fname)))>0) then
-       call save_true_solution(vsfm_mpp, true_soln_fname)
+       call save_problem_variable(vsfm_mpp, true_soln_fname, DATA_PRESSURE)
+    end if
+
+    if (len(trim(adjustl(perm_fname)))>0) then
+       call save_problem_variable(vsfm_mpp, perm_fname, DATA_PERMEABILITY)
+    end if
+
+    if (len(trim(adjustl(source_fname)))>0) then
+       call save_problem_variable(vsfm_mpp, source_fname, DATA_MASS_SOURCE)
+    end if
+
+    if (len(trim(adjustl(liq_sat_fname)))>0) then
+       call save_problem_variable(vsfm_mpp, liq_sat_fname, DATA_LIQUID_SATURATION)
     end if
 
   end subroutine run_vsfm_mms_problem
@@ -532,7 +558,7 @@ contains
   end subroutine set_variable_for_problem
 
   !------------------------------------------------------------------------
-  subroutine save_true_solution(vsfm_mpp, true_soln_filename)
+  subroutine save_problem_variable(vsfm_mpp, filename, variable_id)
     !
     ! !DESCRIPTION:
     !
@@ -545,11 +571,12 @@ contains
     implicit none
     !
     type(mpp_vsfm_type) :: vsfm_mpp
-    character(len=256)                   :: true_soln_filename
+    character(len=256)                   :: filename
+    integer                              :: variable_id
     !
     PetscInt                             :: soe_auxvar_id
     PetscReal                  , pointer :: val(:)
-    Vec                                  :: true_soln
+    Vec                                  :: variable
     PetscViewer                          :: viewer
     class(sysofeqns_base_type) , pointer :: base_soe
     character(len=256)                   :: string
@@ -557,21 +584,22 @@ contains
 
     base_soe => vsfm_mpp%soe
 
-    string = trim(true_soln_filename)
+    string = trim(filename)
 
     call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
 
-    call VecDuplicate(vsfm_mpp%soe%solver%soln, true_soln, ierr); CHKERRQ(ierr)
+    call VecDuplicate(vsfm_mpp%soe%solver%soln, variable, ierr); CHKERRQ(ierr)
 
-    call VecGetArrayF90(true_soln, val, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(variable, val, ierr); CHKERRQ(ierr)
 
-    call set_variable_for_problem(problem_type, DATA_PRESSURE, data_1D=val)
+    call set_variable_for_problem(problem_type, variable_id, data_1D=val)
 
-    call VecRestoreArrayF90(true_soln, val, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(variable, val, ierr); CHKERRQ(ierr)
 
-    call VecView(true_soln,viewer,ierr);CHKERRQ(ierr)
+    call VecView(variable,viewer,ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    call VecDestroy(variable, ierr); CHKERRQ(ierr)
 
-  end subroutine save_true_solution
+  end subroutine save_problem_variable
 
 end module vsfm_mms_problem
