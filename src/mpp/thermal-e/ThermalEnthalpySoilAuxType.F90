@@ -30,9 +30,11 @@ module ThermalEnthalpySoilAuxType
      PetscReal                    :: dsat_dT                  ! [K^{-1}]
 
      PetscReal                    :: Kel                      ! Kersten number liquid [-]
-     PetscReal                    :: therm_cond_wet           ! wet thermal conductivity [J s^{-1} m^{-3} K^{-1}]
-     PetscReal                    :: therm_cond_dry           ! dry thermal conductivity [J s^{-1} m^{-3} K^{-1}]
-     PetscReal                    :: therm_cond               ! thermal conductivity [J s^{-1} m^{-3} K^{-1}]
+     PetscReal                    :: therm_cond_wet           ! wet thermal conductivity [J s^{-1} m^{-1} K^{-1}]
+     PetscReal                    :: therm_cond_dry           ! dry thermal conductivity [J s^{-1} m^{-1} K^{-1}]
+     PetscReal                    :: therm_cond               ! thermal conductivity [J s^{-1} m^{-1} K^{-1}]
+     PetscReal                    :: dtherm_cond_dP
+     PetscReal                    :: dKel_dp
      PetscReal                    :: therm_alpha
 
      PetscReal                    :: den_soil                 ! [kg m^{-3}]
@@ -59,6 +61,7 @@ contains
     !
     ! !USES:
     use EOSWaterMod               , only : INT_ENERGY_ENTHALPY_CONSTANT
+    use EOSWaterMod               , only : INT_ENERGY_ENTHALPY_IFC67
     use RichardsODEPressureAuxType, only : RichODEPressureAuxVarInit
     !
     implicit none
@@ -83,6 +86,8 @@ contains
     this%therm_cond_wet           = 0.d0
     this%therm_cond_dry           = 0.d0
     this%therm_cond               = 0.d0
+    this%dtherm_cond_dP           = 0.d0
+    this%dKel_dp                  = 0.d0
     this%therm_alpha              = 0.d0
 
     this%perm(:)                  = 8.3913d-12
@@ -134,6 +139,8 @@ contains
     this%therm_cond_wet           = auxvar%therm_cond_wet
     this%therm_cond_dry           = auxvar%therm_cond_dry
     this%therm_cond               = auxvar%therm_cond
+    this%dtherm_cond_dP           = auxvar%dtherm_cond_dP
+    this%dKel_dp                  = auxvar%dKel_dp
     this%por                      = auxvar%por
     this%perm(:)                  = auxvar%perm(:)
     this%therm_alpha              = auxvar%therm_alpha
@@ -260,8 +267,13 @@ contains
          this%dul_dP, this%dhl_dP)
 
     this%Kel        = (this%sat + 1.d-6 )**(this%therm_alpha)
-    this%therm_cond = this%therm_cond_wet*this%Kel + &
-                      this%therm_cond_dry*(1.d0 - this%Kel)
+    this%dKel_dp    = this%therm_alpha*(this%sat + 1.d-6)**(this%therm_alpha - 1.d0)* &
+                      this%dsat_dp
+
+    this%therm_cond     = this%therm_cond_wet*this%Kel + &
+                          this%therm_cond_dry*(1.d0 - this%Kel)
+    this%dtherm_cond_dP = (this%therm_cond_wet - this%therm_cond_dry)*this%dKel_dp
+
 
   end subroutine ThermEnthalpyAuxVarCompute
 

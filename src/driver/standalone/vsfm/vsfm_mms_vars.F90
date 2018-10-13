@@ -22,7 +22,8 @@ module vsfm_mms_vars
   PetscReal , pointer   :: soil_yc_3d(:,:,:)
   PetscReal , pointer   :: soil_zc_3d(:,:,:)
   PetscInt  , pointer   :: soil_id_3d(:,:,:)
-  
+
+  PetscBool             :: fully_saturated
   
   PetscInt  , parameter :: STEADY_STATE_SOIL_ONLY_1D = 1
 
@@ -38,5 +39,7 @@ module vsfm_mms_vars
   PetscInt  , parameter :: DATA_SATFUNC_ALPHA        = 10
   PetscInt  , parameter :: DATA_SATFUNC_LAMBDA       = 11
   PetscInt  , parameter :: DATA_RES_SAT              = 12
+  PetscInt  , parameter :: DATA_INITIAL_PRESSURE     = 13
+  PetscInt  , parameter :: DATA_LIQUID_SATURATION    = 14
 
 end module vsfm_mms_vars

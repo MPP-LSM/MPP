@@ -38,12 +38,12 @@ module SystemOfEquationsTHType
      PetscInt, pointer                             :: soe_auxvars_in_ncells (:) ! Number of control volumes associated with each internal condition.
      PetscInt, pointer                             :: soe_auxvars_bc_ncells (:) ! Number of control volumes associated with each boundary condition.
      PetscInt, pointer                             :: soe_auxvars_ss_ncells (:) ! Number of control volumes associated with each source-sink condition.
-     PetscInt, pointer                             :: soe_auxvars_bc_ncells_per_goveqn (:) ! Number of control volumes associated with each boundary condition.
+     PetscInt, pointer                             :: soe_auxvars_bc_ncells_per_goveqn (:) ! Number of control volumes associated with each boundary condition (excludes COND_DIRICHLET_FRM_OTR_GOVEQ)
      PetscInt, pointer                             :: soe_auxvars_ss_ncells_per_goveqn (:) ! Number of control volumes associated with each source-sink condition.
 
      PetscInt                                      :: num_auxvars_in            ! Number of auxvars associated with internal state.
      PetscInt                                      :: num_auxvars_in_local      ! Number of auxvars associated with internal state.
-     PetscInt                                      :: num_auxvars_bc            ! Number of auxvars associated with boundary condition.
+     PetscInt                                      :: num_auxvars_bc            ! Number of auxvars associated with boundary condition (excludes COND_DIRICHLET_FRM_OTR_GOVEQ)
      PetscInt                                      :: num_auxvars_ss            ! Number of auxvars associated with source-sink condition.
 
    contains
@@ -288,15 +288,36 @@ contains
              ! Boundary auxvars
              ndata = this%soe_auxvars_bc_ncells_per_goveqn(igoveqn)
              if (ndata > 0) then
-                write(*,*)'SOETHPreSolve: Add code to support richards BC'
-                stop
+                allocate(data(ndata))
+
+                var_type = VAR_BC_SS_CONDITION
+                call SOETHGetAuxVars(this, AUXVAR_BC, var_type, offset_bc, ndata, data)
+                call cur_goveq%SetFromSOEAuxVarsBC(var_type, ndata, data)
+
+                !var_type = VAR_PRESSURE
+                !call SOETHGetAuxVars(this, AUXVAR_BC, var_type, offset_bc, ndata, data)
+                !call cur_goveq%SetFromSOEAuxVarsBC(var_type, ndata, data)
+
+                !var_type = VAR_TEMPERATURE
+                !call SOETHGetAuxVars(this, AUXVAR_BC, var_type, offset_bc, ndata, data)
+                !call cur_goveq%SetFromSOEAuxVarsBC(var_type, ndata, data)
+
+                offset_bc = offset_bc + ndata
+                deallocate(data)
              endif
 
              ! Source/sink auxvars
              ndata = this%soe_auxvars_ss_ncells_per_goveqn(igoveqn)
              if (ndata > 0) then
-                write(*,*)'SOETHPreSolve: Add code to support richards SS'
-                stop
+                allocate(data(ndata))
+
+                var_type = VAR_BC_SS_CONDITION
+                call SOETHGetAuxVars(this, AUXVAR_SS, var_type, &
+                     offset_ss, ndata, data)
+                call cur_goveq%SetFromSOEAuxVarsSS(var_type, ndata, data)
+
+                offset_ss = offset_ss + ndata
+                deallocate(data)
              endif
 
           class is (goveqn_thermal_enthalpy_soil_type)
@@ -319,9 +340,16 @@ contains
                 allocate(data(ndata))
 
                 var_type = VAR_BC_SS_CONDITION
-                call SOETHGetAuxVars(this, AUXVAR_BC, var_type, &
-                     offset_bc, ndata, data)
+                call SOETHGetAuxVars(this, AUXVAR_BC, var_type, offset_bc, ndata, data)
                 call cur_goveq%SetFromSOEAuxVarsBC(var_type, ndata, data)
+
+                !var_type = VAR_PRESSURE
+                !call SOETHGetAuxVars(this, AUXVAR_BC, var_type, offset_bc, ndata, data)
+                !call cur_goveq%SetFromSOEAuxVarsBC(var_type, ndata, data)
+
+                !var_type = VAR_TEMPERATURE
+                !call SOETHGetAuxVars(this, AUXVAR_BC, var_type, offset_bc, ndata, data)
+                !call cur_goveq%SetFromSOEAuxVarsBC(var_type, ndata, data)
 
                 offset_bc = offset_bc + ndata
                 deallocate(data)
@@ -331,8 +359,15 @@ contains
              ! Source/sink auxvars
              ndata = this%soe_auxvars_ss_ncells_per_goveqn(igoveqn)
              if (ndata > 0) then
-                write(*,*)'SOETHPreSolve: Add code to support energy SS'
-                stop
+                allocate(data(ndata))
+
+                var_type = VAR_BC_SS_CONDITION
+                call SOETHGetAuxVars(this, AUXVAR_SS, var_type, &
+                     offset_ss, ndata, data)
+                call cur_goveq%SetFromSOEAuxVarsSS(var_type, ndata, data)
+
+                offset_ss = offset_ss + ndata
+                deallocate(data)
              endif
 
           class default

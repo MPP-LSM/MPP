@@ -53,7 +53,10 @@ module GoveqnRichardsODEPressureType
      procedure, public :: GetFromSOEAuxVarsIntrn    => RichardsODEPressureGetFromSOEAuxVarsIntrn
      procedure, public :: SetFromSOEAuxVarsIntrn    => RichardsODEPressureSetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC       => RichardsODEPressureGetFromSOEAuxVarsBC
+     procedure, public :: SetFromSOEAuxVarsBC       => RichardsODEPressureSetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS       => RichardsODEPressureGetFromSOEAuxVarsSS
+     procedure, public :: SetFromSOEAuxVarsSS       => RichardsODEPressureSetFromSOEAuxVarsSS
+
      procedure, public :: GetDataFromSOEAuxVar      => RichardsODEPressureGetDataFromSOEAuxVar
 
      procedure, public :: SetDataInSOEAuxVar        => RichardsODEPressureSetDataInSOEAuxVar
@@ -73,6 +76,12 @@ module GoveqnRichardsODEPressureType
 
      procedure, public :: SetAuxVarConnRealValue    => RichardsODESetAuxVarConnRealValue
      procedure, public :: SetAuxVarConnIntValue     => RichardsODESetAuxVarConnIntValue
+     procedure, public :: SetSoilPermeability       => RichardsODESetSoilPermeability
+     procedure, public :: SetRelativePermeability   => RichardsODESetRelativePermeability
+     procedure, public :: SetSoilPorosity           => RichardsODESetSoilPorosity
+     procedure, public :: SetSaturationFunction     => RichardsODESetSaturationFunction
+     procedure, public :: SetSaturationFunctionAuxVarConn => RichardsODESetSaturationFunctionAuxVarConn
+     procedure, public :: SetRelativePermeabilityAuxVarConn => RichardsODESetRelativePermeabilityAuxVarConn
   end type
 
   !------------------------------------------------------------------------
@@ -584,24 +593,24 @@ contains
           end if
        enddo
 
-       case (VAR_FRAC_LIQ_SAT)
-          do iauxvar = 1, nauxvar
-             if (this%mesh%is_active(iauxvar)) then
-                ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
-             end if
-          enddo
+    case (VAR_FRAC_LIQ_SAT)
+       do iauxvar = 1, nauxvar
+          if (this%mesh%is_active(iauxvar)) then
+             ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
+          end if
+       enddo
 
-       case (VAR_PRESSURE)
-          do iauxvar = 1, nauxvar
-             if (this%mesh%is_active(iauxvar)) then
-                ge_avars(iauxvar)%pressure = data(iauxvar)
-             end if
-          enddo
+    case (VAR_PRESSURE)
+       do iauxvar = 1, nauxvar
+          if (this%mesh%is_active(iauxvar)) then
+             ge_avars(iauxvar)%pressure = data(iauxvar)
+          end if
+       enddo
 
-       case default
-          write(iulog,*) 'Unknown var_type = ', var_type
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       end select
+    case default
+       write(iulog,*) 'Unknown var_type = ', var_type
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
 
   end subroutine RichardsODEPressureSetFromSOEAuxVarsIntrn
 
@@ -721,6 +730,89 @@ contains
 
   end subroutine RichardsODEPressureGetFromSOEAuxVarsBC
 
+  !------------------------------------------------------------------------
+  subroutine RichardsODEPressureSetFromSOEAuxVarsBC(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Sets values in GE auxiliary variables of boundary condition
+    !
+    ! !USES:
+    use ConditionType                , only : condition_type
+    use ConnectionSetType            , only : connection_set_type
+    use SystemOfEquationsVSFMAuxType , only : sysofeqns_vsfm_auxvar_type
+    use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
+    use MultiPhysicsProbConstants    , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants    , only : VAR_PRESSURE
+    use MultiPhysicsProbConstants    , only : COND_DIRICHLET
+    use MultiPhysicsProbConstants    , only : COND_MASS_FLUX
+    use MultiPhysicsProbConstants    , only : COND_MASS_RATE
+    use MultiPhysicsProbConstants    , only : COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants    , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) , intent(inout)         :: this
+    PetscInt                                 , intent(in)            :: var_type
+    PetscInt                                 , intent(in)            :: ndata
+    PetscReal                                , intent(in), pointer   :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt                                                         :: iauxvar
+    PetscInt                                                         :: nauxvar
+    type(rich_ode_pres_auxvar_type)          , dimension(:), pointer :: ge_avars
+    integer                                                          :: iconn
+    integer                                                          :: sum_conn
+    type(condition_type)                     , pointer               :: cur_cond
+    class(connection_set_type)               , pointer               :: cur_conn_set
+    PetscInt                                                         :: num_bc
+    PetscInt                                                         :: icond
+    character(len=256)                                               :: string
+
+    ge_avars => this%aux_vars_bc
+
+    nauxvar = size(ge_avars)
+    if( nauxvar /= ndata ) then
+       write(iulog,*) 'size(ge_avars) /= ndata'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    sum_conn = 0
+    cur_cond => this%boundary_conditions%first
+    do
+       if (.not.associated(cur_cond)) exit
+
+       cur_conn_set => cur_cond%conn_set
+
+       if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          sum_conn = sum_conn + cur_conn_set%num_connections
+          cur_cond => cur_cond%next
+          cycle
+       end if
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          select case(cur_cond%itype)
+          case (COND_DIRICHLET)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             !if (var_type == VAR_PRESSURE       ) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             !if (var_type == VAR_TEMPERATURE    ) ge_avars(sum_conn)%temperature     = data(sum_conn)
+          case (COND_MASS_RATE, COND_MASS_FLUX)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+          case (COND_SEEPAGE_BC)
+             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+          case default
+             write(string,*) cur_cond%itype
+             write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+       end do
+
+       cur_cond => cur_cond%next
+
+    end do
+    
+  end subroutine RichardsODEPressureSetFromSOEAuxVarsBC
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureGetFromSOEAuxVarsSS(this, soe_avars)
@@ -826,6 +918,74 @@ contains
 
   end subroutine RichardsODEPressureGetFromSOEAuxVarsSS
 
+  !------------------------------------------------------------------------
+  subroutine RichardsODEPressureSetFromSOEAuxVarsSS(this, var_type, ndata, data)
+    !
+    ! !DESCRIPTION:
+    ! Sets values in GE auxiliary variables of boundary condition
+    !
+    ! !USES:
+    use ConditionType                , only : condition_type
+    use ConnectionSetType            , only : connection_set_type
+    use SystemOfEquationsVSFMAuxType , only : sysofeqns_vsfm_auxvar_type
+    use MultiPhysicsProbConstants    , only : VAR_BC_SS_CONDITION
+    use MultiPhysicsProbConstants    , only : COND_MASS_RATE
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_CAMPBELL
+    use MultiPhysicsProbConstants    , only : COND_DOWNREG_MASS_RATE_FETCH2
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type) , intent(inout)         :: this
+    PetscInt                                 , intent(in)            :: var_type
+    PetscInt                                 , intent(in)            :: ndata
+    PetscReal                                , intent(in), pointer   :: data(:)
+    !
+    ! LOCAL VARIABLES
+    PetscInt                                                         :: iauxvar
+    PetscInt                                                         :: nauxvar
+    type(rich_ode_pres_auxvar_type)          , dimension(:), pointer :: ge_avars
+    integer                                                          :: iconn
+    integer                                                          :: sum_conn
+    type(condition_type)                     , pointer               :: cur_cond
+    class(connection_set_type)               , pointer               :: cur_conn_set
+    PetscInt                                                         :: num_bc
+    PetscInt                                                         :: icond
+    character(len=256)                                               :: string
+
+    ge_avars => this%aux_vars_ss
+
+    nauxvar = size(ge_avars)
+    if( nauxvar /= ndata ) then
+       write(iulog,*) 'size(ge_avars) /= ndata'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    sum_conn = 0
+    cur_cond => this%source_sinks%first
+    do
+       if (.not.associated(cur_cond)) exit
+
+       cur_conn_set => cur_cond%conn_set
+
+       do iconn = 1, cur_conn_set%num_connections
+          sum_conn = sum_conn + 1
+          select case(cur_cond%itype)
+          case (COND_MASS_RATE, COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
+             !if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             if (var_type == VAR_BC_SS_CONDITION) cur_cond%value(iconn) = data(sum_conn)
+          case default
+             write(string,*) cur_cond%itype
+             write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end select
+       end do
+
+       cur_cond => cur_cond%next
+
+    end do
+    
+  end subroutine RichardsODEPressureSetFromSOEAuxVarsSS
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureGetDataFromSOEAuxVar(this, soe_avar_type, soe_avars, &
@@ -1280,10 +1440,6 @@ contains
              write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
              call endrun(msg=errMsg(__FILE__, __LINE__))
           end select
-
-          ! GB: Get rid of setting values for Temperature
-          temperature = 273.15d0 + 25.d0
-          this%aux_vars_bc(sum_conn)%temperature = temperature
 
           call this%aux_vars_bc(sum_conn)%AuxVarCompute()
 
@@ -2834,6 +2990,345 @@ contains
     end do
 
   end subroutine RichardsODEGetNumInternalConnections
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODESetSoilPermeability(this, perm_x, perm_y, perm_z)
+    !
+    ! !DESCRIPTION:
+    ! Set soil permeability values
+    !
+    ! !USES:
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetAbsPerm
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: perm_x(:)
+    PetscReal                                 , pointer, intent(in) :: perm_y(:)
+    PetscReal                                 , pointer, intent(in) :: perm_z(:)
+
+    if (this%mesh%ncells_local /= size(perm_x)) then
+       write(iulog,*) 'No. of values for soil permeability is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(perm_x)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call RichardsODEPressureAuxVarSetAbsPerm(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, perm_x, perm_y, perm_z)
+
+  end subroutine RichardsODESetSoilPermeability
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODESetRelativePermeability(this, relperm_type, param_1, param_2)
+    !
+    ! !DESCRIPTION:
+    ! Set soil permeability values
+    !
+    ! !USES:
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetRelPerm
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
+    PetscInt                                  , pointer, intent(in) :: relperm_type(:)
+    PetscReal                                 , pointer, intent(in) :: param_1(:)
+    PetscReal                                 , pointer, intent(in) :: param_2(:)
+
+    if (this%mesh%ncells_local /= size(relperm_type)) then
+       write(iulog,*) 'No. of values for relative permeability is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of rel. perm. values = ',size(relperm_type)
+       write(iulog,*) 'No. of grid cells        = ',this%mesh%ncells_local
+    endif
+
+    call RichardsODEPressureAuxVarSetRelPerm(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, relperm_type, param_1, param_2)
+
+  end subroutine RichardsODESetRelativePermeability
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODESetSoilPorosity(this, por)
+    !
+    ! !DESCRIPTION:
+    ! Set soil porosity value
+    !
+    ! !USES:
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetPorosity
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
+    PetscReal                                 , pointer, intent(in) :: por(:)
+
+    if (this%mesh%ncells_local /= size(por)) then
+       write(iulog,*) 'No. of values for soil porosity is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil porosity values = ',size(por)
+       write(iulog,*) 'No. of grid cells           = ',this%mesh%ncells_local
+    endif
+
+    call RichardsODEPressureAuxVarSetPorosity(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+              this%boundary_conditions, this%source_sinks, por)
+
+  end subroutine RichardsODESetSoilPorosity
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODESetSaturationFunction(this, satfunc_type, &
+       alpha, lambda, sat_res)
+    !
+    ! !DESCRIPTION:
+    ! Set saturation function
+    !
+    use RichardsODEPressureAuxMod, only : RichardsODEPressureAuxVarSetSatFunc
+    ! !USES:
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
+    PetscInt                                  , pointer, intent(in) :: satfunc_type(:)
+    PetscReal                                 , pointer, intent(in) :: alpha(:)
+    PetscReal                                 , pointer, intent(in) :: lambda(:)
+    PetscReal                                 , pointer, intent(in) :: sat_res(:)
+
+    if (this%mesh%ncells_local /= size(alpha)) then
+       write(iulog,*) 'No. of values for saturation function is not equal to no. of grid cells.'
+       write(iulog,*) 'No. of soil sat. func. values = ',size(alpha)
+       write(iulog,*) 'No. of grid cells             = ',this%mesh%ncells_local
+    endif
+
+    call RichardsODEPressureAuxVarSetSatFunc(this%aux_vars_in, this%aux_vars_bc, this%aux_vars_ss, &
+           this%boundary_conditions, this%source_sinks, satfunc_type, alpha, lambda, sat_res)
+
+  end subroutine RichardsODESetSaturationFunction
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODESetSaturationFunctionAuxVarConn(this, &
+       auxvar_conn_type, set_upwind_auxvar, satfunc_itype, param_1, param_2, param_3)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use RichardsODEPressureConnAuxType , only : rich_ode_pres_conn_auxvar_type
+    use ConditionType                  , only : condition_type
+    use ConnectionSetType              , only : connection_set_type
+    use MultiPhysicsProbConstants      , only : AUXVAR_CONN_BC
+    use MultiPhysicsProbConstants      , only : AUXVAR_CONN_INTERNAL
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: auxvar_conn_type
+    PetscBool                                 , intent(in)          :: set_upwind_auxvar(:)
+    PetscInt                                  , pointer, intent(in) :: satfunc_itype(:)
+    PetscReal                                 , pointer, intent(in) :: param_1(:)
+    PetscReal                                 , pointer, intent(in) :: param_2(:)
+    PetscReal                      , optional , pointer, intent(in) :: param_3(:)
+    !
+    ! !LOCAL VARIABLES:
+    type (rich_ode_pres_conn_auxvar_type)     , pointer             :: conn_aux_vars(:)
+    type(condition_type)                      , pointer             :: cur_cond
+    class(connection_set_type)                , pointer             :: cur_conn_set
+    PetscInt                                                        :: ii
+    PetscInt                                                        :: ghosted_id
+    PetscInt                                                        :: sum_conn
+    PetscInt                                                        :: iconn
+
+    select case(auxvar_conn_type)
+    case (AUXVAR_CONN_INTERNAL)
+       conn_aux_vars => this%aux_vars_conn_in
+       cur_conn_set  => this%mesh%intrn_conn_set_list%first
+       sum_conn = 0
+       do
+          if (.not.associated(cur_conn_set)) exit
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+
+             if (sum_conn > size(param_1)) then
+                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             end if
+
+             if (satfunc_itype(sum_conn) > 0) then
+                if (set_upwind_auxvar(sum_conn)) then
+                   call conn_aux_vars(sum_conn)%satParams_up%SetSatFunc( &
+                        satfunc_itype(sum_conn), param_1(sum_conn), &
+                        param_2(sum_conn), param_3(sum_conn))
+                else
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetSatFunc( &
+                        satfunc_itype(sum_conn), param_1(sum_conn), &
+                        param_2(sum_conn), param_3(sum_conn))
+                endif
+             endif
+
+          end do
+
+          cur_conn_set => cur_conn_set%next
+
+       end do
+
+    case(AUXVAR_CONN_BC)
+
+       ! Set soil properties for boundary-condition auxvars
+       sum_conn = 0
+       conn_aux_vars => this%aux_vars_conn_bc
+       cur_cond      => this%boundary_conditions%first
+
+       do
+          if (.not.associated(cur_cond)) exit
+          cur_conn_set => cur_cond%conn_set
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn   = sum_conn + 1
+             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
+
+             if (sum_conn> size(param_1)) then
+                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                write(iulog,*) sum_conn,size(param_1)
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
+
+             if (satfunc_itype(sum_conn) > 0) then
+                if (set_upwind_auxvar(sum_conn)) then
+                   call conn_aux_vars(sum_conn)%satParams_up%SetSatFunc( &
+                        satfunc_itype(sum_conn), param_1(sum_conn), &
+                        param_2(sum_conn), param_3(sum_conn))
+                else
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetSatFunc( &
+                        satfunc_itype(sum_conn), param_1(sum_conn), &
+                        param_2(sum_conn), param_3(sum_conn))
+                endif
+             endif
+
+          enddo
+          cur_cond => cur_cond%next
+       enddo
+
+    case default
+       write(iulog,*)'Only supports AUXVAR_CONN_BC type'
+       call endrun(msg=errMsg(__FILE__,__LINE__))
+
+    end select
+
+  end subroutine RichardsODESetSaturationFunctionAuxVarConn
+
+  !------------------------------------------------------------------------
+  subroutine RichardsODESetRelativePermeabilityAuxVarConn(this, &
+       auxvar_conn_type, set_upwind_auxvar, relperm_itype, param_1, param_2)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use RichardsODEPressureConnAuxType , only : rich_ode_pres_conn_auxvar_type
+    use ConditionType                  , only : condition_type
+    use ConnectionSetType              , only : connection_set_type
+    use MultiPhysicsProbConstants      , only : AUXVAR_CONN_BC
+    use MultiPhysicsProbConstants      , only : AUXVAR_CONN_INTERNAL
+    !
+    implicit none
+    !
+    !
+    ! !ARGUMENTS
+    class(goveqn_richards_ode_pressure_type)  , intent(inout)       :: this
+    PetscInt                                  , intent(in)          :: auxvar_conn_type
+    PetscBool                                 , intent(in)          :: set_upwind_auxvar(:)
+    PetscInt                                  , pointer, intent(in) :: relperm_itype(:)
+    PetscReal                                 , pointer, intent(in) :: param_1(:)
+    PetscReal                                 , pointer, intent(in) :: param_2(:)
+    !
+    ! !LOCAL VARIABLES:
+    type (rich_ode_pres_conn_auxvar_type)     , pointer             :: conn_aux_vars(:)
+    type(condition_type)                      , pointer             :: cur_cond
+    class(connection_set_type)                , pointer             :: cur_conn_set
+    PetscInt                                                        :: ii
+    PetscInt                                                        :: ghosted_id
+    PetscInt                                                        :: sum_conn
+    PetscInt                                                        :: iconn
+
+    select case(auxvar_conn_type)
+    case (AUXVAR_CONN_INTERNAL)
+       conn_aux_vars => this%aux_vars_conn_in
+       cur_conn_set  => this%mesh%intrn_conn_set_list%first
+       sum_conn = 0
+       do
+          if (.not.associated(cur_conn_set)) exit
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+
+             if (sum_conn > size(param_1)) then
+                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             end if
+
+             if (relperm_itype(sum_conn) > 0) then
+                if (set_upwind_auxvar(sum_conn)) then
+                   call conn_aux_vars(sum_conn)%satParams_up%SetRelPerm( &
+                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
+                else
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetRelPerm( &
+                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
+                endif
+             endif
+
+          end do
+
+          cur_conn_set => cur_conn_set%next
+
+       end do
+
+    case(AUXVAR_CONN_BC)
+
+       ! Set soil properties for boundary-condition auxvars
+       sum_conn = 0
+       conn_aux_vars => this%aux_vars_conn_bc
+       cur_cond      => this%boundary_conditions%first
+
+       do
+          if (.not.associated(cur_cond)) exit
+          cur_conn_set => cur_cond%conn_set
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn   = sum_conn + 1
+             ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
+
+             if (sum_conn> size(param_1)) then
+                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                write(iulog,*) sum_conn,size(param_1)
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             endif
+
+             if (relperm_itype(sum_conn) > 0) then
+                if (set_upwind_auxvar(sum_conn)) then
+                   call conn_aux_vars(sum_conn)%satParams_up%SetRelPerm( &
+                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
+                else
+                   call conn_aux_vars(sum_conn)%satParams_dn%SetRelPerm( &
+                        relperm_itype(sum_conn), param_1(sum_conn),param_2(sum_conn))
+                endif
+             endif
+
+          enddo
+          cur_cond => cur_cond%next
+       enddo
+
+    case default
+       write(iulog,*)'Only supports AUXVAR_CONN_BC type'
+       call endrun(msg=errMsg(__FILE__,__LINE__))
+
+    end select
+
+  end subroutine RichardsODESetRelativePermeabilityAuxVarConn
 
 #endif
 

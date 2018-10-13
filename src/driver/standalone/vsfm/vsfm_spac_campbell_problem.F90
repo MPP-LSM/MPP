@@ -1271,6 +1271,7 @@ contains
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnRealValue 
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetAuxVarConnIntValue
     use MultiPhysicsProbVSFM      , only : VSFMMPPSetSaturationFunctionAuxVarConn
+    use MultiPhysicsProbVSFM      , only : VSFMMPPSetRelativePermeabilityAuxVarConn
     use MultiPhysicsProbConstants , only : AUXVAR_CONN_INTERNAL
     use MultiPhysicsProbConstants , only : AUXVAR_CONN_BC
     use MultiPhysicsProbConstants , only : AUXVAR_CONN_BC
@@ -1426,7 +1427,7 @@ contains
 
        call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, VAR_CONDUCTANCE, cond_conn_in)
 
-       call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, upwind_auxvar_conn_in, &
+       call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp, 1, AUXVAR_CONN_INTERNAL, upwind_auxvar_conn_in, &
             satfunc_itype_conn_in, campbell_he_conn_in, campbell_n_conn_in)
 
     else
@@ -1560,13 +1561,13 @@ contains
        ieqn     = 2
        call VSFMMPPSetAuxVarConnIntValue( vsfm_mpp, ieqn, AUXVAR_CONN_BC, VAR_FLUX_TYPE, flux_type_conn_bc_r)
        call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, ieqn, AUXVAR_CONN_BC, VAR_CONDUCTANCE, cond_conn_bc_r)
-       call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, ieqn, AUXVAR_CONN_BC, upwind_auxvar_conn_bc_r, &
+       call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp, ieqn, AUXVAR_CONN_BC, upwind_auxvar_conn_bc_r, &
             satfunc_itype_conn_bc_r, campbell_he_conn_bc_r, campbell_n_conn_bc_r)
 
        ieqn     = 3
        call VSFMMPPSetAuxVarConnIntValue( vsfm_mpp, ieqn, AUXVAR_CONN_BC, VAR_FLUX_TYPE, flux_type_conn_bc_s)
        call VSFMMPPSetAuxVarConnRealValue(vsfm_mpp, ieqn, AUXVAR_CONN_BC, VAR_CONDUCTANCE, cond_conn_bc_s)
-       call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp, ieqn, AUXVAR_CONN_BC, upwind_auxvar_conn_bc_s, &
+       call VSFMMPPSetRelativePermeabilityAuxVarConn(vsfm_mpp, ieqn, AUXVAR_CONN_BC, upwind_auxvar_conn_bc_s, &
             satfunc_itype_conn_bc_s, campbell_he_conn_bc_s, campbell_n_conn_bc_s)
 
     endif
