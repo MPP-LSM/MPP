@@ -1,7 +1,7 @@
 # MPP
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/MPP-LSM/MPP/blob/master/License.txt)
-
+[![DOI](https://zenodo.org/badge/117907556.svg)](https://zenodo.org/badge/latestdoi/117907556)
 [![Build Status](https://travis-ci.org/MPP-LSM/MPP.svg?branch=master)](https://travis-ci.org/MPP-LSM/MPP)
 
 
