@@ -100,3 +100,11 @@ make CC=$CC CXX=$CXX FC=$FC install
 ```sh
 make CC=$CC CXX=$CXX FC=$FC test
 ```
+
+### Publication
+
+Bisht, G., Riley, W. J., Hammond, G. E., and Lorenzetti, D. M.,
+Development and evaluation of a variably saturated flow model in the global E3SM
+Land Model (ELM) version 1.0, Geosci. Model Dev., 11, 4085-4102,
+https://doi.org/10.5194/gmd-11-4085-2018, 2018
+
