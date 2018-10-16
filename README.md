@@ -1,7 +1,7 @@
 # MPP
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/MPP-LSM/MPP/blob/master/License.txt)
-
+[![DOI](https://zenodo.org/badge/117907556.svg)](https://zenodo.org/badge/latestdoi/117907556)
 [![Build Status](https://travis-ci.org/MPP-LSM/MPP.svg?branch=master)](https://travis-ci.org/MPP-LSM/MPP)
 
 
@@ -100,3 +100,11 @@ make CC=$CC CXX=$CXX FC=$FC install
 ```sh
 make CC=$CC CXX=$CXX FC=$FC test
 ```
+
+### Publication
+
+Bisht, G., Riley, W. J., Hammond, G. E., and Lorenzetti, D. M.,
+Development and evaluation of a variably saturated flow model in the global E3SM
+Land Model (ELM) version 1.0, Geosci. Model Dev., 11, 4085-4102,
+https://doi.org/10.5194/gmd-11-4085-2018, 2018
+
