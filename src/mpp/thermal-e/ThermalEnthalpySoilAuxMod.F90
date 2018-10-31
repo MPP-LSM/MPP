@@ -508,7 +508,7 @@ contains
 
     ! Set soil properties for internal auxvars
     do icell = 1, size(data)
-       auxvars_in(icell)%heat_cap_soil = data(icell)
+       call auxvars_in(icell)%SetHeatCapSoil(data(icell))
     enddo
 
     ! Set soil properties for boundary-condition auxvars
@@ -523,7 +523,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-             auxvars_bc(sum_conn)%heat_cap_soil = auxvars_in(ghosted_id)%heat_cap_soil
+             call auxvars_bc(sum_conn)%SetHeatCapSoil(auxvars_in(ghosted_id)%GetHeatCapSoil())
           enddo
 
        else
@@ -532,7 +532,7 @@ contains
           ghosted_id = 1
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
-             auxvars_bc(sum_conn)%heat_cap_soil = auxvars_in(ghosted_id)%heat_cap_soil
+             call auxvars_bc(sum_conn)%SetHeatCapSoil(auxvars_in(ghosted_id)%GetHeatCapSoil())
           enddo
 
        endif
@@ -551,7 +551,7 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          auxvars_ss(sum_conn)%heat_cap_soil = auxvars_in(ghosted_id)%heat_cap_soil
+          call auxvars_ss(sum_conn)%SetHeatCapSoil(auxvars_in(ghosted_id)%GetHeatCapSoil())
 
        enddo
        cur_cond => cur_cond%next
@@ -592,7 +592,7 @@ contains
 
     ! Set soil properties for internal auxvars
     do icell = 1, size(data)
-       auxvars_in(icell)%therm_cond_dry = data(icell)
+       call auxvars_in(icell)%SetThermalCondDry(data(icell))
     enddo
 
     ! Set soil properties for boundary-condition auxvars
@@ -607,7 +607,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-             auxvars_bc(sum_conn)%therm_cond_dry = auxvars_in(ghosted_id)%therm_cond_dry
+             call auxvars_bc(sum_conn)%SetThermalCondDry(auxvars_in(ghosted_id)%GetThermalCondDry())
           enddo
 
        else
@@ -616,7 +616,7 @@ contains
           ghosted_id = 1
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
-             auxvars_bc(sum_conn)%therm_cond_dry = auxvars_in(ghosted_id)%therm_cond_dry
+             call auxvars_bc(sum_conn)%SetThermalCondDry(auxvars_in(ghosted_id)%GetThermalCondDry())
           enddo
 
        endif
@@ -635,7 +635,7 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          auxvars_ss(sum_conn)%therm_cond_dry = auxvars_in(ghosted_id)%therm_cond_dry
+          call auxvars_ss(sum_conn)%SetThermalCondDry(auxvars_in(ghosted_id)%GetThermalCondDry())
 
        enddo
        cur_cond => cur_cond%next
@@ -676,7 +676,7 @@ contains
 
     ! Set soil properties for internal auxvars
     do icell = 1, size(data)
-       auxvars_in(icell)%therm_cond_wet = data(icell)
+       call auxvars_in(icell)%SetThermalCondWet(data(icell))
     enddo
 
     ! Set soil properties for boundary-condition auxvars
@@ -691,7 +691,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-             auxvars_bc(sum_conn)%therm_cond_wet = auxvars_in(ghosted_id)%therm_cond_wet
+             call auxvars_bc(sum_conn)%SetThermalCondWet(auxvars_in(ghosted_id)%GetThermalCondWet())
           enddo
 
        else
@@ -700,7 +700,7 @@ contains
           ghosted_id = 1
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
-             auxvars_bc(sum_conn)%therm_cond_wet = auxvars_in(ghosted_id)%therm_cond_wet
+             call auxvars_bc(sum_conn)%SetThermalCondWet(auxvars_in(ghosted_id)%GetThermalCondWet())
           enddo
 
        endif
@@ -719,7 +719,7 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          auxvars_ss(sum_conn)%therm_cond_wet = auxvars_in(ghosted_id)%therm_cond_wet
+          call auxvars_ss(sum_conn)%SetThermalCondWet(auxvars_in(ghosted_id)%GetThermalCondWet())
 
        enddo
        cur_cond => cur_cond%next
@@ -760,7 +760,7 @@ contains
 
     ! Set soil properties for internal auxvars
     do icell = 1, size(data)
-       auxvars_in(icell)%therm_alpha = data(icell)
+       call auxvars_in(icell)%SetKerstenNumberLiquidCoeff(data(icell))
     enddo
 
     ! Set soil properties for boundary-condition auxvars
@@ -775,7 +775,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-             auxvars_bc(sum_conn)%therm_alpha = auxvars_in(ghosted_id)%therm_alpha
+             call auxvars_bc(sum_conn)%SetKerstenNumberLiquidCoeff(auxvars_in(ghosted_id)%GetKerstenNumberLiquidCoeff())
           enddo
 
        else
@@ -784,7 +784,7 @@ contains
           ghosted_id = 1
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
-             auxvars_bc(sum_conn)%therm_alpha = auxvars_in(ghosted_id)%therm_alpha
+             call auxvars_bc(sum_conn)%SetKerstenNumberLiquidCoeff(auxvars_in(ghosted_id)%GetKerstenNumberLiquidCoeff())
           enddo
 
        endif
@@ -803,7 +803,8 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          auxvars_ss(sum_conn)%therm_alpha = auxvars_in(ghosted_id)%therm_alpha
+          call auxvars_ss(sum_conn)%SetKerstenNumberLiquidCoeff( &
+             auxvars_in(ghosted_id)%GetKerstenNumberLiquidCoeff())
 
        enddo
        cur_cond => cur_cond%next
@@ -844,7 +845,7 @@ contains
 
     ! Set soil properties for internal auxvars
     do icell = 1, size(data)
-       auxvars_in(icell)%den_soil = data(icell)
+       call auxvars_in(icell)%SetDensitySoil(data(icell))
     enddo
 
     ! Set soil properties for boundary-condition auxvars
@@ -859,7 +860,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-             auxvars_bc(sum_conn)%den_soil = auxvars_in(ghosted_id)%den_soil
+             call auxvars_bc(sum_conn)%SetDensitySoil(auxvars_in(ghosted_id)%GetDensitySoil())
           enddo
 
        else
@@ -868,7 +869,7 @@ contains
           ghosted_id = 1
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
-             auxvars_bc(sum_conn)%den_soil = auxvars_in(ghosted_id)%den_soil
+             call auxvars_bc(sum_conn)%SetDensitySoil(auxvars_in(ghosted_id)%GetDensitySoil())
           enddo
 
        endif
@@ -887,7 +888,7 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          auxvars_ss(sum_conn)%den_soil = auxvars_in(ghosted_id)%den_soil
+          call auxvars_ss(sum_conn)%SetDensitySoil(auxvars_in(ghosted_id)%GetDensitySoil())
 
        enddo
        cur_cond => cur_cond%next

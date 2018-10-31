@@ -855,7 +855,7 @@ contains
 
     ! For internal connections
     do icond = 1,this%mesh%ncells_all
-       this%aux_vars_in(icond)%int_energy_enthalpy_type = itype
+       call this%aux_vars_in(icond)%SetIntEnergyType(itype)
     enddo
 
     ! For boundary conditions
@@ -865,7 +865,7 @@ contains
        if (.not.associated(cur_cond)) exit
        do icond = 1,cur_cond%ncells
           sum_conn = sum_conn + 1
-          this%aux_vars_bc(sum_conn)%int_energy_enthalpy_type = itype
+          call this%aux_vars_bc(sum_conn)%SetIntEnergyType(itype)
        enddo
        cur_cond => cur_cond%next
     enddo
@@ -877,7 +877,7 @@ contains
        if (.not.associated(cur_cond)) exit
        do icond = 1,cur_cond%ncells
           sum_conn = sum_conn + 1
-          this%aux_vars_ss(sum_conn)%int_energy_enthalpy_type = itype
+          call this%aux_vars_ss(sum_conn)%SetIntEnergyType(itype)
        enddo
        cur_cond => cur_cond%next
     enddo
@@ -1171,11 +1171,11 @@ contains
                 aux_vars(cell_id)%GetPorosity()               * &
                 aux_vars(cell_id)%GetDensity()                * &
                 aux_vars(cell_id)%GetLiquidSaturation()       * &
-                aux_vars(cell_id)%ul                            &
+                aux_vars(cell_id)%GetIntEnergyLiquid()          &
                 +                                               &
                 (1.d0 - aux_vars(cell_id)%GetPorosity())      * &
-                aux_vars(cell_id)%den_soil                    * &
-                aux_vars(cell_id)%heat_cap_soil               * &
+                aux_vars(cell_id)%GetDensitySoil()            * &
+                aux_vars(cell_id)%GetHeatCapSoil()            * &
                 (aux_vars(cell_id)%GetTemperature()-273.15d0)   &
                 ) * geq_soil%mesh%vol(cell_id) * dtInv
        endif
@@ -1227,16 +1227,16 @@ contains
        if (geq_soil%mesh%is_active(cell_id)) then
 
           por           = aux_vars(cell_id)%GetPorosity()
-          den_soil      = aux_vars(cell_id)%den_soil
-          heat_cap_soil = aux_vars(cell_id)%heat_cap_soil
+          den_soil      = aux_vars(cell_id)%GetDensitySoil()
+          heat_cap_soil = aux_vars(cell_id)%GetHeatCapSoil()
 
           den          = aux_vars(cell_id)%GetDensity()
           sat          = aux_vars(cell_id)%GetLiquidSaturation()
-          ul            = aux_vars(cell_id)%ul
+          ul            = aux_vars(cell_id)%GetIntEnergyLiquid()
 
           dden_dT      = aux_vars(cell_id)%GetDDenDT()
-          dsat_dT      = aux_vars(cell_id)%dsat_dT
-          dul_dT        = aux_vars(cell_id)%dul_dT
+          dsat_dT      = aux_vars(cell_id)%GetDSatDT()
+          dul_dT        = aux_vars(cell_id)%GetDUlDT()
           
           ! d/dT( phi*rho_liq*sat_liq*u_liq + (1-phi)*rho_soil*u_soil)
 
@@ -2125,17 +2125,17 @@ contains
        if (geq_soil%mesh%is_active(cell_id)) then
 
           por           = aux_vars(cell_id)%GetPorosity()
-          den_soil      = aux_vars(cell_id)%den_soil
-          heat_cap_soil = aux_vars(cell_id)%heat_cap_soil
+          den_soil      = aux_vars(cell_id)%GetDensitySoil()
+          heat_cap_soil = aux_vars(cell_id)%GetHeatCapSoil()
 
           den          = aux_vars(cell_id)%GetDensity()
           sat          = aux_vars(cell_id)%GetLiquidSaturation()
-          ul            = aux_vars(cell_id)%ul
+          ul            = aux_vars(cell_id)%GetIntEnergyLiquid()
 
           dpor_dP       = aux_vars(cell_id)%GetDPorDP()
           dden_dP      = aux_vars(cell_id)%GetDDenDP()
           dsat_dP      = aux_vars(cell_id)%GetDSatDP()
-          dul_dP        = aux_vars(cell_id)%dul_dP
+          dul_dP        = aux_vars(cell_id)%GetDUlDP()
 
           temperature   = aux_vars(cell_id)%GetTemperature()
 

@@ -324,14 +324,14 @@ contains
 
          !aux_vars_in(icell)%por                   = watsat(col_id,j)
          !aux_vars_in(icell)%therm_cond_minerals   = tkmg(col_id,j)
-         !aux_vars_in(icell)%therm_cond_dry        = tkdry(col_id,j)
+         !aux_vars_in(icell)%SetThermalCondDry(       = tkdry(col_id,j)
          !aux_vars_in(icell)%heat_cap_minerals_puv = csol(col_id,j)
 
-         aux_vars_in(icell)%therm_alpha     = 0.45d0
-         aux_vars_in(icell)%therm_cond_wet  = 1.3d0 !tkwat
-         aux_vars_in(icell)%therm_cond_dry  = tkdry(col_id,j)
-         aux_vars_in(icell)%heat_cap_soil   = csol(col_id,j)
-         aux_vars_in(icell)%den_soil        = 2700.d0
+         call aux_vars_in(icell)%SetKerstenNumberLiquidCoeff(0.45d0)
+         call aux_vars_in(icell)%SetThermalCondWet(1.3d0) !tkwat
+         call aux_vars_in(icell)%SetThermalCondDry(tkdry(col_id,j))
+         call aux_vars_in(icell)%SetHeatCapSoil(csol(col_id,j))
+         call aux_vars_in(icell)%SetDensitySoil(2700.d0)
 
       enddo
    enddo
@@ -353,11 +353,11 @@ contains
          aux_vars_bc(sum_conn)%satParams      = aux_vars_in(ghosted_id)%satParams
          aux_vars_bc(sum_conn)%porParams      = aux_vars_in(ghosted_id)%porParams
 
-         aux_vars_bc(sum_conn)%therm_alpha    = aux_vars_in(ghosted_id)%therm_alpha
-         aux_vars_bc(sum_conn)%therm_cond_wet = aux_vars_in(ghosted_id)%therm_cond_wet
-         aux_vars_bc(sum_conn)%therm_cond_dry = aux_vars_in(ghosted_id)%therm_cond_dry
-         aux_vars_bc(sum_conn)%heat_cap_soil  = aux_vars_in(ghosted_id)%heat_cap_soil
-         aux_vars_bc(sum_conn)%den_soil       = aux_vars_in(ghosted_id)%den_soil
+         call aux_vars_bc(sum_conn)%SetKerstenNumberLiquidCoeff(aux_vars_in(ghosted_id)%GetKerstenNumberLiquidCoeff())
+         call aux_vars_bc(sum_conn)%SetThermalCondWet(aux_vars_in(ghosted_id)%GetThermalCondWet())
+         call aux_vars_bc(sum_conn)%SetThermalCondDry(aux_vars_in(ghosted_id)%GetThermalCondDry())
+         call aux_vars_bc(sum_conn)%SetHeatCapSoil(aux_vars_in(ghosted_id)%GetHeatCapSoil())
+         call aux_vars_bc(sum_conn)%SetDensitySoil(aux_vars_in(ghosted_id)%GetDensitySoil())
          
          call aux_vars_bc(sum_conn)%satParams%Copy(aux_vars_in(ghosted_id)%satParams)
          
@@ -383,13 +383,11 @@ contains
          aux_vars_ss(sum_conn)%satParams      = aux_vars_in(ghosted_id)%satParams
          aux_vars_ss(sum_conn)%porParams      = aux_vars_in(ghosted_id)%porParams
 
-         aux_vars_ss(sum_conn)%therm_alpha    = aux_vars_in(ghosted_id)%therm_alpha
-         aux_vars_ss(sum_conn)%therm_cond_wet = aux_vars_in(ghosted_id)%therm_cond_wet
-         aux_vars_ss(sum_conn)%therm_cond_dry = aux_vars_in(ghosted_id)%therm_cond_dry
-         aux_vars_ss(sum_conn)%heat_cap_soil  = aux_vars_in(ghosted_id)%heat_cap_soil
-         aux_vars_ss(sum_conn)%den_soil       = aux_vars_in(ghosted_id)%den_soil
-         
-         !aux_vars_ss(sum_conn)%pressure_prev = 3.5355d3
+         call aux_vars_ss(sum_conn)%SetKerstenNumberLiquidCoeff(aux_vars_in(ghosted_id)%GetKerstenNumberLiquidCoeff())
+         call aux_vars_ss(sum_conn)%SetThermalCondWet(aux_vars_in(ghosted_id)%GetThermalCondWet())
+         call aux_vars_ss(sum_conn)%SetThermalCondDry(aux_vars_in(ghosted_id)%GetThermalCondDry())
+         call aux_vars_ss(sum_conn)%SetHeatCapSoil(aux_vars_in(ghosted_id)%GetHeatCapSoil())
+         call aux_vars_ss(sum_conn)%SetDensitySoil(aux_vars_in(ghosted_id)%GetDensitySoil())
          
       enddo
       cur_cond => cur_cond%next

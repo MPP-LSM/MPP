@@ -89,18 +89,18 @@ contains
     PetscReal :: dh_dT_dn
 
     T_up                 = aux_var_up%GetTemperature()
-    h_up                 = aux_var_up%hl
-    dh_up_dT_up          = aux_var_up%dhl_dT
+    h_up                 = aux_var_up%GetEnthalpyLiquid()
+    dh_up_dT_up          = aux_var_up%GetDHlDT()
     den_up               = aux_var_up%GetDensity()
     dden_up_dT_up        = aux_var_up%GetDDenDT()
-    therm_cond_up        = aux_var_up%therm_cond
+    therm_cond_up        = aux_var_up%GetThermalCond()
 
     T_dn                 = aux_var_dn%GetTemperature()
-    h_dn                 = aux_var_dn%hl
-    dh_dn_dT_dn          = aux_var_dn%dhl_dT
+    h_dn                 = aux_var_dn%GetEnthalpyLiquid()
+    dh_dn_dT_dn          = aux_var_dn%GetDHlDT()
     den_dn               = aux_var_dn%GetDensity()
     dden_dn_dT_dn        = aux_var_dn%GetDDenDT()
-    therm_cond_dn        = aux_var_dn%therm_cond
+    therm_cond_dn        = aux_var_dn%GetThermalCond()
 
     area                 = conn_up2dn%GetArea()
     dist_up              = conn_up2dn%GetDistUp()
@@ -234,20 +234,20 @@ contains
     PetscReal :: dh_dP_dn
 
     T_up                 = aux_var_up%GetTemperature()
-    h_up                 = aux_var_up%hl
-    dh_up_dP_up          = aux_var_up%dhl_dP
+    h_up                 = aux_var_up%GetEnthalpyLiquid()
+    dh_up_dP_up          = aux_var_up%GetDHlDP()
     den_up               = aux_var_up%GetDensity()
     dden_up_dP_up        = aux_var_up%GetDDenDP()
-    therm_cond_up        = aux_var_up%therm_cond
-    dtherm_cond_up_dP_up = aux_var_up%dtherm_cond_dP
+    therm_cond_up        = aux_var_up%GetThermalCond()
+    dtherm_cond_up_dP_up = aux_var_up%GetDThermalCondDP()
 
     T_dn                 = aux_var_dn%GetTemperature()
-    h_dn                 = aux_var_dn%hl
-    dh_dn_dP_dn          = aux_var_dn%dhl_dP
+    h_dn                 = aux_var_dn%GetEnthalpyLiquid()
+    dh_dn_dP_dn          = aux_var_dn%GetDHlDP()
     den_dn               = aux_var_dn%GetDensity()
     dden_dn_dP_dn        = aux_var_dn%GetDDenDP()
-    therm_cond_dn        = aux_var_dn%therm_cond
-    dtherm_cond_dn_dP_dn = aux_var_dn%dtherm_cond_dP
+    therm_cond_dn        = aux_var_dn%GetThermalCond()
+    dtherm_cond_dn_dP_dn = aux_var_dn%GetDThermalCondDP()
 
     area                 = conn_up2dn%GetArea()
     dist_up              = conn_up2dn%GetDistUp()
