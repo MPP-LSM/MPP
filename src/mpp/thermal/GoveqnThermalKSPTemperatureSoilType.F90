@@ -225,13 +225,13 @@ contains
     do iauxvar = 1, nauxvar
 
        call this%aux_vars_in(iauxvar)%SetTemperature(soe_avars(iauxvar+offset)%temperature)
-       this%aux_vars_in(iauxvar)%liq_areal_den  = soe_avars(iauxvar+offset)%liq_areal_den
-       this%aux_vars_in(iauxvar)%ice_areal_den  = soe_avars(iauxvar+offset)%ice_areal_den
-       this%aux_vars_in(iauxvar)%snow_water     = soe_avars(iauxvar+offset)%snow_water
-       this%aux_vars_in(iauxvar)%num_snow_layer = soe_avars(iauxvar+offset)%num_snow_layer
-       this%aux_vars_in(iauxvar)%tuning_factor  = soe_avars(iauxvar+offset)%tuning_factor
+       call this%aux_vars_in(iauxvar)%SetLiqArealDensity(soe_avars(iauxvar+offset)%liq_areal_den)
+       call this%aux_vars_in(iauxvar)%SetIceArealDensity(soe_avars(iauxvar+offset)%ice_areal_den)
+       call this%aux_vars_in(iauxvar)%SetSnowWater(soe_avars(iauxvar+offset)%snow_water)
+       call this%aux_vars_in(iauxvar)%SetNumberOfSnowLayers(soe_avars(iauxvar+offset)%num_snow_layer)
+       call this%aux_vars_in(iauxvar)%SetTuningFactor(soe_avars(iauxvar+offset)%tuning_factor)
        call this%aux_vars_in(iauxvar)%SetArealFraction(soe_avars(iauxvar+offset)%frac)
-       this%aux_vars_in(iauxvar)%dz             = soe_avars(iauxvar+offset)%dz
+       call this%aux_vars_in(iauxvar)%SetDepth(soe_avars(iauxvar+offset)%dz)
 
     enddo
 
@@ -664,7 +664,7 @@ contains
 
           T        = geq_soil%aux_vars_in(cell_id)%GetTemperature()
           heat_cap = geq_soil%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
-          tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
+          tfactor  = geq_soil%aux_vars_in(cell_id)%GetTuningFactor()
           vol      = geq_soil%mesh%vol(cell_id)
 
 #ifdef MATCH_CLM_FORMULATION
@@ -752,7 +752,7 @@ contains
 
           T        = geq_soil%aux_vars_in(cell_id_up)%GetTemperature()
           heat_cap = geq_soil%aux_vars_in(cell_id_up)%GetVolumetricHeatCapacity()
-          tfactor  = geq_soil%aux_vars_in(cell_id_up)%tuning_factor
+          tfactor  = geq_soil%aux_vars_in(cell_id_up)%GetTuningFactor()
           vol      = geq_soil%mesh%vol(cell_id_up)
 #ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
@@ -764,7 +764,7 @@ contains
 
           T        = geq_soil%aux_vars_in(cell_id_dn)%GetTemperature()
           heat_cap = geq_soil%aux_vars_in(cell_id_dn)%GetVolumetricHeatCapacity()
-          tfactor  = geq_soil%aux_vars_in(cell_id_dn)%tuning_factor
+          tfactor  = geq_soil%aux_vars_in(cell_id_dn)%GetTuningFactor()
           vol      = geq_soil%mesh%vol(cell_id_dn)
 #ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
@@ -816,7 +816,7 @@ contains
                    T_up = geq_soil%aux_vars_bc(sum_conn)%GetTemperature()
                    T_dn = geq_soil%aux_vars_in(cell_id )%GetTemperature()
 
-                   dist_dn = geq_soil%aux_vars_in(cell_id)%dz/2.d0
+                   dist_dn = geq_soil%aux_vars_in(cell_id)%GetDepth()/2.d0
                    therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
                         (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
                    dist = dist_dn + max(1.d-6, dist_up*2.d0)/2.d0
@@ -837,7 +837,7 @@ contains
 
                 T        = geq_soil%aux_vars_in(cell_id)%GetTemperature()
                 heat_cap = geq_soil%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
-                tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
+                tfactor  = geq_soil%aux_vars_in(cell_id)%GetTuningFactor()
                 vol      = geq_soil%mesh%vol(cell_id)
 #ifdef MATCH_CLM_FORMULATION
                 factor =  (dt*tfactor)/(heat_cap*vol)
@@ -877,7 +877,7 @@ contains
 
              T        = geq_soil%aux_vars_in(cell_id)%GetTemperature()
              heat_cap = geq_soil%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
-             tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
+             tfactor  = geq_soil%aux_vars_in(cell_id)%GetTuningFactor()
              vol      = geq_soil%mesh%vol(cell_id)
 #ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
@@ -915,7 +915,7 @@ contains
           case(COND_HEAT_RATE)
              T        = geq_soil%aux_vars_in(cell_id)%GetTemperature()
              heat_cap = geq_soil%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
-             tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
+             tfactor  = geq_soil%aux_vars_in(cell_id)%GetTuningFactor()
              vol      = geq_soil%mesh%vol(cell_id)
 #ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
@@ -1023,7 +1023,7 @@ contains
     do cell_id = 1, this%mesh%ncells_local
 
        heat_cap   = this%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
-       tfactor    = this%aux_vars_in(cell_id)%tuning_factor
+       tfactor    = this%aux_vars_in(cell_id)%GetTuningFactor()
        vol        = this%mesh%vol(cell_id)
 
        if (this%aux_vars_in(cell_id)%IsActive()) then
@@ -1071,7 +1071,7 @@ contains
 
           T        = this%aux_vars_in(cell_id_up)%GetTemperature()
           heat_cap = this%aux_vars_in(cell_id_up)%GetVolumetricHeatCapacity()
-          tfactor  = this%aux_vars_in(cell_id_up)%tuning_factor
+          tfactor  = this%aux_vars_in(cell_id_up)%GetTuningFactor()
           vol      = this%mesh%vol(cell_id_up)
 #ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
@@ -1084,7 +1084,7 @@ contains
 
           T        = this%aux_vars_in(cell_id_dn)%GetTemperature()
           heat_cap = this%aux_vars_in(cell_id_dn)%GetVolumetricHeatCapacity()
-          tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
+          tfactor  = this%aux_vars_in(cell_id_dn)%GetTuningFactor()
           vol      = this%mesh%vol(cell_id_dn)
 #ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
@@ -1148,7 +1148,7 @@ contains
 
              T        = this%aux_vars_in(cell_id_dn)%GetTemperature()
              heat_cap = this%aux_vars_in(cell_id_dn)%GetVolumetricHeatCapacity()
-             tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
+             tfactor  = this%aux_vars_in(cell_id_dn)%GetTuningFactor()
              vol      = this%mesh%vol(cell_id_dn)
 #ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
@@ -1169,7 +1169,7 @@ contains
 
              T        = this%aux_vars_in(cell_id_dn)%GetTemperature()
              heat_cap = this%aux_vars_in(cell_id_dn)%GetVolumetricHeatCapacity()
-             tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
+             tfactor  = this%aux_vars_in(cell_id_dn)%GetTuningFactor()
              vol      = this%mesh%vol(cell_id_dn)
 #ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
@@ -1295,7 +1295,7 @@ contains
 
                    T        = this%aux_vars_in(cell_id_dn)%GetTemperature()
                    heat_cap = this%aux_vars_in(cell_id_dn)%GetVolumetricHeatCapacity()
-                   tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
+                   tfactor  = this%aux_vars_in(cell_id_dn)%GetTuningFactor()
                    vol      = this%mesh%vol(cell_id_dn)
 #ifdef MATCH_CLM_FORMULATION
                    factor =  (dt*tfactor)/(heat_cap*vol)
@@ -1386,7 +1386,7 @@ contains
              if (is_bc_snow) then
                 call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_bc(sum_conn)%GetDistanceUpwind())
              elseif (is_bc_sh2o) then
-                call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_bc(sum_conn)%dz/2.d0)
+                call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_bc(sum_conn)%GetDepth()/2.d0)
              endif
 
           case default

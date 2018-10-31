@@ -123,7 +123,7 @@ contains
 
     case (VAR_DZ)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%dz
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetWaterDepth()
        enddo
 
     case default

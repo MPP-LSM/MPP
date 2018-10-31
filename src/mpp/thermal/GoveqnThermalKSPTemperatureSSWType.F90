@@ -228,7 +228,7 @@ contains
        else
          call this%aux_vars_in(iauxvar)%SetInactive()
        endif
-       this%aux_vars_in(iauxvar)%dz          = soe_avars(iauxvar+offset)%dz
+       call this%aux_vars_in(iauxvar)%SetWaterDepth(soe_avars(iauxvar+offset)%dz)
        call this%aux_vars_in(iauxvar)%SetArealFraction(soe_avars(iauxvar+offset)%frac)
     enddo
 
@@ -538,7 +538,7 @@ contains
 
     do icell = 1, this%mesh%ncells_all
        if (aux_vars_in(icell)%IsActive()) then
-          this%mesh%dz(icell)  = max(1.0d-6, aux_vars_in(icell)%dz)
+          this%mesh%dz(icell)  = max(1.0d-6, aux_vars_in(icell)%GetWaterDepth())
           this%mesh%vol(icell) = this%mesh%dx(icell)* &
                                  this%mesh%dy(icell)* &
                                  this%mesh%dz(icell)          
@@ -745,7 +745,7 @@ contains
              therm_cond_dn = this%aux_vars_in(cell_id )%GetThermalConductivity()
 
              ! Distance weighted harmonic average
-             dist_dn = this%aux_vars_in(cell_id)%dz/2.d0
+             dist_dn = this%aux_vars_in(cell_id)%GetWaterDepth()/2.d0
              therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
                   (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
@@ -862,7 +862,7 @@ contains
                    therm_cond_dn = this%aux_vars_in(cell_id_dn)%GetThermalConductivity()
 
                    ! Distance weighted harmonic average
-                   dist_dn = this%aux_vars_in(cell_id_dn)%dz/2.d0
+                   dist_dn = this%aux_vars_in(cell_id_dn)%GetWaterDepth()/2.d0
                    therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
                         (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
@@ -1010,7 +1010,7 @@ contains
              T_up = geq_ssw%aux_vars_bc(sum_conn)%GetTemperature()
              T_dn = geq_ssw%aux_vars_in(cell_id )%GetTemperature()
 
-             dist_dn = geq_ssw%aux_vars_in(cell_id)%dz/2.d0
+             dist_dn = geq_ssw%aux_vars_in(cell_id)%GetWaterDepth()/2.d0
              therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
                   (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 

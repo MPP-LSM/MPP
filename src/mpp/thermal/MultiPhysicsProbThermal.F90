@@ -170,16 +170,16 @@ contains
          endif
 
          if (j > nlevsoi) then
-            aux_vars_in(icell)%is_soil_shallow = PETSC_FALSE
+            call aux_vars_in(icell)%SetSoilDeep()
          else
-            aux_vars_in(icell)%is_soil_shallow = PETSC_TRUE
+            call aux_vars_in(icell)%SetSoilShallow()
          endif         
 
-         aux_vars_in(icell)%itype                 = lun_type(col_id)
-         aux_vars_in(icell)%por                   = watsat(col_id,j)
-         aux_vars_in(icell)%therm_cond_minerals   = tkmg(col_id,j)
-         aux_vars_in(icell)%therm_cond_dry        = tkdry(col_id,j)
-         aux_vars_in(icell)%heat_cap_minerals_puv = csol(col_id,j)
+         call aux_vars_in(icell)%SetColumnType(lun_type(col_id))
+         call aux_vars_in(icell)%SetPorosity(watsat(col_id,j))
+         call aux_vars_in(icell)%SetThermalCondMinerals(tkmg(col_id,j))
+         call aux_vars_in(icell)%SetThermalCondDrySoil(tkdry(col_id,j))
+         call aux_vars_in(icell)%SetVolumetricHeatCapacityMinerals(csol(col_id,j))
 
       enddo
    enddo
@@ -195,11 +195,11 @@ contains
          sum_conn = sum_conn + 1
          icell    = cur_conn_set%conn(iconn)%GetIDDn()
 
-         aux_vars_bc(sum_conn)%itype                 = aux_vars_in(icell)%itype
-         aux_vars_bc(sum_conn)%por                   = aux_vars_in(icell)%por
-         aux_vars_bc(sum_conn)%therm_cond_minerals   = aux_vars_in(icell)%therm_cond_minerals
-         aux_vars_bc(sum_conn)%therm_cond_dry        = aux_vars_in(icell)%therm_cond_dry
-         aux_vars_bc(sum_conn)%heat_cap_minerals_puv = aux_vars_in(icell)%heat_cap_minerals_puv
+         call aux_vars_bc(sum_conn)%SetColumnType(aux_vars_in(icell)%GetColumnType())
+         call aux_vars_bc(sum_conn)%SetPorosity(aux_vars_in(icell)%GetPorosity())
+         call aux_vars_bc(sum_conn)%SetThermalCondMinerals(aux_vars_in(icell)%GetThermalCondMinerals())
+         call aux_vars_bc(sum_conn)%SetThermalCondDrySoil(aux_vars_in(icell)%GetThermalCondDrySoil())
+         call aux_vars_bc(sum_conn)%SetVolumetricHeatCapacityMinerals(aux_vars_in(icell)%GetVolumetricHeatCapacityMinerals())
       end do
 
       cur_cond => cur_cond%next

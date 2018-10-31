@@ -78,7 +78,7 @@ contains
 
     case (VAR_DZ)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%dz = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetDepth(data_1d(iauxvar))
        enddo
 
     case (VAR_DIST_UP)
@@ -130,7 +130,7 @@ contains
 
     case (VAR_DZ)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%dz
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetDepth()
        enddo
 
     case (VAR_THERMAL_COND)

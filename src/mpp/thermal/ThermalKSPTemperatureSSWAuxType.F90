@@ -15,10 +15,14 @@ module ThermalKSPTemperatureSSWAuxType
   private
 
   type, public, extends(therm_ksp_temp_base_auxvar_type)  :: therm_ksp_temp_ssw_auxvar_type
+     private
+
      PetscReal :: dz ! [m]
    contains
-     procedure, public :: Init                  => ThermKSPTempSSWAuxVarInit
-     procedure, public :: AuxVarCompute         => ThermKSPTempSSWAuxVarCompute
+     procedure, public :: Init          => ThermKSPTempSSWAuxVarInit
+     procedure, public :: AuxVarCompute => ThermKSPTempSSWAuxVarCompute
+     procedure, public :: SetWaterDepth => ThermKSPTempSSWAuxSetWaterDepth
+     procedure, public :: GetWaterDepth => ThermKSPTempSSWAuxGetWaterDepth
   end type therm_ksp_temp_ssw_auxvar_type
 
 contains
@@ -63,6 +67,41 @@ contains
     endif
 
   end subroutine ThermKSPTempSSWAuxVarCompute
+
+  !------------------------------------------------------------------------
+  subroutine ThermKSPTempSSWAuxSetWaterDepth(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set height of standing water
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(therm_ksp_temp_ssw_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dz = val
+ 
+  end subroutine ThermKSPTempSSWAuxSetWaterDepth
+ 
+  !------------------------------------------------------------------------
+  function ThermKSPTempSSWAuxGetWaterDepth(this)
+    !
+    ! !DESCRIPTION:
+    ! Get height of standing water
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(therm_ksp_temp_ssw_auxvar_type) :: this
+    !
+    PetscReal                        :: ThermKSPTempSSWAuxGetWaterDepth
+ 
+    ThermKSPTempSSWAuxGetWaterDepth = this%dz
+ 
+  end function ThermKSPTempSSWAuxGetWaterDepth
 
 #endif
 
