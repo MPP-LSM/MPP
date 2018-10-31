@@ -50,12 +50,12 @@ contains
     select case(var_type)
     case (VAR_TEMPERATURE)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%temperature = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetTemperature(data_1d(iauxvar))
        enddo
 
     case (VAR_THERMAL_COND)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%therm_cond = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetThermalConductivity(data_1d(iauxvar))
        enddo
 
     case default
@@ -99,22 +99,22 @@ contains
     select case(var_type)
     case (VAR_TEMPERATURE)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%temperature
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetTemperature()
        enddo
 
     case (VAR_FRAC)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%frac
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetArealFraction()
        enddo
 
     case (VAR_THERMAL_COND)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%therm_cond
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetThermalConductivity()
        enddo
 
     case (VAR_ACTIVE)
        do iauxvar = 1, size(data_1d)
-          if (auxvars(auxvar_ids(iauxvar))%is_active) then
+          if (auxvars(auxvar_ids(iauxvar))%IsActive()) then
              data_1d(iauxvar) = 1.d0
           else
              data_1d(iauxvar) = 0.d0

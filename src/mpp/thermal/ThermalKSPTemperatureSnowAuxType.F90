@@ -66,15 +66,14 @@ contains
     ! LOCAL VARIABLES
     PetscReal :: bw
 
-    if (.not.this%is_active) then
+    if (.not.this%IsActive()) then
        return
     else
-       bw = (this%ice_areal_den + this%liq_areal_den)/(this%frac * dz)
-       this%therm_cond   = tkair + (7.75d-5*bw + 1.105d-6*bw*bw)*(tkice-tkair)
-       this%heat_cap_pva = cpliq*this%liq_areal_den + cpice*this%ice_areal_den
+       bw = (this%ice_areal_den + this%liq_areal_den)/(this%GetArealFraction() * dz)
+       call this%SetThermalConductivity(tkair + (7.75d-5*bw + 1.105d-6*bw*bw)*(tkice-tkair))
+       call this%SetVolumetricHeatCapacity( (cpliq*this%liq_areal_den + cpice*this%ice_areal_den)/dz)
     endif
 
-    this%heat_cap_pva = this%heat_cap_pva/dz
   end subroutine ThermKSPTempSnowAuxVarCompute
 
 #endif

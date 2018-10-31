@@ -222,10 +222,14 @@ contains
     endif
 
     do iauxvar = 1, nauxvar
-       this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
-       this%aux_vars_in(iauxvar)%is_active   = soe_avars(iauxvar+offset)%is_active
+       call this%aux_vars_in(iauxvar)%SetTemperature(soe_avars(iauxvar+offset)%temperature)
+       if (soe_avars(iauxvar+offset)%is_active) then
+         call this%aux_vars_in(iauxvar)%SetActive()
+       else
+         call this%aux_vars_in(iauxvar)%SetInactive()
+       endif
        this%aux_vars_in(iauxvar)%dz          = soe_avars(iauxvar+offset)%dz
-       this%aux_vars_in(iauxvar)%frac        = soe_avars(iauxvar+offset)%frac
+       call this%aux_vars_in(iauxvar)%SetArealFraction(soe_avars(iauxvar+offset)%frac)
     enddo
 
   end subroutine ThermKSPTempSSWGetFromSOEAuxVarsIntrn
@@ -293,17 +297,17 @@ contains
           select case(cur_cond%itype)
           case (COND_HEAT_FLUX)
              ! H
-             this%aux_vars_bc(sum_conn)%condition_value =  &
-                  soe_avars(iconn + iauxvar_off)%condition_value
+             call this%aux_vars_bc(sum_conn)%SetConditionValue( &
+                  soe_avars(iconn + iauxvar_off)%condition_value)
 
              ! H - dH/dT * T
              cur_cond%value(iconn) = &
                   soe_avars(iconn + iauxvar_off)%condition_value - &
                   soe_avars(iconn + iauxvar_off)%dhsdT * &
-                  this%aux_vars_in(cell_id)%temperature
+                  this%aux_vars_in(cell_id)%GetTemperature()
 
-             this%aux_vars_bc(sum_conn)%dhsdT = &
-                  soe_avars(iconn + iauxvar_off)%dhsdT
+             call this%aux_vars_bc(sum_conn)%SetDHsDT( &
+                  soe_avars(iconn + iauxvar_off)%dhsdT)
 
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
@@ -381,7 +385,7 @@ contains
              select case(cur_cond%itype)
              case (COND_HEAT_RATE)
                 var_value = soe_avars(iconn + iauxvar_off)%condition_value
-                this%aux_vars_ss(sum_conn)%condition_value = var_value
+                call this%aux_vars_ss(sum_conn)%SetConditionValue(var_value)
                 cur_cond%value(iconn) = var_value
              case default
                 write(string,*) cur_cond%itype
@@ -437,7 +441,7 @@ contains
        do iauxvar = 1, size(ge_avars)
           if (this%mesh%is_active(iauxvar)) then
              soe_avars(iauxvar+iauxvar_off)%temperature =  &
-                  ge_avars(iauxvar)%temperature
+                  ge_avars(iauxvar)%GetTemperature()
           endif
        enddo
 
@@ -533,7 +537,7 @@ contains
     aux_vars_in   => this%aux_vars_in
 
     do icell = 1, this%mesh%ncells_all
-       if (aux_vars_in(icell)%is_active) then
+       if (aux_vars_in(icell)%IsActive()) then
           this%mesh%dz(icell)  = max(1.0d-6, aux_vars_in(icell)%dz)
           this%mesh%vol(icell) = this%mesh%dx(icell)* &
                                  this%mesh%dy(icell)* &
@@ -597,7 +601,7 @@ contains
 
        cell_id = conn_set%conn(iconn)%GetIDDn()
 
-       if (this%aux_vars_in(cell_id)%is_active ) then
+       if (this%aux_vars_in(cell_id)%IsActive() ) then
           call conn_set%conn(iconn)%SetDistDn(this%mesh%dz(cell_id)/2.d0)
        endif       
     enddo
@@ -694,10 +698,10 @@ contains
     ! Diagonal term
     do cell_id = 1, this%mesh%ncells_local
 
-       heat_cap   = this%aux_vars_in(cell_id)%heat_cap_pva
+       heat_cap   = this%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
        vol        = this%mesh%vol(cell_id)
 
-       if (this%aux_vars_in(cell_id)%is_active) then
+       if (this%aux_vars_in(cell_id)%IsActive()) then
 #ifdef MATCH_CLM_FORMULATION
           value = 1.d0
 #else
@@ -726,7 +730,7 @@ contains
           cell_id = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
-          if ((.not.this%aux_vars_in(cell_id)%is_active)) cycle
+          if ((.not.this%aux_vars_in(cell_id)%IsActive())) cycle
 
           select case(cur_cond%itype)
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
@@ -737,15 +741,15 @@ contains
              dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
              dist          = dist_up + dist_dn
 
-             therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
-             therm_cond_dn = this%aux_vars_in(cell_id )%therm_cond
+             therm_cond_up = this%aux_vars_bc(sum_conn)%GetThermalConductivity()
+             therm_cond_dn = this%aux_vars_in(cell_id )%GetThermalConductivity()
 
              ! Distance weighted harmonic average
              dist_dn = this%aux_vars_in(cell_id)%dz/2.d0
              therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
                   (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
-             heat_cap = this%aux_vars_in(cell_id)%heat_cap_pva
+             heat_cap = this%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
              vol      = this%mesh%vol(cell_id)
 
 #ifdef MATCH_CLM_FORMULATION
@@ -761,10 +765,10 @@ contains
              
           case (COND_HEAT_FLUX)
 
-             dhsdT = this%aux_vars_bc(sum_conn)%dhsdT
+             dhsdT = this%aux_vars_bc(sum_conn)%GetDHsDT()
              area  = cur_conn_set%conn(iconn)%GetArea()
 
-             heat_cap = this%aux_vars_in(cell_id)%heat_cap_pva
+             heat_cap = this%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
              vol      = this%mesh%vol(cell_id)
 
 #ifdef MATCH_CLM_FORMULATION
@@ -847,22 +851,22 @@ contains
                    cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
                    sum_conn   = sum_conn + 1
 
-                   if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
+                   if ((.not.this%aux_vars_in(cell_id_dn)%IsActive())) cycle
 
                    area          = cur_conn_set%conn(iconn)%GetArea()
                    dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
                    dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
                    dist          = dist_up + dist_dn
 
-                   therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
-                   therm_cond_dn = this%aux_vars_in(cell_id_dn)%therm_cond
+                   therm_cond_up = this%aux_vars_bc(sum_conn)%GetThermalConductivity()
+                   therm_cond_dn = this%aux_vars_in(cell_id_dn)%GetThermalConductivity()
 
                    ! Distance weighted harmonic average
                    dist_dn = this%aux_vars_in(cell_id_dn)%dz/2.d0
                    therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
                         (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
-                   heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
+                   heat_cap = this%aux_vars_in(cell_id_dn)%GetVolumetricHeatCapacity()
                    vol      = this%mesh%vol(cell_id_dn)
 #ifdef MATCH_CLM_FORMULATION
                    factor =  (dt)/(heat_cap*vol)
@@ -914,14 +918,14 @@ contains
     ! Interior cells
     do cell_id = 1, geq_ssw%mesh%ncells_local
 
-       if (geq_ssw%aux_vars_in(cell_id)%is_active) then
+       if (geq_ssw%aux_vars_in(cell_id)%IsActive()) then
 
-          T        = geq_ssw%aux_vars_in(cell_id)%temperature
-          heat_cap = geq_ssw%aux_vars_in(cell_id)%heat_cap_pva
+          T        = geq_ssw%aux_vars_in(cell_id)%GetTemperature()
+          heat_cap = geq_ssw%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
           vol      = geq_ssw%mesh%vol(cell_id)
 
 #ifdef MATCH_CLM_FORMULATION
-          b_p(cell_id) = geq_ssw%aux_vars_in(cell_id)%temperature
+          b_p(cell_id) = geq_ssw%aux_vars_in(cell_id)%GetTemperature()
 #else
           b_p(cell_id) = heat_cap*vol/(dt)*T
 #endif
@@ -990,7 +994,7 @@ contains
           cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
-          if (.not.geq_ssw%aux_vars_in(cell_id )%is_active) cycle
+          if (.not.geq_ssw%aux_vars_in(cell_id )%IsActive()) cycle
           
           select case(cur_cond%itype)
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
@@ -1000,17 +1004,17 @@ contains
              dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
              dist          = dist_up + dist_dn
 
-             therm_cond_up = geq_ssw%aux_vars_bc(sum_conn)%therm_cond
-             therm_cond_dn = geq_ssw%aux_vars_in(cell_id )%therm_cond
+             therm_cond_up = geq_ssw%aux_vars_bc(sum_conn)%GetThermalConductivity()
+             therm_cond_dn = geq_ssw%aux_vars_in(cell_id )%GetThermalConductivity()
 
-             T_up = geq_ssw%aux_vars_bc(sum_conn)%temperature
-             T_dn = geq_ssw%aux_vars_in(cell_id )%temperature
+             T_up = geq_ssw%aux_vars_bc(sum_conn)%GetTemperature()
+             T_dn = geq_ssw%aux_vars_in(cell_id )%GetTemperature()
 
              dist_dn = geq_ssw%aux_vars_in(cell_id)%dz/2.d0
              therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
                   (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
-             heat_cap = geq_ssw%aux_vars_in(cell_id)%heat_cap_pva
+             heat_cap = geq_ssw%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
              vol      = geq_ssw%mesh%vol(cell_id)
 
 #ifdef MATCH_CLM_FORMULATION
@@ -1026,7 +1030,7 @@ contains
           case (COND_HEAT_FLUX)             
              area = cur_conn_set%conn(iconn)%GetArea()
 
-             heat_cap = geq_ssw%aux_vars_in(cell_id)%heat_cap_pva
+             heat_cap = geq_ssw%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
              vol      = geq_ssw%mesh%vol(cell_id)
 
 #ifdef MATCH_CLM_FORMULATION
@@ -1058,13 +1062,13 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          if ((.not.geq_ssw%aux_vars_in(cell_id)%is_active)) cycle
+          if ((.not.geq_ssw%aux_vars_in(cell_id)%IsActive())) cycle
 
 
           select case(cur_cond%itype)
           case(COND_HEAT_RATE)
 
-             heat_cap = geq_ssw%aux_vars_in(cell_id)%heat_cap_pva
+             heat_cap = geq_ssw%aux_vars_in(cell_id)%GetVolumetricHeatCapacity()
              vol      = geq_ssw%mesh%vol(cell_id)
 #ifdef MATCH_CLM_FORMULATION
              factor =  (dt)/(heat_cap*vol)

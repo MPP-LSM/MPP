@@ -87,6 +87,7 @@ contains
     PetscReal :: fl
     PetscReal :: dke
     PetscReal :: dksat
+    PetscReal :: heat_cap_pva
 
     !select case(this%itype)
     !case (istsoil, istcrop)
@@ -97,7 +98,7 @@ contains
           satw = min(1.d0, satw)
 
           if (satw > .1e-6) then
-             if (this%temperature >= tfrz) then       ! Unfrozen soil
+             if (this%GetTemperature() >= tfrz) then       ! Unfrozen soil
                 dke = max(0.d0, log10(satw) + 1.0d0)
              else                                      ! Frozen soil
                 dke = satw
@@ -110,61 +111,61 @@ contains
                   tkwat**(fl*this%por)*        &
                   tkice**((1.d0-fl)*this%por)
 
-             this%therm_cond = dke*dksat + (1.d0-dke)*this%therm_cond_dry
+             call this%SetThermalConductivity( dke*dksat + (1.d0-dke)*this%therm_cond_dry)
 
           else
-             this%therm_cond     = this%therm_cond_dry
+             call this%SetThermalConductivity(this%therm_cond_dry)
           endif
 
-          this%heat_cap_pva   = this%heat_cap_minerals_puv*(1.d0 - this%por)*dz + &
-                                this%ice_areal_den*cpice                         + &
-                                this%liq_areal_den*cpliq
+          heat_cap_pva   = this%heat_cap_minerals_puv*(1.d0 - this%por)*dz + &
+                           this%ice_areal_den*cpice                         + &
+                           this%liq_areal_den*cpliq
 
           if (this%num_snow_layer == 0) then
-             this%heat_cap_pva = this%heat_cap_pva + this%snow_water*cpice
+             heat_cap_pva = heat_cap_pva + this%snow_water*cpice
           endif
 
        else
 
-          this%therm_cond     = thk_bedrock
-          this%heat_cap_pva   = this%heat_cap_minerals_puv*(1.d0 - this%por)*dz + &
-                                this%ice_areal_den*cpice                         + &
-                                this%liq_areal_den*cpliq
+          call this%SetThermalConductivity(thk_bedrock)
+          heat_cap_pva   = this%heat_cap_minerals_puv*(1.d0 - this%por)*dz + &
+                           this%ice_areal_den*cpice                         + &
+                           this%liq_areal_den*cpliq
        endif
 
-       this%heat_cap_pva = this%heat_cap_pva/dz
+       call this%SetVolumetricHeatCapacity(heat_cap_pva/dz)
 
     else if (this%itype == istwet) then
 
        if (this%is_soil_shallow) then
-          if (this%temperature < tfrz) then
-             this%therm_cond   = tkice
+          if (this%GetTemperature() < tfrz) then
+             call this%SetThermalConductivity(tkice)
           else
-             this%therm_cond = tkwat
+             call this%SetThermalConductivity(tkwat)
           endif
-          this%heat_cap_pva = this%ice_areal_den*cpice + this%liq_areal_den*cpliq
+          heat_cap_pva = this%ice_areal_den*cpice + this%liq_areal_den*cpliq
           if (this%num_snow_layer == 0) then
-             this%heat_cap_pva = this%heat_cap_pva + this%snow_water*cpice
+             heat_cap_pva = heat_cap_pva + this%snow_water*cpice
           endif
 
-          this%heat_cap_pva = this%heat_cap_pva/dz
+          call this%SetVolumetricHeatCapacity(heat_cap_pva/dz)
        else
-          this%therm_cond   = thk_bedrock
-          this%heat_cap_pva = this%heat_cap_minerals_puv
+          call this%SetThermalConductivity(thk_bedrock)
+          call this%SetVolumetricHeatCapacity(this%heat_cap_minerals_puv)
        endif
 
     else if (this%itype == istice .or. this%itype == istice_mec) then
-          if (this%temperature < tfrz) then
-             this%therm_cond   = tkice
+          if (this%GetTemperature() < tfrz) then
+             call this%SetThermalConductivity(tkice)
           else
-             this%therm_cond = tkwat
+             call this%SetThermalConductivity(tkwat)
           endif
-          this%heat_cap_pva = this%ice_areal_den*cpice + this%liq_areal_den*cpliq
+          heat_cap_pva = this%ice_areal_den*cpice + this%liq_areal_den*cpliq
           if (this%num_snow_layer == 0) then
-             this%heat_cap_pva = this%heat_cap_pva + this%snow_water*cpice
+             heat_cap_pva = heat_cap_pva + this%snow_water*cpice
           endif
 
-          this%heat_cap_pva = this%heat_cap_pva/dz
+          call this%SetVolumetricHeatCapacity(heat_cap_pva/dz)
     end if
        
 

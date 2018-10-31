@@ -54,25 +54,25 @@ contains
     select case(var_type)
     case (VAR_TEMPERATURE)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%temperature = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetTemperature(data_1d(iauxvar))
        enddo
 
     case (VAR_FRAC)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%frac = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetArealFraction(data_1d(iauxvar))
        enddo
 
     case (VAR_THERMAL_COND)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%therm_cond = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetThermalConductivity(data_1d(iauxvar))
        enddo
 
     case (VAR_ACTIVE)
        do iauxvar = 1, size(data_1d)
           if (data_1d(iauxvar) == 1.d0) then
-             auxvars(auxvar_ids(iauxvar))%is_active = PETSC_TRUE
+             call auxvars(auxvar_ids(iauxvar))%SetActive()
           else
-             auxvars(auxvar_ids(iauxvar))%is_active = PETSC_FALSE
+             call auxvars(auxvar_ids(iauxvar))%SetInactive()
           endif
        enddo
 
@@ -83,7 +83,7 @@ contains
 
     case (VAR_DIST_UP)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%dist_up = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetDistanceUpwind(data_1d(iauxvar))
        enddo
 
     case default
@@ -125,7 +125,7 @@ contains
     select case(var_type)
     case (VAR_TEMPERATURE)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%temperature
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetTemperature()
        enddo
 
     case (VAR_DZ)
@@ -135,7 +135,7 @@ contains
 
     case (VAR_THERMAL_COND)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%therm_cond
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetThermalConductivity()
        enddo
 
     case default

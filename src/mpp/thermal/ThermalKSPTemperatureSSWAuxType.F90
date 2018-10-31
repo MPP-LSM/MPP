@@ -55,12 +55,11 @@ contains
     !
     ! LOCAL VARIABLES
 
-    if (.not.this%is_active) then
+    if (.not.this%IsActive()) then
        return
     else
-
-       this%therm_cond    = tkwat
-       this%heat_cap_pva  = cpliq*denh2o
+       call this%SetThermalConductivity(tkwat)
+       call this%SetVolumetricHeatCapacity(cpliq*denh2o)
     endif
 
   end subroutine ThermKSPTempSSWAuxVarCompute

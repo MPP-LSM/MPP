@@ -163,10 +163,10 @@ contains
 
          if (filter_thermal(c) == 1) then
             col_id                       = c
-            aux_vars_in(icell)%is_active = PETSC_TRUE
+            call aux_vars_in(icell)%SetActive()
          else
             col_id                       = first_active_col_id 
-            aux_vars_in(icell)%is_active = PETSC_FALSE
+            call aux_vars_in(icell)%SetInactive()
          endif
 
          if (j > nlevsoi) then
