@@ -2048,11 +2048,11 @@ contains
 
           call auxvar_conn%Init()
 
-          auxvar_conn%conductance_type = CONDUCTANCE_MANOLI_TYPE
-          auxvar_conn%pressure_dn      = P
-          auxvar_conn%pressure_up      = P_bc
-          auxvar_conn%conductance_dn   = cond
-          auxvar_conn%conductance_up   = cond_bc
+          call auxvar_conn%SetConductanceType(CONDUCTANCE_MANOLI_TYPE)
+          call auxvar_conn%SetDownwindPressure(P)
+          call auxvar_conn%SetUpwindPressure(P_bc)
+          call auxvar_conn%SetDownwindConductance(cond)
+          call auxvar_conn%SetUpwindConductance(cond_bc)
 
 #ifdef USE_VG
           call SatFunc_Set_VG(auxvar_conn%satParams_dn, sat_res   , p0   , m)
@@ -2069,7 +2069,7 @@ contains
           call Density(P, 298.15d0, DENSITY_TGDPB01,  rho_bc, drho_dP, dden_dT)
           rho_bc = rho_bc*FMWH2O
           area = 1.d0
-          soil_root_flux(ii) = -(0.5d0*rho + 0.5d0*rho_bc)*auxvar_conn%krg*(P_bc - P)*area
+          soil_root_flux(ii) = -(0.5d0*rho + 0.5d0*rho_bc)*auxvar_conn%GetKrg()*(P_bc - P)*area
           
           call Density(P, 298.15d0, DENSITY_TGDPB01,  rho, drho_dP, dden_dT)
           rho = rho*FMWH2O

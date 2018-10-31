@@ -821,9 +821,9 @@ contains
     dden_dP_dn  = aux_var_dn%GetDDenDP()
 
     ! Get variables about connection
-    krg         = aux_var_conn%krg
-    dkrg_dP_up  = aux_var_conn%dkrg_dP_up
-    dkrg_dP_dn  = aux_var_conn%dkrg_dP_dn
+    krg         = aux_var_conn%GetKrg()
+    dkrg_dP_up  = aux_var_conn%GetDKrgDPup()
+    dkrg_dP_dn  = aux_var_conn%GetDKrgDPdn()
 
     den_ave = upweight*den_up + (1.d0 - upweight)*den_dn
     dphi = (Pres_up - Pres_dn)

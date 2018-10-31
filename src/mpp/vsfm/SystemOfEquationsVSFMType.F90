@@ -1576,23 +1576,23 @@ contains
                 call RichODEPressureAuxVarCopy(aux_vars_bc_1(sum_conn_1), tmp_aux_var_bc_2)
                 call RichODEPressureAuxVarCopy(aux_vars_bc_2(sum_conn_2), tmp_aux_var_bc_1)
 
-                if (aux_vars_conn_bc_1(sum_conn_1)%flux_type /= &
-                     aux_vars_conn_bc_2(sum_conn_2)%flux_type ) then
+                if (aux_vars_conn_bc_1(sum_conn_1)%GetFluxType() /= &
+                     aux_vars_conn_bc_2(sum_conn_2)%GetFluxType() ) then
                    write(iulog,*)'Connection flux type do not match'
-                   write(iulog,*)'aux_vars_conn_bc_1(sum_conn_1)%flux_type: ', &
-                        sum_conn_1,aux_vars_conn_bc_1(sum_conn_1)%flux_type
-                   write(iulog,*)'aux_vars_conn_bc_2(sum_conn_2)%flux_type: ', &
-                        sum_conn_2,aux_vars_conn_bc_2(sum_conn_2)%flux_type
+                   write(iulog,*)'aux_vars_conn_bc_1(sum_conn_1)%GetFluxType(): ', &
+                        sum_conn_1,aux_vars_conn_bc_1(sum_conn_1)%GetFluxType()
+                   write(iulog,*)'aux_vars_conn_bc_2(sum_conn_2)%GetFluxType(): ', &
+                        sum_conn_2,aux_vars_conn_bc_2(sum_conn_2)%GetFluxType()
                    call endrun(msg=errMsg(__FILE__, __LINE__))
                 end if
 
-                if (aux_vars_conn_bc_1(sum_conn_1)%conductance_type /= &
-                     aux_vars_conn_bc_2(sum_conn_2)%conductance_type ) then
+                if (aux_vars_conn_bc_1(sum_conn_1)%GetConductanceType() /= &
+                     aux_vars_conn_bc_2(sum_conn_2)%GetConductanceType() ) then
                    write(iulog,*)'Connection flux type do not match'
-                   write(iulog,*)'aux_vars_conn_bc_1(sum_conn_1)%conductance_type: ', &
-                        sum_conn_1,aux_vars_conn_bc_1(sum_conn_1)%conductance_type
-                   write(iulog,*)'aux_vars_conn_bc_2(sum_conn_2)%conductance_type: ', &
-                        sum_conn_2,aux_vars_conn_bc_2(sum_conn_2)%flux_type
+                   write(iulog,*)'aux_vars_conn_bc_1(sum_conn_1)%GetConductanceType(): ', &
+                        sum_conn_1,aux_vars_conn_bc_1(sum_conn_1)%GetConductanceType()
+                   write(iulog,*)'aux_vars_conn_bc_2(sum_conn_2)%GetConductanceType(): ', &
+                        sum_conn_2,aux_vars_conn_bc_2(sum_conn_2)%GetFluxType()
                    call endrun(msg=errMsg(__FILE__, __LINE__))
                 end if
 
@@ -1603,10 +1603,10 @@ contains
                      aux_vars_conn_bc_1(sum_conn_1)%satParams_dn)
 
                 call aux_vars_conn_bc_1(sum_conn_1)%SetRealValue(VAR_CONDUCTANCE_UP, &
-                     aux_vars_conn_bc_2(sum_conn_2)%conductance_dn)
+                     aux_vars_conn_bc_2(sum_conn_2)%GetDownwindConductance())
 
                 call aux_vars_conn_bc_2(sum_conn_2)%SetRealValue(VAR_CONDUCTANCE_UP, &
-                     aux_vars_conn_bc_1(sum_conn_1)%conductance_dn)
+                     aux_vars_conn_bc_1(sum_conn_1)%GetDownwindConductance())
 
              enddo ! iauxvar
 

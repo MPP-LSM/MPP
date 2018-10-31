@@ -1362,20 +1362,20 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
 
-          select case(this%aux_vars_conn_in(sum_conn)%flux_type)
+          select case(this%aux_vars_conn_in(sum_conn)%GetFluxType())
           case (DARCY_FLUX_TYPE)
           case (CONDUCTANCE_FLUX_TYPE)
 
              ! Set values for 'connection' auxvars
              ghosted_id = cur_conn_set%conn(iconn)%GetIDUp()
 
-             this%aux_vars_conn_in(sum_conn)%pressure_up = &
-                  this%aux_vars_in(ghosted_id)%GetPressure()
+             call this%aux_vars_conn_in(sum_conn)%SetUpwindPressure( &
+                  this%aux_vars_in(ghosted_id)%GetPressure())
 
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-             this%aux_vars_conn_in(sum_conn)%pressure_dn = &
-                  this%aux_vars_in(ghosted_id)%GetPressure()
+             call this%aux_vars_conn_in(sum_conn)%SetDownwindPressure( &
+                  this%aux_vars_in(ghosted_id)%GetPressure())
 
              call this%aux_vars_conn_in(sum_conn)%AuxVarCompute()
           end select
@@ -1444,13 +1444,13 @@ contains
           call this%aux_vars_bc(sum_conn)%AuxVarCompute()
 
           ! Set values for 'connection' auxvars
-          this%aux_vars_conn_bc(sum_conn)%pressure_up = &
-               this%aux_vars_bc(sum_conn)%GetPressure()
+          call this%aux_vars_conn_bc(sum_conn)%SetUpwindPressure( &
+               this%aux_vars_bc(sum_conn)%GetPressure())
 
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          this%aux_vars_conn_bc(sum_conn)%pressure_dn = &
-               this%aux_vars_in(ghosted_id)%GetPressure()
+          call this%aux_vars_conn_bc(sum_conn)%SetDownwindPressure( &
+               this%aux_vars_in(ghosted_id)%GetPressure())
 
           call this%aux_vars_conn_bc(sum_conn)%AuxVarCompute()
 
@@ -1674,7 +1674,7 @@ contains
           if ( (.not. this%mesh%is_active(cell_id_up)) .or. &
                (.not. this%mesh%is_active(cell_id_dn)) ) cycle
 
-          select case(this%aux_vars_conn_in(sum_conn)%flux_type)
+          select case(this%aux_vars_conn_in(sum_conn)%GetFluxType())
 
           case (DARCY_FLUX_TYPE)
 
@@ -1708,7 +1708,7 @@ contains
                   )
 
           case default
-             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
+             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%GetFluxType()
              call endrun(msg=errMsg(__FILE__,__LINE__))
           end select
 
@@ -1739,7 +1739,7 @@ contains
 
           if ( (.not. this%mesh%is_active(cell_id))) cycle
 
-          select case(this%aux_vars_conn_bc(sum_conn)%flux_type)
+          select case(this%aux_vars_conn_bc(sum_conn)%GetFluxType())
 
           case (DARCY_FLUX_TYPE)
 
@@ -1772,7 +1772,7 @@ contains
                   )
 
           case default
-             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
+             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%GetFluxType()
              call endrun(msg=errMsg(__FILE__,__LINE__))
           end select
 
@@ -1919,7 +1919,7 @@ contains
           if ( (.not. this%mesh%is_active(cell_id_up)) .or. &
                (.not. this%mesh%is_active(cell_id_dn)) ) cycle
 
-          select case(this%aux_vars_conn_in(sum_conn)%flux_type)
+          select case(this%aux_vars_conn_in(sum_conn)%GetFluxType())
 
           case (DARCY_FLUX_TYPE)
 
@@ -1952,7 +1952,7 @@ contains
                   )
 
           case default
-             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
+             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%GetFluxType()
              call endrun(msg=errMsg(__FILE__,__LINE__))
           end select
 
@@ -1999,7 +1999,7 @@ contains
           internal_conn = PETSC_FALSE
           cond_type     = cur_cond%itype
 
-          select case(this%aux_vars_conn_bc(sum_conn)%flux_type)
+          select case(this%aux_vars_conn_bc(sum_conn)%GetFluxType())
 
           case (DARCY_FLUX_TYPE)
 
@@ -2032,7 +2032,7 @@ contains
                   )
 
           case default
-             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
+             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%GetFluxType()
              call endrun(msg=errMsg(__FILE__,__LINE__))
           end select
 
@@ -2179,7 +2179,7 @@ contains
                    internal_conn = PETSC_FALSE
                    cond_type     = cur_cond%itype
 
-                   select case(this%aux_vars_conn_bc(sum_conn)%flux_type)
+                   select case(this%aux_vars_conn_bc(sum_conn)%GetFluxType())
 
                    case (DARCY_FLUX_TYPE)
 
@@ -2212,7 +2212,7 @@ contains
                            )
 
                    case default
-                      write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
+                      write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%GetFluxType()
                       call endrun(msg=errMsg(__FILE__,__LINE__))
                    end select
 
@@ -2613,7 +2613,7 @@ contains
           if ( (.not. this%mesh%is_active(cell_id_up)) .or. &
                (.not. this%mesh%is_active(cell_id_dn)) ) cycle
 
-          select case(this%aux_vars_conn_in(sum_conn)%flux_type)
+          select case(this%aux_vars_conn_in(sum_conn)%GetFluxType())
 
           case (DARCY_FLUX_TYPE)
 
@@ -2635,7 +2635,7 @@ contains
              call endrun(msg=errMsg(__FILE__,__LINE__))
 
           case default
-             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%flux_type
+             write(iulog,*) 'Unknown flux_type ', this%aux_vars_conn_in(sum_conn)%GetFluxType()
              call endrun(msg=errMsg(__FILE__,__LINE__))
           end select
 
