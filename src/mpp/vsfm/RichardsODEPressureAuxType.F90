@@ -18,51 +18,100 @@ module RichardsODEPressureAuxType
   type, public :: rich_ode_pres_auxvar_type
 
      ! primary unknown independent variable
-     PetscReal :: pressure               ! [Pa]
+     PetscReal, private :: pressure               ! [Pa]
 
-     PetscReal :: pressure_prev          ! [Pa]
+     PetscReal, private :: pressure_prev          ! [Pa]
 
      ! independent variable available from:
      !  - another governing equation, or
      !  - another system-of-equation
-     PetscReal :: temperature            ! [K]
-     PetscReal :: frac_liq_sat           ! [-]
+     PetscReal, private :: temperature            ! [K]
+     PetscReal, private :: frac_liq_sat           ! [-]
 
      ! If the auxvar corresponds to boundary condition
      ! or source sink, the value is stored in this
      ! variable
-     PetscReal :: condition_value        ! Depends
+     PetscReal, private :: condition_value        ! Depends
 
      ! parameters
-     PetscReal :: perm(3)                ! [m^2]
-     PetscReal :: por                    ! [-]
-     PetscInt  :: density_type           ! [-]
-     PetscReal :: pot_mass_sink_pressure ! [Pa]
-     PetscReal :: pot_mass_sink_exponent ! [-]
+     PetscReal, private :: perm(3)                ! [m^2]
+     PetscReal, private :: por                    ! [-]
+     PetscInt, private  :: density_type           ! [-]
+     PetscReal, private :: pot_mass_sink_pressure ! [Pa]
+     PetscReal, private :: pot_mass_sink_exponent ! [-]
 
      ! derived quantities = f(state_variables, parameters)
-     PetscReal :: vis                    ! [Pa s]
-     PetscReal :: kr                     ! [-]
-     PetscReal :: sat                    ! [-]
-     PetscReal :: den                    ! [kg m^{-3}]
+     PetscReal, private :: vis                    ! [Pa s]
+     PetscReal, private :: kr                     ! [-]
+     PetscReal, private :: sat                    ! [-]
+     PetscReal, private :: den                    ! [kg m^{-3}]
 
-     PetscReal :: dpor_dP                ! [Pa^{-1}]
-     PetscReal :: dvis_dP                ! [s]
-     PetscReal :: dkr_dP                 ! [Pa^{-1}]
-     PetscReal :: dsat_dP                ! [Pa^{-1}]
-     PetscReal :: dden_dP                ! [kg m^{-3} Pa^{-1}]
+     PetscReal, private :: dpor_dP                ! [Pa^{-1}]
+     PetscReal, private :: dvis_dP                ! [s]
+     PetscReal, private :: dkr_dP                 ! [Pa^{-1}]
+     PetscReal, private :: dsat_dP                ! [Pa^{-1}]
+     PetscReal, private :: dden_dP                ! [kg m^{-3} Pa^{-1}]
 
-     PetscReal :: dvis_dT                ! [Pa s K^{-1}]
-     PetscReal :: dden_dT                ! [kmol m^{-3} K^{-1}]
+     PetscReal, private :: dvis_dT                ! [Pa s K^{-1}]
+     PetscReal, private :: dden_dT                ! [kmol m^{-3} K^{-1}]
 
      type(porosity_params_type)   :: porParams
      type(saturation_params_type) :: satParams
 
    contains
-     procedure, public :: Init          => RichODEPressureAuxVarInit
-     procedure, public :: SetValue      => RichODEPressureAuxVarSetValue
-     procedure, public :: GetValue      => RichODEPressureAuxVarGetValue
-     procedure, public :: AuxVarCompute => RichODEPressureAuxVarCompute
+     procedure, public :: Init                    => RichODEPressureAuxVarInit
+     procedure, public :: SetValue                => RichODEPressureAuxVarSetValue
+     procedure, public :: GetValue                => RichODEPressureAuxVarGetValue
+     procedure, public :: AuxVarCompute           => RichODEPressureAuxVarCompute
+     procedure, public :: SetPressure             => RichODEPressureAuxVarSetPressure
+     procedure, public :: SetPressurePrev         => RichODEPressureAuxVarSetPressurePrev
+     procedure, public :: SetTemperature          => RichODEPressureAuxVarSetTemperature
+     procedure, public :: SetFracLiqSat           => RichODEPressureAuxVarSetFracLiqSat
+     procedure, public :: SetConditionValue       => RichODEPressureAuxVarSetConditionValue
+     procedure, public :: SetPermeability         => RichODEPressureAuxVarSetPermeability
+     procedure, public :: SetPermeabilityX        => RichODEPressureAuxVarSetPermeabilityX
+     procedure, public :: SetPermeabilityY        => RichODEPressureAuxVarSetPermeabilityY
+     procedure, public :: SetPermeabilityZ        => RichODEPressureAuxVarSetPermeabilityZ
+     procedure, public :: SetPermeabilityXYZ      => RichODEPressureAuxVarSetPermeabilityXYZ
+     procedure, public :: SetPorosity             => RichODEPressureAuxVarSetPorosity
+     procedure, public :: SetDensityType          => RichODEPressureAuxVarSetDensityType
+     procedure, public :: SetPotMassSinkPressure  => RichODEPressureAuxVarSetPotMassSinkPressure
+     procedure, public :: SetPotMassSinkExponent  => RichODEPressureAuxVarSetPotMassSinkExponent
+     procedure, public :: SetViscosity            => RichODEPressureAuxVarSetViscosity
+     procedure, public :: SetRelativePermeability => RichODEPressureAuxVarSetRelativePermeability
+     procedure, public :: SetLiquidSaturation     => RichODEPressureAuxVarSetLiquidSaturation
+     procedure, public :: SetDensity              => RichODEPressureAuxVarSetDensity
+     procedure, public :: SetDPorDP               => RichODEPressureAuxVarSetDPorDP
+     procedure, public :: SetDVisDP               => RichODEPressureAuxVarSetDVisDP
+     procedure, public :: SetDKrDP                => RichODEPressureAuxVarSetDKrDP
+     procedure, public :: SetDSatDP               => RichODEPressureAuxVarSetDSatDP
+     procedure, public :: SetDDenDP               => RichODEPressureAuxVarSetDDenDP
+     procedure, public :: SetDVisDT               => RichODEPressureAuxVarSetDVisDT
+     procedure, public :: SetDDenDT               => RichODEPressureAuxVarSetDDenDT
+     procedure, public :: GetPressure             => RichODEPressureAuxVarGetPressure
+     procedure, public :: GetPressurePrev         => RichODEPressureAuxVarGetPressurePrev
+     procedure, public :: GetTemperature          => RichODEPressureAuxVarGetTemperature
+     procedure, public :: GetFracLiqSat           => RichODEPressureAuxVarGetFracLiqSat
+     procedure, public :: GetConditionValue       => RichODEPressureAuxVarGetConditionValue
+     procedure, public :: GetPermeabilityX        => RichODEPressureAuxVarGetPermeabilityX
+     procedure, public :: GetPermeabilityY        => RichODEPressureAuxVarGetPermeabilityY
+     procedure, public :: GetPermeabilityZ        => RichODEPressureAuxVarGetPermeabilityZ
+     procedure, public :: GetPermeabilityXYZ      => RichODEPressureAuxVarGetPermeabilityXYZ
+     procedure, public :: GetPorosity             => RichODEPressureAuxVarGetPorosity
+     procedure, public :: GetDensityType          => RichODEPressureAuxVarGetDensityType
+     procedure, public :: GetPotMassSinkPressure  => RichODEPressureAuxVarGetPotMassSinkPressure
+     procedure, public :: GetPotMassSinkExponent  => RichODEPressureAuxVarGetPotMassSinkExponent
+     procedure, public :: GetViscosity            => RichODEPressureAuxVarGetViscosity
+     procedure, public :: GetRelativePermeability => RichODEPressureAuxVarGetRelativePermeability
+     procedure, public :: GetLiquidSaturation     => RichODEPressureAuxVarGetLiquidSaturation
+     procedure, public :: GetDensity              => RichODEPressureAuxVarGetDensity
+     procedure, public :: GetDPorDP               => RichODEPressureAuxVarGetDPorDP
+     procedure, public :: GetDVisDP               => RichODEPressureAuxVarGetDVisDP
+     procedure, public :: GetDKrDP                => RichODEPressureAuxVarGetDKrDP
+     procedure, public :: GetDSatDP               => RichODEPressureAuxVarGetDSatDP
+     procedure, public :: GetDDenDP               => RichODEPressureAuxVarGetDDenDP
+     procedure, public :: GetDVisDT               => RichODEPressureAuxVarGetDVisDT
+     procedure, public :: GetDDenDT               => RichODEPressureAuxVarGetDDenDT
   end type rich_ode_pres_auxvar_type
 
   public :: RichODEPressureAuxVarInit
@@ -290,6 +339,863 @@ contains
          )
 
   end subroutine RichODEPressureAuxVarCompute
+
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPressure(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%pressure = val
+ 
+  end subroutine RichODEPressureAuxVarSetPressure
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPressurePrev(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set pressure at previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%pressure_prev = val
+ 
+  end subroutine RichODEPressureAuxVarSetPressurePrev
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetTemperature(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set temperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%temperature = val
+ 
+  end subroutine RichODEPressureAuxVarSetTemperature
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetFracLiqSat(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set fraction of liquid saturation
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%frac_liq_sat = val
+ 
+  end subroutine RichODEPressureAuxVarSetFracLiqSat
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetConditionValue(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set boundary or source-sink value
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%condition_value = val
+ 
+  end subroutine RichODEPressureAuxVarSetConditionValue
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPermeability(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set permeability in x, y, and z-dir to a homogeneous value
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%perm(:) = val
+ 
+  end subroutine RichODEPressureAuxVarSetPermeability
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPermeabilityX(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set permeability in x-dir
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%perm(1) = val
+ 
+  end subroutine RichODEPressureAuxVarSetPermeabilityX
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPermeabilityY(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set permeability in y-dir
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%perm(2) = val
+ 
+  end subroutine RichODEPressureAuxVarSetPermeabilityY
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPermeabilityZ(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set permeability in z-dir
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%perm(3) = val
+ 
+  end subroutine RichODEPressureAuxVarSetPermeabilityz
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPermeabilityXYZ(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set porosity
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val(3)
+ 
+    this%perm(:) = val(:)
+ 
+  end subroutine RichODEPressureAuxVarSetPermeabilityXYZ
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPorosity(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set porosity
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%por = val
+ 
+  end subroutine RichODEPressureAuxVarSetPorosity
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDensityType(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set porosity
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscInt                         :: val
+ 
+    this%density_type = val
+ 
+  end subroutine RichODEPressureAuxVarSetDensityType
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPotMassSinkPressure(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set pressure value for the parameterization downregulating potential mass sink
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%pot_mass_sink_pressure = val
+ 
+  end subroutine RichODEPressureAuxVarSetPotMassSinkPressure
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetPotMassSinkExponent(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set exponent value for the parameterization downregulating potential mass sink
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%pot_mass_sink_exponent = val
+ 
+  end subroutine RichODEPressureAuxVarSetPotMassSinkExponent
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetViscosity(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set viscosity
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%vis = val
+ 
+  end subroutine RichODEPressureAuxVarSetViscosity
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetRelativePermeability(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set relative permeability
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%kr = val
+ 
+  end subroutine RichODEPressureAuxVarSetRelativePermeability
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetLiquidSaturation(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set liquid saturation
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%sat = val
+ 
+  end subroutine RichODEPressureAuxVarSetLiquidSaturation
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDensity(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set density
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%den = val
+ 
+  end subroutine RichODEPressureAuxVarSetDensity
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDPorDP(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set derivative of porosity w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dpor_dP = val
+ 
+  end subroutine RichODEPressureAuxVarSetDPorDP
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDVisDP(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set derivative of viscosity w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dvis_dP = val
+ 
+  end subroutine RichODEPressureAuxVarSetDVisDP
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDKrDP(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set derivative of relative permeability w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dkr_dP = val
+ 
+  end subroutine RichODEPressureAuxVarSetDKrDP
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDSatDP(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set derivative of saturation w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dsat_dP = val
+ 
+  end subroutine RichODEPressureAuxVarSetDSatDP
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDDenDP(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set derivative of density w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dden_dP = val
+ 
+  end subroutine RichODEPressureAuxVarSetDDenDP
+ 
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDVisDT(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set derivative of viscosity w.r.t. temperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dvis_dT = val
+ 
+  end subroutine RichODEPressureAuxVarSetDVisDT
+
+  !------------------------------------------------------------------------
+  subroutine RichODEPressureAuxVarSetDDenDT(this, val)
+    !
+    ! !DESCRIPTION:
+    ! Set derivative of density w.r.t. temperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    PetscReal                        :: val
+ 
+    this%dden_dT = val
+ 
+  end subroutine RichODEPressureAuxVarSetDDenDT
+
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPressure(this)
+    !
+    ! !DESCRIPTION:
+    ! Get pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPressure
+ 
+    RichODEPressureAuxVarGetPressure = this%pressure
+ 
+  end function RichODEPressureAuxVarGetPressure
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPressurePrev(this)
+    !
+    ! !DESCRIPTION:
+    ! Get pressure at previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPressurePrev
+ 
+    RichODEPressureAuxVarGetPressurePrev = this%pressure_prev
+ 
+  end function RichODEPressureAuxVarGetPressurePrev
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetTemperature(this)
+    !
+    ! !DESCRIPTION:
+    ! Get temperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetTemperature
+ 
+    RichODEPressureAuxVarGetTemperature = this%temperature
+ 
+  end function RichODEPressureAuxVarGetTemperature
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetFracLiqSat(this)
+    !
+    ! !DESCRIPTION:
+    ! Get fraction of liquid saturation
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetFracLiqSat
+ 
+    RichODEPressureAuxVarGetFracLiqSat = this%frac_liq_sat
+ 
+  end function RichODEPressureAuxVarGetFracLiqSat
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetConditionValue(this)
+    !
+    ! !DESCRIPTION:
+    ! Get boundary or source-sink value
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetConditionValue
+ 
+    RichODEPressureAuxVarGetConditionValue = this%condition_value
+ 
+  end function RichODEPressureAuxVarGetConditionValue
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPermeabilityX(this)
+    !
+    ! !DESCRIPTION:
+    ! Get  permeability in x-dir
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPermeabilityX
+ 
+    RichODEPressureAuxVarGetPermeabilityX = this%perm(1)
+ 
+  end function RichODEPressureAuxVarGetPermeabilityX
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPermeabilityY(this)
+    !
+    ! !DESCRIPTION:
+    ! Get permeability in y-dir
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPermeabilityY
+ 
+    RichODEPressureAuxVarGetPermeabilityY = this%perm(2)
+ 
+  end function RichODEPressureAuxVarGetPermeabilityY
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPermeabilityZ(this)
+    !
+    ! !DESCRIPTION:
+    ! Get permeability in z-dir
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPermeabilityZ
+ 
+    RichODEPressureAuxVarGetPermeabilityZ = this%perm(3)
+ 
+  end function RichODEPressureAuxVarGetPermeabilityZ
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPermeabilityXYZ(this)
+    !
+    ! !DESCRIPTION:
+    ! Get permeability in x, y, and z direction
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPermeabilityXYZ(3)
+ 
+    RichODEPressureAuxVarGetPermeabilityXYZ(:) = this%perm(:)
+ 
+  end function RichODEPressureAuxVarGetPermeabilityXYZ
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPorosity(this)
+    !
+    ! !DESCRIPTION:
+    ! Get porosity
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPorosity
+ 
+    RichODEPressureAuxVarGetPorosity = this%por
+ 
+  end function RichODEPressureAuxVarGetPorosity
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDensityType(this)
+    !
+    ! !DESCRIPTION:
+    ! Get porosity
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscInt                         :: RichODEPressureAuxVarGetDensityType
+ 
+    RichODEPressureAuxVarGetDensityType = this%density_type
+ 
+  end function RichODEPressureAuxVarGetDensityType
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPotMassSinkPressure(this)
+    !
+    ! !DESCRIPTION:
+    ! Get pressure value for the parameterization downregulating potential mass sink
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPotMassSinkPressure
+ 
+    RichODEPressureAuxVarGetPotMassSinkPressure = this%pot_mass_sink_pressure
+ 
+  end function RichODEPressureAuxVarGetPotMassSinkPressure
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetPotMassSinkExponent(this)
+    !
+    ! !DESCRIPTION:
+    ! Get exponent value for the parameterization downregulating potential mass sink
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetPotMassSinkExponent
+ 
+    RichODEPressureAuxVarGetPotMassSinkExponent = this%pot_mass_sink_exponent
+ 
+  end function RichODEPressureAuxVarGetPotMassSinkExponent
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetViscosity(this)
+    !
+    ! !DESCRIPTION:
+    ! Get viscosity
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetViscosity
+ 
+    RichODEPressureAuxVarGetViscosity = this%vis
+ 
+  end function RichODEPressureAuxVarGetViscosity
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetRelativePermeability(this)
+    !
+    ! !DESCRIPTION:
+    ! Get relative permeability
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetRelativePermeability
+ 
+    RichODEPressureAuxVarGetRelativePermeability = this%kr
+ 
+  end function RichODEPressureAuxVarGetRelativePermeability
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetLiquidSaturation(this)
+    !
+    ! !DESCRIPTION:
+    ! Get liquid saturation
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetLiquidSaturation
+ 
+    RichODEPressureAuxVarGetLiquidSaturation = this%sat
+ 
+  end function RichODEPressureAuxVarGetLiquidSaturation
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDensity(this)
+    !
+    ! !DESCRIPTION:
+    ! Get density
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDensity
+ 
+    RichODEPressureAuxVarGetDensity = this%den
+ 
+  end function RichODEPressureAuxVarGetDensity
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDPorDP(this)
+    !
+    ! !DESCRIPTION:
+    ! Get derivative of porosity w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDPorDP
+ 
+    RichODEPressureAuxVarGetDPorDP = this%dpor_dP
+ 
+  end function RichODEPressureAuxVarGetDPorDP
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDVisDP(this)
+    !
+    ! !DESCRIPTION:
+    ! Get derivative of viscosity w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDVisDP
+ 
+    RichODEPressureAuxVarGetDVisDP = this%dvis_dP
+ 
+  end function RichODEPressureAuxVarGetDVisDP
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDKrDP(this)
+    !
+    ! !DESCRIPTION:
+    ! Get derivative of relative permeability w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDKrDP
+ 
+    RichODEPressureAuxVarGetDKrDP = this%dkr_dP
+ 
+  end function RichODEPressureAuxVarGetDKrDP
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDSatDP(this)
+    !
+    ! !DESCRIPTION:
+    ! Get derivative of saturation w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDSatDP
+ 
+    RichODEPressureAuxVarGetDSatDP = this%dsat_dP
+ 
+  end function RichODEPressureAuxVarGetDSatDP
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDDenDP(this)
+    !
+    ! !DESCRIPTION:
+    ! Get derivative of density w.r.t. pressure
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDDenDP
+ 
+    RichODEPressureAuxVarGetDDenDP = this%dden_dP
+ 
+  end function RichODEPressureAuxVarGetDDenDP
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDVisDT(this)
+    !
+    ! !DESCRIPTION:
+    ! Get derivative of viscosity w.r.t. temperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDVisDT
+ 
+    RichODEPressureAuxVarGetDVisDT = this%dvis_dT
+ 
+  end function RichODEPressureAuxVarGetDVisDT
+ 
+  !------------------------------------------------------------------------
+  function RichODEPressureAuxVarGetDDenDT(this)
+    !
+    ! !DESCRIPTION:
+    ! Get derivative of density w.r.t. temperature
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    !
+    class(rich_ode_pres_auxvar_type) :: this
+    !
+    PetscReal                        :: RichODEPressureAuxVarGetDDenDT
+ 
+    RichODEPressureAuxVarGetDDenDT = this%dden_dT
+ 
+  end function RichODEPressureAuxVarGetDDenDT
 
 #endif
 

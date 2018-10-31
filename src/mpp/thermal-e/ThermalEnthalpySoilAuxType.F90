@@ -90,7 +90,7 @@ contains
     this%dKel_dp                  = 0.d0
     this%therm_alpha              = 0.d0
 
-    this%perm(:)                  = 8.3913d-12
+    call this%SetPermeability(8.3913d-12)
 
     this%den_soil                 = 0.d0
     this%heat_cap_soil            = 0.d0
@@ -110,30 +110,30 @@ contains
     class(therm_enthalpy_soil_auxvar_type) :: this
     class(therm_enthalpy_soil_auxvar_type) :: auxvar
 
-    this%temperature              = auxvar%temperature
-    this%pressure                 = auxvar%pressure
+    call this%SetTemperature(auxvar%GetTemperature())
+    call this%SetPressure(auxvar%GetPressure())
 
     this%ul                       = auxvar%ul
     this%hl                       = auxvar%hl
-    this%den                      = auxvar%den
-    this%vis                      = auxvar%vis
-    this%sat                      = auxvar%sat
-    this%kr                       = auxvar%kr
+    call this%SetDensity(auxvar%GetDensity())
+    call this%SetViscosity(auxvar%GetViscosity())
+    call this%SetLiquidSaturation(auxvar%GetLiquidSaturation())
+    call this%SetRelativePermeability(auxvar%GetRelativePermeability())
 
     this%dul_dT                   = auxvar%dul_dT
     this%dhl_dT                   = auxvar%dhl_dT
-    this%dden_dT                  = auxvar%dden_dT
-    this%dvis_dT                  = auxvar%dvis_dT
+    call this%SetDDenDT(auxvar%GetDDenDT())
+    call this%SetDVisDT(auxvar%GetDVisDT())
     this%dsat_dT                  = auxvar%dsat_dT
     this%dkr_dT                   = auxvar%dkr_dT
 
     this%dul_dP                   = auxvar%dul_dP
     this%dhl_dP                   = auxvar%dhl_dP
-    this%dden_dP                  = auxvar%dden_dP
-    this%dvis_dP                  = auxvar%dvis_dP
-    this%dsat_dP                  = auxvar%dsat_dP
-    this%dkr_dP                   = auxvar%dkr_dP
-    this%dpor_dP                  = auxvar%dpor_dP
+    call this%SetDDenDP(auxvar%GetdDenDP())
+    call this%SetDVisdP(auxvar%GetDVisdP())
+    call this%SetDSatdP(auxvar%GetDSatdP())
+    call this%SetDKrdP(auxvar%GetDKrdP())
+    call this%SetDPordP(auxvar%GetDPordP())
 
     this%Kel                      = auxvar%Kel
     this%therm_cond_wet           = auxvar%therm_cond_wet
@@ -141,17 +141,17 @@ contains
     this%therm_cond               = auxvar%therm_cond
     this%dtherm_cond_dP           = auxvar%dtherm_cond_dP
     this%dKel_dp                  = auxvar%dKel_dp
-    this%por                      = auxvar%por
-    this%perm(:)                  = auxvar%perm(:)
+    call this%SetPorosity(auxvar%GetPorosity())
+    call this%SetPermeabilityXYZ(auxvar%GetPermeabilityXYZ())
     this%therm_alpha              = auxvar%therm_alpha
 
     this%den_soil                 = auxvar%den_soil
     this%heat_cap_soil            = auxvar%heat_cap_soil
 
-    this%density_type             = auxvar%density_type
+    call this%SetDensityType(auxvar%GetDensityType())
     this%int_energy_enthalpy_type = auxvar%int_energy_enthalpy_type
 
-    this%condition_value          = auxvar%condition_value
+    call this%SetConditionValue(auxvar%GetConditionValue())
 
     call this%porParams%Copy(auxvar%porParams)
     call this%satParams%Copy(auxvar%satParams)
@@ -176,10 +176,10 @@ contains
 
     select case(var_type)
     case (VAR_TEMPERATURE)
-       this%temperature     = variable_value
+       call this%SetTemperature(variable_value)
 
     case (VAR_BC_SS_CONDITION)
-       this%condition_value = variable_value
+       call this%SetConditionValue(variable_value)
 
     case default
        write(iulog,*) 'Unknown var_type'
@@ -205,7 +205,7 @@ contains
 
     select case(var_type)
     case (VAR_TEMPERATURE)
-       variable_value = this%temperature
+       variable_value = this%GetTemperature()
 
     case default
        write(iulog,*) 'Unknown var_type'
@@ -233,42 +233,58 @@ contains
     ! !ARGUMENTS
     class(therm_enthalpy_soil_auxvar_type) :: this
     !
-    PetscReal            :: pressure
+    PetscReal            :: pressure, temperature
+    PetscReal            :: sat, dsat_dP
+    PetscReal            :: kr, dkr_dP
+    PetscReal            :: por, dpor_dP
+    PetscReal            :: den, dden_dP, dden_dT
+    PetscReal            :: vis, dvis_dP, dvis_dT
     PetscReal, parameter :: frac_liq_sat = 1.d0
 
+    pressure = this%GetPressure()
+    temperature = this%GetTemperature()
+
     ! Compute saturation
-    call SatFunc_PressToSat(this%satParams , this%pressure, this%sat, &
-         this%dsat_dP)
+    call SatFunc_PressToSat(this%satParams , pressure, sat, dsat_dP)
+    call this%SetLiquidSaturation(sat)
+    call this%SetDSatDP(dsat_dP)
 
     ! Compute relative permeability
-    call SatFunc_PressToRelPerm(this%satParams, this%pressure, frac_liq_sat, &
-         this%kr, this%dkr_dP)
+    call SatFunc_PressToRelPerm(this%satParams, pressure, frac_liq_sat, &
+         kr, dkr_dP)
+    call this%SetRelativePermeability(kr)
+    call this%SetDKrDP(dkr_dP)
 
     ! Compute porosity
-    call PorosityFunctionComputation(this%porParams, this%pressure, this%por, &
-         this%dpor_dP)
+    call PorosityFunctionComputation(this%porParams, pressure, por, dpor_dP)
+    call this%SetPorosity(por)
+    call this%SetDPorDP(dpor_dP)
 
-    pressure = this%pressure
-    if (this%pressure < PRESSURE_REF)  pressure = PRESSURE_REF
+    if (pressure < PRESSURE_REF)  pressure = PRESSURE_REF
 
     ! Compute density
-    call Density(pressure, this%temperature, this%density_type, &
-         this%den, this%dden_dP, this%dden_dT)
+    call Density(pressure, temperature, this%GetDensityType(), &
+         den, dden_dP, dden_dT)
+    call this%setDensity(den)
+    call this%SetDDenDP(dden_dP)
+    call this%SetDDenDT(dden_dT)
 
     ! Compute viscosity
-    call Viscosity(pressure, this%temperature, this%vis, this%dvis_dP, &
-         this%dvis_dT)
+    call Viscosity(pressure, temperature, vis, dvis_dP, dvis_dT)
+    call this%SetViscosity(vis)
+    call this%SetDVisDP(dvis_dP)
+    call this%SetDVisDT(dvis_dT)
 
     ! Compute internal energy and enthalpy
-    call InternalEnergyAndEnthalpy(pressure, this%temperature, &
-         this%int_energy_enthalpy_type, this%den*FMWH2O, &
-         this%dden_dT*FMWH2O, this%dden_dP*FMWH2O, &
+    call InternalEnergyAndEnthalpy(pressure, temperature, &
+         this%int_energy_enthalpy_type, den*FMWH2O, &
+         this%GetDDenDT()*FMWH2O, dden_dP*FMWH2O, &
          this%ul, this%hl, this%dul_dT, this%dhl_dT, &
          this%dul_dP, this%dhl_dP)
 
-    this%Kel        = (this%sat + 1.d-6 )**(this%therm_alpha)
-    this%dKel_dp    = this%therm_alpha*(this%sat + 1.d-6)**(this%therm_alpha - 1.d0)* &
-                      this%dsat_dp
+    this%Kel        = (this%GetLiquidSaturation() + 1.d-6 )**(this%therm_alpha)
+    this%dKel_dp    = this%therm_alpha*(this%GetLiquidSaturation() + 1.d-6)**(this%therm_alpha - 1.d0)* &
+                      dsat_dp
 
     this%therm_cond     = this%therm_cond_wet*this%Kel + &
                           this%therm_cond_dry*(1.d0 - this%Kel)

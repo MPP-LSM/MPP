@@ -88,18 +88,18 @@ contains
     PetscReal :: dh_dT_up
     PetscReal :: dh_dT_dn
 
-    T_up                 = aux_var_up%temperature
+    T_up                 = aux_var_up%GetTemperature()
     h_up                 = aux_var_up%hl
     dh_up_dT_up          = aux_var_up%dhl_dT
-    den_up               = aux_var_up%den
-    dden_up_dT_up        = aux_var_up%dden_dT
+    den_up               = aux_var_up%GetDensity()
+    dden_up_dT_up        = aux_var_up%GetDDenDT()
     therm_cond_up        = aux_var_up%therm_cond
 
-    T_dn                 = aux_var_dn%temperature
+    T_dn                 = aux_var_dn%GetTemperature()
     h_dn                 = aux_var_dn%hl
     dh_dn_dT_dn          = aux_var_dn%dhl_dT
-    den_dn               = aux_var_dn%den
-    dden_dn_dT_dn        = aux_var_dn%dden_dT
+    den_dn               = aux_var_dn%GetDensity()
+    dden_dn_dT_dn        = aux_var_dn%GetDDenDT()
     therm_cond_dn        = aux_var_dn%therm_cond
 
     area                 = conn_up2dn%GetArea()
@@ -233,19 +233,19 @@ contains
     PetscReal :: dh_dP_up
     PetscReal :: dh_dP_dn
 
-    T_up                 = aux_var_up%temperature
+    T_up                 = aux_var_up%GetTemperature()
     h_up                 = aux_var_up%hl
     dh_up_dP_up          = aux_var_up%dhl_dP
-    den_up               = aux_var_up%den
-    dden_up_dP_up        = aux_var_up%dden_dP
+    den_up               = aux_var_up%GetDensity()
+    dden_up_dP_up        = aux_var_up%GetDDenDP()
     therm_cond_up        = aux_var_up%therm_cond
     dtherm_cond_up_dP_up = aux_var_up%dtherm_cond_dP
 
-    T_dn                 = aux_var_dn%temperature
+    T_dn                 = aux_var_dn%GetTemperature()
     h_dn                 = aux_var_dn%hl
     dh_dn_dP_dn          = aux_var_dn%dhl_dP
-    den_dn               = aux_var_dn%den
-    dden_dn_dP_dn        = aux_var_dn%dden_dP
+    den_dn               = aux_var_dn%GetDensity()
+    dden_dn_dP_dn        = aux_var_dn%GetDDenDP()
     therm_cond_dn        = aux_var_dn%therm_cond
     dtherm_cond_dn_dP_dn = aux_var_dn%dtherm_cond_dP
 

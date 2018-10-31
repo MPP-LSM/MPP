@@ -217,11 +217,10 @@ contains
          sat_res = residual_sat(col_id,j)
          por     = watsat(col_id,j)
 
-         !aux_vars_in(icell)%perm(1:3) = perm
-         aux_vars_in(icell)%por       = por
+         call aux_vars_in(icell)%SetPorosity(por)
 
          call PorosityFunctionSetConstantModel(aux_vars_in(icell)%porParams, &
-              aux_vars_in(icell)%por)
+              por)
 
          if (vsfm_satfunc_type == 'brooks_corey') then
             call SatFunc_Set_BC(aux_vars_in(icell)%satParams,      &
@@ -277,8 +276,7 @@ contains
          sum_conn = sum_conn + 1
          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-         !aux_vars_bc(sum_conn)%perm(:)        = aux_vars_in(ghosted_id)%perm(:)
-         aux_vars_bc(sum_conn)%por            = aux_vars_in(ghosted_id)%por
+         call aux_vars_bc(sum_conn)%SetPorosity(aux_vars_in(ghosted_id)%GetPorosity())
          aux_vars_bc(sum_conn)%satParams      = aux_vars_in(ghosted_id)%satParams
          aux_vars_bc(sum_conn)%porParams      = aux_vars_in(ghosted_id)%porParams
 
@@ -308,8 +306,7 @@ contains
          sum_conn = sum_conn + 1
          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
          
-         !aux_vars_ss(sum_conn)%perm(:)        = aux_vars_in(ghosted_id)%perm(:)
-         aux_vars_ss(sum_conn)%por            = aux_vars_in(ghosted_id)%por
+         call aux_vars_ss(sum_conn)%SetPorosity(aux_vars_in(ghosted_id)%GetPorosity())
          aux_vars_ss(sum_conn)%satParams      = aux_vars_in(ghosted_id)%satParams
          aux_vars_ss(sum_conn)%porParams      = aux_vars_in(ghosted_id)%porParams
 

@@ -1535,9 +1535,10 @@ contains
 
           if (ghosted_id <= nx_soil*ny_soil*nz_soil_bot) then
 
-             aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_bot
-             aux_vars_in(ghosted_id)%perm(3)              = perm_z_bot
-             aux_vars_in(ghosted_id)%por                  = por_bot
+             call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_bot)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_bot)
+             call aux_vars_in(ghosted_id)%SetPermeabilityZ(perm_z_bot)
+             call aux_vars_in(ghosted_id)%SetPorosity(por_bot)
 
              call PorosityFunctionSetConstantModel(    &
                   aux_vars_in(ghosted_id)%porParams, &
@@ -1550,9 +1551,10 @@ contains
 
           else if (ghosted_id <= nx_soil*ny_soil*(nz_soil_bot+nz_soil_mid)) then
 
-             aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_mid
-             aux_vars_in(ghosted_id)%perm(3)              = perm_z_mid
-             aux_vars_in(ghosted_id)%por                  = por_mid
+             call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_mid)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_mid)
+             call aux_vars_in(ghosted_id)%SetPermeabilityZ(perm_z_mid)
+             call aux_vars_in(ghosted_id)%SetPorosity(por_mid)
 
              call PorosityFunctionSetConstantModel(    &
                   aux_vars_in(ghosted_id)%porParams, &
@@ -1564,9 +1566,10 @@ contains
                   vg_m_mid)
           else
 
-             aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_top
-             aux_vars_in(ghosted_id)%perm(3)              = perm_z_top
-             aux_vars_in(ghosted_id)%por                  = por_top
+             call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_top)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_top)
+             call aux_vars_in(ghosted_id)%SetPermeabilityZ(perm_z_top)
+             call aux_vars_in(ghosted_id)%SetPorosity(por_top)
 
              call PorosityFunctionSetConstantModel(    &
                   aux_vars_in(ghosted_id)%porParams, &
@@ -1578,7 +1581,7 @@ contains
                   vg_m_top)
           end if
 
-          aux_vars_in(ghosted_id)%pressure_prev        = press_initial
+          call aux_vars_in(ghosted_id)%SetPressurePrev(press_initial)
        enddo
     case (MESH_SPAC_ROOT_COL , &
          MESH_SPAC_XYLEM_COL)
@@ -1588,11 +1591,12 @@ contains
           !                aux_vars_in(ghosted_id)%perm(1)              = cond_plant*dx*8.9d-4/denh2o/9.8068d0
           !                aux_vars_in(ghosted_id)%perm(2)              = cond_plant*dy*8.9d-4/denh2o/9.8068d0
           !                aux_vars_in(ghosted_id)%perm(3)              = cond_plant*dz*8.9d-4/denh2o/9.8068d0
-          !                aux_vars_in(ghosted_id)%por                  = por_plant
+          !                call aux_vars_in(ghosted_id)%SetPorosity(                 = por_plant
 
-          aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_top
-          aux_vars_in(ghosted_id)%perm(3)              = perm_z_top
-          aux_vars_in(ghosted_id)%por                  = por_top
+          call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_top)
+          call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_top)
+          call aux_vars_in(ghosted_id)%SetPermeabilityZ(perm_z_top)
+          call aux_vars_in(ghosted_id)%SetPorosity(por_top)
 
           call PorosityFunctionSetConstantModel(    &
                aux_vars_in(ghosted_id)%porParams, &
@@ -1607,7 +1611,7 @@ contains
           !call SatFunc_Set_Weibull_RelPerm(aux_vars_in(ghosted_id)%satParams, &
           !       weibull_d, weibull_c)
 
-          aux_vars_in(ghosted_id)%pressure_prev        = press_initial
+          call aux_vars_in(ghosted_id)%SetPressurePrev(press_initial)
        enddo
     case default
        write(*,*)'SPACMPPSetupPetscSNESSetup: Unknown mesh_itype.'
@@ -1626,8 +1630,8 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          aux_vars_bc(sum_conn)%perm(:)             = aux_vars_in(ghosted_id)%perm(:)
-          aux_vars_bc(sum_conn)%por                 = aux_vars_in(ghosted_id)%por
+          call aux_vars_bc(sum_conn)%SetPermeabilityXYZ(aux_vars_in(ghosted_id)%GetPermeabilityXYZ())
+          call aux_vars_bc(sum_conn)%SetPorosity(aux_vars_in(ghosted_id)%GetPorosity())
           aux_vars_bc(sum_conn)%satParams           = aux_vars_in(ghosted_id)%satParams
           aux_vars_bc(sum_conn)%porParams           = aux_vars_in(ghosted_id)%porParams
 
@@ -1647,8 +1651,8 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          aux_vars_ss(sum_conn)%perm(:)             = aux_vars_in(ghosted_id)%perm(:)
-          aux_vars_ss(sum_conn)%por                 = aux_vars_in(ghosted_id)%por
+          call aux_vars_ss(sum_conn)%SetPermeabilityXYZ(aux_vars_in(ghosted_id)%GetPermeabilityXYZ())
+          call aux_vars_ss(sum_conn)%SetPorosity(aux_vars_in(ghosted_id)%GetPorosity())
           aux_vars_ss(sum_conn)%satParams           = aux_vars_in(ghosted_id)%satParams
           aux_vars_ss(sum_conn)%porParams           = aux_vars_in(ghosted_id)%porParams
 
@@ -1720,9 +1724,10 @@ contains
 
           if (ghosted_id <= nx_soil*ny_soil*nz_soil_bot) then
 
-             aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_bot
-             aux_vars_in(ghosted_id)%perm(3)              = perm_z_bot
-             aux_vars_in(ghosted_id)%por                  = por_bot
+             call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_bot)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_bot)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_z_bot)
+             call aux_vars_in(ghosted_id)%SetPorosity(por_bot)
 
              call PorosityFunctionSetConstantModel(    &
                   aux_vars_in(ghosted_id)%porParams, &
@@ -1735,9 +1740,10 @@ contains
 
           else if (ghosted_id <= nx_soil*ny_soil*(nz_soil_bot+nz_soil_mid)) then
 
-             aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_mid
-             aux_vars_in(ghosted_id)%perm(3)              = perm_z_mid
-             aux_vars_in(ghosted_id)%por                  = por_mid
+             call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_mid)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_mid)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_z_mid)
+             call aux_vars_in(ghosted_id)%SetPorosity(por_mid)
 
              call PorosityFunctionSetConstantModel(    &
                   aux_vars_in(ghosted_id)%porParams, &
@@ -1749,9 +1755,10 @@ contains
                   vg_m_mid)
           else
 
-             aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_top
-             aux_vars_in(ghosted_id)%perm(3)              = perm_z_top
-             aux_vars_in(ghosted_id)%por                  = por_top
+             call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_top)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_top)
+             call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_z_top)
+             call aux_vars_in(ghosted_id)%SetPorosity(por_top)
 
              call PorosityFunctionSetConstantModel(    &
                   aux_vars_in(ghosted_id)%porParams, &
@@ -1779,11 +1786,12 @@ contains
           !                aux_vars_in(ghosted_id)%perm(1)              = cond_plant*dx*8.9d-4/denh2o/9.8068d0
           !                aux_vars_in(ghosted_id)%perm(2)              = cond_plant*dy*8.9d-4/denh2o/9.8068d0
           !                aux_vars_in(ghosted_id)%perm(3)              = cond_plant*dz*8.9d-4/denh2o/9.8068d0
-          !                aux_vars_in(ghosted_id)%por                  = por_plant
+          !                call aux_vars_in(ghosted_id)%SetPorosity(                 = por_plant
 
-          aux_vars_in(ghosted_id)%perm(1:2)            = perm_xy_top
-          aux_vars_in(ghosted_id)%perm(3)              = perm_z_top
-          aux_vars_in(ghosted_id)%por                  = por_top
+          call aux_vars_in(ghosted_id)%SetPermeabilityX(perm_xy_top)
+          call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_xy_top)
+          call aux_vars_in(ghosted_id)%SetPermeabilityY(perm_z_top)
+          call aux_vars_in(ghosted_id)%SetPorosity(por_top)
 
           call PorosityFunctionSetConstantModel(    &
                aux_vars_in(ghosted_id)%porParams, &
@@ -1822,8 +1830,8 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          aux_vars_bc(sum_conn)%perm(:)       = aux_vars_in(ghosted_id)%perm(:)
-          aux_vars_bc(sum_conn)%por           = aux_vars_in(ghosted_id)%por
+          call aux_vars_bc(sum_conn)%SetPermeabilityXYZ(aux_vars_in(ghosted_id)%GetPermeabilityXYZ())
+          call aux_vars_bc(sum_conn)%SetPorosity(aux_vars_in(ghosted_id)%GetPorosity())
           aux_vars_bc(sum_conn)%satParams     = aux_vars_in(ghosted_id)%satParams
           aux_vars_bc(sum_conn)%porParams     = aux_vars_in(ghosted_id)%porParams
 
@@ -1848,8 +1856,8 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          aux_vars_ss(sum_conn)%perm(:)       = aux_vars_in(ghosted_id)%perm(:)
-          aux_vars_ss(sum_conn)%por           = aux_vars_in(ghosted_id)%por
+          call aux_vars_ss(sum_conn)%SetPermeabilityXYZ(aux_vars_in(ghosted_id)%GetPermeabilityXYZ())
+          call aux_vars_ss(sum_conn)%SetPorosity(aux_vars_in(ghosted_id)%GetPorosity())
           aux_vars_ss(sum_conn)%satParams     = aux_vars_in(ghosted_id)%satParams
           aux_vars_ss(sum_conn)%porParams     = aux_vars_in(ghosted_id)%porParams
 

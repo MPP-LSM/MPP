@@ -214,24 +214,24 @@ contains
     dist_unitvec(3) = conn_up2dn%GetDistUnitVecZ()
 
     ! Get variables related to upwind cell
-    Pres_up         = aux_var_up%pressure
-    kr_up           = aux_var_up%kr
-    dkr_dP_up       = aux_var_up%dkr_dP
-    den_up          = aux_var_up%den
-    dden_dP_up      = aux_var_up%dden_dP
-    vis_up          = aux_var_up%vis
-    dvis_dP_up      = aux_var_up%dvis_dP
-    perm_vec_up     = aux_var_up%perm
+    Pres_up         = aux_var_up%GetPressure()
+    kr_up           = aux_var_up%GetRelativePermeability()
+    dkr_dP_up       = aux_var_up%GetDKrDP()
+    den_up          = aux_var_up%GetDensity()
+    dden_dP_up      = aux_var_up%GetDDenDP()
+    vis_up          = aux_var_up%GetViscosity()
+    dvis_dP_up      = aux_var_up%GetDVisDP()
+    perm_vec_up     = aux_var_up%GetPermeabilityXYZ()
 
     ! Get variables related to downwind cell
-    Pres_dn         = aux_var_dn%pressure
-    kr_dn           = aux_var_dn%kr
-    dkr_dP_dn       = aux_var_dn%dkr_dP
-    den_dn          = aux_var_dn%den
-    dden_dP_dn      = aux_var_dn%dden_dP
-    vis_dn          = aux_var_dn%vis
-    dvis_dP_dn      = aux_var_dn%dvis_dP
-    perm_vec_dn     = aux_var_dn%perm
+    Pres_dn         = aux_var_dn%GetPressure()
+    kr_dn           = aux_var_dn%GetRelativePermeability()
+    dkr_dP_dn       = aux_var_dn%GetDKrDP()
+    den_dn          = aux_var_dn%GetDensity()
+    dden_dP_dn      = aux_var_dn%GetDDenDP()
+    vis_dn          = aux_var_dn%GetViscosity()
+    dvis_dP_dn      = aux_var_dn%GetDVisDP()
+    perm_vec_dn     = aux_var_dn%GetPermeabilityXYZ()
 
     perm_up = dabs(dist_unitvec(1))*perm_vec_up(1) + &
          dabs(dist_unitvec(2))*perm_vec_up(2) + &
@@ -523,22 +523,22 @@ contains
     dist_unitvec(3) = conn_up2dn%GetDistUnitVecZ()
 
     ! Get variables related to upwind cell
-    Pres_up         = aux_var_up%pressure
-    kr_up           = aux_var_up%kr
-    den_up          = aux_var_up%den
-    dden_dT_up      = aux_var_up%dden_dT
-    vis_up          = aux_var_up%vis
-    dvis_dT_up      = aux_var_up%dvis_dT
-    perm_vec_up     = aux_var_up%perm
+    Pres_up         = aux_var_up%GetPressure()
+    kr_up           = aux_var_up%GetRelativePermeability()
+    den_up          = aux_var_up%GetDensity()
+    dden_dT_up      = aux_var_up%GetDDenDT()
+    vis_up          = aux_var_up%GetViscosity()
+    dvis_dT_up      = aux_var_up%GetDVisDT()
+    perm_vec_up     = aux_var_up%GetPermeabilityXYZ()
 
     ! Get variables related to downwind cell
-    Pres_dn         = aux_var_dn%pressure
-    kr_dn           = aux_var_dn%kr
-    den_dn          = aux_var_dn%den
-    dden_dT_dn      = aux_var_dn%dden_dT
-    vis_dn          = aux_var_dn%vis
-    dvis_dT_dn      = aux_var_dn%dvis_dT
-    perm_vec_dn     = aux_var_dn%perm
+    Pres_dn         = aux_var_dn%GetPressure()
+    kr_dn           = aux_var_dn%GetRelativePermeability()
+    den_dn          = aux_var_dn%GetDensity()
+    dden_dT_dn      = aux_var_dn%GetDDenDT()
+    vis_dn          = aux_var_dn%GetViscosity()
+    dvis_dT_dn      = aux_var_dn%GetDVisDT()
+    perm_vec_dn     = aux_var_dn%GetPermeabilityXYZ()
     
     perm_up = dabs(dist_unitvec(1))*perm_vec_up(1) + &
          dabs(dist_unitvec(2))*perm_vec_up(2) + &
@@ -811,14 +811,14 @@ contains
     area        = conn_up2dn%GetArea()
 
     ! Get variables about upwind cell
-    Pres_up     = aux_var_up%pressure
-    den_up      = aux_var_up%den
-    dden_dP_up  = aux_var_up%dden_dP
+    Pres_up     = aux_var_up%GetPressure()
+    den_up      = aux_var_up%GetDensity()
+    dden_dP_up  = aux_var_up%GetDDenDP()
 
     ! Get variables about downwind cell
-    Pres_dn     = aux_var_dn%pressure
-    den_dn      = aux_var_dn%den
-    dden_dP_dn  = aux_var_dn%dden_dP
+    Pres_dn     = aux_var_dn%GetPressure()
+    den_dn      = aux_var_dn%GetDensity()
+    dden_dP_dn  = aux_var_dn%GetDDenDP()
 
     ! Get variables about connection
     krg         = aux_var_conn%krg

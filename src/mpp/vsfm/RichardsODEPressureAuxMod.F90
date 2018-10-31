@@ -52,7 +52,7 @@ contains
     select case(var_type)
     case (VAR_TEMPERATURE)
        do iauxvar = 1, size(data_1d)
-          auxvars(auxvar_ids(iauxvar))%temperature = data_1d(iauxvar)
+          call auxvars(auxvar_ids(iauxvar))%SetTemperature(data_1d(iauxvar))
        enddo
 
 
@@ -94,7 +94,7 @@ contains
     select case(var_type)
     case (VAR_PRESSURE)
        do iauxvar = 1, size(data_1d)
-          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%pressure
+          data_1d(iauxvar) = auxvars(auxvar_ids(iauxvar))%GetPressure()
        enddo
 
     case default
@@ -140,9 +140,9 @@ contains
 
     ! Set soil properties for internal auxvars
     do icell = 1, size(perm_x)
-       auxvars_in(icell)%perm(1) = perm_x(icell)
-       auxvars_in(icell)%perm(2) = perm_y(icell)
-       auxvars_in(icell)%perm(3) = perm_z(icell)
+       call auxvars_in(icell)%SetPermeabilityX(perm_x(icell))
+       call auxvars_in(icell)%SetPermeabilityY(perm_y(icell))
+       call auxvars_in(icell)%SetPermeabilityZ(perm_z(icell))
     enddo
 
     ! Set soil properties for boundary-condition auxvars
@@ -157,7 +157,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-             auxvars_bc(sum_conn)%perm(:) = auxvars_in(ghosted_id)%perm(:)
+             call auxvars_bc(sum_conn)%SetPermeabilityXYZ(auxvars_in(ghosted_id)%GetPermeabilityXYZ())
           enddo
 
        else
@@ -166,7 +166,7 @@ contains
           ghosted_id = 1
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
-             auxvars_bc(sum_conn)%perm(:) = auxvars_in(ghosted_id)%perm(:)
+             call auxvars_bc(sum_conn)%SetPermeabilityXYZ(auxvars_in(ghosted_id)%GetPermeabilityXYZ())
           enddo
 
        endif
@@ -185,7 +185,7 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          auxvars_ss(sum_conn)%perm (:) = auxvars_in(ghosted_id)%perm(:)
+          call auxvars_ss(sum_conn)%SetPermeabilityXYZ(auxvars_in(ghosted_id)%GetPermeabilityXYZ())
 
        enddo
        cur_cond => cur_cond%next
@@ -317,9 +317,10 @@ contains
 
     ! Set soil properties for internal auxvars
     do icell = 1, size(por)
-       auxvars_in(icell)%por = por(icell)
+       call auxvars_in(icell)%SetPorosity(por(icell))
+
        call PorosityFunctionSetConstantModel(auxvars_in(icell)%porParams, &
-            auxvars_in(icell)%por)
+            por(icell))
     enddo
 
     ! Set soil properties for boundary-condition auxvars
@@ -336,7 +337,7 @@ contains
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-             auxvars_bc(sum_conn)%por       = auxvars_in(ghosted_id)%por
+             call auxvars_bc(sum_conn)%SetPorosity(auxvars_in(ghosted_id)%GetPorosity())
              auxvars_bc(sum_conn)%porParams = auxvars_in(ghosted_id)%porParams
 
           enddo
@@ -347,7 +348,7 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
 
-             auxvars_bc(sum_conn)%por       = auxvars_in(ghosted_id)%por
+             call auxvars_bc(sum_conn)%SetPorosity(auxvars_in(ghosted_id)%GetPorosity())
              auxvars_bc(sum_conn)%porParams = auxvars_in(ghosted_id)%porParams
 
           enddo
@@ -367,7 +368,7 @@ contains
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          auxvars_ss(sum_conn)%por       = auxvars_in(ghosted_id)%por
+          call auxvars_ss(sum_conn)%SetPorosity(auxvars_in(ghosted_id)%GetPorosity())
           auxvars_ss(sum_conn)%porParams = auxvars_in(ghosted_id)%porParams
 
        enddo

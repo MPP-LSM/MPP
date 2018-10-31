@@ -860,7 +860,7 @@ contains
 
              do iconn = 1, cur_conn_set%num_connections
                 sum_conn = sum_conn + 1
-                cur_goveq%aux_vars_bc(sum_conn)%pressure = pres_bc(iconn)
+                call cur_goveq%aux_vars_bc(sum_conn)%SetPressure(pres_bc(iconn))
 
              enddo
              cur_cond => cur_cond%next
@@ -876,7 +876,7 @@ contains
 
              do iconn = 1, cur_conn_set%num_connections
                 sum_conn = sum_conn + 1
-                cur_goveq%aux_vars_bc(sum_conn)%temperature = temp_bc(iconn)
+                call cur_goveq%aux_vars_bc(sum_conn)%SetTemperature(temp_bc(iconn))
 
              enddo
              cur_cond => cur_cond%next

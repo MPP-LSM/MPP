@@ -615,9 +615,9 @@ contains
                 select case(cur_cond%itype)
                 case (COND_DIRICHLET)
                    if (first_bc) then
-                      cur_goveq%aux_vars_bc(sum_conn)%pressure = top_pres_bc(iconn)
+                      call cur_goveq%aux_vars_bc(sum_conn)%SetPressure(top_pres_bc(iconn))
                    else
-                      cur_goveq%aux_vars_bc(sum_conn)%pressure = bot_pres_bc(iconn)
+                      call cur_goveq%aux_vars_bc(sum_conn)%SetPressure(bot_pres_bc(iconn))
                    endif
 
                 case (COND_DIRICHLET_FRM_OTR_GOVEQ)

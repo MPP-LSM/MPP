@@ -245,7 +245,7 @@ contains
 
     ! For internal connections
     do icond = 1,this%mesh%ncells_all
-       this%aux_vars_in(icond)%density_type = density_type
+       call this%aux_vars_in(icond)%SetDensityType(density_type)
     enddo
 
     ! For boundary conditions
@@ -255,7 +255,7 @@ contains
        if (.not.associated(cur_cond)) exit
        do icond = 1,cur_cond%ncells
           sum_conn = sum_conn + 1
-          this%aux_vars_bc(sum_conn)%density_type = density_type
+          call this%aux_vars_bc(sum_conn)%SetDensityType(density_type)
        enddo
        cur_cond => cur_cond%next
     enddo
@@ -267,7 +267,7 @@ contains
        if (.not.associated(cur_cond)) exit
        do icond = 1,cur_cond%ncells
           sum_conn = sum_conn + 1
-          this%aux_vars_ss(sum_conn)%density_type = density_type
+          call this%aux_vars_ss(sum_conn)%SetDensityType(density_type)
        enddo
        cur_cond => cur_cond%next
     enddo
@@ -537,16 +537,16 @@ contains
 
        if (this%mesh%is_active(iauxvar)) then
           ! Copy temperature.
-          ge_avars(iauxvar)%temperature =  &
-               soe_avars(iauxvar+offset)%temperature
+          call ge_avars(iauxvar)%SetTemperature(  &
+               soe_avars(iauxvar+offset)%temperature)
 
           ! Copy frac_liq_sat.
-          ge_avars(iauxvar)%frac_liq_sat =  &
-               soe_avars(iauxvar+offset)%frac_liq_sat
+          call ge_avars(iauxvar)%SetLiquidSaturation(  &
+               soe_avars(iauxvar+offset)%frac_liq_sat)
 
           ! Copy pressure.
-          ge_avars(iauxvar)%pressure =  &
-               soe_avars(iauxvar+offset)%pressure
+          call ge_avars(iauxvar)%SetPressure( &
+               soe_avars(iauxvar+offset)%pressure)
        endif
     enddo
 
@@ -589,21 +589,21 @@ contains
     case (VAR_TEMPERATURE)
        do iauxvar = 1, nauxvar
           if (this%mesh%is_active(iauxvar)) then
-             ge_avars(iauxvar)%temperature = data(iauxvar)
+             call ge_avars(iauxvar)%SetTemperature(data(iauxvar))
           end if
        enddo
 
     case (VAR_FRAC_LIQ_SAT)
        do iauxvar = 1, nauxvar
           if (this%mesh%is_active(iauxvar)) then
-             ge_avars(iauxvar)%frac_liq_sat = data(iauxvar)
+             call ge_avars(iauxvar)%SetLiquidSaturation(data(iauxvar))
           end if
        enddo
 
     case (VAR_PRESSURE)
        do iauxvar = 1, nauxvar
           if (this%mesh%is_active(iauxvar)) then
-             ge_avars(iauxvar)%pressure = data(iauxvar)
+             call ge_avars(iauxvar)%SetPressure(data(iauxvar))
           end if
        enddo
 
@@ -713,11 +713,11 @@ contains
           sum_conn = sum_conn + 1
           select case(cur_cond%itype)
           case (COND_DIRICHLET, COND_MASS_RATE, COND_MASS_FLUX)
-             ge_avars(sum_conn)%condition_value =  &
-                  soe_avars(iconn + iauxvar_off)%condition_value
+             call ge_avars(sum_conn)%SetConditionValue( &
+                  soe_avars(iconn + iauxvar_off)%condition_value)
           case (COND_SEEPAGE_BC)
-             ge_avars(sum_conn)%condition_value = &
-                  soe_avars(iconn + iauxvar_off)%condition_value
+             call ge_avars(sum_conn)%SetConditionValue( &
+                  soe_avars(iconn + iauxvar_off)%condition_value)
           case default
              write(string,*) cur_cond%itype
              write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
@@ -794,13 +794,13 @@ contains
           sum_conn = sum_conn + 1
           select case(cur_cond%itype)
           case (COND_DIRICHLET)
-             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             if (var_type == VAR_BC_SS_CONDITION) call ge_avars(sum_conn)%SetConditionValue(data(sum_conn))
              !if (var_type == VAR_PRESSURE       ) ge_avars(sum_conn)%condition_value = data(sum_conn)
              !if (var_type == VAR_TEMPERATURE    ) ge_avars(sum_conn)%temperature     = data(sum_conn)
           case (COND_MASS_RATE, COND_MASS_FLUX)
-             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             if (var_type == VAR_BC_SS_CONDITION) call ge_avars(sum_conn)%SetConditionValue(data(sum_conn))
           case (COND_SEEPAGE_BC)
-             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(sum_conn)
+             if (var_type == VAR_BC_SS_CONDITION) call ge_avars(sum_conn)%SetConditionValue(data(sum_conn))
           case default
              write(string,*) cur_cond%itype
              write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
@@ -902,7 +902,7 @@ contains
              select case(cur_cond%itype)
              case (COND_MASS_RATE, COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
                 var_value = soe_avars(iconn + iauxvar_off)%condition_value
-                ge_avars(sum_conn + iconn)%condition_value = var_value
+                call ge_avars(sum_conn + iconn)%SetConditionValue(var_value)
                 cur_cond%value(iconn) = var_value
              case default
                 write(string,*) cur_cond%itype
@@ -1131,20 +1131,20 @@ contains
        do iauxvar = 1, size(ge_avars)
           if (this%mesh%is_active(iauxvar)) then
              soe_avars(iauxvar+iauxvar_off)%liq_sat =  &
-                  ge_avars(iauxvar)%sat
+                  ge_avars(iauxvar)%GetLiquidSaturation()
 
              mass =  &
-                  this%aux_vars_in(iauxvar)%por*        & ! [-]
-                  this%aux_vars_in(iauxvar)%den*FMWH2O* & ! [kg m^{-3}]
-                  this%aux_vars_in(iauxvar)%sat*        & ! [-]
-                  this%mesh%vol(iauxvar)                  ! [m^3]
+                  this%aux_vars_in(iauxvar)%GetPorosity()*         & ! [-]
+                  this%aux_vars_in(iauxvar)%GetDensity()*FMWH2O*   & ! [kg m^{-3}]
+                  this%aux_vars_in(iauxvar)%GetLiquidSaturation()* & ! [-]
+                  this%mesh%vol(iauxvar)                             ! [m^3]
 
              soe_avars(iauxvar+iauxvar_off)%mass = mass
              soe_avars(iauxvar+iauxvar_off)%lateral_mass_exchanged = &
                   this%lat_mass_exc(iauxvar)
 
-             Pa_to_Meters = this%aux_vars_in(iauxvar)%den*FMWH2O*GRAVITY_CONSTANT
-             smp          = (this%aux_vars_in(iauxvar)%pressure - &
+             Pa_to_Meters = this%aux_vars_in(iauxvar)%GetDensity()*FMWH2O*GRAVITY_CONSTANT
+             smp          = (this%aux_vars_in(iauxvar)%GetPressure() - &
                   PRESSURE_REF)/Pa_to_Meters
 
              soe_avars(iauxvar+iauxvar_off)%soil_matrix_pot = smp
@@ -1370,12 +1370,12 @@ contains
              ghosted_id = cur_conn_set%conn(iconn)%GetIDUp()
 
              this%aux_vars_conn_in(sum_conn)%pressure_up = &
-                  this%aux_vars_in(ghosted_id)%pressure
+                  this%aux_vars_in(ghosted_id)%GetPressure()
 
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
              this%aux_vars_conn_in(sum_conn)%pressure_dn = &
-                  this%aux_vars_in(ghosted_id)%pressure
+                  this%aux_vars_in(ghosted_id)%GetPressure()
 
              call this%aux_vars_conn_in(sum_conn)%AuxVarCompute()
           end select
@@ -1427,12 +1427,12 @@ contains
           sum_conn = sum_conn + 1
           select case(cur_cond%itype)
           case (COND_DIRICHLET, COND_SEEPAGE_BC)
-             this%aux_vars_bc(sum_conn)%pressure = &
-                  this%aux_vars_bc(sum_conn)%condition_value
+             call this%aux_vars_bc(sum_conn)%SetPressure( &
+                  this%aux_vars_bc(sum_conn)%GetConditionValue())
           case (COND_MASS_RATE, COND_MASS_FLUX)
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-             this%aux_vars_bc(sum_conn)%pressure =  &
-                this%aux_vars_in(ghosted_id)%pressure
+             call this%aux_vars_bc(sum_conn)%SetPressure( &
+                this%aux_vars_in(ghosted_id)%GetPressure())
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
           case default
@@ -1445,12 +1445,12 @@ contains
 
           ! Set values for 'connection' auxvars
           this%aux_vars_conn_bc(sum_conn)%pressure_up = &
-               this%aux_vars_bc(sum_conn)%pressure
+               this%aux_vars_bc(sum_conn)%GetPressure()
 
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
           this%aux_vars_conn_bc(sum_conn)%pressure_dn = &
-               this%aux_vars_in(ghosted_id)%pressure
+               this%aux_vars_in(ghosted_id)%GetPressure()
 
           call this%aux_vars_conn_bc(sum_conn)%AuxVarCompute()
 
@@ -1497,8 +1497,8 @@ contains
           iconn = cur_conn_set%active_conn_ids(iconn_active)
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          this%aux_vars_ss(sum_conn+iconn)%pressure =  &
-              this%aux_vars_in(ghosted_id)%pressure
+          call this%aux_vars_ss(sum_conn+iconn)%SetPressure( &
+              this%aux_vars_in(ghosted_id)%GetPressure())
           call this%aux_vars_ss(sum_conn+iconn)%AuxVarCompute()
        enddo
        sum_conn = sum_conn + cur_conn_set%num_connections
@@ -1532,9 +1532,9 @@ contains
     do cell_id = 1, this%mesh%ncells_local
 
        if (this%mesh%is_active(cell_id)) then
-          ff(cell_id) = this%aux_vars_in(cell_id)%por   * &
-                        this%aux_vars_in(cell_id)%den   * &
-                        this%aux_vars_in(cell_id)%sat   * &
+          ff(cell_id) = this%aux_vars_in(cell_id)%GetPorosity()         * &
+                        this%aux_vars_in(cell_id)%GetDensity()          * &
+                        this%aux_vars_in(cell_id)%GetLiquidSaturation() * &
                         this%mesh%vol(cell_id)          * &
                         dtInv
        end if
@@ -1576,13 +1576,13 @@ contains
     do cell_id = 1, this%mesh%ncells_local
 
        if (this%mesh%is_active(cell_id) ) then
-          por     = this%aux_vars_in(cell_id)%por
-          den     = this%aux_vars_in(cell_id)%den
-          sat     = this%aux_vars_in(cell_id)%sat
+          por     = this%aux_vars_in(cell_id)%GetPorosity()
+          den     = this%aux_vars_in(cell_id)%GetDensity()
+          sat     = this%aux_vars_in(cell_id)%GetLiquidSaturation()
 
-          dpor_dp = this%aux_vars_in(cell_id)%dpor_dp
-          dden_dp = this%aux_vars_in(cell_id)%dden_dp
-          dsat_dp = this%aux_vars_in(cell_id)%dsat_dp
+          dpor_dp = this%aux_vars_in(cell_id)%GetDPorDP()
+          dden_dp = this%aux_vars_in(cell_id)%GetDDenDP()
+          dsat_dp = this%aux_vars_in(cell_id)%GetDSatDP()
 
           derivative = (dpor_dp*den    *sat     + &
                         por    *dden_dp*sat     + &
@@ -1807,9 +1807,9 @@ contains
              this%ss_flux(sum_conn+iconn) = cur_cond%value(iconn)
 
           case (COND_DOWNREG_MASS_RATE_CAMPBELL)
-             dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
+             dP          = this%aux_vars_in(cell_id)%GetPressure() - PRESSURE_REF
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkPressure()
+             n           = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkExponent()
 
              if (dP <= 0.d0) then
                 factor = 1.d0 + (dP/Pc)**n
@@ -1821,9 +1821,9 @@ contains
              this%ss_flux(sum_conn+iconn) = cur_cond%value(iconn)/factor
 
           case (COND_DOWNREG_MASS_RATE_FETCH2)
-             dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
+             dP          = this%aux_vars_in(cell_id)%GetPressure() - PRESSURE_REF
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkPressure()
+             n           = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkExponent()
 
              if (dP <= 0.d0) then
                 factor = exp( -(dP/Pc)**n )
@@ -2064,9 +2064,9 @@ contains
           case (COND_MASS_RATE)
 
           case (COND_DOWNREG_MASS_RATE_CAMPBELL)
-             dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
+             dP          = this%aux_vars_in(cell_id)%GetPressure() - PRESSURE_REF
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkPressure()
+             n           = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkExponent()
 
              if (dP <= 0.d0) then
                 cell_id = cur_conn_set%conn(iconn)%GetIDDn()
@@ -2080,9 +2080,9 @@ contains
              endif
 
           case (COND_DOWNREG_MASS_RATE_FETCH2)
-             dP          = this%aux_vars_in(cell_id)%pressure - PRESSURE_REF
-             Pc          = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_pressure
-             n           = this%aux_vars_ss(sum_conn+iconn)%pot_mass_sink_exponent
+             dP          = this%aux_vars_in(cell_id)%GetPressure() - PRESSURE_REF
+             Pc          = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkPressure()
+             n           = this%aux_vars_ss(sum_conn+iconn)%GetPotMassSinkExponent()
 
              if (dP <= 0.d0) then
                 cell_id = cur_conn_set%conn(iconn)%GetIDDn()
@@ -2437,12 +2437,12 @@ contains
     do cell_id = 1, this%mesh%ncells_local
 
        if (this%mesh%is_active(cell_id) ) then
-          por     = this%aux_vars_in(cell_id)%por
-          den     = this%aux_vars_in(cell_id)%den
-          sat     = this%aux_vars_in(cell_id)%sat
+          por     = this%aux_vars_in(cell_id)%GetPorosity()
+          den     = this%aux_vars_in(cell_id)%GetDensity()
+          sat     = this%aux_vars_in(cell_id)%GetLiquidSaturation()
 
           dpor_dT = 0.d0
-          dden_dT = this%aux_vars_in(cell_id)%dden_dT
+          dden_dT = this%aux_vars_in(cell_id)%GetDDenDT()
           dsat_dT = 0.d0
 
           derivative = (dpor_dT*den    *sat     + &

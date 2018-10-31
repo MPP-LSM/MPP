@@ -247,8 +247,8 @@ contains
     endif
 
     do iauxvar = 1, nauxvar
-       this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
-       this%aux_vars_in(iauxvar)%pressure    = soe_avars(iauxvar+offset)%pressure
+       call this%aux_vars_in(iauxvar)%SetTemperature(soe_avars(iauxvar+offset)%temperature)
+       call this%aux_vars_in(iauxvar)%SetPressure   (soe_avars(iauxvar+offset)%pressure)
     enddo
 
   end subroutine ThermEnthalpySoilGetFromSOEAuxVarsIntrn
@@ -284,12 +284,12 @@ contains
     select case (var_type)
     case (VAR_TEMPERATURE)
        do iauxvar = 1, nauxvar
-          this%aux_vars_in(iauxvar)%temperature = data(iauxvar)
+          call this%aux_vars_in(iauxvar)%SetTemperature(data(iauxvar))
        enddo
 
     case (VAR_PRESSURE)
        do iauxvar = 1, nauxvar
-          this%aux_vars_in(iauxvar)%pressure    = data(iauxvar)
+          call this%aux_vars_in(iauxvar)%SetPressure(data(iauxvar))
        enddo
 
     case default
@@ -383,8 +383,8 @@ contains
 
           select case(cur_cond%itype)
           case (COND_DIRICHLET, COND_HEAT_FLUX)
-             ge_avars(sum_conn)%condition_value =  &
-                  soe_avars(iconn + iauxvar_off)%condition_value
+             call ge_avars(sum_conn)%SetConditionValue( &
+                  soe_avars(iconn + iauxvar_off)%condition_value)
 
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
@@ -466,11 +466,11 @@ contains
 
           select case(cur_cond%itype)
           case (COND_DIRICHLET)
-             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value = data(data_counter)
+             if (var_type == VAR_BC_SS_CONDITION) call ge_avars(sum_conn)%SetConditionValue(data(data_counter))
              !if (var_type == VAR_PRESSURE       ) ge_avars(sum_conn)%pressure        = data(data_counter)
              !if (var_type == VAR_TEMPERATURE    ) ge_avars(sum_conn)%condition_value = data(data_counter)
           case (COND_HEAT_FLUX)
-             if (var_type == VAR_BC_SS_CONDITION) ge_avars(sum_conn)%condition_value =  data(data_counter)
+             if (var_type == VAR_BC_SS_CONDITION) call ge_avars(sum_conn)%SetConditionValue(data(data_counter))
 
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
@@ -560,7 +560,7 @@ contains
 
              var_value = soe_avars(iconn + iauxvar_off)%condition_value
 
-             this%aux_vars_ss(sum_conn)%condition_value = var_value
+             call this%aux_vars_ss(sum_conn)%SetConditionValue(var_value)
              cur_cond%value(iconn)                      = var_value
           case default
              write(string,*) cur_cond%itype
@@ -629,7 +629,7 @@ contains
 
           select case(cur_cond%itype)
           case (COND_HEAT_RATE)
-             ge_avars(sum_conn)%condition_value = data(data_counter)
+             call ge_avars(sum_conn)%SetConditionValue(data(data_counter))
              cur_cond%value(iconn)              = data(data_counter)
 
           case default
@@ -683,7 +683,7 @@ contains
        do iauxvar = 1, size(this%aux_vars_in)
           if (this%mesh%is_active(iauxvar)) then
              soe_avars(iauxvar+iauxvar_off)%temperature =  &
-                  this%aux_vars_in(iauxvar)%temperature
+                  this%aux_vars_in(iauxvar)%GetTemperature()
           endif
        enddo
 
@@ -794,7 +794,7 @@ contains
 
     ! For internal connections
     do icond = 1,this%mesh%ncells_all
-       this%aux_vars_in(icond)%density_type = density_type
+       call this%aux_vars_in(icond)%SetDensityType(density_type)
     enddo
 
     ! For boundary conditions
@@ -804,7 +804,7 @@ contains
        if (.not.associated(cur_cond)) exit
        do icond = 1,cur_cond%ncells
           sum_conn = sum_conn + 1
-          this%aux_vars_bc(sum_conn)%density_type = density_type
+          call this%aux_vars_bc(sum_conn)%SetDensityType(density_type)
        enddo
        cur_cond => cur_cond%next
     enddo
@@ -816,7 +816,7 @@ contains
        if (.not.associated(cur_cond)) exit
        do icond = 1,cur_cond%ncells
           sum_conn = sum_conn + 1
-          this%aux_vars_ss(sum_conn)%density_type = density_type
+          call this%aux_vars_ss(sum_conn)%SetDensityType(density_type)
        enddo
        cur_cond => cur_cond%next
     enddo
@@ -961,8 +961,8 @@ contains
           sum_conn = sum_conn + 1
           select case(cur_cond%itype)
           case (COND_DIRICHLET)
-             this%aux_vars_bc(sum_conn)%temperature = &
-                  this%aux_vars_bc(sum_conn)%condition_value
+             call this%aux_vars_bc(sum_conn)%SetTemperature( &
+                  this%aux_vars_bc(sum_conn)%GetConditionValue())
 
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
@@ -1011,8 +1011,8 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           sum_conn = sum_conn + 1
           ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-          this%aux_vars_ss(sum_conn)%temperature =  &
-              this%aux_vars_in(ghosted_id)%temperature
+          call this%aux_vars_ss(sum_conn)%SetTemperature(  &
+              this%aux_vars_in(ghosted_id)%GetTemperature())
           call this%aux_vars_ss(sum_conn)%Compute()
        enddo
        cur_cond => cur_cond%next
@@ -1168,15 +1168,15 @@ contains
 
           f_p(cell_id) = f_p(cell_id) +           &
                (                                  &
-                aux_vars(cell_id)%por  *          &
-                aux_vars(cell_id)%den *          &
-                aux_vars(cell_id)%sat *          &
-                aux_vars(cell_id)%ul              &
-                +                                 &
-                (1.d0 - aux_vars(cell_id)%por)  * &
-                aux_vars(cell_id)%den_soil      * &
-                aux_vars(cell_id)%heat_cap_soil * &
-                (aux_vars(cell_id)%temperature-273.15d0)     &
+                aux_vars(cell_id)%GetPorosity()               * &
+                aux_vars(cell_id)%GetDensity()                * &
+                aux_vars(cell_id)%GetLiquidSaturation()       * &
+                aux_vars(cell_id)%ul                            &
+                +                                               &
+                (1.d0 - aux_vars(cell_id)%GetPorosity())      * &
+                aux_vars(cell_id)%den_soil                    * &
+                aux_vars(cell_id)%heat_cap_soil               * &
+                (aux_vars(cell_id)%GetTemperature()-273.15d0)   &
                 ) * geq_soil%mesh%vol(cell_id) * dtInv
        endif
     enddo
@@ -1226,15 +1226,15 @@ contains
 
        if (geq_soil%mesh%is_active(cell_id)) then
 
-          por           = aux_vars(cell_id)%por
+          por           = aux_vars(cell_id)%GetPorosity()
           den_soil      = aux_vars(cell_id)%den_soil
           heat_cap_soil = aux_vars(cell_id)%heat_cap_soil
 
-          den          = aux_vars(cell_id)%den
-          sat          = aux_vars(cell_id)%sat
+          den          = aux_vars(cell_id)%GetDensity()
+          sat          = aux_vars(cell_id)%GetLiquidSaturation()
           ul            = aux_vars(cell_id)%ul
 
-          dden_dT      = aux_vars(cell_id)%dden_dT
+          dden_dT      = aux_vars(cell_id)%GetDDenDT()
           dsat_dT      = aux_vars(cell_id)%dsat_dT
           dul_dT        = aux_vars(cell_id)%dul_dT
           
@@ -2124,20 +2124,20 @@ contains
 
        if (geq_soil%mesh%is_active(cell_id)) then
 
-          por           = aux_vars(cell_id)%por
+          por           = aux_vars(cell_id)%GetPorosity()
           den_soil      = aux_vars(cell_id)%den_soil
           heat_cap_soil = aux_vars(cell_id)%heat_cap_soil
 
-          den          = aux_vars(cell_id)%den
-          sat          = aux_vars(cell_id)%sat
+          den          = aux_vars(cell_id)%GetDensity()
+          sat          = aux_vars(cell_id)%GetLiquidSaturation()
           ul            = aux_vars(cell_id)%ul
 
-          dpor_dP       = aux_vars(cell_id)%dpor_dP
-          dden_dP      = aux_vars(cell_id)%dden_dP
-          dsat_dP      = aux_vars(cell_id)%dsat_dP
+          dpor_dP       = aux_vars(cell_id)%GetDPorDP()
+          dden_dP      = aux_vars(cell_id)%GetDDenDP()
+          dsat_dP      = aux_vars(cell_id)%GetDSatDP()
           dul_dP        = aux_vars(cell_id)%dul_dP
 
-          temperature   = aux_vars(cell_id)%temperature
+          temperature   = aux_vars(cell_id)%GetTemperature()
 
           derivative =                                 &
                dpor_dP * den     * sat     * ul     + &

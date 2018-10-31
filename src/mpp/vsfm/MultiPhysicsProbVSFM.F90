@@ -383,11 +383,11 @@ contains
              sat_res = residual_sat(col_id,j)
              por = watsat(col_id,j)
 
-             ode_aux_vars_in(icell)%perm(1:3) = perm
-             ode_aux_vars_in(icell)%por       = por
+             call ode_aux_vars_in(icell)%SetPermeability(perm)
+             call ode_aux_vars_in(icell)%SetPorosity(por)
 
              call PorosityFunctionSetConstantModel(ode_aux_vars_in(icell)%porParams, &
-                  ode_aux_vars_in(icell)%por)
+                  ode_aux_vars_in(icell)%GetPorosity())
 
              if (vsfm_satfunc_type == 'brooks_corey') then
                 call SatFunc_Set_BC(ode_aux_vars_in(icell)%satParams,      &
@@ -432,12 +432,12 @@ contains
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-             ode_aux_vars_bc(sum_conn)%perm(:)       = ode_aux_vars_in(ghosted_id)%perm(:)
-             ode_aux_vars_bc(sum_conn)%por           = ode_aux_vars_in(ghosted_id)%por
+             call ode_aux_vars_bc(sum_conn)%SetPermeabilityXYZ(ode_aux_vars_in(ghosted_id)%GetPermeabilityXYZ())
+             call ode_aux_vars_bc(sum_conn)%SetPorosity(ode_aux_vars_in(ghosted_id)%GetPorosity())
              ode_aux_vars_bc(sum_conn)%satParams     = ode_aux_vars_in(ghosted_id)%satParams
              ode_aux_vars_bc(sum_conn)%porParams     = ode_aux_vars_in(ghosted_id)%porParams
 
-             ode_aux_vars_bc(sum_conn)%pressure_prev = 3.5355d3
+             call ode_aux_vars_bc(sum_conn)%SetPressurePrev(3.5355d3)
 
              call ode_aux_vars_bc(sum_conn)%satParams%Copy(ode_aux_vars_in(ghosted_id)%satParams)
 
@@ -459,12 +459,12 @@ contains
              sum_conn = sum_conn + 1
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-             ode_aux_vars_ss(sum_conn)%perm(:)       = ode_aux_vars_in(ghosted_id)%perm(:)
-             ode_aux_vars_ss(sum_conn)%por           = ode_aux_vars_in(ghosted_id)%por
+             call ode_aux_vars_ss(sum_conn)%SetPermeabilityXYZ(ode_aux_vars_in(ghosted_id)%GetPermeabilityXYZ())
+             call ode_aux_vars_ss(sum_conn)%SetPorosity(ode_aux_vars_in(ghosted_id)%GetPorosity())
              ode_aux_vars_ss(sum_conn)%satParams     = ode_aux_vars_in(ghosted_id)%satParams
              ode_aux_vars_ss(sum_conn)%porParams     = ode_aux_vars_in(ghosted_id)%porParams
 
-             ode_aux_vars_ss(sum_conn)%pressure_prev = 3.5355d3
+             call ode_aux_vars_ss(sum_conn)%SetPressurePrev(3.5355d3)
 
           enddo
           cur_cond => cur_cond%next
@@ -693,8 +693,8 @@ contains
        class is (goveqn_richards_ode_pressure_type)
           goveq_richards_pres => cur_goveq
           do local_id = 1, goveq_richards_pres%mesh%ncells_local
-             goveq_richards_pres%aux_vars_in(local_id)%pressure_prev = &
-                  data_1d(local_id)
+             call goveq_richards_pres%aux_vars_in(local_id)%SetPressurePrev(&
+                  data_1d(local_id))
           end do
        end select
        cur_goveq => cur_goveq%next
@@ -1486,9 +1486,9 @@ contains
 
           select case(var_type)
               case (VAR_POT_MASS_SINK_PRESSURE)
-                 ode_aux_vars_ss(sum_conn)%pot_mass_sink_pressure = var_value(sum_conn)
+                 call ode_aux_vars_ss(sum_conn)%SetPotMassSinkPressure(var_value(sum_conn))
               case (VAR_POT_MASS_SINK_EXPONENT)
-                 ode_aux_vars_ss(sum_conn)%pot_mass_sink_exponent = var_value(sum_conn)
+                 call ode_aux_vars_ss(sum_conn)%SetPotMassSinkExponent(var_value(sum_conn))
               case default
                  write(iulog,*) 'VSFMMPPSetSourceSinkAuxVarRealValue: Unknown var_type'
                  call endrun(msg=errMsg(__FILE__,__LINE__))
