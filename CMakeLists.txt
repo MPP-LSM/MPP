@@ -102,7 +102,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SYS_FLAGS}")
 
 # Fortran compiler flags.
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -W -Wall -std=gnu -pedantic -ffree-line-length-0 -Wno-unused-variable -Wno-unused-parameter -DCPRGNU -DUSE_PETSC_LIB")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -W -Wall -std=gnu -pedantic -ffree-line-length-0 -Wno-unused-variable -Wno-unused-parameter -DCPRGNU -DUSE_PETSC_LIB -fprofile-arcs -ftest-coverage")
 elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -DCPRINTEL")
 endif()
