@@ -1,0 +1,16 @@
+&mpp_driver
+  problem_type = 'thermal_mms'
+/
+
+&regression_test
+  write_regression_output = .true.
+  num_cells = 3
+/
+
+&problem_options
+  problem_type = 3
+  nx           = 3
+  ny           = 3
+  nz           = 3
+/
+

@@ -156,7 +156,7 @@ program standalone_mpp
      endif
 
   else if(trim(problem_type) == 'thermal_mms') then
-     call run_thermal_mms_problem()
+     call run_thermal_mms_problem(namelist_filename)
 
      if (write_regression_output) then
         call output_regression_th_mms_problem(filename_base, num_cells)

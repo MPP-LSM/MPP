@@ -23,7 +23,7 @@ module thermal_mms_problem
 contains
 !------------------------------------------------------------------------
 
-  subroutine run_thermal_mms_problem()
+  subroutine run_thermal_mms_problem(namelist_filename)
     !
 #include <petsc/finclude/petsc.h>
     !
@@ -38,6 +38,7 @@ contains
     !
     implicit none
     !
+    character(len=256), optional :: namelist_filename
     !
     !
     PetscBool          :: converged
@@ -51,6 +52,11 @@ contains
     character(len=256) :: source_fname
     character(len=256) :: thermal_cond_fname
     PetscViewer        :: viewer
+    character(len=256) :: ioerror_msg
+    character(len=2560):: namelist_buffer
+    integer            :: nml_unit, nml_error
+
+    namelist / problem_options / nx, ny, nz, problem_type
 
     ! Set default settings
     problem_type      = STEADY_STATE_1D
@@ -88,6 +94,31 @@ contains
     call PetscOptionsGetString (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-view_true_solution',true_soln_fname   ,flg,ierr)
     call PetscOptionsGetString (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-view_source'       ,source_fname      ,flg,ierr)
     call PetscOptionsGetString (PETSC_NULL_OPTIONS ,PETSC_NULL_CHARACTER ,'-view_thermal_cond' ,thermal_cond_fname,flg,ierr)
+
+    ! Read namelist, if a namelist file is provided
+    if (present(namelist_filename)) then
+       nml_unit = 16
+       open(unit=nml_unit, file=trim(namelist_filename), action='read', access='stream', &
+            form='unformatted', iostat=nml_error)
+       if (nml_error /= 0) then
+          write(*,*)'ERROR: Unable to open namelist file: ',trim(namelist_filename)
+          call exit(-1)
+       endif
+
+       read(unit=nml_unit, iostat=nml_error, iomsg=ioerror_msg) namelist_buffer
+       if (.not. is_iostat_end(nml_error)) then
+          write(*,*)"ERROR: Unable to read '",trim(namelist_filename),"' till EOF"
+          call exit(-1)
+       endif
+
+       read(namelist_buffer, nml=problem_options, iostat=nml_error, iomsg=ioerror_msg)
+       if (nml_error /= 0) then
+          write(*,*)'ERROR: Unable to read "problem_options" in namelist file '
+          call exit(-1)
+       endif
+
+       close(nml_unit)
+    endif
 
     select case(problem_type)
     case (STEADY_STATE_1D)
