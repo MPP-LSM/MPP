@@ -98,6 +98,8 @@ program standalone_mpp
   else
      write(*, '(a, a, a)') "Read '", trim(namelist_filename), "' until EOF."
   endif
+
+  close(nml_unit)
      
   !
   ! Read namelist: mpp_driver
@@ -147,14 +149,14 @@ program standalone_mpp
      endif
 
   else if(trim(problem_type) == 'vsfm_spac_campbell') then
-     call run_vsfm_spac_campbell_problem()
+     call run_vsfm_spac_campbell_problem((namelist_filename))
 
      if (write_regression_output) then
         call output_regression_vsfm_spac_campbell_problem(filename_base, num_cells)
      endif
 
   else if(trim(problem_type) == 'thermal_mms') then
-     call run_thermal_mms_problem()
+     call run_thermal_mms_problem(namelist_filename)
 
      if (write_regression_output) then
         call output_regression_th_mms_problem(filename_base, num_cells)
@@ -163,8 +165,6 @@ program standalone_mpp
   else
      write(*,*)"problem_type = '", trim(problem_type), "' is unsupported."
   endif
-
-  close(nml_unit)
 
   call PetscFinalize(ierr)
 
