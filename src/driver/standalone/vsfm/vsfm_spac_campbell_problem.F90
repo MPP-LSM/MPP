@@ -27,7 +27,7 @@ module vsfm_spac_campbell_problem
 
 contains
 
-  subroutine run_vsfm_spac_campbell_problem()
+  subroutine run_vsfm_spac_campbell_problem(namelist_filename)
     !
 #include <petsc/finclude/petsc.h>
     !
@@ -42,7 +42,8 @@ contains
     use petscdmda
     !    
     implicit none
-    
+    !
+    character(len=256), optional :: namelist_filename
     !
     PetscBool          :: converged
     PetscInt           :: converged_reason
@@ -55,6 +56,11 @@ contains
     character(len=256) :: string
     character(len=256) :: output_suffix
     PetscViewer        :: viewer
+    character(len=256) :: ioerror_msg
+    character(len=2560):: namelist_buffer
+    integer            :: nml_unit, nml_error
+
+    namelist / problem_options / multi_goveqns_formulation
 
     ! Set default settings
     nz_xylem               = 2
@@ -75,6 +81,30 @@ contains
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-save_final_soln',save_final_soln,flg,ierr)
     call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_suffix',output_suffix,flg,ierr)
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-multi_goveqns_formulation',multi_goveqns_formulation,flg,ierr)
+
+    if (present(namelist_filename)) then
+       nml_unit = 16
+       open(unit=nml_unit, file=trim(namelist_filename), action='read', access='stream', &
+            form='unformatted', iostat=nml_error)
+       if (nml_error /= 0) then
+          write(*,*)'ERROR: Unable to open namelist file: ',trim(namelist_filename)
+          call exit(-1)
+       endif
+
+       read(unit=nml_unit, iostat=nml_error, iomsg=ioerror_msg) namelist_buffer
+       if (.not. is_iostat_end(nml_error)) then
+          write(*,*)"ERROR: Unable to read '",trim(namelist_filename),"' till EOF"
+          call exit(-1)
+       endif
+
+       read(namelist_buffer, nml=problem_options, iostat=nml_error, iomsg=ioerror_msg)
+       if (nml_error /= 0) then
+          write(*,*)'ERROR: Unable to read "problem_options" in namelist file '
+          call exit(-1)
+       endif
+
+       close(nml_unit)
+    endif
 
     ! Initialize the problem
     call Init()
@@ -269,6 +299,7 @@ contains
     ncells_xylem = nx * ny * nz_xylem
     ncells_root  = nx * ny * nz_root
     ncells_soil  = nx * ny * nz_soil
+    ncells_local = ncells_soil + ncells_root + ncells_xylem
 
     allocate(xc_xylem     (ncells_xylem ))
     allocate(yc_xylem     (ncells_xylem ))
