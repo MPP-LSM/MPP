@@ -47,7 +47,6 @@ contains
     PetscViewer        :: viewer
 
     ! Set default settings
-    nz                = 1
     nz                = 100
     dtime             = 3600.d0
     nstep             = 2
@@ -172,9 +171,9 @@ contains
 #include <petsc/finclude/petsc.h>
     !
     use MultiPhysicsProbThermalEnthalpy , only : thermal_enthalpy_mpp
-    use MultiPhysicsProbConstants , only : CONN_IN_Z_DIR
-    use mpp_varpar                , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
-    use MeshType                  , only : mesh_type, MeshCreate
+    use MultiPhysicsProbConstants       , only : CONN_IN_Z_DIR, MESH_CLM_THERMAL_SOIL_COL
+    use mpp_varpar                      , only : mpp_varpar_set_nlevsoi, mpp_varpar_set_nlevgrnd
+    use MeshType                        , only : mesh_type, MeshCreate
     !
     implicit none
     !
@@ -187,6 +186,7 @@ contains
 
     imesh        = 1
     nlev         = nz
+    ncells_local = nx*ny*nz
 
     !
     ! Set up the meshes
@@ -197,6 +197,7 @@ contains
 
     call MeshCreate(mesh, 'Soil mesh', x_column, y_column, z_column, &
          nx, ny, nz, CONN_IN_Z_DIR)
+    call mesh%SetID(MESH_CLM_THERMAL_SOIL_COL)
 
     call thermal_enthalpy_mpp%AddMesh(imesh, mesh)
 
