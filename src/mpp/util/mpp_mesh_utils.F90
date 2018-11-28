@@ -1,5 +1,7 @@
 module mpp_mesh_utils
 
+#ifdef USE_PETSC_LIB
+
 #include <petsc/finclude/petsc.h>
 
   use petscsys
@@ -1010,5 +1012,7 @@ contains
     end do
 
   end subroutine Remap1Dto3D
+
+#endif
 
 end module mpp_mesh_utils
