@@ -908,7 +908,7 @@ contains
 
           do iauxvar = iauxvar_beg_bc, iauxvar_end_bc
 
-             cell_id = cell_id_dn_in_bc(iauxvar)
+             cell_id = cell_id_dn_in_bc(iauxvar-iauxvar_beg_bc+1)
 
              call soe%aux_vars_bc(iauxvar)%Init()
 
@@ -931,7 +931,7 @@ contains
 
           do iauxvar = iauxvar_beg_ss, iauxvar_end_ss
 
-             cell_id = cell_id_dn_in_ss(iauxvar)
+             cell_id = cell_id_dn_in_ss(iauxvar-iauxvar_beg_ss+1)
 
              call soe%aux_vars_ss(iauxvar)%Init()
 

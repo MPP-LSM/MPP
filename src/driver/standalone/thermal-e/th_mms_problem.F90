@@ -997,20 +997,20 @@ contains
      PetscReal, intent(out), optional :: d2val_dx2
      !
      PetscReal, parameter             :: g   = GRAVITY_CONSTANT
-     PetscReal, parameter             :: a0 = -15000.d0
+     PetscReal, parameter             :: a0 =  15000.d0
      PetscReal, parameter             :: a1 = -20000.d0
 
-     if (present(val      )) val       =  a0                *sin((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
-     if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-xlim)/xlim*pi)
-     if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*sin((x-xlim)/xlim*pi)
+     if (present(val      )) val       =  a0                *sin((x-x_min)/xlim*pi) + a1 + PRESSURE_REF
+     if (present(dval_dx  )) dval_dx   =  a0*PI/xlim        *cos((x-x_min)/xlim*pi)
+     if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*sin((x-x_min)/xlim*pi)
 
-     !if (present(val      )) val       =  a0                *cos((x-xlim)/xlim*pi) + a1 + PRESSURE_REF
-     !if (present(dval_dx  )) dval_dx   = -a0*PI/xlim        *sin((x-xlim)/xlim*pi)
-     !if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*cos((x-xlim)/xlim*pi)
+     !if (present(val      )) val       =  a0                *cos((x-x_min)/xlim*pi) + a1 + PRESSURE_REF
+     !if (present(dval_dx  )) dval_dx   = -a0*PI/xlim        *sin((x-x_min)/xlim*pi)
+     !if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI/xlim/xlim*cos((x-x_min)/xlim*pi)
 
-     !if (present(val      )) val       =  a0                          *cos((x-xlim)/xlim*pi*4.d0) + a1 + PRESSURE_REF
-     !if (present(dval_dx  )) dval_dx   = -a0*PI*4.d0/xlim             *sin((x-xlim)/xlim*pi*4.d0)
-     !if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI*4.d0*4.d0/xlim/xlim*cos((x-xlim)/xlim*pi*4.d0)
+     !if (present(val      )) val       =  a0                          *cos((x-x_min)/xlim*pi*4.d0) + a1 + PRESSURE_REF
+     !if (present(dval_dx  )) dval_dx   = -a0*PI*4.d0/xlim             *sin((x-x_min)/xlim*pi*4.d0)
+     !if (present(d2val_dx2)) d2val_dx2 = -a0*PI*PI*4.d0*4.d0/xlim/xlim*cos((x-x_min)/xlim*pi*4.d0)
 
      !if (present(val      )) val       =  a0*((x-xlim)/xlim) + a1 + PRESSURE_REF
      !if (present(dval_dx  )) dval_dx   =  a0*(1.d0/xlim)
@@ -1052,8 +1052,8 @@ contains
      !
      PetscReal, parameter :: p0 = 1.d-11 ! [m^2]
 
-     if (present(val    )) val     = p0        *(2.d0 + cos((x-xlim)/xlim * pi))
-     if (present(dval_dx)) dval_dx = p0*PI/xlim*(      -sin((x-xlim)/xlim * pi))
+     if (present(val    )) val     = p0        *(2.d0 - cos((x-x_min)/xlim * pi))
+     if (present(dval_dx)) dval_dx = p0*PI/xlim*(     + sin((x-x_min)/xlim * pi))
 
    end subroutine compute_permeability_or_deriv
 
