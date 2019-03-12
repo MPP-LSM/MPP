@@ -23,6 +23,8 @@ module GoveqnThermalKSPTemperatureSSWType
   implicit none
   private
 
+  PetscReal, private, parameter :: thin_sfclayer = 1.0d-6   ! Threshold for thin surface layer
+
   type, public, extends(goveqn_base_type) :: goveqn_thermal_ksp_temp_ssw_type
      type (therm_ksp_temp_ssw_auxvar_type), pointer :: aux_vars_in(:)  ! Internal state.
      type (therm_ksp_temp_ssw_auxvar_type), pointer :: aux_vars_bc(:)  ! Boundary conditions.
@@ -534,7 +536,12 @@ contains
 
     do icell = 1, this%mesh%ncells_all
        if (aux_vars_in(icell)%is_active) then
-          this%mesh%dz(icell)  = max(1.0d-6, aux_vars_in(icell)%dz)
+          !this%mesh%dz(icell)  = max(1.0d-6, aux_vars_in(icell)%dz)
+          if ( (aux_vars_in(icell)%dz > thin_sfclayer) .and. (aux_vars_in(icell)%frac > thin_sfclayer) ) then
+             this%mesh%dz(icell)  = max(thin_sfclayer, aux_vars_in(icell)%dz/aux_vars_in(icell)%frac )
+          else
+             this%mesh%dz(icell) = thin_sfclayer
+          endif
           this%mesh%vol(icell) = this%mesh%dx(icell)* &
                                  this%mesh%dy(icell)* &
                                  this%mesh%dz(icell)          
@@ -733,8 +740,8 @@ contains
              !if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
 
              area          = cur_conn_set%conn(iconn)%GetArea()
-             dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
-             dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
+             dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+             dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
              dist          = dist_up + dist_dn
 
              therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -850,8 +857,8 @@ contains
                    if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
                    area          = cur_conn_set%conn(iconn)%GetArea()
-                   dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
-                   dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
+                   dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+                   dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
                    dist          = dist_up + dist_dn
 
                    therm_cond_up = this%aux_vars_bc(sum_conn)%therm_cond
@@ -996,8 +1003,8 @@ contains
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
              area = cur_conn_set%conn(iconn)%GetArea()
 
-             dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
-             dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
+             dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+             dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
              dist          = dist_up + dist_dn
 
              therm_cond_up = geq_ssw%aux_vars_bc(sum_conn)%therm_cond

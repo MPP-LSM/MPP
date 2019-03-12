@@ -21,6 +21,8 @@ module ThermalKSPTemperatureSSWAuxType
      procedure, public :: AuxVarCompute         => ThermKSPTempSSWAuxVarCompute
   end type therm_ksp_temp_ssw_auxvar_type
 
+  PetscReal, private, parameter :: thin_sfclayer = 1.0d-6   ! Threshold for thin surface layer
+
 contains
 
   !------------------------------------------------------------------------
@@ -60,7 +62,12 @@ contains
     else
 
        this%therm_cond    = tkwat
-       this%heat_cap_pva  = cpliq*denh2o
+       !this%heat_cap_pva  = cpliq*denh2o
+       if ( (dz > thin_sfclayer) .and. (this%frac > thin_sfclayer) ) then
+          this%heat_cap_pva  = max(thin_sfclayer, cpliq*denh2o*dz/this%frac )
+       else
+          this%heat_cap_pva = thin_sfclayer
+       endif
     endif
 
   end subroutine ThermKSPTempSSWAuxVarCompute

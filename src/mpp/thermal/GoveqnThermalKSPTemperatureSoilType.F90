@@ -626,6 +626,7 @@ contains
 
     call ThermalKSPTempSoilAccum(this, b_p)
     call ThermalKSPTempSoilDivergence(this, b_p)
+    write(*,*)'  Soil: ',b_p(1)
 
     call VecRestoreArrayF90(B, b_p, ierr); CHKERRQ(ierr)
 
@@ -806,8 +807,8 @@ contains
              if (.not.geq_soil%aux_vars_bc(sum_conn)%is_active) cycle
 
                 if (is_bc_sh2o) then
-                   dist_up       = cur_conn_set%conn(iconn)%GetIDUp()
-                   dist_dn       = cur_conn_set%conn(iconn)%GetIDDn()
+                   dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
+                   dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
                    dist          = dist_up + dist_dn
 
                    therm_cond_up = geq_soil%aux_vars_bc(sum_conn)%therm_cond

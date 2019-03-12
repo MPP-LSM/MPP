@@ -27,6 +27,8 @@ module  ThermalKSPTemperatureSnowAuxType
      procedure, public :: AuxVarCompute         => ThermKSPTempSnowAuxVarCompute
   end type therm_ksp_temp_snow_auxvar_type
 
+  PetscReal, private, parameter :: thin_sfclayer = 1.0d-6   ! Threshold for thin surface layer
+
 contains
 
   !------------------------------------------------------------------------
@@ -71,7 +73,12 @@ contains
     else
        bw = (this%ice_areal_den + this%liq_areal_den)/(this%frac * dz)
        this%therm_cond   = tkair + (7.75d-5*bw + 1.105d-6*bw*bw)*(tkice-tkair)
-       this%heat_cap_pva = cpliq*this%liq_areal_den + cpice*this%ice_areal_den
+       !this%heat_cap_pva = cpliq*this%liq_areal_den + cpice*this%ice_areal_den
+       if (this%frac > 0.d0) then
+          this%heat_cap_pva = max(thin_sfclayer, (cpliq*this%liq_areal_den + cpice*this%ice_areal_den)/this%frac)
+       else
+          this%heat_cap_pva = thin_sfclayer
+       end if
     endif
 
     this%heat_cap_pva = this%heat_cap_pva/dz
