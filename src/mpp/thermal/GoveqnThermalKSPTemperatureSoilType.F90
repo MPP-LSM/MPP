@@ -626,7 +626,6 @@ contains
 
     call ThermalKSPTempSoilAccum(this, b_p)
     call ThermalKSPTempSoilDivergence(this, b_p)
-    write(*,*)'  Soil: ',b_p(1)
 
     call VecRestoreArrayF90(B, b_p, ierr); CHKERRQ(ierr)
 
