@@ -537,8 +537,9 @@ contains
     do icell = 1, this%mesh%ncells_all
        if (aux_vars_in(icell)%is_active) then
           !this%mesh%dz(icell)  = max(1.0d-6, aux_vars_in(icell)%dz)
-          if ( (aux_vars_in(icell)%dz > thin_sfclayer) .and. (aux_vars_in(icell)%frac > thin_sfclayer) ) then
-             this%mesh%dz(icell)  = max(thin_sfclayer, aux_vars_in(icell)%dz/aux_vars_in(icell)%frac )
+          if ( (aux_vars_in(icell)%dz*aux_vars_in(icell)%frac*1.d3 > thin_sfclayer) &
+               .and. (aux_vars_in(icell)%frac > thin_sfclayer) ) then
+             this%mesh%dz(icell)  = max(thin_sfclayer, aux_vars_in(icell)%dz)
           else
              this%mesh%dz(icell) = thin_sfclayer
           endif

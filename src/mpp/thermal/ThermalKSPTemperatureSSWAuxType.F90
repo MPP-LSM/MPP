@@ -63,8 +63,8 @@ contains
 
        this%therm_cond    = tkwat
        !this%heat_cap_pva  = cpliq*denh2o
-       if ( (dz > thin_sfclayer) .and. (this%frac > thin_sfclayer) ) then
-          this%heat_cap_pva  = max(thin_sfclayer, cpliq*denh2o*dz/this%frac )
+       if ( (dz*this%frac*1.d3 > thin_sfclayer) .and. (this%frac > thin_sfclayer) ) then
+          this%heat_cap_pva  = max(thin_sfclayer, cpliq*denh2o)
        else
           this%heat_cap_pva = thin_sfclayer
        endif
