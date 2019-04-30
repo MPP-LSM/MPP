@@ -108,3 +108,6 @@ Development and evaluation of a variably saturated flow model in the global E3SM
 Land Model (ELM) version 1.0, Geosci. Model Dev., 11, 4085-4102,
 https://doi.org/10.5194/gmd-11-4085-2018, 2018
 
+Bisht, G., & Riley, W. J. (2019). Development and verification of a numerical library
+for solving global terrestrial multi‐physics problems. Journal of Advances in
+Modeling Earth Systems, 11. https://doi.org/10.1029/2018MS001560
