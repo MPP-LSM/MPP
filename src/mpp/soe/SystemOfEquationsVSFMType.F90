@@ -584,17 +584,23 @@ contains
                      iauxvar_in_off, num_auxvars_filled_in)
                 iauxvar_in_off = iauxvar_in_off + num_auxvars_filled_in
 
-                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC      , this%aux_vars_bc, &
-                     iauxvar_bc_off, num_auxvars_filled_bc)
-                iauxvar_bc_off = iauxvar_bc_off + num_auxvars_filled_bc
+                if (this%num_auxvars_bc>0) then
+                   call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC      , this%aux_vars_bc, &
+                        iauxvar_bc_off, num_auxvars_filled_bc)
+                   iauxvar_bc_off = iauxvar_bc_off + num_auxvars_filled_bc
+                endif
 
-                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_SS      , this%aux_vars_ss, &
-                     iauxvar_ss_off, num_auxvars_filled_ss)
-                iauxvar_ss_off = iauxvar_ss_off + num_auxvars_filled_ss
+                if (this%num_auxvars_ss>0) then
+                   call cur_goveq%SetDataInSOEAuxVar(AUXVAR_SS      , this%aux_vars_ss, &
+                        iauxvar_ss_off, num_auxvars_filled_ss)
+                   iauxvar_ss_off = iauxvar_ss_off + num_auxvars_filled_ss
+                endif
 
-                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_CONN_INTERNAL, this%aux_vars_conn_in, &
-                     iauxvar_conn_in_off, num_auxvars_filled_conn_in)
-                iauxvar_conn_in_off = iauxvar_conn_in_off + num_auxvars_filled_conn_in
+                if (this%num_auxvars_conn_in>0) then
+                   call cur_goveq%SetDataInSOEAuxVar(AUXVAR_CONN_INTERNAL, this%aux_vars_conn_in, &
+                        iauxvar_conn_in_off, num_auxvars_filled_conn_in)
+                   iauxvar_conn_in_off = iauxvar_conn_in_off + num_auxvars_filled_conn_in
+                endif
 
                 if (this%num_auxvars_bc_otr_geqn>0) then
                    call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC_OTR_GOVEQ, this%aux_vars_bc_otr_geqn, &
