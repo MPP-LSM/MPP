@@ -1079,6 +1079,7 @@ contains
     use MultiPhysicsProbConstants    , only : AUXVAR_BC
     use MultiPhysicsProbConstants    , only : AUXVAR_SS
     use MultiPhysicsProbConstants    , only : AUXVAR_CONN_INTERNAL
+    use MultiPhysicsProbConstants    , only : AUXVAR_BC_OTR_GOVEQ
     use MultiPhysicsProbConstants    , only : VAR_LIQ_SAT
     use MultiPhysicsProbConstants    , only : VAR_MASS
     use MultiPhysicsProbConstants    , only : VAR_SOIL_MATRIX_POT
@@ -1120,8 +1121,12 @@ contains
     PetscInt                                                       :: cell_id_up
     PetscInt                                                       :: cell_id_dn
     PetscInt                                                       :: num_bc, icond
+    PetscInt                                                       :: num_bc_otr_geqn
     PetscInt                                                       :: cond_itype_to_exclude
+    PetscInt                                                       :: cond_itype
+    PetscInt                                                       :: soe_avars_idx
     PetscInt, pointer                                              :: ncells_for_bc(:)
+    PetscInt, pointer                                              :: ncells_for_bc_otr_geqn(:)
     character(len=256)                                             :: string
     type(condition_type), pointer                                  :: cur_cond
     class(connection_set_type), pointer                            :: cur_conn_set
@@ -1311,30 +1316,73 @@ contains
        ! Boundary condition cells
        cur_cond => this%boundary_conditions%first
        sum_conn = 0
+       iconn    = 0
+       soe_avars_idx = iauxvar_off
        do
           if (.not.associated(cur_cond)) exit
           cur_conn_set => cur_cond%conn_set
 
           if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+             sum_conn = sum_conn + cur_conn_set%num_connections
+             cur_cond => cur_cond%next
+             cycle
+          end if
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn      = sum_conn + 1
+             soe_avars_idx = soe_avars_idx + 1
+
+             this%bnd_mass_exc(sum_conn) = this%bnd_mass_exc(sum_conn) + &
+                  this%boundary_flux(sum_conn)*this%dtime
+
+             soe_avars(soe_avars_idx)%boundary_mass_exchanged = &
+                  this%bnd_mass_exc(sum_conn)
+
+             soe_avars(soe_avars_idx)%mass_flux = this%boundary_flux(sum_conn)
+          enddo
+          cur_cond => cur_cond%next
+       enddo
+
+       num_avars_set = soe_avars_idx
+
+    case (AUXVAR_BC_OTR_GOVEQ)
+
+       cond_itype = COND_DIRICHLET_FRM_OTR_GOVEQ
+       call this%GetNCellsInCondsOfCondItype(COND_BC, &
+            cond_itype, num_bc_otr_geqn, ncells_for_bc_otr_geqn)
+
+       auxVarCt_ge = 0
+       do icond = 1, num_bc_otr_geqn
+          auxVarCt_ge = auxVarCt_ge + ncells_for_bc_otr_geqn(icond)
+       enddo
+       if (associated(ncells_for_bc_otr_geqn)) deallocate(ncells_for_bc_otr_geqn)
+
+       if (auxVarCt_ge == 0) return
+
+       ! Boundary condition cells
+       cur_cond => this%boundary_conditions%first
+       sum_conn      = 0
+       soe_avars_idx = iauxvar_off
+       do
+          if (.not.associated(cur_cond)) exit
+          cur_conn_set => cur_cond%conn_set
+
+          if (cur_cond%itype /= COND_DIRICHLET_FRM_OTR_GOVEQ) then
+             sum_conn = sum_conn + cur_conn_set%num_connections
              cur_cond => cur_cond%next
              cycle
           end if
 
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
+             soe_avars_idx = soe_avars_idx + 1
 
-             this%bnd_mass_exc(sum_conn) = this%bnd_mass_exc(sum_conn) + &
-                  this%boundary_flux(sum_conn)*this%dtime
-
-             soe_avars(iconn + iauxvar_off)%boundary_mass_exchanged = &
-                  this%bnd_mass_exc(sum_conn)
-
-             soe_avars(iconn + iauxvar_off)%mass_flux = this%boundary_flux(sum_conn)
+             soe_avars(soe_avars_idx)%mass_flux = this%boundary_flux(sum_conn)
           enddo
           cur_cond => cur_cond%next
        enddo
 
-       num_avars_set = sum_conn
+       num_avars_set = soe_avars_idx
 
     case default
        write(iulog,*) 'RichardsODESetDataInSOEAuxVar: soe_avar_type not supported'
@@ -1438,6 +1486,7 @@ contains
     use MultiPhysicsProbConstants , only : COND_MASS_RATE
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : COND_SEEPAGE_BC
+    use MultiPhysicsProbConstants , only : DARCY_FLUX_TYPE
     !
     implicit none
     !
@@ -1480,6 +1529,7 @@ contains
 
           call this%aux_vars_bc(sum_conn)%AuxVarCompute()
 
+          if (this%aux_vars_conn_bc(sum_conn)%flux_type /= DARCY_FLUX_TYPE) then
           ! Set values for 'connection' auxvars
           this%aux_vars_conn_bc(sum_conn)%pressure_up = &
                this%aux_vars_bc(sum_conn)%pressure
@@ -1490,6 +1540,7 @@ contains
                this%aux_vars_in(ghosted_id)%pressure
 
           call this%aux_vars_conn_bc(sum_conn)%AuxVarCompute()
+          endif
 
        enddo
        cur_cond => cur_cond%next

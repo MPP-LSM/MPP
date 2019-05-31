@@ -731,6 +731,7 @@ contains
     PetscInt                             :: igoveqn
     PetscInt                             :: num_bc
     PetscInt                             :: num_ss
+    PetscInt                             :: num_bc_otr_geqn
     PetscInt                             :: nconn_in
     PetscInt                             :: icond
     PetscInt                             :: iauxvar
@@ -739,13 +740,16 @@ contains
     PetscInt                             :: iauxvar_beg_ss, iauxvar_end_ss
     PetscInt                             :: iauxvar_beg_conn_in, iauxvar_end_conn_in
     PetscInt                             :: cond_itype_to_exclude
+    PetscInt                             :: cond_itype
     PetscInt                             :: count_bc, count_ss
     PetscInt                             :: offset_bc, offset_ss
     PetscInt                             :: cell_id
     PetscInt                             :: num_cells_bc
     PetscInt                             :: num_cells_ss
+    PetscInt                             :: num_cells_bc_otr_geqn
     PetscInt                   , pointer :: ncells_for_bc(:)
     PetscInt                   , pointer :: ncells_for_ss(:)
+    PetscInt                   , pointer :: ncells_for_bc_otr_geqn(:)
     PetscInt                   , pointer :: offsets_bc(:)
     PetscInt                   , pointer :: offsets_ss(:)
     PetscInt                   , pointer :: cell_id_dn_in_bc(:)
@@ -787,6 +791,10 @@ contains
        call cur_goveq%GetNCellsInCondsExcptCondItype(COND_SS, &
             cond_itype_to_exclude, num_ss, ncells_for_ss)
 
+       cond_itype = COND_DIRICHLET_FRM_OTR_GOVEQ
+       call cur_goveq%GetNCellsInCondsOfCondItype(COND_BC, &
+            cond_itype, num_bc_otr_geqn, ncells_for_bc_otr_geqn)
+
        soe%num_auxvars_conn_in = soe%num_auxvars_conn_in + nconn_in
        igoveqn = igoveqn + 1
 
@@ -803,8 +811,14 @@ contains
                ncells_for_ss(icond)
        enddo
 
-       if (num_bc > 0) deallocate(ncells_for_bc)
-       if (num_ss > 0) deallocate(ncells_for_ss)
+       do icond = 1, num_bc_otr_geqn
+          soe%num_auxvars_bc_otr_geqn = soe%num_auxvars_bc_otr_geqn + &
+               ncells_for_bc_otr_geqn(icond)
+       enddo
+
+       if (num_bc          > 0) deallocate(ncells_for_bc)
+       if (num_ss          > 0) deallocate(ncells_for_ss)
+       if (num_bc_otr_geqn > 0) deallocate(ncells_for_bc_otr_geqn)
 
        cur_goveq => cur_goveq%next
     enddo
@@ -814,6 +828,7 @@ contains
     allocate(soe%aux_vars_bc           (soe%num_auxvars_bc))
     allocate(soe%aux_vars_ss           (soe%num_auxvars_ss))
     allocate(soe%aux_vars_conn_in      (soe%num_auxvars_conn_in))
+    allocate(soe%aux_vars_bc_otr_geqn  (soe%num_auxvars_bc_otr_geqn))
 
     allocate(soe%soe_auxvars_bc_offset (soe%num_auxvars_bc))
     allocate(soe%soe_auxvars_ss_offset (soe%num_auxvars_ss))
@@ -965,6 +980,10 @@ contains
 
     do iauxvar = 1, soe%num_auxvars_conn_in
        call soe%aux_vars_conn_in(iauxvar)%Init()
+    end do
+
+    do iauxvar = 1, soe%num_auxvars_bc_otr_geqn
+       call soe%aux_vars_bc_otr_geqn(iauxvar)%Init()
     end do
 
   end subroutine VSFMMPPAllocateAuxVars
