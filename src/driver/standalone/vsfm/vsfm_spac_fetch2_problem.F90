@@ -21,7 +21,8 @@ module vsfm_spac_fetch2_problem
   PetscInt  , parameter :: ny       = 1             ! -
   PetscReal , parameter :: dx       = 1.d0          ! m
   PetscReal , parameter :: dy       = 1.d0          ! m
-  PetscReal , parameter :: dz       = 0.2d0         ! m
+  PetscReal , parameter :: dz_xylem = 0.2d0         ! m
+  PetscReal , parameter :: dz_soil  = 0.1d0         ! m
 
   PetscReal , parameter :: porosity = 0.45d0        ! [-]
 
@@ -67,7 +68,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: oak_axi_root_c1   = 1.7d6    !
   PetscReal , parameter :: oak_axi_root_c2   = 3.0d0    ! -
 
-  PetscInt , parameter :: pine_root_nz        = 30
+  PetscInt , parameter :: pine_root_nz        = 60
   PetscReal, parameter :: pine_root_qz        = 3.d0         ! [-]
   PetscReal, parameter :: pine_root_d         = 7.d0         ! [m]
   PetscReal, parameter :: pine_root_rld0      = 4.d4         ! [m/m^3]
@@ -85,8 +86,8 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_axi_root_c1   = 1.2d6    !
   PetscReal , parameter :: pine_axi_root_c2   = 5.0d0    ! -
 
-  PetscInt , parameter :: soil_nz         = 30
-  PetscReal, parameter :: soil_perm       = 6.83d-10      ! [m^2]
+  PetscInt , parameter :: soil_nz         = 60
+  PetscReal, parameter :: soil_perm       = 6.83d-09      ! [m^2]
   PetscReal, parameter :: soil_perm_bot   = 6.83d-10      ! [m^2]
   PetscReal, parameter :: soil_sat_res    = 0.02d0        ! [-]
   !PetscReal, parameter :: soil_alpha      = 0.00005d0     ! [Pa^{-1}]
@@ -1009,7 +1010,7 @@ end subroutine SetUpTreeProperties
     PetscReal , pointer :: zc_xylem(:)                ! z-position of grid cell [m]
     PetscReal , pointer :: dx_xylem(:)                ! layer thickness of grid cell [m]
     PetscReal , pointer :: dy_xylem(:)                ! layer thickness of grid cell [m]
-    PetscReal , pointer :: dz_xylem(:)                ! layer thickness of grid cell [m]
+    PetscReal , pointer :: dz(:)                ! layer thickness of grid cell [m]
     PetscReal , pointer :: area_xylem(:)              ! area of grid cell [m^2]
     PetscReal , pointer :: vol_xylem(:)               ! volume of grid cell [m^3]
     PetscInt  , pointer :: filter_xylem(:)            ! 
@@ -1030,7 +1031,7 @@ end subroutine SetUpTreeProperties
     allocate(zc_xylem     (ncells_xylem ))
     allocate(dx_xylem     (ncells_xylem ))
     allocate(dy_xylem     (ncells_xylem ))
-    allocate(dz_xylem     (ncells_xylem ))
+    allocate(dz     (ncells_xylem ))
     allocate(area_xylem   (ncells_xylem ))
     allocate(filter_xylem (ncells_xylem ))
     allocate(vol_xylem    (ncells_xylem ))
@@ -1038,7 +1039,7 @@ end subroutine SetUpTreeProperties
     call set_xylem_geometric_attributes( &
          1, local_nz, local_Asapwood,   &
          filter_xylem, area_xylem, vol_xylem, &
-         dx_xylem, dy_xylem, dz_xylem, &
+         dx_xylem, dy_xylem, dz, &
          xc_xylem, yc_xylem, zc_xylem)
 
     call mpp_varpar_set_nlevsoi(local_nz)
@@ -1052,7 +1053,7 @@ end subroutine SetUpTreeProperties
     call SetMeshGeometricAttributes( &
          mesh, filter_xylem, &
          xc_xylem, yc_xylem, zc_xylem, &
-         dx_xylem, dy_xylem, dz_xylem, &
+         dx_xylem, dy_xylem, dz, &
          area_xylem, vol_xylem)
          
     nconn_xylem = local_nz - 1
@@ -1069,8 +1070,8 @@ end subroutine SetUpTreeProperties
        iconn = iconn + 1
        vert_conn_id_up_xylem(iconn)   = kk 
        vert_conn_id_dn_xylem(iconn)   = kk + 1
-       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz
-       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz
+       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz_xylem
+       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz_xylem
        vert_conn_area_xylem(iconn)    = area_xylem(kk)
        vert_conn_type_xylem(iconn)    = CONN_VERTICAL
     end do
@@ -1090,7 +1091,7 @@ end subroutine SetUpTreeProperties
     deallocate (zc_xylem                )
     deallocate (dx_xylem                )
     deallocate (dy_xylem                )
-    deallocate (dz_xylem                )
+    deallocate (dz                )
     deallocate (area_xylem              )
     deallocate (filter_xylem            )
     deallocate (vol_xylem               )
@@ -1133,7 +1134,7 @@ end subroutine SetUpTreeProperties
     PetscReal , pointer :: zc_xylem(:)                ! z-position of grid cell [m]
     PetscReal , pointer :: dx_xylem(:)                ! layer thickness of grid cell [m]
     PetscReal , pointer :: dy_xylem(:)                ! layer thickness of grid cell [m]
-    PetscReal , pointer :: dz_xylem(:)                ! layer thickness of grid cell [m]
+    PetscReal , pointer :: dz(:)                ! layer thickness of grid cell [m]
     PetscReal , pointer :: area_xylem(:)              ! area of grid cell [m^2]
     PetscReal , pointer :: vol_xylem(:)               ! volume of grid cell [m^3]
     PetscInt  , pointer :: filter_xylem(:)            ! 
@@ -1156,7 +1157,7 @@ end subroutine SetUpTreeProperties
     allocate(zc_xylem     (ncells_xylem ))
     allocate(dx_xylem     (ncells_xylem ))
     allocate(dy_xylem     (ncells_xylem ))
-    allocate(dz_xylem     (ncells_xylem ))
+    allocate(dz     (ncells_xylem ))
     allocate(area_xylem   (ncells_xylem ))
     allocate(filter_xylem (ncells_xylem ))
     allocate(vol_xylem    (ncells_xylem ))
@@ -1165,14 +1166,14 @@ end subroutine SetUpTreeProperties
     call set_xylem_geometric_attributes( &
          ibeg, iend, Asapwood, &
          filter_xylem, area_xylem, vol_xylem, &
-         dx_xylem, dy_xylem, dz_xylem, &
+         dx_xylem, dy_xylem, dz, &
          xc_xylem, yc_xylem, zc_xylem)
 
     ibeg = 1 + oak_nz; iend = oak_nz + pine_nz; Asapwood = pine_Asapwood
     call set_xylem_geometric_attributes( &
          ibeg, iend, Asapwood, &
          filter_xylem, area_xylem, vol_xylem, &
-         dx_xylem, dy_xylem, dz_xylem, &
+         dx_xylem, dy_xylem, dz, &
          xc_xylem, yc_xylem, zc_xylem)
 
     call mpp_varpar_set_nlevsoi(oak_nz + pine_nz)
@@ -1188,7 +1189,7 @@ end subroutine SetUpTreeProperties
     call SetMeshGeometricAttributes( &
          mesh, filter_xylem, &
          xc_xylem, yc_xylem, zc_xylem, &
-         dx_xylem, dy_xylem, dz_xylem, &
+         dx_xylem, dy_xylem, dz, &
          area_xylem, vol_xylem)
 
     nconn_xylem = oak_nz - 1 + pine_nz - 1
@@ -1205,8 +1206,8 @@ end subroutine SetUpTreeProperties
        iconn = iconn + 1
        vert_conn_id_up_xylem(iconn)   = kk 
        vert_conn_id_dn_xylem(iconn)   = kk + 1
-       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz
-       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz
+       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz_xylem
+       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz_xylem
        vert_conn_area_xylem(iconn)    = area_xylem(kk)
        vert_conn_type_xylem(iconn)    = CONN_VERTICAL
     end do
@@ -1215,8 +1216,8 @@ end subroutine SetUpTreeProperties
        iconn = iconn + 1
        vert_conn_id_up_xylem(iconn)   = kk 
        vert_conn_id_dn_xylem(iconn)   = kk + 1
-       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz
-       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz
+       vert_conn_dist_up_xylem(iconn) = 0.5d0*dz_xylem
+       vert_conn_dist_dn_xylem(iconn) = 0.5d0*dz_xylem
        vert_conn_area_xylem(iconn)    = area_xylem(kk)
        vert_conn_type_xylem(iconn)    = CONN_VERTICAL
     end do
@@ -1236,7 +1237,7 @@ end subroutine SetUpTreeProperties
     deallocate (zc_xylem                )
     deallocate (dx_xylem                )
     deallocate (dy_xylem                )
-    deallocate (dz_xylem                )
+    deallocate (dz                )
     deallocate (area_xylem              )
     deallocate (filter_xylem            )
     deallocate (vol_xylem               )
@@ -1253,7 +1254,7 @@ end subroutine SetUpTreeProperties
   !------------------------------------------------------------------------
   subroutine set_xylem_geometric_attributes(ibeg, iend, Asapwood, &
        filter_xylem, area_xylem, vol_xylem, &
-       dx_xylem, dy_xylem, dz_xylem, &
+       dx_xylem, dy_xylem, dz, &
        xc_xylem, yc_xylem, zc_xylem)
 
     implicit none
@@ -1265,7 +1266,7 @@ end subroutine SetUpTreeProperties
     PetscReal , pointer :: zc_xylem(:)
     PetscReal , pointer :: dx_xylem(:)
     PetscReal , pointer :: dy_xylem(:)
-    PetscReal , pointer :: dz_xylem(:)
+    PetscReal , pointer :: dz(:)
     PetscReal , pointer :: area_xylem(:)
     PetscReal , pointer :: vol_xylem(:)
     PetscInt  , pointer :: filter_xylem(:)
@@ -1276,17 +1277,17 @@ end subroutine SetUpTreeProperties
     area_xylem   (ibeg:iend) = Asapwood
     dx_xylem     (ibeg:iend) = sqrt(Asapwood)
     dy_xylem     (ibeg:iend) = sqrt(Asapwood)
-    dz_xylem     (ibeg:iend) = dz
+    dz           (ibeg:iend) = dz_xylem
     xc_xylem     (ibeg:iend) = 0.d0!sqrt(Asapwood)/2.d0
     yc_xylem     (ibeg:iend) = 0.d0!sqrt(Asapwood)/2.d0
 
     nz = iend - ibeg + 1
 
-    zc_xylem(ibeg)  = -0.17d0*0.d0 + nz * dz
-    vol_xylem(ibeg) = area_xylem(ibeg) * dz
+    zc_xylem(ibeg)  = -0.17d0*0.d0 + nz * dz_xylem
+    vol_xylem(ibeg) = area_xylem(ibeg) * dz_xylem
     do kk = ibeg+1, iend
-       zc_xylem(kk)  = -(dz/2.d0 + dz * (kk - ibeg)) + nz * dz
-       vol_xylem(kk) = area_xylem(kk) * dz
+       zc_xylem(kk)  = -(dz_xylem/2.d0 + dz_xylem * (kk - ibeg)) + nz * dz_xylem
+       vol_xylem(kk) = area_xylem(kk) * dz_xylem
     enddo
 
   end subroutine set_xylem_geometric_attributes
@@ -1394,11 +1395,11 @@ end subroutine SetUpTreeProperties
     do kk = 1, nz
        filter(kk)   = 1
 
-       zc_1d(kk)    = -(kk-1)*dz - dz/2.0
+       zc_1d(kk)    = -(kk-1)*dz_soil - dz_soil/2.0
 
        root_len_den = rld0 * (1.d0 - abs(zc_1d(kk))/dd)*exp(-qz*abs(zc_1d(kk))/dd)
        root_len     = root_len_den * & ! [m/m^3]
-                      (dx*dy*dz)       ! [m^3]
+                      (dx*dy*dz_soil)       ! [m^3]
 
        vol(kk)      = PI*(radius**2.d0)*root_len
        area(kk)     = 2.d0*PI*radius*root_len
@@ -1408,7 +1409,7 @@ end subroutine SetUpTreeProperties
 
        dx_1d(kk)    = dx
        dy_1d(kk)    = dy
-       dz_1d(kk)    = dz
+       dz_1d(kk)    = dz_soil
 
     end do
 
@@ -1456,7 +1457,7 @@ end subroutine SetUpTreeProperties
        conn_id_up(kk)   = 0
        conn_id_dn(kk)   = kk
        conn_dist_up(kk) = 0.d0
-       conn_dist_dn(kk) = dz/2.d0
+       conn_dist_dn(kk) = dz_soil/2.d0
        conn_area(kk)    = pine_Asapwood!PI*(radius**2.d0)
     end do
 
@@ -1472,8 +1473,8 @@ end subroutine SetUpTreeProperties
        conn_id_up(kk)   = kk
        conn_id_dn(kk)   = kk+1
 
-       conn_dist_up(kk) = dz/2.d0
-       conn_dist_dn(kk) = dz/2.d0
+       conn_dist_up(kk) = dz_soil/2.d0
+       conn_dist_dn(kk) = dz_soil/2.d0
        conn_area(kk)    = pine_Asapwood!PI*(radius**2.d0)
     end do
 
@@ -1551,14 +1552,14 @@ end subroutine SetUpTreeProperties
 
     x_min = 0.d0
     y_min = 0.d0
-    z_min = -soil_nz*dz
+    z_min = -soil_nz*dz_soil
     nz    = soil_nz
 
-    call ComputeXYZCentroids( nx, ny, nz, dx, dy, dz, &
+    call ComputeXYZCentroids( nx, ny, nz, dx, dy, dz_soil, &
          x_min, y_min, z_min, xc_1d, yc_1d, zc_1d)
 
     do kk = 1, nz
-       zc_1d(kk)    = -(kk-1)*dz - dz/2.0
+       zc_1d(kk)    = -(kk-1)*dz_soil - dz_soil/2.0
     end do
 
     ncells = nx*ny*nz
@@ -1573,9 +1574,9 @@ end subroutine SetUpTreeProperties
     filter (:) = 1
     dx_1d  (:) = dx
     dy_1d  (:) = dy
-    dz_1d  (:) = dz
-    area   (:) = dy*dz
-    volume (:) = dx*dy*dz
+    dz_1d  (:) = dz_soil
+    area   (:) = dy*dz_soil
+    volume (:) = dx*dy*dz_soil
 
     allocate(mesh)
 
@@ -1587,7 +1588,7 @@ end subroutine SetUpTreeProperties
          dx_1d, dy_1d, dz_1d, &
          area, volume)
 
-    call ComputeInternalConnections(nx, ny, nz, dx, dy, dz, CONN_IN_Z_DIR, &
+    call ComputeInternalConnections(nx, ny, nz, dx, dy, dz_soil, CONN_IN_Z_DIR, &
          nconn, conn_id_up, conn_id_dn, conn_dist_up, conn_dist_dn, &
          conn_area, conn_type)
 
@@ -1944,7 +1945,7 @@ end subroutine SetUpTreeProperties
     conn_id_up(iconn)     = 0
     conn_id_dn(iconn)     = oak_nz
     conn_dist_up(iconn)   = 0.d0
-    conn_dist_dn(iconn)   = 0.5d0*dz
+    conn_dist_dn(iconn)   = 0.5d0*dz_soil
     conn_area(iconn)      = oak_Asapwood
     conn_type(iconn)      = CONN_VERTICAL
     conn_unitvec(iconn,1) = 0.d0
@@ -1955,7 +1956,7 @@ end subroutine SetUpTreeProperties
     conn_id_up(iconn)     = 0
     conn_id_dn(iconn)     = oak_nz+pine_nz
     conn_dist_up(iconn)   = 0.d0
-    conn_dist_dn(iconn)   = 0.5d0*dz
+    conn_dist_dn(iconn)   = 0.5d0*dz_soil
     conn_area(iconn)      = pine_Asapwood
     conn_type(iconn)      = CONN_VERTICAL
     conn_unitvec(iconn,1) = 0.d0
@@ -2850,7 +2851,7 @@ end subroutine SetUpTreeProperties
           do kk = 1, nz
              nconns = nconns + 1
 
-             zc_1d = -(kk-1)*dz - dz/2.0
+             zc_1d = -(kk-1)*dz_soil - dz_soil/2.0
 
              root_len_den = rld0 * (1.d0 - abs(zc_1d)/dd)*exp(-qz*abs(zc_1d)/dd)
 
@@ -3067,7 +3068,7 @@ end subroutine SetUpTreeProperties
     dn_relperm_type (2:nconns) = RELPERM_FUNC_WEIBULL
 
     do kk = 1, ncells
-       zc_1d = -(kk-1)*dz - dz/2.0
+       zc_1d = -(kk-1)*dz_soil - dz_soil/2.0
 
        root_len_den = rld0 * (1.d0 - abs(zc_1d)/dd)*exp(-qz*abs(zc_1d)/dd)
 
@@ -3147,20 +3148,20 @@ end subroutine SetUpTreeProperties
        do ii = 1, oak_nz
           jj = jj + 1
           if (ii == 1) then
-             zc = -0.17d0 + oak_nz*dz
+             zc = -0.17d0 + oak_nz*dz_soil
           else
-             zc = -dz/2.d0 - dz*(ii-1) + oak_nz*dz
+             zc = -dz_xylem/2.d0 - dz_xylem*(ii-1) + oak_nz*dz_xylem
           end if
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)
        enddo
        do ii = 1, oak_root_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)
        enddo
        do ii = 1, soil_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)
        enddo
        call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
@@ -3171,20 +3172,20 @@ end subroutine SetUpTreeProperties
        do ii = 1, pine_nz
           jj = jj + 1
           if (ii == 1) then
-             zc = -0.17d0 + pine_nz*dz
+             zc = -0.17d0 + pine_nz*dz_xylem
           else
-             zc = -dz/2.d0 - dz*(ii-1) + pine_nz*dz
+             zc = -dz_xylem/2.d0 - dz_xylem*(ii-1) + pine_nz*dz_xylem
           end if
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)
        enddo
        do ii = 1, pine_root_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)
        enddo
        do ii = 1, soil_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)
        enddo
        call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
@@ -3197,34 +3198,34 @@ end subroutine SetUpTreeProperties
        do ii = 1, oak_nz
           jj = jj + 1
           if (ii == 1) then
-             zc = -0.17d0 + oak_nz*dz
+             zc = -0.17d0 + oak_nz*dz_xylem
           else
-             zc = -dz/2.d0 - dz*(ii-1) + oak_nz*dz
+             zc = -dz_xylem/2.d0 - dz_xylem*(ii-1) + oak_nz*dz_xylem
           end if
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)/10.d0
        enddo
        do ii = 1, oak_root_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)/10.d0
        enddo
        do ii = 1, pine_nz
           jj = jj + 1
           if (ii == 1) then
-             zc = -0.17d0 + pine_nz*dz
+             zc = -0.17d0 + pine_nz*dz_xylem
           else
-             zc = -dz/2.d0 - dz*(ii-1) + pine_nz*dz
+             zc = -dz_xylem/2.d0 - dz_xylem*(ii-1) + pine_nz*dz_xylem
           end if
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)/10.d0
        enddo
        do ii = 1, pine_root_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)/10.d0
        enddo
        do ii = 1, soil_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)/10.d0
        enddo
        call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
@@ -3236,7 +3237,7 @@ end subroutine SetUpTreeProperties
        jj = 0
        do ii = 1, soil_nz
           jj = jj + 1
-          zc = -dz/2.d0 - dz*(ii-1)
+          zc = -dz_soil/2.d0 - dz_soil*(ii-1)
           press_ic(jj) = 101325.d0 - rho*grav*(zc + 6.d0)/10.d0
        enddo
        press_ic(01) = -124112.449286d0
@@ -3325,7 +3326,7 @@ end subroutine SetUpTreeProperties
              press_ic(nz(E_IDX)+jj) = press_ic(nz(E_IDX)+root_nz(E_IDX)+jj)
           end do
           do jj = 1,nz(E_IDX)
-             press_ic(jj) = press_ic(nz(E_IDX)+1)-1000.d0*9.8d0*nz(E_IDX)*dz/10.d0+1000.d0*9.8d0*(jj)*dz/10.d0
+             press_ic(jj) = press_ic(nz(E_IDX)+1)-1000.d0*9.8d0*nz(E_IDX)*dz_soil/10.d0+1000.d0*9.8d0*(jj)*dz_soil/10.d0
           end do
           call VecRestoreArrayF90(sm_init, sm_init_p, ierr); CHKERRQ(ierr)
           call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr);
@@ -3386,7 +3387,7 @@ end subroutine SetUpTreeProperties
     else
        call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
        do ii = 1, nz
-          press_ic(ii) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (nz - ii)*dz) + 101325.d0
+          press_ic(ii) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (nz - ii)*dz_soil) + 101325.d0
        enddo
        call vsfm_mpp%Restart(press_ic)
        call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
@@ -3440,11 +3441,11 @@ end subroutine SetUpTreeProperties
     else
        call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
        do ii = 1, oak_nz
-          press_ic(ii         ) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (oak_nz - ii)*dz) + 101325.d0
+          press_ic(ii         ) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (oak_nz - ii)*dz_xylem) + 101325.d0
        enddo
 
        do ii = 1, pine_nz
-          press_ic(ii + oak_nz) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (pine_nz - ii)*dz) + 101325.d0
+          press_ic(ii + oak_nz) = -phi_root_mean_times_beta_s - rho * grav * (0.17d0 + (pine_nz - ii)*dz_xylem) + 101325.d0
        enddo
        call vsfm_mpp%Restart(press_ic)
        call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr)
@@ -3508,7 +3509,7 @@ end subroutine SetUpTreeProperties
 
     call VecGetArrayF90(ET, et_p, ierr)
     do kk = 1, nz
-       ss_value(kk) = -et_p(nz*(istep-1) + kk) * dz
+       ss_value(kk) = -et_p(nz*(istep-1) + kk) * dz_xylem
     end do
     call VecRestoreArrayF90(ET, et_p, ierr)
 
@@ -3711,13 +3712,13 @@ end subroutine SetUpTreeProperties
     ! Save PET data for oak
     do kk = 1, oak_nz
        idx = idx + 1
-       oak_ss_value(kk) = -et_p(idx)*dz
+       oak_ss_value(kk) = -et_p(idx)*dz_xylem
     end do
 
     ! Save PET data for pine
     do kk = 1, pine_nz
        idx = idx + 1
-       pine_ss_value(kk) = -et_p(idx)*dz
+       pine_ss_value(kk) = -et_p(idx)*dz_xylem
     end do
     call VecRestoreArrayF90(ET, et_p, ierr)
 
@@ -3786,7 +3787,7 @@ end subroutine SetUpTreeProperties
        ! Save PET data for xylem
        do kk = 1, nz(IDX)
           ss_idx = ss_idx + 1
-          ss_value(kk) = -et_p(ss_idx)*dz
+          ss_value(kk) = -et_p(ss_idx)*dz_xylem
        end do
 
        ! Set PET for xylem
