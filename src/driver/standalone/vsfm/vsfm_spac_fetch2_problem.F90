@@ -3185,6 +3185,9 @@ end subroutine SetUpTreeProperties
     Vec                :: p_init, sm_init
     PetscReal, pointer :: sm_init_p(:)
     PetscReal          :: Se, n, Psoil_ic, Pc
+    PetscInt           :: soil_idx_offset, offset, GE, nlyrs
+    PetscInt           :: e_xylm_offset, m_xylm_offset, p_xylm_offset, o_xylm_offset
+    PetscInt           :: e_root_offset, m_root_offset, p_root_offset, o_root_offset
     PetscViewer        :: viewer
     PetscErrorCode     :: ierr
 
@@ -3346,6 +3349,88 @@ end subroutine SetUpTreeProperties
          call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
          call VecCopy(p_init, vsfm_mpp%soe%solver%soln, ierr); CHKERRQ(ierr)
          call VecDestroy(p_init, ierr); CHKERRQ(ierr)
+       end if
+
+       if (sm_ic_file_specified) then
+          call PetscViewerBinaryOpen(PETSC_COMM_WORLD, sm_ic_filename, FILE_MODE_READ, &
+               viewer, ierr); CHKERRQ(ierr)
+          call VecCreate(PETSC_COMM_WORLD, sm_init, ierr); CHKERRQ(ierr)
+          call VecLoad(sm_init, viewer, ierr); CHKERRQ(ierr)
+          call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
+          call VecGetArrayF90(sm_init, sm_init_p, ierr); CHKERRQ(ierr)
+          call VecGetArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr);
+          n = 1.d0/(1.d0-soil_vg_m)
+          soil_idx_offset = 0
+          e_xylm_offset = soil_idx_offset; if (GE_e_xylm>0) soil_idx_offset = soil_idx_offset + nz(E_IDX)
+          m_xylm_offset = soil_idx_offset; if (GE_m_xylm>0) soil_idx_offset = soil_idx_offset + nz(M_IDX)
+          o_xylm_offset = soil_idx_offset; if (GE_o_xylm>0) soil_idx_offset = soil_idx_offset + nz(O_IDX)
+          p_xylm_offset = soil_idx_offset; if (GE_p_xylm>0) soil_idx_offset = soil_idx_offset + nz(P_IDX)
+          e_root_offset = soil_idx_offset; if (GE_e_root>0) soil_idx_offset = soil_idx_offset + root_nz(E_IDX)
+          m_root_offset = soil_idx_offset; if (GE_m_root>0) soil_idx_offset = soil_idx_offset + root_nz(M_IDX)
+          o_root_offset = soil_idx_offset; if (GE_o_root>0) soil_idx_offset = soil_idx_offset + root_nz(O_IDX)
+          p_root_offset = soil_idx_offset; if (GE_p_root>0) soil_idx_offset = soil_idx_offset + root_nz(P_IDX)
+          do jj = 1,soil_nz
+             Se = (sm_init_p(jj) - soil_sat_res)/(1.d0 - soil_sat_res)
+             Pc = -((Se**(-1.d0/soil_vg_m) - 1.d0)**(1.d0/n))/soil_alpha;
+             Psoil_ic = 101325 + Pc
+             press_ic(soil_idx_offset+jj) = Psoil_ic
+          end do
+
+          ! Set root pressure
+          do ii = 1, 4
+             select case (ii)
+             case (1)
+                GE     = GE_e_root
+                offset = e_root_offset
+                nlyrs   = root_nz(E_IDX)
+             case (2)
+                GE     = GE_m_root
+                offset = m_root_offset
+                nlyrs   = root_nz(M_IDX)
+             case (3)
+                GE     = GE_o_root
+                offset = o_root_offset
+                nlyrs   = root_nz(O_IDX)
+             case (4)
+                GE     = GE_p_root
+                offset = p_root_offset
+                nlyrs   = root_nz(P_IDX)
+             end select
+             if (GE>0) then
+                do jj = 1,nlyrs
+                   press_ic(offset+jj) = press_ic(soil_idx_offset+jj)
+                end do
+             endif
+          enddo
+
+          ! Set xylem pressure
+          do ii = 1, 4
+             select case (ii)
+             case (1)
+                GE     = GE_e_xylm
+                offset = e_xylm_offset
+                nlyrs   = nz(E_IDX)
+             case (2)
+                GE     = GE_m_xylm
+                offset = m_xylm_offset
+                nlyrs   = nz(M_IDX)
+             case (3)
+                GE     = GE_o_xylm
+                offset = o_xylm_offset
+                nlyrs   = nz(O_IDX)
+             case (4)
+                GE     = GE_p_xylm
+                offset = p_xylm_offset
+                nlyrs   = nz(P_IDX)
+             end select
+             if (GE>0) then
+                do jj = 1, nlyrs
+                   press_ic(offset+jj) = press_ic(soil_idx_offset+1)-1000.d0*9.8d0*nlyrs*dz_xylem/10.d0+1000.d0*9.8d0*(jj)*dz_xylem/10.d0
+                end do
+             endif
+          enddo
+          call VecRestoreArrayF90(sm_init, sm_init_p, ierr); CHKERRQ(ierr)
+          call VecRestoreArrayF90(vsfm_mpp%soe%solver%soln, press_ic, ierr); CHKERRQ(ierr);
        end if
 
        call VecCopy(vsfm_mpp%soe%solver%soln, vsfm_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
