@@ -49,6 +49,26 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_c3       = 10.3d0   ! -
   PetscReal , parameter :: pine_kmax     = 1.2d-6   ! s
 
+  PetscInt  , parameter :: maple_nz       = 85       ! -
+  PetscReal , parameter :: maple_Asapwood = 0.0616d0 ! m^2
+  PetscReal , parameter :: maple_phis50   = -0.91d6  ! Pa
+  PetscReal , parameter :: maple_phi50    = -2.2d6   ! Pa
+  PetscReal , parameter :: maple_phi88    = -0.5d6   ! Pa
+  PetscReal , parameter :: maple_c1       = 1.2d6    ! Pa
+  PetscReal , parameter :: maple_c2       = 5.0d0    ! -
+  PetscReal , parameter :: maple_c3       = 10.3d0   ! -
+  PetscReal , parameter :: maple_kmax     = 1.2d-6   ! s
+
+  PetscInt  , parameter :: es_nz       = 85       ! -
+  PetscReal , parameter :: es_Asapwood = 0.0616d0 ! m^2
+  PetscReal , parameter :: es_phis50   = -0.91d6  ! Pa
+  PetscReal , parameter :: es_phi50    = -2.2d6   ! Pa
+  PetscReal , parameter :: es_phi88    = -0.5d6   ! Pa
+  PetscReal , parameter :: es_c1       = 1.2d6    ! Pa
+  PetscReal , parameter :: es_c2       = 5.0d0    ! -
+  PetscReal , parameter :: es_c3       = 10.3d0   ! -
+  PetscReal , parameter :: es_kmax     = 1.2d-6   ! s
+
   ! Parameters for root length density = length-of-root/volume-of-soil  [m_root/m^3_soil]
   PetscInt , parameter :: oak_root_nz        = 15
   PetscReal, parameter :: oak_root_qz        = 3.d0         ! [-]
@@ -85,6 +105,42 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_axi_root_phi88= -0.5d6   !
   PetscReal , parameter :: pine_axi_root_c1   = 1.2d6    !
   PetscReal , parameter :: pine_axi_root_c2   = 5.0d0    ! -
+
+  PetscInt , parameter :: maple_root_nz        = 60
+  PetscReal, parameter :: maple_root_qz        = 3.d0         ! [-]
+  PetscReal, parameter :: maple_root_d         = 7.d0         ! [m]
+  PetscReal, parameter :: maple_root_rld0      = 4.d4         ! [m/m^3]
+  PetscReal, parameter :: maple_root_radius    = 2.d-2        ! [m]
+
+  PetscReal , parameter :: maple_rad_root_kmax = 1.6d-6   !
+  PetscReal , parameter :: maple_rad_root_phi50= -2.5d6   !
+  PetscReal , parameter :: maple_rad_root_phi88= -0.5d6   !
+  PetscReal , parameter :: maple_rad_root_c1   = 1.2d6    !
+  PetscReal , parameter :: maple_rad_root_c2   = 5.0d0    ! -
+
+  PetscReal , parameter :: maple_axi_root_kmax = 1.6d-6   !
+  PetscReal , parameter :: maple_axi_root_phi50= -2.5d6   !
+  PetscReal , parameter :: maple_axi_root_phi88= -0.5d6   !
+  PetscReal , parameter :: maple_axi_root_c1   = 1.2d6    !
+  PetscReal , parameter :: maple_axi_root_c2   = 5.0d0    ! -
+
+  PetscInt , parameter :: es_root_nz        = 60
+  PetscReal, parameter :: es_root_qz        = 3.d0         ! [-]
+  PetscReal, parameter :: es_root_d         = 7.d0         ! [m]
+  PetscReal, parameter :: es_root_rld0      = 4.d4         ! [m/m^3]
+  PetscReal, parameter :: es_root_radius    = 2.d-2        ! [m]
+
+  PetscReal , parameter :: es_rad_root_kmax = 1.6d-6   !
+  PetscReal , parameter :: es_rad_root_phi50= -2.5d6   !
+  PetscReal , parameter :: es_rad_root_phi88= -0.5d6   !
+  PetscReal , parameter :: es_rad_root_c1   = 1.2d6    !
+  PetscReal , parameter :: es_rad_root_c2   = 5.0d0    ! -
+
+  PetscReal , parameter :: es_axi_root_kmax = 1.6d-6   !
+  PetscReal , parameter :: es_axi_root_phi50= -2.5d6   !
+  PetscReal , parameter :: es_axi_root_phi88= -0.5d6   !
+  PetscReal , parameter :: es_axi_root_c1   = 1.2d6    !
+  PetscReal , parameter :: es_axi_root_c2   = 5.0d0    ! -
 
   PetscInt , parameter :: soil_nz         = 60
   PetscReal, parameter :: soil_perm       = 6.83d-09      ! [m^2]
@@ -180,30 +236,30 @@ contains
 
     E_IDX = 1; M_IDX = 2; O_IDX = 3; P_IDX = 4
 
-    nz             (E_IDX) = 110                 ; nz             (M_IDX) = 110                 ; nz             (O_IDX) = 110                ; nz             (P_IDX) = 110                 ; 
-    Asapwood       (E_IDX) = pine_Asapwood       ; Asapwood       (M_IDX) = pine_Asapwood       ; Asapwood       (O_IDX) = oak_Asapwood       ; Asapwood       (P_IDX) = pine_Asapwood       ; 
-    phis50         (E_IDX) = pine_phis50         ; phis50         (M_IDX) = pine_phis50         ; phis50         (O_IDX) = oak_phis50         ; phis50         (P_IDX) = pine_phis50         ; 
-    phi50          (E_IDX) = pine_phi50          ; phi50          (M_IDX) = pine_phi50          ; phi50          (O_IDX) = oak_phi50          ; phi50          (P_IDX) = pine_phi50          ; 
-    phi88          (E_IDX) = pine_phi88          ; phi88          (M_IDX) = pine_phi88          ; phi88          (O_IDX) = oak_phi88          ; phi88          (P_IDX) = pine_phi88          ; 
-    c1             (E_IDX) = pine_c1             ; c1             (M_IDX) = pine_c1             ; c1             (O_IDX) = oak_c1             ; c1             (P_IDX) = pine_c1             ; 
-    c2             (E_IDX) = pine_c2             ; c2             (M_IDX) = pine_c2             ; c2             (O_IDX) = oak_c2             ; c2             (P_IDX) = pine_c2             ; 
-    c3             (E_IDX) = pine_c3             ; c3             (M_IDX) = pine_c3             ; c3             (O_IDX) = oak_c3             ; c3             (P_IDX) = pine_c3             ; 
-    kmax           (E_IDX) = pine_kmax           ; kmax           (M_IDX) = pine_kmax           ; kmax           (O_IDX) = oak_kmax           ; kmax           (P_IDX) = pine_kmax           ; 
-    root_nz        (E_IDX) = pine_root_nz        ; root_nz        (M_IDX) = pine_root_nz        ; root_nz        (O_IDX) = oak_root_nz        ; root_nz        (P_IDX) = pine_root_nz        ; 
-    root_qz        (E_IDX) = pine_root_qz        ; root_qz        (M_IDX) = pine_root_qz        ; root_qz        (O_IDX) = oak_root_qz        ; root_qz        (P_IDX) = pine_root_qz        ; 
-    root_d         (E_IDX) = pine_root_d         ; root_d         (M_IDX) = pine_root_d         ; root_d         (O_IDX) = oak_root_d         ; root_d         (P_IDX) = pine_root_d         ; 
-    root_rld0      (E_IDX) = pine_root_rld0      ; root_rld0      (M_IDX) = pine_root_rld0      ; root_rld0      (O_IDX) = oak_root_rld0      ; root_rld0      (P_IDX) = pine_root_rld0      ; 
-    root_radius    (E_IDX) = pine_root_radius    ; root_radius    (M_IDX) = pine_root_radius    ; root_radius    (O_IDX) = oak_root_radius    ; root_radius    (P_IDX) = pine_root_radius    ; 
-    rad_root_kmax  (E_IDX) = pine_rad_root_kmax  ; rad_root_kmax  (M_IDX) = pine_rad_root_kmax  ; rad_root_kmax  (O_IDX) = oak_rad_root_kmax  ; rad_root_kmax  (P_IDX) = pine_rad_root_kmax  ; 
-    rad_root_phi50 (E_IDX) = pine_rad_root_phi50 ; rad_root_phi50 (M_IDX) = pine_rad_root_phi50 ; rad_root_phi50 (O_IDX) = oak_rad_root_phi50 ; rad_root_phi50 (P_IDX) = pine_rad_root_phi50 ; 
-    rad_root_phi88 (E_IDX) = pine_rad_root_phi88 ; rad_root_phi88 (M_IDX) = pine_rad_root_phi88 ; rad_root_phi88 (O_IDX) = oak_rad_root_phi88 ; rad_root_phi88 (P_IDX) = pine_rad_root_phi88 ; 
-    rad_root_c1    (E_IDX) = pine_rad_root_c1    ; rad_root_c1    (M_IDX) = pine_rad_root_c1    ; rad_root_c1    (O_IDX) = oak_rad_root_c1    ; rad_root_c1    (P_IDX) = pine_rad_root_c1    ; 
-    rad_root_c2    (E_IDX) = pine_rad_root_c2    ; rad_root_c2    (M_IDX) = pine_rad_root_c2    ; rad_root_c2    (O_IDX) = oak_rad_root_c2    ; rad_root_c2    (P_IDX) = pine_rad_root_c2    ; 
-    axi_root_kmax  (E_IDX) = pine_axi_root_kmax  ; axi_root_kmax  (M_IDX) = pine_axi_root_kmax  ; axi_root_kmax  (O_IDX) = oak_axi_root_kmax  ; axi_root_kmax  (P_IDX) = pine_axi_root_kmax  ; 
-    axi_root_phi50 (E_IDX) = pine_axi_root_phi50 ; axi_root_phi50 (M_IDX) = pine_axi_root_phi50 ; axi_root_phi50 (O_IDX) = oak_axi_root_phi50 ; axi_root_phi50 (P_IDX) = pine_axi_root_phi50 ; 
-    axi_root_phi88 (E_IDX) = pine_axi_root_phi88 ; axi_root_phi88 (M_IDX) = pine_axi_root_phi88 ; axi_root_phi88 (O_IDX) = oak_axi_root_phi88 ; axi_root_phi88 (P_IDX) = pine_axi_root_phi88 ; 
-    axi_root_c1    (E_IDX) = pine_axi_root_c1    ; axi_root_c1    (M_IDX) = pine_axi_root_c1    ; axi_root_c1    (O_IDX) = oak_axi_root_c1    ; axi_root_c1    (P_IDX) = pine_axi_root_c1    ; 
-    axi_root_c2    (E_IDX) = pine_axi_root_c2    ; axi_root_c2    (M_IDX) = pine_axi_root_c2    ; axi_root_c2    (O_IDX) = oak_axi_root_c2    ; axi_root_c2    (P_IDX) = pine_axi_root_c2    ; 
+    nz             (E_IDX) = 110               ; nz             (M_IDX) = 110                  ; nz             (O_IDX) = 110                ; nz             (P_IDX) = 110                 ;
+    Asapwood       (E_IDX) = es_Asapwood       ; Asapwood       (M_IDX) = maple_Asapwood       ; Asapwood       (O_IDX) = oak_Asapwood       ; Asapwood       (P_IDX) = pine_Asapwood       ;
+    phis50         (E_IDX) = es_phis50         ; phis50         (M_IDX) = maple_phis50         ; phis50         (O_IDX) = oak_phis50         ; phis50         (P_IDX) = pine_phis50         ;
+    phi50          (E_IDX) = es_phi50          ; phi50          (M_IDX) = maple_phi50          ; phi50          (O_IDX) = oak_phi50          ; phi50          (P_IDX) = pine_phi50          ;
+    phi88          (E_IDX) = es_phi88          ; phi88          (M_IDX) = maple_phi88          ; phi88          (O_IDX) = oak_phi88          ; phi88          (P_IDX) = pine_phi88          ;
+    c1             (E_IDX) = es_c1             ; c1             (M_IDX) = maple_c1             ; c1             (O_IDX) = oak_c1             ; c1             (P_IDX) = pine_c1             ;
+    c2             (E_IDX) = es_c2             ; c2             (M_IDX) = maple_c2             ; c2             (O_IDX) = oak_c2             ; c2             (P_IDX) = pine_c2             ;
+    c3             (E_IDX) = es_c3             ; c3             (M_IDX) = maple_c3             ; c3             (O_IDX) = oak_c3             ; c3             (P_IDX) = pine_c3             ;
+    kmax           (E_IDX) = es_kmax           ; kmax           (M_IDX) = maple_kmax           ; kmax           (O_IDX) = oak_kmax           ; kmax           (P_IDX) = pine_kmax           ;
+    root_nz        (E_IDX) = es_root_nz        ; root_nz        (M_IDX) = maple_root_nz        ; root_nz        (O_IDX) = oak_root_nz        ; root_nz        (P_IDX) = pine_root_nz        ;
+    root_qz        (E_IDX) = es_root_qz        ; root_qz        (M_IDX) = maple_root_qz        ; root_qz        (O_IDX) = oak_root_qz        ; root_qz        (P_IDX) = pine_root_qz        ;
+    root_d         (E_IDX) = es_root_d         ; root_d         (M_IDX) = maple_root_d         ; root_d         (O_IDX) = oak_root_d         ; root_d         (P_IDX) = pine_root_d         ;
+    root_rld0      (E_IDX) = es_root_rld0      ; root_rld0      (M_IDX) = maple_root_rld0      ; root_rld0      (O_IDX) = oak_root_rld0      ; root_rld0      (P_IDX) = pine_root_rld0      ;
+    root_radius    (E_IDX) = es_root_radius    ; root_radius    (M_IDX) = maple_root_radius    ; root_radius    (O_IDX) = oak_root_radius    ; root_radius    (P_IDX) = pine_root_radius    ;
+    rad_root_kmax  (E_IDX) = es_rad_root_kmax  ; rad_root_kmax  (M_IDX) = maple_rad_root_kmax  ; rad_root_kmax  (O_IDX) = oak_rad_root_kmax  ; rad_root_kmax  (P_IDX) = pine_rad_root_kmax  ;
+    rad_root_phi50 (E_IDX) = es_rad_root_phi50 ; rad_root_phi50 (M_IDX) = maple_rad_root_phi50 ; rad_root_phi50 (O_IDX) = oak_rad_root_phi50 ; rad_root_phi50 (P_IDX) = pine_rad_root_phi50 ;
+    rad_root_phi88 (E_IDX) = es_rad_root_phi88 ; rad_root_phi88 (M_IDX) = maple_rad_root_phi88 ; rad_root_phi88 (O_IDX) = oak_rad_root_phi88 ; rad_root_phi88 (P_IDX) = pine_rad_root_phi88 ;
+    rad_root_c1    (E_IDX) = es_rad_root_c1    ; rad_root_c1    (M_IDX) = maple_rad_root_c1    ; rad_root_c1    (O_IDX) = oak_rad_root_c1    ; rad_root_c1    (P_IDX) = pine_rad_root_c1    ;
+    rad_root_c2    (E_IDX) = es_rad_root_c2    ; rad_root_c2    (M_IDX) = maple_rad_root_c2    ; rad_root_c2    (O_IDX) = oak_rad_root_c2    ; rad_root_c2    (P_IDX) = pine_rad_root_c2    ;
+    axi_root_kmax  (E_IDX) = es_axi_root_kmax  ; axi_root_kmax  (M_IDX) = maple_axi_root_kmax  ; axi_root_kmax  (O_IDX) = oak_axi_root_kmax  ; axi_root_kmax  (P_IDX) = pine_axi_root_kmax  ;
+    axi_root_phi50 (E_IDX) = es_axi_root_phi50 ; axi_root_phi50 (M_IDX) = maple_axi_root_phi50 ; axi_root_phi50 (O_IDX) = oak_axi_root_phi50 ; axi_root_phi50 (P_IDX) = pine_axi_root_phi50 ;
+    axi_root_phi88 (E_IDX) = es_axi_root_phi88 ; axi_root_phi88 (M_IDX) = maple_axi_root_phi88 ; axi_root_phi88 (O_IDX) = oak_axi_root_phi88 ; axi_root_phi88 (P_IDX) = pine_axi_root_phi88 ;
+    axi_root_c1    (E_IDX) = es_axi_root_c1    ; axi_root_c1    (M_IDX) = maple_axi_root_c1    ; axi_root_c1    (O_IDX) = oak_axi_root_c1    ; axi_root_c1    (P_IDX) = pine_axi_root_c1    ;
+    axi_root_c2    (E_IDX) = es_axi_root_c2    ; axi_root_c2    (M_IDX) = maple_axi_root_c2    ; axi_root_c2    (O_IDX) = oak_axi_root_c2    ; axi_root_c2    (P_IDX) = pine_axi_root_c2    ;
 
 end subroutine SetUpTreeProperties
 
@@ -2874,7 +2930,7 @@ end subroutine SetUpTreeProperties
           end do
        end if
     end do
-    
+
     ! Set downwind values
     set_upwind_auxvar(:) = PETSC_FALSE
     call VSFMMPPSetSaturationFunctionAuxVarConn(vsfm_mpp , &
