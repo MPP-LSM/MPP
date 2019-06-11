@@ -70,9 +70,10 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: es_kmax     = 1.2d-6   ! s
 
   ! Parameters for root length density = length-of-root/volume-of-soil  [m_root/m^3_soil]
-  PetscInt , parameter :: oak_root_nz        = 15
+  PetscInt , parameter :: oak_root_nz        = 60
   PetscReal, parameter :: oak_root_qz        = 3.d0         ! [-]
-  PetscReal, parameter :: oaK_root_d         = 3.d0         ! [m]
+  !PetscReal, parameter :: oaK_root_d         = 3.d0         ! [m]
+  PetscReal, parameter :: oaK_root_d         = 7.d0         ! [m]
   PetscReal, parameter :: oak_root_rld0      = 4.d4         ! [m/m^3]
   PetscReal, parameter :: oak_root_radius    = 2.d-3        ! [m]
 
@@ -106,7 +107,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_axi_root_c1   = 1.2d6    !
   PetscReal , parameter :: pine_axi_root_c2   = 5.0d0    ! -
 
-  PetscInt , parameter :: maple_root_nz        = 60
+  PetscInt , parameter :: maple_root_nz        = 30
   PetscReal, parameter :: maple_root_qz        = 3.d0         ! [-]
   PetscReal, parameter :: maple_root_d         = 7.d0         ! [m]
   PetscReal, parameter :: maple_root_rld0      = 4.d4         ! [m/m^3]
@@ -475,8 +476,8 @@ end subroutine SetUpTreeProperties
     if ( trim(problem_type) == 'oak_spac'      .or. &
          trim(problem_type) == 'pine_spac'     .or. &
          trim(problem_type) == 'oak_pine_spac' .or. &
-         trim(problem_type) == 'soil'          .or. &
-         trim(problem_type) == 'emop_spac'           &
+         trim(problem_type) == 'soil'               &
+         !trim(problem_type) == 'emop_spac'           &
          !trim(problem_type) == 'e_spac'        .or. &
          !trim(problem_type) == 'm_spac'        .or. &
          !trim(problem_type) == 'o_spac'        .or. &
@@ -1796,7 +1797,9 @@ end subroutine SetUpTreeProperties
        call add_ss_to_goveqns_for_single_tree(GE_m_xylm)
        call add_ss_to_goveqns_for_single_tree(GE_o_xylm)
        call add_ss_to_goveqns_for_single_tree(GE_p_xylm)
-       call add_ss_for_soil(GE_soil)
+       if (soil_ss_specified) call add_ss_for_soil(GE_soil)
+       if (soil_bc_specified .or. sm_bc_specified) call add_top_bc_to_soil_goveqn(GE_soil)
+       call add_bottom_bc_to_soil_goveqn(GE_SOIL)
 
     case ('e_spac')
        call add_ss_to_goveqns_for_single_tree(GE_e_xylm)
@@ -4039,7 +4042,7 @@ end subroutine SetUpTreeProperties
     call vsfm_mpp%meshes(mesh_id)%conditions_conn_set_list%GetConnectionSet(region_id, conn_set)
 
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
-         name='Root BC in xylem equation',         &
+         name='Root BC in soil equation',         &
          unit='Pa',                                &
          num_other_goveqs=num_other_goveqns,       &
          id_of_other_goveqs=ieqn_others,           &
