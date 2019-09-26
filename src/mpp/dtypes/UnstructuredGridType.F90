@@ -241,7 +241,7 @@ contains
          PETSC_DECIDE,ierr);CHKERRQ(ierr)
     call VecSetFromOptions(conn_info_natural,ierr);CHKERRQ(ierr)
 
-    call VecScatterCreate(conn_info_old,PETSC_NULL_VEC,conn_info_natural,is_scatter, &
+    call VecScatterCreate(conn_info_old,PETSC_NULL_IS,conn_info_natural,is_scatter, &
          vec_scatter,ierr);CHKERRQ(ierr)
     call ISDestroy(is_scatter,ierr);CHKERRQ(ierr)
 
