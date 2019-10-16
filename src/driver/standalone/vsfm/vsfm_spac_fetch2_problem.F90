@@ -30,7 +30,7 @@ module vsfm_spac_fetch2_problem
   !PetscReal , parameter :: oak_Asapwood = 0.0099d0  ! m^2
   PetscReal , parameter :: oak_Asapwood = 0.0255d0  ! m^2
   !PetscReal , parameter :: oak_Acrown   = 28.8d0    ! m^2
-  PetscReal , parameter :: oak_phis50   = -0.91d6   ! Pa
+  PetscReal , parameter :: oak_phis50   = -0.35d6   ! Pa
   PetscReal , parameter :: oak_phi50    = -2.5d6    ! Pa
   PetscReal , parameter :: oak_phi88    = -0.5d6    ! Pa
   PetscReal , parameter :: oak_c1       = 1.7d6     ! Pa
@@ -43,7 +43,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_Asapwood = 0.0142d0 ! m^2
   !PetscReal , parameter :: pine_Acrown   = 46.1d0   ! m^2
   !PetscReal , parameter :: pine_phis50   = -0.18d6  ! Pa 
-  PetscReal , parameter :: pine_phis50   = -0.91d6  ! Pa
+  PetscReal , parameter :: pine_phis50   = -0.18d6  ! Pa
   PetscReal , parameter :: pine_phi50    = -2.2d6   ! Pa
   PetscReal , parameter :: pine_phi88    = -0.5d6   ! Pa
   PetscReal , parameter :: pine_c1       = 1.2d6    ! Pa
@@ -53,7 +53,7 @@ module vsfm_spac_fetch2_problem
 
   PetscInt  , parameter :: maple_nz       = 85       ! -
   PetscReal , parameter :: maple_Asapwood = 0.0188d0 ! m^2
-  PetscReal , parameter :: maple_phis50   = -0.71d6  ! Pa
+  PetscReal , parameter :: maple_phis50   = -0.25d6  ! Pa
   PetscReal , parameter :: maple_phi50    = -2.2d6   ! Pa
   PetscReal , parameter :: maple_phi88    = -0.5d6   ! Pa
   PetscReal , parameter :: maple_c1       = 1.2d6    ! Pa
@@ -63,7 +63,7 @@ module vsfm_spac_fetch2_problem
 
   PetscInt  , parameter :: es_nz       = 85       ! -
   PetscReal , parameter :: es_Asapwood = 0.04d0 ! m^2
-  PetscReal , parameter :: es_phis50   = -0.71d6  ! Pa
+  PetscReal , parameter :: es_phis50   = -0.3d6  ! Pa
   PetscReal , parameter :: es_phi50    = -2.2d6   ! Pa
   PetscReal , parameter :: es_phi88    = -0.5d6   ! Pa
   PetscReal , parameter :: es_c1       = 1.2d6    ! Pa
@@ -165,6 +165,8 @@ module vsfm_spac_fetch2_problem
   
   PetscInt   :: nz(4)
   PetscReal  :: Asapwood(4)
+  PetscReal  :: xylem_porosity(4)
+  PetscReal  :: root_porosity(4)
   PetscReal  :: phis50(4)
   PetscReal  :: phi50(4)
   PetscReal  :: phi88(4)
@@ -242,6 +244,12 @@ contains
 
     nz             (E_IDX) = 110               ; nz             (M_IDX) = 110                  ; nz             (O_IDX) = 110                ; nz             (P_IDX) = 110                 ;
     Asapwood       (E_IDX) = es_Asapwood       ; Asapwood       (M_IDX) = maple_Asapwood       ; Asapwood       (O_IDX) = oak_Asapwood       ; Asapwood       (P_IDX) = pine_Asapwood       ;
+    !xylem_porosity (E_IDX) = porosity          ; xylem_porosity (M_IDX) = porosity             ; xylem_porosity (O_IDX) = porosity           ; xylem_porosity (P_IDX) = porosity            ;
+    !root_porosity  (E_IDX) = porosity          ; root_porosity  (M_IDX) = porosity             ; root_porosity  (O_IDX) = porosity           ; root_porosity  (P_IDX) = porosity            ;
+    !xylem_porosity (E_IDX) = 0.d0              ; xylem_porosity (M_IDX) = 0.d0                 ; xylem_porosity (O_IDX) = 0.d0               ; xylem_porosity (P_IDX) = 0.d0            ;
+    !root_porosity  (E_IDX) = 0.d0              ; root_porosity  (M_IDX) = 0.d0                 ; root_porosity  (O_IDX) = 0.d0               ; root_porosity  (P_IDX) = 0.d0            ;
+    xylem_porosity (E_IDX) = 1.d0              ; xylem_porosity (M_IDX) = 1.d0                 ; xylem_porosity (O_IDX) = 1.d0               ; xylem_porosity (P_IDX) = 1.d0            ;
+    root_porosity  (E_IDX) = 1.d0              ; root_porosity  (M_IDX) = 1.d0                 ; root_porosity  (O_IDX) = 1.d0               ; root_porosity  (P_IDX) = 1.d0            ;
     phis50         (E_IDX) = es_phis50         ; phis50         (M_IDX) = maple_phis50         ; phis50         (O_IDX) = oak_phis50         ; phis50         (P_IDX) = pine_phis50         ;
     phi50          (E_IDX) = es_phi50          ; phi50          (M_IDX) = maple_phi50          ; phi50          (O_IDX) = oak_phi50          ; phi50          (P_IDX) = pine_phi50          ;
     phi88          (E_IDX) = es_phi88          ; phi88          (M_IDX) = maple_phi88          ; phi88          (O_IDX) = oak_phi88          ; phi88          (P_IDX) = pine_phi88          ;
@@ -1389,6 +1397,7 @@ end subroutine SetUpTreeProperties
     PetscReal        , pointer :: conn_area(:)
     PetscInt         , pointer :: conn_type(:)
     PetscReal        , pointer :: conn_unit_vec(:,:)
+    PetscReal                  :: local_Asapwood
 
     select case(trim(tree_name))
     case ('oak')
@@ -1412,6 +1421,7 @@ end subroutine SetUpTreeProperties
        dd     = root_d(IDX)
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
+       local_Asapwood = Asapwood(IDX)
 
     case ('m')
        IDX    = M_IDX
@@ -1420,6 +1430,7 @@ end subroutine SetUpTreeProperties
        dd     = root_d(IDX)
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
+       local_Asapwood = Asapwood(IDX)
 
     case ('o')
        IDX    = O_IDX
@@ -1428,6 +1439,7 @@ end subroutine SetUpTreeProperties
        dd     = root_d(IDX)
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
+       local_Asapwood = Asapwood(IDX)
 
     case ('p')
        IDX    = P_IDX
@@ -1436,6 +1448,7 @@ end subroutine SetUpTreeProperties
        dd     = root_d(IDX)
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
+       local_Asapwood = Asapwood(IDX)
 
     case default
        write(*,*)'Unable to set root mesh for tree_name = '//trim(tree_name)
@@ -1518,7 +1531,7 @@ end subroutine SetUpTreeProperties
        conn_id_dn(kk)   = kk
        conn_dist_up(kk) = 0.d0
        conn_dist_dn(kk) = dz_soil/2.d0
-       conn_area(kk)    = pine_Asapwood!PI*(radius**2.d0)
+       conn_area(kk)    = local_Asapwood!PI*(radius**2.d0)
     end do
 
     call mesh%CreateAndAddConnectionSet( &
@@ -1535,7 +1548,7 @@ end subroutine SetUpTreeProperties
 
        conn_dist_up(kk) = dz_soil/2.d0
        conn_dist_dn(kk) = dz_soil/2.d0
-       conn_area(kk)    = pine_Asapwood!PI*(radius**2.d0)
+       conn_area(kk)    = local_Asapwood!PI*(radius**2.d0)
     end do
 
     call mesh%CreateAndAddConnectionSet( &
@@ -2319,7 +2332,7 @@ end subroutine SetUpTreeProperties
           call set_material_properties_for_single_tree(   &
                ieqn, &
                nz(IDX), &
-               porosity, &
+               xylem_porosity(IDX), &
                phi88(IDX), &
                phi50(IDX),    &
                kmax(IDX), &
@@ -2348,7 +2361,7 @@ end subroutine SetUpTreeProperties
           call set_material_properties_for_single_tree(   &
                ieqn, &
                root_nz(IDX), &
-               porosity, &
+               root_porosity(IDX), &
                axi_root_phi88(IDX), &
                axi_root_phi50(IDX), &
                axi_root_kmax(IDX), &
