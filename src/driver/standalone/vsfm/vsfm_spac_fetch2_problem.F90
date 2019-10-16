@@ -1471,6 +1471,7 @@ end subroutine SetUpTreeProperties
        zc_1d(kk)    = -(kk-1)*dz_soil - dz_soil/2.0
 
        root_len_den = rld0 * (1.d0 - abs(zc_1d(kk))/dd)*exp(-qz*abs(zc_1d(kk))/dd)
+       root_len_den = rld0 * exp(-qz*abs(zc_1d(kk))/dd)
        root_len     = root_len_den * & ! [m/m^3]
                       (dx*dy*dz_soil)       ! [m^3]
 
@@ -1511,11 +1512,12 @@ end subroutine SetUpTreeProperties
 
     do kk = 1, nz
        root_len_den     = rld0 * (1.d0 - abs(zc_1d(kk))/dd)*exp(-qz*abs(zc_1d(kk))/dd)
+       root_len_den     = rld0 * exp(-qz*abs(zc_1d(kk))/dd)
        conn_id_up(kk)   = 0
        conn_id_dn(kk)   = kk
        conn_dist_up(kk) = 0.d0
        conn_dist_dn(kk) = (PI*root_len_den)**(-0.5d0)
-       conn_area(kk)    = pine_Asapwood!area(kk)
+       conn_area(kk)    = area(kk)
     end do
 
     call mesh%CreateAndAddConnectionSet( &
@@ -2930,6 +2932,7 @@ end subroutine SetUpTreeProperties
              zc_1d = -(kk-1)*dz_soil - dz_soil/2.0
 
              root_len_den = rld0 * (1.d0 - abs(zc_1d)/dd)*exp(-qz*abs(zc_1d)/dd)
+             root_len_den = rld0 * exp(-qz*abs(zc_1d)/dd)
 
              droot = (PI*root_len_den)**(-0.5d0)
 
@@ -3147,6 +3150,7 @@ end subroutine SetUpTreeProperties
        zc_1d = -(kk-1)*dz_soil - dz_soil/2.0
 
        root_len_den = rld0 * (1.d0 - abs(zc_1d)/dd)*exp(-qz*abs(zc_1d)/dd)
+       root_len_den = rld0 * exp(-qz*abs(zc_1d)/dd)
 
        droot = (PI*root_len_den)**(-0.5d0)
 
