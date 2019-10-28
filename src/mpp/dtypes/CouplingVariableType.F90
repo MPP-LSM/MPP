@@ -209,6 +209,6 @@ contains
 
   end subroutine CouplingVariableListDestroy
 
-#endif USE_PETSC_LIB
+#endif
 
 end module CouplingVariableType
