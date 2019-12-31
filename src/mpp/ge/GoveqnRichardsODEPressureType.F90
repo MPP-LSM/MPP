@@ -3280,8 +3280,9 @@ contains
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
              if (sum_conn> size(param_1)) then
-                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
-                write(iulog,*) sum_conn,size(param_1)
+                write(iulog,*) 'AUXVAR_CONN_BC: No. of values for saturation function is not equal to no. connections.'
+                write(iulog,*) 'sum_conn     : ',sum_conn
+                write(iulog,*) 'size(param_1): ',size(param_1)
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              endif
 
@@ -3355,7 +3356,7 @@ contains
              sum_conn = sum_conn + 1
 
              if (sum_conn > size(param_1)) then
-                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                write(iulog,*) 'No. of values for relative permeability function is not equal to no. connections.'
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              end if
 
@@ -3391,7 +3392,7 @@ contains
              ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
 
              if (sum_conn> size(param_1)) then
-                write(iulog,*) 'No. of values for saturation function is not equal to no. connections.'
+                write(iulog,*) 'AUXVAR_CONN_BC: No. of values for relative permeability is not equal to no. connections.'
                 write(iulog,*) sum_conn,size(param_1)
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              endif
