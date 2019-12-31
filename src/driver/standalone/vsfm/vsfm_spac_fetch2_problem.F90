@@ -43,7 +43,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_Asapwood = 0.0142d0 ! m^2
   !PetscReal , parameter :: pine_Acrown   = 46.1d0   ! m^2
   !PetscReal , parameter :: pine_phis50   = -0.18d6  ! Pa 
-  PetscReal , parameter :: pine_phis50   = -0.18d6  ! Pa
+  PetscReal , parameter :: pine_phis50   = -0.25d6  ! Pa
   PetscReal , parameter :: pine_phi50    = -2.2d6   ! Pa
   PetscReal , parameter :: pine_phi88    = -0.5d6   ! Pa
   PetscReal , parameter :: pine_c1       = 1.2d6    ! Pa
@@ -229,6 +229,8 @@ module vsfm_spac_fetch2_problem
   PetscBool          :: soil_bc_specified
   PetscBool          :: sm_bc_specified
   PetscBool          :: soil_ss_specified
+  PetscBool          :: radial_root_system
+  PetscBool          :: no_capacitance
 
   public :: run_vsfm_spac_fetch2_problem
   
@@ -246,10 +248,13 @@ contains
     Asapwood       (E_IDX) = es_Asapwood       ; Asapwood       (M_IDX) = maple_Asapwood       ; Asapwood       (O_IDX) = oak_Asapwood       ; Asapwood       (P_IDX) = pine_Asapwood       ;
     !xylem_porosity (E_IDX) = porosity          ; xylem_porosity (M_IDX) = porosity             ; xylem_porosity (O_IDX) = porosity           ; xylem_porosity (P_IDX) = porosity            ;
     !root_porosity  (E_IDX) = porosity          ; root_porosity  (M_IDX) = porosity             ; root_porosity  (O_IDX) = porosity           ; root_porosity  (P_IDX) = porosity            ;
-    !xylem_porosity (E_IDX) = 0.d0              ; xylem_porosity (M_IDX) = 0.d0                 ; xylem_porosity (O_IDX) = 0.d0               ; xylem_porosity (P_IDX) = 0.d0            ;
-    !root_porosity  (E_IDX) = 0.d0              ; root_porosity  (M_IDX) = 0.d0                 ; root_porosity  (O_IDX) = 0.d0               ; root_porosity  (P_IDX) = 0.d0            ;
-    xylem_porosity (E_IDX) = 1.d0              ; xylem_porosity (M_IDX) = 1.d0                 ; xylem_porosity (O_IDX) = 1.d0               ; xylem_porosity (P_IDX) = 1.d0            ;
-    root_porosity  (E_IDX) = 1.d0              ; root_porosity  (M_IDX) = 1.d0                 ; root_porosity  (O_IDX) = 1.d0               ; root_porosity  (P_IDX) = 1.d0            ;
+    if (no_capacitance) then
+      xylem_porosity (E_IDX) = 0.d0              ; xylem_porosity (M_IDX) = 0.d0                 ; xylem_porosity (O_IDX) = 0.d0               ; xylem_porosity (P_IDX) = 0.d0            ;
+      root_porosity  (E_IDX) = 0.d0              ; root_porosity  (M_IDX) = 0.d0                 ; root_porosity  (O_IDX) = 0.d0               ; root_porosity  (P_IDX) = 0.d0            ;
+    else
+      xylem_porosity (E_IDX) = 1.d0              ; xylem_porosity (M_IDX) = 1.d0                 ; xylem_porosity (O_IDX) = 1.d0               ; xylem_porosity (P_IDX) = 1.d0            ;
+      root_porosity  (E_IDX) = 1.d0              ; root_porosity  (M_IDX) = 1.d0                 ; root_porosity  (O_IDX) = 1.d0               ; root_porosity  (P_IDX) = 1.d0            ;
+    endif
     phis50         (E_IDX) = es_phis50         ; phis50         (M_IDX) = maple_phis50         ; phis50         (O_IDX) = oak_phis50         ; phis50         (P_IDX) = pine_phis50         ;
     phi50          (E_IDX) = es_phi50          ; phi50          (M_IDX) = maple_phi50          ; phi50          (O_IDX) = oak_phi50          ; phi50          (P_IDX) = pine_phi50          ;
     phi88          (E_IDX) = es_phi88          ; phi88          (M_IDX) = maple_phi88          ; phi88          (O_IDX) = oak_phi88          ; phi88          (P_IDX) = pine_phi88          ;
@@ -362,6 +367,8 @@ end subroutine SetUpTreeProperties
     soil_bc_specified      = PETSC_FALSE
     soil_ss_specified      = PETSC_FALSE
     sm_bc_specified        = PETSC_FALSE
+    radial_root_system     = PETSC_FALSE
+    no_capacitance         = PETSC_TRUE
 
     !
     call SetUpTreeProperties()
@@ -423,6 +430,12 @@ end subroutine SetUpTreeProperties
 
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-problem_type', problem_type, flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-radial_root_system', radial_root_system, flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-no_capacitance', no_capacitance, flg, ierr)
 
     if (flg) then
        select case(trim(problem_type))
@@ -1526,38 +1539,57 @@ end subroutine SetUpTreeProperties
          conn_dist_up, conn_dist_dn,     &
          conn_area, conn_type, conn_unit_vec)
 
-    ! Add connection set for root-xylem BC
-    nconn = 1
-    do kk = 1, nconn
-       conn_id_up(kk)   = 0
-       conn_id_dn(kk)   = kk
-       conn_dist_up(kk) = 0.d0
-       conn_dist_dn(kk) = dz_soil/2.d0
-       conn_area(kk)    = local_Asapwood!PI*(radius**2.d0)
-    end do
+    if (radial_root_system) then
+       
+       ! Add connection set for root-xylem BC
+       nconn = nz
+       do kk = 1, nconn
+          conn_id_up(kk)   = 0
+          conn_id_dn(kk)   = kk
+          conn_dist_up(kk) = 0.d0
+          conn_dist_dn(kk) = dz_soil/2.d0 + (kk-1)*dz_soil
+          conn_area(kk)    = local_Asapwood!PI*(radius**2.d0)
+       end do
 
-    call mesh%CreateAndAddConnectionSet( &
-         CONN_SET_CONDITIONS,            &
-         nconn,  conn_id_up, conn_id_dn, &
-         conn_dist_up, conn_dist_dn,     &
-         conn_area, conn_type, conn_unit_vec)
+       call mesh%CreateAndAddConnectionSet( &
+            CONN_SET_CONDITIONS,            &
+            nconn,  conn_id_up, conn_id_dn, &
+            conn_dist_up, conn_dist_dn,     &
+            conn_area, conn_type, conn_unit_vec)
+    else
+       ! Add connection set for root-xylem BC
+       nconn = 1
+       do kk = 1, nconn
+          conn_id_up(kk)   = 0
+          conn_id_dn(kk)   = kk
+          conn_dist_up(kk) = 0.d0
+          conn_dist_dn(kk) = dz_soil/2.d0
+          conn_area(kk)    = local_Asapwood!PI*(radius**2.d0)
+       end do
 
-    ! Add internal connection set
-    nconn = nz-1
-    do kk = 1, nz-1
-       conn_id_up(kk)   = kk
-       conn_id_dn(kk)   = kk+1
+       call mesh%CreateAndAddConnectionSet( &
+            CONN_SET_CONDITIONS,            &
+            nconn,  conn_id_up, conn_id_dn, &
+            conn_dist_up, conn_dist_dn,     &
+            conn_area, conn_type, conn_unit_vec)
 
-       conn_dist_up(kk) = dz_soil/2.d0
-       conn_dist_dn(kk) = dz_soil/2.d0
-       conn_area(kk)    = local_Asapwood!PI*(radius**2.d0)
-    end do
+       ! Add internal connection set
+       nconn = nz-1
+       do kk = 1, nz-1
+          conn_id_up(kk)   = kk
+          conn_id_dn(kk)   = kk+1
 
-    call mesh%CreateAndAddConnectionSet( &
-         CONN_SET_INTERNAL,              &
-         nconn,  conn_id_up, conn_id_dn, &
-         conn_dist_up, conn_dist_dn,     &
-         conn_area, conn_type)
+          conn_dist_up(kk) = dz_soil/2.d0
+          conn_dist_dn(kk) = dz_soil/2.d0
+          conn_area(kk)    = local_Asapwood!PI*(radius**2.d0)
+       end do
+
+       call mesh%CreateAndAddConnectionSet( &
+            CONN_SET_INTERNAL,              &
+            nconn,  conn_id_up, conn_id_dn, &
+            conn_dist_up, conn_dist_dn,     &
+            conn_area, conn_type)
+    endif
 
     call vsfm_mpp%AddMesh(imesh, mesh)
 
@@ -3039,7 +3071,7 @@ end subroutine SetUpTreeProperties
     PetscReal, pointer :: dn_weibull_d_val (:)
     PetscReal, pointer :: dn_conductance   (:)
     PetscReal          :: phi88, phi50, c1, c2, kmax
-    PetscInt :: kk
+    PetscInt :: kk, nxylem_conns
     PetscReal :: zc_1d, qz, dd, rld0, root_len_den, droot
     PetscInt :: IDX
 
@@ -3118,7 +3150,13 @@ end subroutine SetUpTreeProperties
        write(*,*)'Unknown tree_name: ' //trim(tree_name)
     end select
     
-    nconns = ncells + 1
+    if (radial_root_system) then
+       nxylem_conns = ncells
+    else
+       nxylem_conns = 1
+    end if
+
+    nconns = ncells + nxylem_conns
     allocate(flux_type          (nconns))
     allocate(conductance_type   (nconns))
     allocate(set_upwind_auxvar  (nconns))
@@ -3133,18 +3171,22 @@ end subroutine SetUpTreeProperties
     allocate(dn_relperm_type    (nconns))
 
     ! Set values for all BCs
-    flux_type(1)        = DARCY_FLUX_TYPE
-    flux_type(2:nconns) = CONDUCTANCE_FLUX_TYPE
-    conductance_type(1) = 0
-    conductance_type(2:nconns) = CONDUCTANCE_MANOLI_TYPE
+    flux_type(1             :nxylem_conns) = DARCY_FLUX_TYPE
+    flux_type(nxylem_conns+1:nconns      ) = CONDUCTANCE_FLUX_TYPE
 
-    dn_alpha        (2:nconns) = phi88
-    dn_lambda       (2:nconns) = phi50
-    dn_residual_sat (2:nconns) = 0.d0
-    dn_satfunc_type (2:nconns) = SAT_FUNC_FETCH2
-    dn_weibull_d_val(2:nconns) = c1
-    dn_weibull_c_val(2:nconns) = c2
-    dn_relperm_type (2:nconns) = RELPERM_FUNC_WEIBULL
+    conductance_type(1             :nxylem_conns) = 0
+    conductance_type(nxylem_conns+1:nconns      ) = CONDUCTANCE_MANOLI_TYPE
+
+    dn_satfunc_type (1             :nxylem_conns) = 0
+    dn_relperm_type (1             :nxylem_conns) = 0
+
+    dn_alpha        (nxylem_conns+1:nconns) = phi88
+    dn_lambda       (nxylem_conns+1:nconns) = phi50
+    dn_residual_sat (nxylem_conns+1:nconns) = 0.d0
+    dn_satfunc_type (nxylem_conns+1:nconns) = SAT_FUNC_FETCH2
+    dn_weibull_d_val(nxylem_conns+1:nconns) = c1
+    dn_weibull_c_val(nxylem_conns+1:nconns) = c2
+    dn_relperm_type (nxylem_conns+1:nconns) = RELPERM_FUNC_WEIBULL
 
     do kk = 1, ncells
        zc_1d = -(kk-1)*dz_soil - dz_soil/2.0
@@ -3154,7 +3196,7 @@ end subroutine SetUpTreeProperties
 
        droot = (PI*root_len_den)**(-0.5d0)
 
-       dn_conductance(kk+1) = (kmax*vis/rho)/droot
+       dn_conductance(kk+nxylem_conns) = (kmax*vis/rho)/droot
     end do
 
     ! Set downwind values
@@ -3980,6 +4022,7 @@ end subroutine SetUpTreeProperties
     PetscInt                             :: mesh_id, region_id
     PetscInt                             :: GE_xylm, GE_root
     PetscInt                             :: ieqn
+    PetscInt                             :: iconn
     PetscInt                             :: num_other_goveqns
     PetscInt                             :: nz_local
     PetscInt                   , pointer :: ieqn_others(:)
@@ -4057,7 +4100,9 @@ end subroutine SetUpTreeProperties
     call vsfm_mpp%meshes(mesh_id)%conditions_conn_set_list%GetConnectionSet(region_id, conn_set)
 
     ! Change the downward id to be the last control volume in the column
-    call conn_set%conn(1)%SetIDDn(nz_local)
+    do iconn = 1,conn_set%num_connections
+       call conn_set%conn(iconn)%SetIDDn(nz_local)
+    end do
 
     call vsfm_mpp%soe%AddCouplingBCsInGovEqn(ieqn, &
          name='Root BC in xylem equation',         &
