@@ -243,6 +243,7 @@ contains
     DM, pointer                     :: dms(:)
     Vec, pointer                    :: X_subvecs(:)
     Mat, pointer                    :: B_submats(:,:)
+    PetscInt, pointer               :: B_submats_filled(:,:)
     class(goveqn_base_type),pointer :: cur_goveq_1
     class(goveqn_base_type),pointer :: cur_goveq_2
     PetscViewer                     :: viewer
@@ -268,11 +269,47 @@ contains
     ! Get submatrices
     allocate(is(nDM))
     allocate(B_submats(nDM,nDM))
+    allocate(B_submats_filled(nDM,nDM))
     call DMCompositeGetLocalISs(this%solver%dm, is, ierr); CHKERRQ(ierr)
+
+    ! Initialize
     do row = 1,nDM
        do col = 1,nDM
-          call MatGetLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
-               ierr); CHKERRQ(ierr)
+          B_submats_filled(row,col) = 0
+       enddo
+    enddo
+
+    ! Determine if a submat will be filled
+    row = 0
+    cur_goveq_1 => this%goveqns
+    do
+       if (.not.associated(cur_goveq_1)) exit
+       row = row + 1
+       B_submats_filled(row,row) = 1
+
+       cur_goveq_2 => cur_goveq_1%next
+       col = row
+       do
+          if (.not.associated(cur_goveq_2)) exit
+          col = col + 1
+          call cur_goveq_1%IsCoupledToOtherEquation(cur_goveq_2%rank_in_soe_list, &
+               are_eqns_coupled)
+          if (are_eqns_coupled) then
+             B_submats_filled(row,col) = 1
+             B_submats_filled(col,row) = 1
+          endif
+          cur_goveq_2 => cur_goveq_2%next
+       enddo
+       cur_goveq_1 => cur_goveq_1%next
+    enddo
+
+    ! Get access to only those submats that will be filled
+    do row = 1,nDM
+       do col = 1,nDM
+          if (B_submats_filled(row,col) == 1) then
+             call MatGetLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
+                  ierr); CHKERRQ(ierr)
+          endif
        enddo
     enddo
 
@@ -336,8 +373,10 @@ contains
     ! Restore submatrices
     do row = 1,nDM
        do col = 1,nDM
+          if (B_submats_filled(row,col)==1) then
           call MatRestoreLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
                ierr); CHKERRQ(ierr)
+          endif
        enddo
     enddo
 
@@ -359,6 +398,7 @@ contains
     deallocate(X_subvecs )
     deallocate(is        )
     deallocate(B_submats )
+    deallocate(B_submats_filled)
 
   end subroutine VSFMJacobian
 
