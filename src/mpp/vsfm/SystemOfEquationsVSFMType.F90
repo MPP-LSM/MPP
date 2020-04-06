@@ -33,15 +33,6 @@ module SystemOfEquationsVSFMType
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_ss(:)            ! Source-sink.
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_conn_in(:)       ! Internal connections
 
-     
-     PetscInt, pointer                          :: soe_auxvars_bc_offset (:) ! Cummulative sum of number of control volumes associated with each boundary condition.
-     PetscInt, pointer                          :: soe_auxvars_ss_offset (:) ! Cummulative sum of number of control volumes associated with each source-sink condition.
-     PetscInt, pointer                          :: soe_auxvars_bc_ncells (:) ! Number of control volumes associated with each boundary condition.
-     PetscInt, pointer                          :: soe_auxvars_ss_ncells (:) ! Number of control volumes associated with each source-sink condition.
-     PetscInt                                   :: num_auxvars_in            ! Number of auxvars associated with internal state.
-     PetscInt                                   :: num_auxvars_in_local      ! Number of auxvars associated with internal state.
-     PetscInt                                   :: num_auxvars_bc            ! Number of auxvars associated with boundary condition.
-     PetscInt                                   :: num_auxvars_ss            ! Number of auxvars associated with source-sink condition.
      PetscInt                                   :: num_auxvars_conn_in       ! Number of auxvars associated with internal connections
    contains
      procedure, public :: Init                   => VSFMSOEInit
@@ -85,20 +76,10 @@ contains
 
     call SOEBaseInit(this)
 
-    this%num_auxvars_in         = 0
-    this%num_auxvars_in_local   = 0
-    this%num_auxvars_bc         = 0
-    this%num_auxvars_ss         = 0
-
     nullify(this%aux_vars_in           )
     nullify(this%aux_vars_bc           )
     nullify(this%aux_vars_ss           )
     nullify(this%aux_vars_conn_in      )
-
-    nullify(this%soe_auxvars_bc_offset )
-    nullify(this%soe_auxvars_ss_offset )
-    nullify(this%soe_auxvars_bc_ncells )
-    nullify(this%soe_auxvars_ss_ncells )
 
   end subroutine VSFMSOEInit
 
