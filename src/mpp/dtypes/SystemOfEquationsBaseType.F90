@@ -544,7 +544,7 @@ contains
     ! Did KSP converge?
     if (converged_reason < 0) then
        write(iulog,*) 'KSP Diverged. Add new code'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
+       !call endrun(msg=errMsg(__FILE__, __LINE__))
        converged = PETSC_FALSE
     else
        converged = PETSC_TRUE

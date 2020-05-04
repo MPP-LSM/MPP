@@ -187,6 +187,7 @@ contains
     use MultiPhysicsProbConstants, only : MPP_THERMAL_TBASED_KSP_CLM
     use MultiPhysicsProbConstants, only : MPP_THERMAL_EBASED_SNES_CLM
     use MultiPhysicsProbConstants, only : MPP_TH_SNES_CLM
+    use MultiPhysicsProbConstants, only : MPP_MLC_KSP
     use MultiPhysicsProbConstants, only : PETSC_SNES
     use MultiPhysicsProbConstants, only : PETSC_KSP
     use MultiPhysicsProbConstants, only : SOE_RE_ODE
@@ -203,7 +204,7 @@ contains
        this%id                    = id
        this%solver_type           = PETSC_SNES
 
-    case (MPP_THERMAL_TBASED_KSP_CLM)
+    case (MPP_THERMAL_TBASED_KSP_CLM,MPP_MLC_KSP)
        this%id                    = id
        this%solver_type           = PETSC_KSP
 
@@ -1109,7 +1110,7 @@ contains
 
        write(name,*) igoveq
        name = 'fgoveq_' // trim(adjustl(name))
-       call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
+       !call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
 
        call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
        call DMSetUp(         dms(igoveq) , ierr); CHKERRQ(ierr)
@@ -1125,7 +1126,7 @@ contains
 
     ! Create DMComposite: temperature
     call DMCompositeCreate(PETSC_COMM_SELF, base_soe%solver%dm, ierr); CHKERRQ(ierr)
-    call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
+    !call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
 
     ! Add DMs to DMComposite
     do igoveq = 1, base_soe%ngoveqns
@@ -1230,7 +1231,7 @@ contains
 
        write(name,*) igoveq
        name = 'fgoveq_' // trim(adjustl(name))
-       call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
+       !call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
 
        call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
        call DMSetUp         (dms(igoveq), ierr); CHKERRQ(ierr)
@@ -1246,7 +1247,7 @@ contains
 
     ! Create DMComposite: temperature
     call DMCompositeCreate(PETSC_COMM_SELF, base_soe%solver%dm, ierr); CHKERRQ(ierr)
-    call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
+    !call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
 
     ! Add DMs to DMComposite
     do igoveq = 1, base_soe%ngoveqns
@@ -1280,7 +1281,7 @@ contains
 
     ! Create KSP
     call KSPCreate              (PETSC_COMM_SELF , base_soe%solver%ksp, ierr); CHKERRQ(ierr)
-    call KSPSetOptionsPrefix    (base_soe%solver%ksp   , "temperature_", ierr); CHKERRQ(ierr)
+    !call KSPSetOptionsPrefix    (base_soe%solver%ksp   , "temperature_", ierr); CHKERRQ(ierr)
 
     call KSPSetComputeRHS       (base_soe%solver%ksp   , SOEComputeRHS      , &
          this%soe_ptr, ierr); CHKERRQ(ierr)
