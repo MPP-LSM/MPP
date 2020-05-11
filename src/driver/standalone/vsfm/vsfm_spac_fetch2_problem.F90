@@ -27,49 +27,44 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: porosity = 0.45d0        ! [-]
 
   PetscInt  , parameter :: oak_nz       = 59        ! -
-  !PetscReal , parameter :: oak_Asapwood = 0.0099d0  ! m^2
-  PetscReal , parameter :: oak_Asapwood = 0.0255d0  ! m^2
-  !PetscReal , parameter :: oak_Acrown   = 28.8d0    ! m^2
-  PetscReal , parameter :: oak_phis50   = -0.35d6   ! Pa
-  PetscReal , parameter :: oak_phi50    = -2.5d6    ! Pa
-  PetscReal , parameter :: oak_phi88    = -0.5d6    ! Pa
-  PetscReal , parameter :: oak_c1       = 1.7d6     ! Pa
-  PetscReal , parameter :: oak_c2       = 3.0d0     ! -
-  PetscReal , parameter :: oak_c3       = 12.3d0    ! -
-  PetscReal , parameter :: oak_kmax     = 1.33d-6    ! s
+  PetscReal , parameter :: oak_Asapwood = 0.0177d0  ! m^2
+  PetscReal , parameter :: oak_phis50_def   = -0.80d6   ! Pa
+  PetscReal , parameter :: oak_phi50_def    = -2.5d6    ! Pa
+  PetscReal , parameter :: oak_phi88_def    = -0.5d6    ! Pa
+  PetscReal , parameter :: oak_c1_def       = 1.7d6     ! Pa
+  PetscReal , parameter :: oak_c2_def       = 3.0d0     ! -
+  PetscReal , parameter :: oak_c3_def       = 12.3d0    ! -
+  PetscReal , parameter :: oak_kmax_def     = 6.65d-6    ! s
 
   PetscInt  , parameter :: pine_nz       = 85       ! -
-  !PetscReal , parameter :: pine_Asapwood = 0.0616d0 ! m^2
-  PetscReal , parameter :: pine_Asapwood = 0.0142d0 ! m^2
-  !PetscReal , parameter :: pine_Acrown   = 46.1d0   ! m^2
-  !PetscReal , parameter :: pine_phis50   = -0.18d6  ! Pa 
-  PetscReal , parameter :: pine_phis50   = -0.25d6  ! Pa
-  PetscReal , parameter :: pine_phi50    = -2.2d6   ! Pa
-  PetscReal , parameter :: pine_phi88    = -0.5d6   ! Pa
-  PetscReal , parameter :: pine_c1       = 1.2d6    ! Pa
-  PetscReal , parameter :: pine_c2       = 5.0d0    ! -
-  PetscReal , parameter :: pine_c3       = 10.3d0   ! -
-  PetscReal , parameter :: pine_kmax     = 0.55d-6   ! s
+  PetscReal , parameter :: pine_Asapwood = 0.00166d0 ! m^2
+  PetscReal , parameter :: pine_phis50_def   = -1.00d6  ! Pa
+  PetscReal , parameter :: pine_phi50_def    = -2.2d6   ! Pa
+  PetscReal , parameter :: pine_phi88_def    = -0.5d6   ! Pa
+  PetscReal , parameter :: pine_c1_def       = 1.2d6    ! Pa
+  PetscReal , parameter :: pine_c2_def       = 5.0d0    ! -
+  PetscReal , parameter :: pine_c3_def       = 10.3d0   ! -
+  PetscReal , parameter :: pine_kmax_def     = 2.75d-6   ! s
 
   PetscInt  , parameter :: maple_nz       = 85       ! -
-  PetscReal , parameter :: maple_Asapwood = 0.0188d0 ! m^2
-  PetscReal , parameter :: maple_phis50   = -0.25d6  ! Pa
-  PetscReal , parameter :: maple_phi50    = -2.2d6   ! Pa
-  PetscReal , parameter :: maple_phi88    = -0.5d6   ! Pa
-  PetscReal , parameter :: maple_c1       = 1.2d6    ! Pa
-  PetscReal , parameter :: maple_c2       = 5.0d0    ! -
-  PetscReal , parameter :: maple_c3       = 10.3d0   ! -
-  PetscReal , parameter :: maple_kmax     = 0.55d-6   ! s
+  PetscReal , parameter :: maple_Asapwood = 0.0159d0 ! m^2
+  PetscReal , parameter :: maple_phis50_def   = -1.50d6  ! Pa
+  PetscReal , parameter :: maple_phi50_def    = -2.2d6   ! Pa
+  PetscReal , parameter :: maple_phi88_def    = -0.5d6   ! Pa
+  PetscReal , parameter :: maple_c1_def       = 1.2d6    ! Pa
+  PetscReal , parameter :: maple_c2_def       = 5.0d0    ! -
+  PetscReal , parameter :: maple_c3_def       = 10.3d0   ! -
+  PetscReal , parameter :: maple_kmax_def     = 2.75d-6   ! s
 
   PetscInt  , parameter :: es_nz       = 85       ! -
-  PetscReal , parameter :: es_Asapwood = 0.04d0 ! m^2
-  PetscReal , parameter :: es_phis50   = -0.3d6  ! Pa
-  PetscReal , parameter :: es_phi50    = -2.2d6   ! Pa
-  PetscReal , parameter :: es_phi88    = -0.5d6   ! Pa
-  PetscReal , parameter :: es_c1       = 1.2d6    ! Pa
-  PetscReal , parameter :: es_c2       = 5.0d0    ! -
-  PetscReal , parameter :: es_c3       = 10.3d0   ! -
-  PetscReal , parameter :: es_kmax     = 0.55d-6   ! s
+  PetscReal , parameter :: es_Asapwood = 0.0198d0 ! m^2
+  PetscReal , parameter :: es_phis50_def   = -2.50d6  ! Pa
+  PetscReal , parameter :: es_phi50_def    = -2.2d6   ! Pa
+  PetscReal , parameter :: es_phi88_def    = -0.5d6   ! Pa
+  PetscReal , parameter :: es_c1_def       = 1.2d6    ! Pa
+  PetscReal , parameter :: es_c2_def       = 5.0d0    ! -
+  PetscReal , parameter :: es_c3_def       = 10.3d0   ! -
+  PetscReal , parameter :: es_kmax_def     = 0.275d-6   ! s
 
   ! Parameters for root length density = length-of-root/volume-of-soil  [m_root/m^3_soil]
   PetscInt , parameter :: oak_root_nz        = 60
@@ -232,6 +227,40 @@ module vsfm_spac_fetch2_problem
   PetscBool          :: radial_root_system
   PetscBool          :: no_capacitance
 
+  Vec :: parameters
+
+  PetscReal  :: oak_phis50
+  PetscReal  :: oak_phi50
+  PetscReal  :: oak_phi88
+  PetscReal  :: oak_c1
+  PetscReal  :: oak_c2
+  PetscReal  :: oak_c3
+  PetscReal  :: oak_kmax
+
+  PetscReal  :: pine_phis50
+  PetscReal  :: pine_phi50
+  PetscReal  :: pine_phi88
+  PetscReal  :: pine_c1
+  PetscReal  :: pine_c2
+  PetscReal  :: pine_c3
+  PetscReal  :: pine_kmax
+
+  PetscReal  :: maple_phis50
+  PetscReal  :: maple_phi50
+  PetscReal  :: maple_phi88
+  PetscReal  :: maple_c1
+  PetscReal  :: maple_c2
+  PetscReal  :: maple_c3
+  PetscReal  :: maple_kmax
+
+  PetscReal  :: es_phis50
+  PetscReal  :: es_phi50
+  PetscReal  :: es_phi88
+  PetscReal  :: es_c1
+  PetscReal  :: es_c2
+  PetscReal  :: es_c3
+  PetscReal  :: es_kmax
+
   public :: run_vsfm_spac_fetch2_problem
   
 contains
@@ -302,6 +331,7 @@ end subroutine SetUpTreeProperties
     PetscBool          :: save_initial_soln
     PetscBool          :: save_final_soln
     PetscBool          :: save_actual_et
+    PetscBool          :: save_et_factor
     PetscBool          :: save_sat
     PetscBool          :: save_mass
     PetscBool          :: save_pressure
@@ -314,17 +344,20 @@ end subroutine SetUpTreeProperties
     character(len=256) :: soil_ss_file
     character(len=256) :: sm_bc_file
     character(len=256) :: actual_et_file
+    character(len=256) :: et_factor_file
     character(len=256) :: sat_file
     character(len=256) :: mass_file
     character(len=256) :: pressure_file
     character(len=256) :: internal_mass_flux_file
     character(len=256) :: boundary_mass_flux_file
     character(len=256) :: coupling_mass_flux_file
+    character(len=256) :: param_file
     Vec                :: ET
     Vec                :: SoilBC
     Vec                :: SoilMoistureBC
     Vec                :: SoilSS
     Vec                :: Actual_ET
+    Vec                :: ET_Factor
     Vec                :: Sat
     Vec                :: Mass
     Vec                :: Pressure
@@ -338,6 +371,7 @@ end subroutine SetUpTreeProperties
     PetscInt           :: vec_size
     PetscInt           :: ntimes
     PetscReal, pointer :: act_et_p(:)
+    PetscReal, pointer :: et_factor_p(:)
     PetscReal, pointer :: sat_p(:)
     PetscReal, pointer :: mass_p(:)
     PetscReal, pointer :: pressure_p(:)
@@ -347,6 +381,8 @@ end subroutine SetUpTreeProperties
     PetscViewer        :: viewer
     PetscBool          :: error_in_cmd_options
     class(sysofeqns_base_type), pointer :: soe
+    PetscInt           :: param_count
+    PetscReal, pointer :: param_p(:)
 
     ! Set default settings
     dtime                  = 1800.d0    ! [s]
@@ -354,6 +390,7 @@ end subroutine SetUpTreeProperties
     save_initial_soln      = PETSC_FALSE
     save_final_soln        = PETSC_FALSE
     save_actual_et         = PETSC_FALSE
+    save_et_factor         = PETSC_FALSE
     save_sat               = PETSC_FALSE
     save_mass              = PETSC_FALSE
     save_pressure          = PETSC_FALSE
@@ -368,11 +405,8 @@ end subroutine SetUpTreeProperties
     soil_ss_specified      = PETSC_FALSE
     sm_bc_specified        = PETSC_FALSE
     radial_root_system     = PETSC_FALSE
-    no_capacitance         = PETSC_TRUE
+    no_capacitance         = PETSC_FALSE
 
-    !
-    call SetUpTreeProperties()
-    
     ! Get some command line options
 
     call PetscOptionsGetInt  (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
@@ -388,6 +422,12 @@ end subroutine SetUpTreeProperties
          '-actual_et_file', actual_et_file, flg, ierr)
     if (flg) then
        save_actual_et = PETSC_TRUE
+    end if
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-et_factor_file', et_factor_file, flg, ierr)
+    if (flg) then
+       save_et_factor = PETSC_TRUE
     end if
 
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
@@ -526,6 +566,92 @@ end subroutine SetUpTreeProperties
 
     if (error_in_cmd_options) stop
 
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-parameter_file', param_file, flg, ierr)
+
+    if (flg) then
+       call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(param_file),FILE_MODE_READ,viewer,ierr);CHKERRQ(ierr)
+       call VecCreate(PETSC_COMM_WORLD,parameters,ierr)
+       call VecLoad(parameters,viewer,ierr);CHKERRQ(ierr)
+       call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+       call VecGetSize(parameters, param_count, ierr)
+       if (param_count /= 28) then
+          write(*,*)'ERROR: Parameter file does not contain 28 parameters'
+          call exit(0)
+       endif
+       call VecGetArrayF90(parameters, param_p, ierr)
+
+       es_phis50 = param_p(01);
+       es_c3     = param_p(02);
+       es_phi50  = param_p(03);
+       es_phi88  = param_p(04);
+       es_c1     = param_p(05);
+       es_c2     = param_p(06);
+       es_kmax   = param_p(07);
+
+       maple_phis50 = param_p(08);
+       maple_c3     = param_p(09);
+       maple_phi50  = param_p(10);
+       maple_phi88  = param_p(11);
+       maple_c1     = param_p(12);
+       maple_c2     = param_p(13);
+       maple_kmax   = param_p(14);
+
+       oak_phis50 = param_p(15);
+       oak_c3     = param_p(16);
+       oak_phi50  = param_p(17);
+       oak_phi88  = param_p(18);
+       oak_c1     = param_p(19);
+       oak_c2     = param_p(20);
+       oak_kmax   = param_p(21);
+
+       pine_phis50 = param_p(22);
+       pine_c3     = param_p(23);
+       pine_phi50  = param_p(24);
+       pine_phi88  = param_p(25);
+       pine_c1     = param_p(26);
+       pine_c2     = param_p(27);
+       pine_kmax   = param_p(28);
+
+       call VecRestoreArrayF90(parameters, param_p, ierr)
+    else
+       es_phis50 = es_phis50_def;
+       es_phi50  = es_phi50_def;
+       es_phi88  = es_phi88_def;
+       es_c1     = es_c1_def;
+       es_c2     = es_c2_def;
+       es_c3     = es_c3_def;
+       es_kmax   = es_kmax;
+
+       maple_phis50 = es_phis50_def;
+       maple_phi50  = es_phi50_def;
+       maple_phi88  = es_phi88_def;
+       maple_c1     = es_c1_def;
+       maple_c2     = es_c2_def;
+       maple_c3     = es_c3_def;
+       maple_kmax   = es_kmax;
+
+       oak_phis50 = es_phis50_def;
+       oak_phi50  = es_phi50_def;
+       oak_phi88  = es_phi88_def;
+       oak_c1     = es_c1_def;
+       oak_c2     = es_c2_def;
+       oak_c3     = es_c3_def;
+       oak_kmax   = es_kmax;
+
+       pine_phis50 = pine_phis50_def;
+       pine_phi50  = pine_phi50_def;
+       pine_phi88  = pine_phi88_def;
+       pine_c1     = pine_c1_def;
+       pine_c2     = pine_c2_def;
+       pine_c3     = pine_c3_def;
+       pine_kmax   = pine_kmax;
+    endif
+
+    !
+    call SetUpTreeProperties()
+
     select case(trim(problem_type))
     case ('oak')
        nET       = oak_nz
@@ -654,6 +780,11 @@ end subroutine SetUpTreeProperties
        call VecGetArrayF90(Actual_ET, act_et_p, ierr)
     endif
 
+    if (save_et_factor) then
+       call VecCreateSeq(PETSC_COMM_SELF, nstep*nET, ET_Factor, ierr)
+       call VecGetArrayF90(ET_Factor, et_factor_p, ierr)
+    endif
+
     if (save_sat) then
        call VecGetSize(vsfm_mpp%soe%solver%soln, nsat, ierr)
        call VecCreateSeq(PETSC_COMM_SELF, nstep*nsat, Sat, ierr)
@@ -770,6 +901,16 @@ end subroutine SetUpTreeProperties
           end select
        end if
 
+       if (save_et_factor) then
+          select case(trim(problem_type))
+          case ('emop_spac','e_spac','m_spac','o_spac','p_spac')
+             call diagnose_et_factor_emop(nET, istep, et_factor_p)
+          case default
+             write(*,*)'Unable to diagnose actual ET for problem_type = ' // trim(problem_type)
+             stop
+          end select
+       end if
+
        if (save_sat) then
           call save_saturation(nsat, istep, sat_p)
        end if
@@ -802,6 +943,14 @@ end subroutine SetUpTreeProperties
        call VecView(Actual_ET,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
        call VecDestroy(Actual_ET, ierr); CHKERRQ(ierr)
+    end if
+
+    if (save_et_factor ) then
+       call VecRestoreArrayF90(ET_Factor, et_factor_p, ierr)
+       call PetscViewerBinaryOpen(PETSC_COMM_SELF,et_factor_file,FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+       call VecView(ET_Factor,viewer,ierr);CHKERRQ(ierr)
+       call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+       call VecDestroy(ET_Factor, ierr); CHKERRQ(ierr)
     end if
 
     if (save_sat) then
@@ -3994,7 +4143,18 @@ end subroutine SetUpTreeProperties
        ! Save PET data for xylem
        do kk = 1, nz(IDX)
           ss_idx = ss_idx + 1
+          if (ii==1) then
+          ss_value(kk) = -et_p(ss_idx)*dz_xylem!*2.0d0
+          endif
+          if (ii==2) then
           ss_value(kk) = -et_p(ss_idx)*dz_xylem
+          endif
+          if (ii==3) then
+          ss_value(kk) = -et_p(ss_idx)*dz_xylem
+          endif
+          if (ii==4) then
+          ss_value(kk) = -et_p(ss_idx)*dz_xylem!*2.0d0
+          endif
        end do
 
        ! Set PET for xylem
@@ -4333,6 +4493,61 @@ end subroutine SetUpTreeProperties
     end do
 
   end subroutine diagnose_actual_sink_for_emop
+
+  !------------------------------------------------------------------------
+  subroutine diagnose_et_factor_emop(nET, istep, et_factor_p)
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use MultiPhysicsProbConstants , only : AUXVAR_SS
+    use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants , only : VAR_POT_SINK_DOWNREG_FACTOR
+    use MultiPhysicsProbConstants , only : VAR_PRESSURE
+    use petscsys
+    use petscvec
+    !
+    implicit none
+    !
+    PetscInt           :: nET, istep
+    PetscReal, pointer :: et_factor_p(:)
+    !
+    PetscReal, pointer :: ss_value(:)
+    PetscInt           :: kk, et_idx, IDX, ii, soe_auxvar_id, ieqn
+
+    et_idx        = (istep-1)*(nET)
+    soe_auxvar_id = 0
+
+    do ii = 1, 4
+
+       select case(ii)
+       case (1)
+          IDX = E_IDX; ieqn = GE_e_xylm
+       case (2)
+          IDX = M_IDX; ieqn = GE_m_xylm
+       case (3)
+          IDX = O_IDX; ieqn = GE_o_xylm
+       case (4)
+          IDX = P_IDX; ieqn = GE_p_xylm
+       end select
+
+       if (ieqn == 0) cycle
+
+       soe_auxvar_id = soe_auxvar_id + 1
+       allocate(ss_value(nz(IDX)))
+
+       call vsfm_mpp%soe%GetDataForCLM(AUXVAR_SS, VAR_POT_SINK_DOWNREG_FACTOR, soe_auxvar_id, ss_value)
+
+       do kk = 1, nz(IDX)
+          et_idx = et_idx + 1
+          et_factor_p(et_idx) = ss_value(kk)
+       end do
+
+       deallocate(ss_value)
+
+    end do
+
+  end subroutine diagnose_et_factor_emop
 
   !------------------------------------------------------------------------
   subroutine save_internal_mass_flux_data(soe, num_internal_mass_flux, istep, mass_flux_p)
