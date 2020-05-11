@@ -1283,6 +1283,9 @@ contains
 
                 case (COND_DOWNREG_MASS_RATE_CAMPBELL, COND_DOWNREG_MASS_RATE_FETCH2)
                    soe_avars(iconn + iauxvar_off)%mass_flux = this%ss_flux(sum_conn + iconn)
+                   soe_avars(iconn + iauxvar_off)%pot_sink_downreg_factor = &
+                    this%aux_vars_ss(sum_conn+iconn)%pot_sink_downreg_factor
+
 
                 case default
                    write(string,*) cur_cond%itype
@@ -1918,6 +1921,7 @@ contains
              else
                 factor = 1.d0
              endif
+             this%aux_vars_ss(sum_conn+iconn)%pot_sink_downreg_factor = factor
 
              ff(cell_id) = ff(cell_id) - cur_cond%value(iconn)*factor/FMWH2O
              this%ss_flux(sum_conn+iconn) = cur_cond%value(iconn)*factor

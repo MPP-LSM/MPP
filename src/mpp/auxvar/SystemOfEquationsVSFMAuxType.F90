@@ -31,6 +31,7 @@ module SystemOfEquationsVSFMAuxType
      PetscReal :: lateral_mass_exchanged ! [kg]
      PetscReal :: boundary_mass_exchanged! [kg]
      PetscReal :: mass_flux              ! [kg/s]
+     PetscReal :: pot_sink_downreg_factor! [-]
 
      PetscInt  :: goveqn_id              ! [-]
      PetscInt  :: condition_id           ! [-]
@@ -146,6 +147,7 @@ contains
     use MultiPhysicsProbConstants, only : VAR_LATERAL_MASS_EXCHANGED
     use MultiPhysicsProbConstants, only : VAR_BC_MASS_EXCHANGED
     use MultiPhysicsProbConstants, only : VAR_MASS_FLUX
+    use MultiPhysicsProbConstants, only : VAR_POT_SINK_DOWNREG_FACTOR
     !
     implicit none
     !
@@ -177,6 +179,8 @@ contains
        variable_value = this%boundary_mass_exchanged
     case (VAR_MASS_FLUX)
        variable_value = this%mass_flux
+    case (VAR_POT_SINK_DOWNREG_FACTOR)
+       variable_value = this%pot_sink_downreg_factor
     case default
        write(iulog,*) 'In VSFMSOEAuxVarGetValue: unknown var_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
