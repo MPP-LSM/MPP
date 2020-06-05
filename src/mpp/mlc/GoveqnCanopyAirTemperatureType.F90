@@ -212,7 +212,7 @@ contains
     end do
 
     icair = 1
-    do icell = 1, this%mesh%ncells_local
+    do icell = 1, this%mesh%ncells_local-1
        level = icell
        this%aux_vars_conn_in(icell)%ga = cturb%ga_prof(icair,level)
     enddo
