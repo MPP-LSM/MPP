@@ -1,5 +1,9 @@
 set(MLC_PROBLEM_SOURCES
   mlc_problem.F90
+  mlc_conditions.F90
+  mlc_global_vars.F90
+  mlc_meshes.F90
+  mlc_parameters.F90
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
