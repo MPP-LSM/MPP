@@ -707,6 +707,7 @@ contains
           write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
                ', no coupling boundary condition found to copule it with ' // &
                'equation_number = ', goveqn_ids(ivar)
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
 
        cur_goveq_2 => this%soe%goveqns
@@ -742,6 +743,7 @@ contains
           write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
                ', no coupling boundary condition found to copule it with ' // &
                'equation_number = ', bc_idx_2
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
 
        cpl_var => CouplingVariableCreate()
@@ -919,9 +921,10 @@ contains
           enddo
 
           if (.not.bc_found) then
-             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
+             write(iulog,*)'1) For goveqn%name = ',trim(cur_goveq_1%name) // &
                   ', no coupling boundary condition found to copule it with ' // &
                   'equation_number = ', goveqn_ids(ivar)
+             call endrun(msg=errMsg(__FILE__, __LINE__))
           endif
 
           cur_goveq_2 => this%soe%goveqns
@@ -954,9 +957,10 @@ contains
           enddo
 
           if (.not.bc_found) then
-             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
+             write(iulog,*)'2) For goveqn%name = ',trim(cur_goveq_2%name) // &
                   ', no coupling boundary condition found to copule it with ' // &
                   'equation_number = ', bc_idx_2
+             call endrun(msg=errMsg(__FILE__, __LINE__))
           endif
 
           cpl_var => CouplingVariableCreate()
