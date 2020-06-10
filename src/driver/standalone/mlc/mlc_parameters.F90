@@ -608,7 +608,7 @@ contains
 
     call soe%cturb%ComputeDerivedAtmInputs()
 
-    soe%cturb%vcan(p)   = soe%cturb%vref(p)
+    soe%cturb%vcan(p) = soe%cturb%vref(p)
 
   end subroutine set_turbulence_parameters
 

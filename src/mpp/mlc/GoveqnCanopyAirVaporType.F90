@@ -217,7 +217,7 @@ contains
     do icair = 1, ncair
        level = this%mesh%ncells_local
        this%aux_vars_conn_bc(iconn)%ga = cturb%ga_prof(icair, level)
-       this%aux_vars_bc(iconn)%vcan    = cturb%vref(icair)
+       this%aux_vars_bc(iconn)%water_vapor    = cturb%vref(icair)
     end do
 
   end subroutine CAirVaporGetFromSoeAuxVarsCturb
@@ -249,7 +249,7 @@ contains
     call VecGetArrayF90(x, x_p, ierr); CHKERRQ(ierr)
 
     do ghosted_id = 1, this%mesh%ncells_local
-       this%aux_vars_in(ghosted_id)%vcan = x_p(ghosted_id)
+       this%aux_vars_in(ghosted_id)%water_vapor = x_p(ghosted_id)
     end do
 
     call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)
@@ -340,7 +340,7 @@ contains
     select case(var_type)
     case(VAR_WATER_VAPOR)
        do iauxvar = 1,nauxvar
-          var_values(iauxvar) = aux_var(iauxvar)%vcan
+          var_values(iauxvar) = aux_var(iauxvar)%water_vapor
        end do
     case default
        write(iulog,*) 'CAirVaporGetRValuesFromAuxVars: Unknown var_type'
@@ -445,10 +445,10 @@ contains
     do icell = 2, this%mesh%ncells_local
 #ifdef USE_BONAN_FORMULATION
        b_p(icell) = b_p(icell) + &
-            auxvar(icell)%rhomol / this%dtime * auxvar(icell)%vcan * this%mesh%vol(icell)
+            auxvar(icell)%rhomol / this%dtime * auxvar(icell)%water_vapor * this%mesh%vol(icell)
 #else
        b_p(icell) = b_p(icell) + &
-            auxvar(icell)%rhomol / this%dtime * auxvar(icell)%vcan
+            auxvar(icell)%rhomol / this%dtime * auxvar(icell)%water_vapor
 #endif
 
        do ileaf = 1,auxvar(icell)%nleaf
@@ -528,10 +528,10 @@ contains
 
 #ifdef USE_BONAN_FORMULATION
              b_p(cell_id) = b_p(cell_id) + &
-                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%vcan
+                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%water_vapor
 #else
              b_p(cell_id) = b_p(cell_id) + &
-                  this%aux_vars_conn_bc(sum_conn)%ga/dist * auxvar(sum_conn)%vcan
+                  this%aux_vars_conn_bc(sum_conn)%ga/dist * auxvar(sum_conn)%water_vapor
 #endif
 
           case default
