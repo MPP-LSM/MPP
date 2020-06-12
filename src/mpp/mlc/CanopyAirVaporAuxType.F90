@@ -6,6 +6,7 @@ module CanopyAirVaporAuxType
   use mpp_varctl          , only : iulog
   use mpp_abortutils      , only : endrun
   use mpp_shr_log_mod     , only : errMsg => shr_log_errMsg
+  use petscsys
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -24,6 +25,7 @@ module CanopyAirVaporAuxType
      PetscReal          :: rhomol              ! Molar density (mol/m3)
      PetscReal          :: pref                ! Atmospheric pressure (Pa)
 
+     PetscBool          :: is_soil             ! PETSC_TRUE if the grid cell is a soil grid cell
      PetscReal          :: soil_rhg            ! Relative humidity of airspace at soil surface (fraction)
      PetscReal          :: soil_resis          ! Soil evaporative resistance (s/m)
 
@@ -66,6 +68,8 @@ contains
     this%cpair               = 0.d0
     this%rhomol              = 0.d0
     this%pref                = 0.d0
+
+    this%is_soil             = PETSC_FALSE
     this%soil_rhg            = 0.d0
     this%soil_resis          = 0.d0
 
