@@ -208,7 +208,20 @@ contains
           this%aux_vars_in(icell)%cpair  = cturb%cpair(icair)
           this%aux_vars_in(icell)%rhomol = cturb%rhomol(icair)
           this%aux_vars_in(icell)%pref   = cturb%pref(icair)
+
+          if (this%aux_vars_in(icell)%is_soil) then
+             ! soil-layer
+             this%aux_vars_in(icell)%temperature      = cturb%tsoi(icair)
+             this%aux_vars_in(icell)%soil_rhg         = cturb%rhgsoi(icair)
+             this%aux_vars_in(icell)%soil_rn          = cturb%rnsoi(icair)
+             this%aux_vars_in(icell)%soil_tk          = cturb%tksoi(icair)
+             this%aux_vars_in(icell)%soil_dz          = cturb%dzsoi(icair)
+             this%aux_vars_in(icell)%soil_resis       = cturb%ressoi(icair)
+             this%aux_vars_in(icell)%soil_temperature = cturb%tsoi(icair)
+          endif
+
        end do
+
     end do
 
     icair = 1
@@ -216,17 +229,6 @@ contains
        level = icell
        this%aux_vars_conn_in(icell)%ga = cturb%ga_prof(icair,level)
     enddo
-
-    ! soil-layer
-    icair = 1
-    icell = 1
-    this%aux_vars_in(icell)%temperature = cturb%tsoi(icair)
-    this%aux_vars_in(icell)%soil_rhg    = cturb%rhgsoi(icair)
-    this%aux_vars_in(icell)%soil_rn     = cturb%rnsoi(icair)
-    this%aux_vars_in(icell)%soil_tk     = cturb%tksoi(icair)
-    this%aux_vars_in(icell)%soil_dz     = cturb%dzsoi(icair)
-    this%aux_vars_in(icell)%soil_resis  = cturb%ressoi(icair)
-    this%aux_vars_in(icell)%soil_temperature = cturb%tsoi(icair)
 
     ! top-layer
     icair = 1
@@ -455,39 +457,33 @@ contains
     auxvar => this%aux_vars_in
 
     lambda = HVAP * MM_H2O
-
-    ! Soil layer
-    icell = 1
-    call SatVap(auxvar(icell)%temperature, qsat, si)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    si   = si  /this%aux_vars_in(icell)%pref
-
-    gsw = 1.d0 / auxvar(icell)%soil_resis * auxvar(icell)%rhomol
-    gsa = this%aux_vars_conn_in(1)%ga
-    gs0 = gsw * gsa / (gsw + gsa)
-    
-    b_p(icell) = b_p(icell) &
-         + ( auxvar(icell)%soil_rn &
-            - lambda * auxvar(icell)%soil_rhg * gs0* (qsat - si*auxvar(icell)%temperature) &
-            + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature &
-            )
     
     ! Internal layers
-    do icell = 2, this%mesh%ncells_local-1
+    do icell = 1, this%mesh%ncells_local
+       if (auxvar(icell)%is_soil) then
+          ! Soil layer
+          call SatVap(auxvar(icell)%temperature, qsat, si)
+          qsat = qsat/this%aux_vars_in(icell)%pref
+          si   = si  /this%aux_vars_in(icell)%pref
+
+          gsw = 1.d0 / auxvar(icell)%soil_resis * auxvar(icell)%rhomol
+          gsa = this%aux_vars_conn_in(1)%ga
+          gs0 = gsw * gsa / (gsw + gsa)
+
+          b_p(icell) = b_p(icell) &
+               + ( auxvar(icell)%soil_rn &
+               - lambda * auxvar(icell)%soil_rhg * gs0* (qsat - si*auxvar(icell)%temperature) &
+               + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature &
+               )
+       else
 #ifdef USE_BONAN_FORMULATION
-       b_p(icell) = b_p(icell) + auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature * this%mesh%vol(icell)
+          b_p(icell) = b_p(icell) + auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature * this%mesh%vol(icell)
 #else
-       b_p(icell) = b_p(icell) + auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature
+          b_p(icell) = b_p(icell) + auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature
 #endif
+          endif
     end do
 
-    ! Top layer
-    icell = this%mesh%ncells_local
-#ifdef USE_BONAN_FORMULATION
-    b_p(icell) = auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature * this%mesh%vol(icell)
-#else
-    b_p(icell) = auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature
-#endif
 
   end subroutine CAirTempRhsAccumulation
 
@@ -592,56 +588,61 @@ contains
     ! For soil cell
     icell = 1
     row = icell-1; col = icell-1;
-    call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    si   = si  /this%aux_vars_in(icell)%pref
-
-    gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-    gsa = this%aux_vars_conn_in(1)%ga
-    gs0 = gsw * gsa / (gsw + gsa)
-
-    value = &
-         this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(1)%ga + &
-         lambda * this%aux_vars_in(icell)%soil_rhg * gs0 * si + &
-         this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz
-
-    call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
-
-    ! For soil-cell <--> air temperature
-    row = icell-1; col = icell+1-1
-    value = -this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(1)%ga
-
-    call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
     
     ! For interior and top cell
-    do icell = 2, this%mesh%ncells_local
+    do icell = 1, this%mesh%ncells_local
        row = icell-1; col = icell-1
 
+       if (this%aux_vars_in(icell)%is_soil) then
+
+          call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
+          qsat = qsat/this%aux_vars_in(icell)%pref
+          si   = si  /this%aux_vars_in(icell)%pref
+
+          gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
+          gsa = this%aux_vars_conn_in(1)%ga
+          gs0 = gsw * gsa / (gsw + gsa)
+
+          value = &
+               this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(1)%ga + &
+               lambda * this%aux_vars_in(icell)%soil_rhg * gs0 * si + &
+               this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz
+
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          ! For soil-cell <--> air temperature
+          row = icell-1; col = icell+1-1
+          value = -this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(1)%ga
+
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+       else
 #ifdef USE_BONAN_FORMULATION
-       value = this%aux_vars_in(icell)%rhomol/this%dtime * this%mesh%vol(icell)
+          value = this%aux_vars_in(icell)%rhomol/this%dtime * this%mesh%vol(icell)
 #else
-       value = this%aux_vars_in(icell)%rhomol/this%dtime
+          value = this%aux_vars_in(icell)%rhomol/this%dtime
 #endif
 
-       call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-       do ileaf = 1, this%aux_vars_in(icell)%nleaf
-          if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
+          do ileaf = 1, this%aux_vars_in(icell)%nleaf
+             if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
 
 #ifdef USE_BONAN_FORMULATION
-             value = 2.d0 * this%aux_vars_in(icell)%gbh * &
-                  this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                  this%aux_vars_in(icell)%leaf_dpai(ileaf)
+                value = 2.d0 * this%aux_vars_in(icell)%gbh * &
+                     this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
+                     this%aux_vars_in(icell)%leaf_dpai(ileaf)
 #else
-             value = 2.d0 * this%aux_vars_in(icell)%gbh * &
-                  this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                  this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
-                  this%mesh%vol(icell)
+                value = 2.d0 * this%aux_vars_in(icell)%gbh * &
+                     this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
+                     this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
+                     this%mesh%vol(icell)
 #endif
 
-             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          end if
-       end do
+                call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             end if
+          end do
+       endif
 
     enddo
 
@@ -753,15 +754,18 @@ contains
     select case (itype_of_other_goveq)
     case (GE_CANOPY_AIR_VAPOR)
        ! For soil-cell <--> air vapor
-       icell = 1
-       row = icell-1; col = icell-1
+       do icell = 1, this%mesh%ncells_local
+          if (this%aux_vars_in(icell)%is_soil) then
+             row = icell-1; col = icell-1
 
-       gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-       gsa = this%aux_vars_conn_in(1)%ga
-       gs0 = gsw * gsa / (gsw + gsa)
+             gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
+             gsa = this%aux_vars_conn_in(1)%ga
+             gs0 = gsw * gsa / (gsw + gsa)
 
-       value = - lambda * gs0
-       call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             value = - lambda * gs0
+             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+          endif
+       enddo
 
     case (GE_CANOPY_LEAF_TEMP)
        ileaf = rank_of_other_goveq - 2

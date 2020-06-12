@@ -89,6 +89,9 @@ contains
           ileaf = 1; cur_goveq%aux_vars_in(k)%leaf_fssh(ileaf) = fssh(k)
           ileaf = 2; cur_goveq%aux_vars_in(k)%leaf_fssh(ileaf) = 1.d0 - fssh(k)
        end do
+
+       k = 1; cur_goveq%aux_vars_in(k)%is_soil = PETSC_TRUE
+
     end select
 
     deallocate(dpai)
