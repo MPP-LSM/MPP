@@ -55,18 +55,19 @@ contains
     PetscReal        , pointer :: vert_conn_dist_dn(:) !
     PetscReal        , pointer :: vert_conn_area(:)    !
     PetscInt         , pointer :: vert_conn_type(:)    !
-    PetscInt                   :: k
+    PetscInt                   :: k, ncells, icair, icell, iconn
     PetscReal                  :: dz_cair
 
     call mlc_mpp%SetNumMeshes(2)
 
-    allocate(xc(nz_cair+1))
-    allocate(yc(nz_cair+1))
-    allocate(zc(nz_cair+1))
-    allocate(dx(nz_cair+1))
-    allocate(dy(nz_cair+1))
-    allocate(dz(nz_cair+1))
-    allocate(area(nz_cair+1))
+    ncells =(nz_cair+1)*ncair
+    allocate(xc(ncells))
+    allocate(yc(ncells))
+    allocate(zc(ncells))
+    allocate(dx(ncells))
+    allocate(dy(ncells))
+    allocate(dz(ncells))
+    allocate(area(ncells))
 
     dz_cair = z_cair/nz_cair;
 
@@ -77,14 +78,21 @@ contains
     dz(:) = dz_cair
     area(:) = 1.d0
 
-    k = 1; zc(k) = 0.d0
-    k = 2; zc(k) = dz_cair/2.d0
-
-    do k = 3, nz_cair+1
-       zc(k) = zc(k-1) + dz_cair
+    icell = 0
+    do icair = 1, ncair
+       do k = 1, nz_cair
+          icell = icell + 1
+          if (k == 1) then
+             zc(icell) = 0.d0
+          else if (k == 2) then
+             zc(icell) = dz_cair/2.d0
+          else
+             zc(icell) = zc(icell-1) + dz_cair
+          endif
+      end do
     end do
 
-    vert_nconn = nz_cair
+    vert_nconn = nz_cair*ncair
     allocate(vert_conn_id_up(vert_nconn))
     allocate(vert_conn_id_dn(vert_nconn))
     allocate(vert_conn_dist_up(vert_nconn))
@@ -100,9 +108,13 @@ contains
     !vert_conn_dist_up(1) = dz_cair/4.d0
     !vert_conn_dist_dn(1) = dz_cair/4.d0
 
-    do k = 1, vert_nconn
-       vert_conn_id_up(k) = k
-       vert_conn_id_dn(k) = k + 1
+    iconn = 0
+    do icair = 1, ncair
+       do k = 1, nz_cair
+          iconn = iconn + 1
+          vert_conn_id_up(iconn) = (nz_cair+1)*(icair-1) + k
+          vert_conn_id_dn(iconn) = vert_conn_id_up(iconn) + 1
+      end do
     enddo
 
     ! Canopy air space
@@ -111,7 +123,7 @@ contains
     allocate(mesh)
     call mesh%SetName('Canopy Air')
     call mesh%SetOrientation(MESH_AGAINST_GRAVITY)
-    call mesh%SetDimensions(nz_cair+1, 0, nz_cair+1)
+    call mesh%SetDimensions((nz_cair+1)*ncair, 0, nz_cair+1)
 
     call mesh%SetGeometricAttributes(VAR_XC   , xc   )
     call mesh%SetGeometricAttributes(VAR_YC   , yc   )
@@ -142,7 +154,7 @@ contains
     allocate(mesh)
     call mesh%SetName('Canopy Air')
     call mesh%SetOrientation(MESH_AGAINST_GRAVITY)
-    call mesh%SetDimensions(nz_cair+1, 0, nz_cair+1)
+    call mesh%SetDimensions((nz_cair+1)*ncair, 0, nz_cair+1)
 
     call mesh%SetGeometricAttributes(VAR_XC   , xc   )
     call mesh%SetGeometricAttributes(VAR_YC   , yc   )

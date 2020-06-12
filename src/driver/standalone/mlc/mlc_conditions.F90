@@ -71,16 +71,17 @@ contains
 
     dz_cair = z_cair/nz_cair;
 
-    kk = 1
-    id_up(kk)      = 0
-    id_dn(kk)      = nz_cair + 1
-    dist_up(kk)    =  0.d0
-    dist_dn(kk)    = dz_cair
-    area(kk)       = 1.d0
-    unit_vec(kk,1) = -1.d0
-    unit_vec(kk,2) = 0.d0
-    unit_vec(kk,3) = 0.d0
-    itype(kk)      = CONN_VERTICAL
+    do kk = 1, ncair
+       id_up(kk)      = 0
+       id_dn(kk)      = (nz_cair + 1)*kk
+       dist_up(kk)    =  0.d0
+       dist_dn(kk)    = dz_cair
+       area(kk)       = 1.d0
+       unit_vec(kk,1) = -1.d0
+       unit_vec(kk,2) = 0.d0
+       unit_vec(kk,3) = 0.d0
+       itype(kk)      = CONN_VERTICAL
+    end do
 
     allocate(conn_set)
     call MeshCreateConnectionSet(mlc_mpp%meshes(CAIR_MESH), &
@@ -93,16 +94,17 @@ contains
          cond_type = COND_DIRICHLET, &
          conn_set = conn_set)
 
-    kk = 1
-    id_up(kk)      = 0
-    id_dn(kk)      = nz_cair + 1
-    dist_up(kk)    =  0.d0
-    dist_dn(kk)    = dz_cair
-    area(kk)       = 1.d0
-    unit_vec(kk,1) = -1.d0
-    unit_vec(kk,2) = 0.d0
-    unit_vec(kk,3) = 0.d0
-    itype(kk)      = CONN_VERTICAL
+    do kk = 1, ncair
+       id_up(kk)      = 0
+       id_dn(kk)      = (nz_cair + 1)*kk
+       dist_up(kk)    =  0.d0
+       dist_dn(kk)    = dz_cair
+       area(kk)       = 1.d0
+       unit_vec(kk,1) = -1.d0
+       unit_vec(kk,2) = 0.d0
+       unit_vec(kk,3) = 0.d0
+       itype(kk)      = CONN_VERTICAL
+    end do
 
     allocate(conn_set)
     call MeshCreateConnectionSet(mlc_mpp%meshes(CAIR_MESH), &
