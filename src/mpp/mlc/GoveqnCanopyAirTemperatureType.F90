@@ -450,24 +450,43 @@ contains
     class(goveqn_cair_temp_type) :: this
     PetscScalar                  , pointer :: b_p(:)
     !
-    PetscInt                               :: icell
     class(cair_temp_auxvar_type) , pointer :: auxvar(:)
+    class(connection_set_type)   , pointer :: cur_conn_set
+    PetscInt                               :: icell, iconn
     PetscReal                              :: qsat, si, gsw, gsa, gs0, lambda
+    PetscBool                              :: found
 
     auxvar => this%aux_vars_in
 
     lambda = HVAP * MM_H2O
     
+    cur_conn_set => this%mesh%intrn_conn_set_list%first
+
     ! Internal layers
     do icell = 1, this%mesh%ncells_local
        if (auxvar(icell)%is_soil) then
-          ! Soil layer
+
+          ! Find the internal connection that is between the soil layer overlying
+          ! air space
+          found = PETSC_FALSE
+          do iconn = 1, cur_conn_set%num_connections
+             if (cur_conn_set%conn(iconn)%GetIDUp() == icell .or. &
+                  cur_conn_set%conn(iconn)%GetIDDn() == icell) then
+                found = PETSC_TRUE
+                exit
+             end if
+          end do
+          if (.not. found) then
+             write(iulog,*)'Internal connection not found'
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end if
+
           call SatVap(auxvar(icell)%temperature, qsat, si)
           qsat = qsat/this%aux_vars_in(icell)%pref
           si   = si  /this%aux_vars_in(icell)%pref
 
           gsw = 1.d0 / auxvar(icell)%soil_resis * auxvar(icell)%rhomol
-          gsa = this%aux_vars_conn_in(1)%ga
+          gsa = this%aux_vars_conn_in(iconn)%ga
           gs0 = gsw * gsa / (gsw + gsa)
 
           b_p(icell) = b_p(icell) &
@@ -575,13 +594,14 @@ contains
     PetscErrorCode               :: ierr
     !
     ! !LOCAL VARIABLES
+    class(connection_set_type) , pointer :: cur_conn_set
+    type(condition_type)       , pointer :: cur_cond
     PetscInt                             :: icell, ileaf, iconn, sum_conn
     PetscInt                             :: cell_id, cell_id_up, cell_id_dn
     PetscInt                             :: row, col
     PetscReal                            :: value, ga, dist, gsw, gsa, gs0
     PetscReal                            :: qsat, si, lambda
-    class(connection_set_type) , pointer :: cur_conn_set
-    type(condition_type)       , pointer :: cur_cond
+    PetscBool                            :: found
 
     lambda = HVAP * MM_H2O
 
@@ -589,22 +609,39 @@ contains
     icell = 1
     row = icell-1; col = icell-1;
     
+    cur_conn_set => this%mesh%intrn_conn_set_list%first
+
     ! For interior and top cell
     do icell = 1, this%mesh%ncells_local
        row = icell-1; col = icell-1
 
        if (this%aux_vars_in(icell)%is_soil) then
 
+          ! Find the internal connection that is between the soil layer overlying
+          ! air space
+          found = PETSC_FALSE
+          do iconn = 1, cur_conn_set%num_connections
+                 if (cur_conn_set%conn(iconn)%GetIDUp() == icell .or. &
+                  cur_conn_set%conn(iconn)%GetIDDn() == icell) then
+                found = PETSC_TRUE
+                exit
+             end if
+          end do
+          if (.not. found) then
+             write(iulog,*)'Internal connection not found'
+             call endrun(msg=errMsg(__FILE__, __LINE__))
+          end if
+
           call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
           qsat = qsat/this%aux_vars_in(icell)%pref
           si   = si  /this%aux_vars_in(icell)%pref
 
           gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-          gsa = this%aux_vars_conn_in(1)%ga
+          gsa = this%aux_vars_conn_in(iconn)%ga
           gs0 = gsw * gsa / (gsw + gsa)
 
           value = &
-               this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(1)%ga + &
+               this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(iconn)%ga + &
                lambda * this%aux_vars_in(icell)%soil_rhg * gs0 * si + &
                this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz
 
@@ -612,7 +649,7 @@ contains
 
           ! For soil-cell <--> air temperature
           row = icell-1; col = icell+1-1
-          value = -this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(1)%ga
+          value = -this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(iconn)%ga
 
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
@@ -746,10 +783,14 @@ contains
     PetscErrorCode               :: ierr
     !
     ! !LOCAL VARIABLES
-    PetscInt :: icell, ileaf, row, col
-    PetscReal :: value, gleaf, gleaf_et, gsw, gsa, gs0, lambda
+    class(connection_set_type)   , pointer :: cur_conn_set
+    PetscInt                               :: icell, ileaf, row, col, iconn
+    PetscReal                              :: value, gleaf, gleaf_et, gsw, gsa, gs0, lambda
+    PetscBool                              :: found
 
     lambda = HVAP * MM_H2O
+
+    cur_conn_set => this%mesh%intrn_conn_set_list%first
 
     select case (itype_of_other_goveq)
     case (GE_CANOPY_AIR_VAPOR)
@@ -757,6 +798,21 @@ contains
        do icell = 1, this%mesh%ncells_local
           if (this%aux_vars_in(icell)%is_soil) then
              row = icell-1; col = icell-1
+
+             ! Find the internal connection that is between the soil layer overlying
+             ! air space
+             found = PETSC_FALSE
+             do iconn = 1, cur_conn_set%num_connections
+                if (cur_conn_set%conn(iconn)%GetIDUp() == icell .or. &
+                     cur_conn_set%conn(iconn)%GetIDDn() == icell) then
+                   found = PETSC_TRUE
+                   exit
+                end if
+             end do
+             if (.not. found) then
+                write(iulog,*)'Internal connection not found'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             end if
 
              gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
              gsa = this%aux_vars_conn_in(1)%ga
