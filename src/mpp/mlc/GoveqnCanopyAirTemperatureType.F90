@@ -197,12 +197,10 @@ contains
     class(goveqn_cair_temp_type) :: this
     class(canopy_turbulence_auxvar_type) :: cturb
     !
-    PetscInt :: ncair, icair, icell, level, iconn
-
-    ncair = 1
+    PetscInt :: icair, icell, level, iconn
 
     ! all layers
-    do icair = 1, ncair
+    do icair = 1, cturb%ncair
        do icell = 1, this%mesh%ncells_local
           level = icell
           this%aux_vars_in(icell)%cpair  = cturb%cpair(icair)
@@ -233,7 +231,7 @@ contains
     ! top-layer
     icair = 1
     iconn = 1
-    do icair = 1, ncair
+    do icair = 1, cturb%ncair
        level = this%mesh%ncells_local
        this%aux_vars_conn_bc(iconn)%ga     = cturb%ga_prof(icair, level)
        this%aux_vars_bc(iconn)%temperature = cturb%thref(icair)

@@ -105,12 +105,10 @@ contains
     class(goveqn_cleaf_temp_type)        :: this
     class(canopy_turbulence_auxvar_type) :: cturb
     !
-    PetscInt :: ncair, icair, icell, level, iconn
-
-    ncair = 1
+    PetscInt :: icair, icell, level, iconn
 
     ! all layers
-    do icair = 1, ncair
+    do icair = 1, cturb%ncair
        do icell = 1, this%mesh%ncells_local
           level = icell
           this%aux_vars_in(icell)%cpair = cturb%cpair(icair)

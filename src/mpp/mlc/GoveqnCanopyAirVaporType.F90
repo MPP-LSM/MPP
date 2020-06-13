@@ -178,10 +178,8 @@ contains
     !
     PetscInt :: ncair, icair, icell, level, iconn
 
-    ncair = 1
-
     ! all layers
-    do icair = 1, ncair
+    do icair = 1, cturb%ncair
        do icell = 1, this%mesh%ncells_local
           level = icell
           this%aux_vars_in(icell)%cpair    = cturb%cpair(icair)
@@ -197,7 +195,7 @@ contains
     end do
 
     ! internal connections
-    do icair = 1, ncair
+    do icair = 1, cturb%ncair
        do icell = 1, this%mesh%ncells_local-1
           level = icell
           this%aux_vars_conn_in(icell)%ga    = cturb%ga_prof(icair,level)
@@ -207,7 +205,7 @@ contains
 
     ! top-layer
     iconn = 1
-    do icair = 1, ncair
+    do icair = 1, cturb%ncair
        level = this%mesh%ncells_local
        this%aux_vars_conn_bc(iconn)%ga = cturb%ga_prof(icair, level)
        this%aux_vars_bc(iconn)%water_vapor    = cturb%vref(icair)
