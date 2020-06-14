@@ -14,7 +14,7 @@ module mlc_global_vars
   PetscInt  , parameter :: nz_cair  = 92
   !PetscInt  , parameter :: nz_cleaf = 42
   PetscInt  , parameter :: nz_cleaf = 92
-  PetscInt  , parameter :: ncair    = 1
+  PetscInt  :: ncair
   PetscReal , parameter :: hc       = 21.d0
 
   PetscInt, parameter :: nbot = 6

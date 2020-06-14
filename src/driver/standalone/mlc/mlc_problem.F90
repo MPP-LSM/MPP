@@ -27,7 +27,12 @@ contains
     PetscBool          :: converged
     PetscInt           :: istep
     PetscInt           :: converged_reason
+    PetscBool          :: flg
     PetscErrorCode     :: ierr
+
+    ncair = 1;
+
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
 
     call Init(mlc_mpp)
     !call mlc_mpp%soe%PrintInfo()
@@ -51,7 +56,6 @@ contains
     !
     type(mpp_mlc_type) :: mlc_mpp
     !
-    PetscInt :: ncair
 
     ! 1. Initialize the multi-physics-problem (MPP)
     call initialize_mpp(mlc_mpp)
@@ -72,7 +76,6 @@ contains
     !call add_internal_coupling_vars(mlc_mpp)
 
     ! 7. Allocate auxvars
-    ncair = 1
     call mlc_mpp%AllocateAuxVars(ncair)
 
     ! 8. Setup Problem
