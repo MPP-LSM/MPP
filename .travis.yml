@@ -33,6 +33,7 @@ script:
   - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 install
   - make VERBOSE=1 CC=$PETSC_DIR/$PETSC_ARCH/bin/mpicc CXX=$PETSC_DIR/$PETSC_ARCH/bin/mpicxx FC=$PETSC_DIR/$PETSC_ARCH/bin/mpif90 test
   - cat regression_tests/*testlog
+  - cat regression_tests/mlc/mlc.regression
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)
