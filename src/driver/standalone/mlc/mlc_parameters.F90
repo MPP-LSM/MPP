@@ -76,10 +76,9 @@ contains
       call get_sunlit_canopy_gs(gs_sun)
       call get_shaded_canopy_gs(gs_shd)
 
-      icell = 0
       do icair = 1, ncair
          do k = 1, nz_cair
-            icell = icell + 1
+            icell = (icair-1)*(nz_cair+1) + k
             cur_goveq%aux_vars_in(icell)%gbh  = 2.268731551029694d0
 
             cur_goveq%aux_vars_in(icell)%leaf_dpai(:) = dpai(k)
@@ -91,10 +90,8 @@ contains
 
             ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = fssh(k)
             ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = 1.d0 - fssh(k)
-            if (k == 1) then
-               cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-            endif
          end do
+         cur_goveq%aux_vars_in((nz_cair+1)*(icair-1)+1)%is_soil = PETSC_TRUE
       enddo
 
     end select
@@ -144,10 +141,9 @@ contains
       call get_sunlit_canopy_gs(gs_sun)
       call get_shaded_canopy_gs(gs_shd)
 
-      icell = 0
       do icair = 1, ncair
          do k = 1, nz_cair
-            icell = icell + 1
+            icell = (icair-1)*(nz_cair+1) + k
             cur_goveq%aux_vars_in(icell)%gbv  = 2.496430918408511d0
 
             cur_goveq%aux_vars_in(icell)%leaf_dpai(:) = dpai(k)
@@ -159,10 +155,8 @@ contains
 
             ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = fssh(k)
             ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = 1.d0 - fssh(k)
-            if (k == 1) then
-               cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-            endif
          end do
+         cur_goveq%aux_vars_in((nz_cair+1)*(icair-1)+1)%is_soil = PETSC_TRUE
       end do
     end select
 
@@ -208,10 +202,9 @@ contains
 
        call get_dpai_fssh(dpai, fssh)
 
-       icell = 0
        do icair = 1, ncair
           do k = 1, nz_cleaf + 1
-             icell = icell + 1
+             icell = (icair-1)*(nz_cair+1) + k
              cur_goveq%aux_vars_in(icell)%gbh  = 2.268731551029694d0
              cur_goveq%aux_vars_in(icell)%gbv  = 2.496430918408511d0
              cur_goveq%aux_vars_in(icell)%cp   = 744.5333333333334d0
@@ -633,7 +626,7 @@ contains
        soe%cturb%rhref(p) = 53.871d0
        soe%cturb%tcan(p)  = soe%cturb%tref(p)
 
-       call soe%cturb%ComputeDerivedAtmInputs()
+       call soe%cturb%ComputeDerivedAtmInputs(p)
 
        soe%cturb%vcan(p) = soe%cturb%vref(p)
     end do

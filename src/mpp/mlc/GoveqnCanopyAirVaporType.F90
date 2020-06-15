@@ -176,12 +176,12 @@ contains
     class(goveqn_cair_vapor_type)        :: this
     class(canopy_turbulence_auxvar_type) :: cturb
     !
-    PetscInt :: ncair, icair, icell, level, iconn
+    PetscInt :: ncair, icair, icell, iconn, k
 
     ! all layers
     do icair = 1, cturb%ncair
-       do icell = 1, this%mesh%ncells_local
-          level = icell
+       do k = 1, cturb%ncan_lev
+          icell = (icair-1)*cturb%ncan_lev + k
           this%aux_vars_in(icell)%cpair    = cturb%cpair(icair)
           this%aux_vars_in(icell)%rhomol   = cturb%rhomol(icair)
           this%aux_vars_in(icell)%pref     = cturb%pref(icair)
@@ -196,18 +196,17 @@ contains
 
     ! internal connections
     do icair = 1, cturb%ncair
-       do icell = 1, this%mesh%ncells_local-1
-          level = icell
-          this%aux_vars_conn_in(icell)%ga    = cturb%ga_prof(icair,level)
+       do k = 1, cturb%ncan_lev-1
+          iconn = (icair-1)*(cturb%ncan_lev-1) + k
+          this%aux_vars_conn_in(iconn)%ga    = cturb%ga_prof(icair,k)
        end do
 
     end do
 
     ! top-layer
-    iconn = 1
     do icair = 1, cturb%ncair
-       level = this%mesh%ncells_local
-       this%aux_vars_conn_bc(iconn)%ga = cturb%ga_prof(icair, level)
+       iconn = icair
+       this%aux_vars_conn_bc(iconn)%ga = cturb%ga_prof(icair, k)
        this%aux_vars_bc(iconn)%water_vapor    = cturb%vref(icair)
     end do
 

@@ -59,7 +59,7 @@ contains
     class(connection_set_type) , pointer :: conn_set
 
 
-    nconn  = 1
+    nconn  = ncair
 
     allocate(id_up    (nconn   ))
     allocate(id_dn    (nconn   ))

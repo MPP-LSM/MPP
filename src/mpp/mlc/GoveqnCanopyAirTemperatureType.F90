@@ -197,12 +197,13 @@ contains
     class(goveqn_cair_temp_type) :: this
     class(canopy_turbulence_auxvar_type) :: cturb
     !
-    PetscInt :: icair, icell, level, iconn
+    PetscInt :: icair, icell, iconn, k
 
     ! all layers
     do icair = 1, cturb%ncair
-       do icell = 1, this%mesh%ncells_local
-          level = icell
+       do k = 1, cturb%ncan_lev
+          icell = (icair-1)*cturb%ncan_lev + k
+
           this%aux_vars_in(icell)%cpair  = cturb%cpair(icair)
           this%aux_vars_in(icell)%rhomol = cturb%rhomol(icair)
           this%aux_vars_in(icell)%pref   = cturb%pref(icair)
@@ -222,18 +223,18 @@ contains
 
     end do
 
-    icair = 1
-    do icell = 1, this%mesh%ncells_local-1
-       level = icell
-       this%aux_vars_conn_in(icell)%ga = cturb%ga_prof(icair,level)
-    enddo
+    do icair = 1, cturb%ncair
+       do k = 1, cturb%ncan_lev-1
+          iconn = (icair-1)*(cturb%ncan_lev-1) + k
+          this%aux_vars_conn_in(iconn)%ga = cturb%ga_prof(icair,k)
+       end do
+    end do
 
     ! top-layer
-    icair = 1
-    iconn = 1
     do icair = 1, cturb%ncair
-       level = this%mesh%ncells_local
-       this%aux_vars_conn_bc(iconn)%ga     = cturb%ga_prof(icair, level)
+       iconn = icair
+
+       this%aux_vars_conn_bc(iconn)%ga     = cturb%ga_prof(icair, cturb%ncan_lev)
        this%aux_vars_bc(iconn)%temperature = cturb%thref(icair)
     end do
 
@@ -499,7 +500,7 @@ contains
           b_p(icell) = b_p(icell) + auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature
 #endif
           endif
-    end do
+       end do
 
 
   end subroutine CAirTempRhsAccumulation
@@ -700,13 +701,12 @@ contains
 #else
           value = ga/dist
 #endif
-
-          if (cell_id_up > 1) then
+          if (.not.this%aux_vars_in(cell_id_up)%is_soil) then
              call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
              call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_up-1,  value, ADD_VALUES, ierr); CHKERRQ(ierr)
           endif
 
-          if (cell_id_dn > 1) then
+          if (.not.this%aux_vars_in(cell_id_dn)%is_soil) then
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1,  value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if

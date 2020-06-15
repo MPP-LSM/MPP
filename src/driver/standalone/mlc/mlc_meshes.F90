@@ -80,7 +80,7 @@ contains
 
     icell = 0
     do icair = 1, ncair
-       do k = 1, nz_cair
+       do k = 1, nz_cair+1
           icell = icell + 1
           if (k == 1) then
              zc(icell) = 0.d0

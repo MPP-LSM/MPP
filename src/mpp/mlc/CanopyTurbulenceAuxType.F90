@@ -147,7 +147,7 @@ contains
   end subroutine CAirTurbInit
 
   !------------------------------------------------------------------------
-  subroutine CAirTurbComputeDerivedAtmInputs(this)
+  subroutine CAirTurbComputeDerivedAtmInputs(this,icair)
     !
     use WaterVaporMod             , only : SatVap
     use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR, CPD, CPW, RGAS
@@ -159,25 +159,20 @@ contains
     PetscReal :: esat, desatdt, eref, vref_kg_kg
     PetscInt :: icair
 
-    do icair = 1, this%ncair
+    call satvap (this%tref(icair), esat, desatdt);
 
+    eref = (this%rhref(icair) / 100.d0) * esat
+    this%vref(icair) = eref / this%pref(icair)
 
-       call satvap (this%tref(icair), esat, desatdt);
+    this%rhomol(icair) = this%pref(icair) / (RGAS * this%tref(icair))
+    this%rhoair(icair) = this%rhomol(icair) * MM_DRY_AIR * (1.d0 - (1.d0 - MM_H2O/MM_DRY_AIR) * eref / this%pref(icair))
+    this%mmair(icair)  = this%rhoair(icair) / this%rhomol(icair)
+    this%thref(icair)  = this%tref(icair) + 0.0098d0 * this%zref(icair)
 
-       eref = (this%rhref(icair) / 100.d0) * esat
-       this%vref(icair) = eref / this%pref(icair)
+    vref_kg_kg = MM_H2O/MM_DRY_AIR * eref / (this%pref(icair) - (1.d0 - MM_H2O/MM_DRY_AIR) * eref)
 
-       this%rhomol(icair) = this%pref(icair) / (RGAS * this%tref(icair))
-       this%rhoair(icair) = this%rhomol(icair) * MM_DRY_AIR * (1.d0 - (1.d0 - MM_H2O/MM_DRY_AIR) * eref / this%pref(icair))
-       this%mmair(icair)  = this%rhoair(icair) / this%rhomol(icair)
-       this%thref(icair)  = this%tref(icair) + 0.0098d0 * this%zref(icair)
-
-       vref_kg_kg = MM_H2O/MM_DRY_AIR * eref / (this%pref(icair) - (1.d0 - MM_H2O/MM_DRY_AIR) * eref)
-
-       this%cpair(icair)  = CPD * (1.d0 + (CPW/CPD - 1.d0) * vref_kg_kg) * this%mmair(icair)
-       this%thvref(icair) = this%thref(icair) * (1.d0 + 0.61d0 * vref_kg_kg)
-
-    end do
+    this%cpair(icair)  = CPD * (1.d0 + (CPW/CPD - 1.d0) * vref_kg_kg) * this%mmair(icair)
+    this%thvref(icair) = this%thref(icair) * (1.d0 + 0.61d0 * vref_kg_kg)
 
   end subroutine CAirTurbComputeDerivedAtmInputs
 
