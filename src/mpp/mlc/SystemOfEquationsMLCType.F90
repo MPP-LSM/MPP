@@ -43,6 +43,7 @@ module SystemOfEquationsMlcType
     procedure, public :: Init                  => MlcSoeInit
     procedure, public :: AddGovEqnWithMeshRank => MlcSoeAddGovEqnWithMeshRank
     procedure, public :: PreSolve              => MlcSoePreSolve
+    procedure, public :: PostSolve             => MlcSoePostSolve
     procedure, public :: ComputeRHS            => MlcSoeComputeRhs
     procedure, public :: ComputeOperators      => MlcSoeComputeOperators
 
@@ -568,6 +569,52 @@ contains
     deallocate(B_submats   )
 
   end subroutine MlcSoeComputeOperators
+
+  !------------------------------------------------------------------------
+  subroutine MlcSoePostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Peform operations after a successful call to the PETSc solver.
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_mlc_type) :: this
+    !
+    ! !LOCAL VARIABLES:
+    class(goveqn_base_type) , pointer :: cur_goveqn
+    PetscInt                          :: ii, nDM
+    Vec                     , pointer :: soln_subvecs(:)
+    PetscErrorCode                    :: ierr
+
+    call VecCopy(this%solver%soln, this%solver%soln_prev,ierr); CHKERRQ(ierr)
+
+    ! Find number of GEs packed within the SoE
+    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
+
+    ! Allocate vectors for individual GEs
+    allocate(soln_subvecs(nDM))
+
+    ! Get solution vectors for individual GEs
+    call DMCompositeGetAccessArray(this%solver%dm, &
+         this%solver%soln, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    ii = 0
+    cur_goveqn => this%goveqns
+    do
+       if (.not.associated(cur_goveqn)) exit
+       ii = ii + 1
+       call cur_goveqn%SavePrimaryIndependentVar(soln_subvecs(ii))
+       cur_goveqn => cur_goveqn%next
+    enddo
+
+    deallocate(soln_subvecs)
+
+  end subroutine MlcSoePostSolve
 
 #endif
 

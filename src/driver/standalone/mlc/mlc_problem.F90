@@ -11,28 +11,60 @@ module mlc_problem
 
   implicit none
 
+  type(mpp_mlc_type) :: mlc_mpp
+
 #include <petsc/finclude/petsc.h>
 
   public :: run_mlc_problem
+  public :: output_regression_mlc_problem
 
 contains
 
   !------------------------------------------------------------------------
-  subroutine run_mlc_problem()
+  subroutine run_mlc_problem(namelist_filename)
 
     use MultiPhysicsProbMLC, only : mpp_mlc_type
-
-    type(mpp_mlc_type) :: mlc_mpp
+    !
+    implicit none
+    !
     PetscReal          :: dt
     PetscBool          :: converged
     PetscInt           :: istep
     PetscInt           :: converged_reason
     PetscBool          :: flg
     PetscErrorCode     :: ierr
+    character(len=256), optional :: namelist_filename
+    character(len=256) :: ioerror_msg
+    character(len=2560):: namelist_buffer
+    integer            :: nml_unit, nml_error
+    namelist / problem_options / ncair
 
     ncair = 1;
-
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
+
+    if (present(namelist_filename)) then
+       nml_unit = 16
+       open(unit=nml_unit, file=trim(namelist_filename), action='read', access='stream', &
+            form='unformatted', iostat=nml_error)
+       if (nml_error /= 0) then
+          write(*,*)'ERROR: Unable to open namelist file: ',trim(namelist_filename)
+          call exit(-1)
+       endif
+
+       read(unit=nml_unit, iostat=nml_error, iomsg=ioerror_msg) namelist_buffer
+       if (.not. is_iostat_end(nml_error)) then
+          write(*,*)"ERROR: Unable to read '",trim(namelist_filename),"' till EOF"
+          call exit(-1)
+       endif
+
+       read(namelist_buffer, nml=problem_options, iostat=nml_error, iomsg=ioerror_msg)
+       if (nml_error /= 0) then
+          write(*,*)'ERROR: Unable to read "problem_options" in namelist file '
+          call exit(-1)
+       endif
+
+       close(nml_unit)
+    endif
 
     call Init(mlc_mpp)
     !call mlc_mpp%soe%PrintInfo()
@@ -232,6 +264,73 @@ contains
     call VecCopy(mlc_mpp%soe%solver%soln, mlc_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_conditions
+
+  !------------------------------------------------------------------------
+  subroutine output_regression_mlc_problem(filename_base, num_cells)
+    !
+    use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants       , only : VAR_PRESSURE
+    use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants       , only : VAR_WATER_VAPOR
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
+    use regression_mod                  , only : regression_type
+    use GoverningEquationBaseType       , only : goveqn_base_type
+    use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+    use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
+    use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+    !
+    implicit none
+    !
+    character(len=256)    :: filename_base
+    PetscInt, intent(in)  :: num_cells
+    !
+    PetscInt              :: output, ieqn, ncells
+    character(len=512)    :: filename
+    character(len=64)     :: category
+    character(len=64)     :: name
+    PetscReal, pointer    :: data(:)
+    type(regression_type) :: regression
+    class(goveqn_base_type) , pointer :: goveq
+
+    ncells = (nz_cair+1)*ncair
+
+    allocate(data(ncells))
+
+    call regression%Init(filename_base, num_cells)
+    call regression%OpenOutput()
+    
+    do ieqn = 1,4
+
+       call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
+
+       select type(goveq)
+       class is (goveqn_cair_temp_type)
+          name = 'air_temperature'; category = 'temperature'
+          call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
+          
+       class is (goveqn_cair_vapor_type)
+          name = 'air_vapor'; category = 'general'
+          call goveq%GetRValues(AUXVAR_INTERNAL, VAR_WATER_VAPOR, ncells, data)
+
+       class is (goveqn_cleaf_temp_type)
+          if (ieqn == 3) then
+             name = 'sunlit_leaf_temperature'
+          else
+             name = 'shaded_leaf_temperature'
+          end if
+          category = 'temperature'
+          call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_TEMPERATURE, ncells, data)
+       end select
+
+       call regression%WriteData(name, category, data)
+
+    enddo
+
+    call regression%CloseOutput()
+    
+    deallocate(data)
+
+  end subroutine output_regression_mlc_problem
 
 end module mlc_problem
 
