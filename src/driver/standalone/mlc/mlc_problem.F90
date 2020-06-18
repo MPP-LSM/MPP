@@ -40,7 +40,10 @@ contains
     namelist / problem_options / ncair
 
     ncair = 1;
+    ntree = 1;
+
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
 
     if (present(namelist_filename)) then
        nml_unit = 16
@@ -157,14 +160,21 @@ contains
     !
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GE_CANOPY_AIR_TEMP
-    use MultiPhysicsProbConstants, only : GE_CANOPY_AIR_VAPOR
-    use MultiPhysicsProbConstants, only : GE_CANOPY_LEAF_TEMP
+    use MultiPhysicsProbConstants      , only : GE_CANOPY_AIR_TEMP
+    use MultiPhysicsProbConstants      , only : GE_CANOPY_AIR_VAPOR
+    use MultiPhysicsProbConstants      , only : GE_CANOPY_LEAF_TEMP
+    use GoverningEquationBaseType      , only : goveqn_base_type
+    use GoveqnCanopyAirTemperatureType , only : goveqn_cair_temp_type
+    use GoveqnCanopyAirVaporType       , only : goveqn_cair_vapor_type
+    use GoveqnCanopyLeafTemperatureType, only : goveqn_cleaf_temp_type
     !
     ! !ARGUMENTS
     implicit none
     !
-    type(mpp_mlc_type) :: mlc_mpp
+    type(mpp_mlc_type)                :: mlc_mpp
+    class(goveqn_base_type) , pointer :: goveq
+    PetscInt                , pointer :: leaf2cair(:)
+    PetscInt                          :: nleaf2cair, icair, itree, k, count, ieqn
 
     CAIR_TEMP_GE = 1
     CAIR_VAPR_GE = 2 
@@ -181,6 +191,51 @@ contains
 
     call mlc_mpp%SetMeshesOfGoveqnsByMeshRank()
 
+    if (ntree == 1) then
+
+       do ieqn = 1, 4
+          call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
+
+          select type(goveq)
+          class is (goveqn_cair_temp_type)
+             call goveq%SetDefaultLeaf2CAirMap()
+          class is (goveqn_cair_vapor_type)
+             call goveq%SetDefaultLeaf2CAirMap()
+          class is (goveqn_cleaf_temp_type)
+             call goveq%SetDefaultLeaf2CAirMap()
+          end select
+       end do
+    else
+
+       nleaf2cair = (nz_cair+1)*ncair*ntree
+
+       allocate(leaf2cair(nleaf2cair))
+
+       count = 0
+       do icair = 1, ncair
+          do itree = 1, ntree
+             do k = 1, nz_cair + 1
+                count = count + 1
+                leaf2cair(count) = (nz_cair + 1)*(icair-1) + k
+             end do
+          end do
+       end do
+
+       do ieqn = 1, 4
+          call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
+
+          select type(goveq)
+          class is (goveqn_cair_temp_type)
+             call goveq%SetLeaf2CAirMap(leaf2cair, nleaf2cair)
+          class is (goveqn_cair_vapor_type)
+             call goveq%SetLeaf2CAirMap(leaf2cair, nleaf2cair)
+          class is (goveqn_cleaf_temp_type)
+             call goveq%SetLeaf2CAirMap(leaf2cair, nleaf2cair)
+          end select
+       end do
+
+    end if
+          
   end subroutine add_multiple_goveqns
 
   !------------------------------------------------------------------------

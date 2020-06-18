@@ -20,7 +20,8 @@ module GoveqnCanopyLeafTemperatureType
 
   type, public, extends(goveqn_base_type) :: goveqn_cleaf_temp_type
 
-     type(cleaf_temp_auxvar_type), pointer ::  aux_vars_in(:)
+     type(cleaf_temp_auxvar_type), pointer :: aux_vars_in(:)
+     PetscInt                    , pointer :: Leaf2CAir(:)
 
    contains
 
@@ -33,6 +34,8 @@ module GoveqnCanopyLeafTemperatureType
      procedure, public :: ComputeRHS                => CLeafTempComputeRHS
      procedure, public :: ComputeOperatorsDiag      => CLeafTempComputeOperatorsDiag
      procedure, public :: ComputeOperatorsOffDiag   => CLeafTempComputeOperatorsOffDiag
+     procedure, public :: SetLeaf2CAirMap
+     procedure, public :: SetDefaultLeaf2CAirMap
 
   end type goveqn_cleaf_temp_type
 
@@ -58,8 +61,51 @@ contains
     this%itype = GE_CANOPY_LEAF_TEMP
 
     nullify(this%aux_vars_in)
+    nullify(this%Leaf2CAir)
 
   end subroutine CLeafTempSetup
+
+  !------------------------------------------------------------------------
+  subroutine SetLeaf2CAirMap(this, CAirIdForLeaf, nCAirIdForLeaf)
+
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cleaf_temp_type) :: this
+    PetscInt, pointer :: CAirIdForLeaf(:)
+    PetscInt          :: nCAirIdForLeaf
+    !
+    PetscInt :: ileaf
+
+    if (this%mesh%ncells_all /= nCAirIdForLeaf) then
+       call endrun(msg="size of Leaf2CAir /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
+    allocate(this%Leaf2CAir(nCAirIdForLeaf))
+
+    do ileaf = 1, nCAirIdForLeaf
+       this%Leaf2CAir(ileaf) = CAirIdForLeaf(ileaf) ! Canopy airspace id for the ileaf-th leaf
+    enddo
+
+  end subroutine SetLeaf2CAirMap
+
+  !------------------------------------------------------------------------
+  subroutine SetDefaultLeaf2CAirMap(this)
+
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cleaf_temp_type) :: this
+    !
+    PetscInt :: ileaf
+
+    allocate(this%Leaf2CAir(this%mesh%ncells_all))
+
+    do ileaf = 1, this%mesh%ncells_all
+       this%Leaf2CAir(ileaf) = ileaf  ! Canopy airspace id for the ileaf-th leaf
+    enddo
+
+  end subroutine SetDefaultLeaf2CAirMap
 
   !------------------------------------------------------------------------
   subroutine CLeafTempAllocateAuxVars(this)
@@ -430,6 +476,7 @@ contains
     case (GE_CANOPY_AIR_TEMP)
        do icell = 1, this%mesh%ncells_local
           row = icell-1; col = icell-1
+          col = this%Leaf2CAir(icell) - 1
           if (this%aux_vars_in(icell)%dpai > 0.d0) then
              value = -2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -439,6 +486,7 @@ contains
     case (GE_CANOPY_AIR_VAPOR)
        do icell = 1, this%mesh%ncells_local
           row = icell-1; col = icell-1
+          col = this%Leaf2CAir(icell) - 1
           if (this%aux_vars_in(icell)%dpai > 0.d0) then
              call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
              qsat = qsat/this%aux_vars_in(icell)%pref

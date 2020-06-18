@@ -277,22 +277,6 @@ contains
     class(goveqn_base_type), pointer :: cur_goveqn, cur_goveq_1, cur_goveq_2
     PetscInt :: row, col
 
-#if 0
-    cur_goveq => this%goveqns
-    do
-       if (.not.associated(cur_goveq)) exit
-       select type(cur_goveq)
-
-       class is (goveqn_cair_temp_type)
-          call cur_goveq%GetFromSOEAuxVarsCturb(this%cturb)
-
-       class is (goveqn_cair_vapor_type)
-          call cur_goveq%GetFromSOEAuxVarsCturb(this%cturb)
-       end select
-       cur_goveq => cur_goveq%next
-    enddo
-#endif
-
     ! Find number of GEs packed within the SoE
     call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
 
@@ -474,8 +458,8 @@ contains
 
     !
     ! !LOCAL VARIABLES:
-    PetscInt                          :: row
-    PetscInt                          :: col
+    PetscInt                          :: row, col
+    PetscInt                          :: rank_1, rank_2
     PetscInt                          :: nDM
 
     IS                      , pointer :: is(:)
@@ -523,18 +507,31 @@ contains
 
           col = col + 1
 
+          rank_1 = cur_goveq_1%rank_in_soe_list
+          rank_2 = cur_goveq_2%rank_in_soe_list
+
+          select type(cur_goveq_1)
+          class is (goveqn_cleaf_temp_type)
+             rank_1 = this%leaftemp_goveqn_rank(cur_goveq_1%rank_in_soe_list)
+          end select
+
+          select type(cur_goveq_2)
+          class is (goveqn_cleaf_temp_type)
+             rank_2 = this%leaftemp_goveqn_rank(cur_goveq_2%rank_in_soe_list)
+          end select
+
           call cur_goveq_1%ComputeOperatorsOffDiag( &
                B_submats(row,col),                  &
                B_submats(row,col),                  &
                cur_goveq_2%itype,                   &
-               cur_goveq_2%rank_in_soe_list,        &
+               rank_2,                              &
                ierr); CHKERRQ(ierr)
 
           call cur_goveq_2%ComputeOperatorsOffDiag( &
                B_submats(col,row),                  &
                B_submats(col,row),                  &
                cur_goveq_1%itype,                   &
-               cur_goveq_1%rank_in_soe_list,        &
+               rank_1,                              &
                ierr); CHKERRQ(ierr)
 
           cur_goveq_2 => cur_goveq_2%next

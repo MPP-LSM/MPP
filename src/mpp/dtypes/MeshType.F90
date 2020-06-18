@@ -901,6 +901,8 @@ contains
 
        if (id_dn(iconn) > this%ncells_all) then
           write(iulog,*)'Cell id down is greater than total number of cells '
+          write(iulog,*)'this%ncells_all = ',this%ncells_all
+          write(iulog,*)'id_dn           = ',id_dn(iconn),iconn
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
 

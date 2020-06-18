@@ -28,6 +28,9 @@ module GoveqnCanopyAirTemperatureType
      type(cair_temp_conn_auxvar_type) , pointer :: aux_vars_conn_in(:)
      type(cair_temp_conn_auxvar_type) , pointer :: aux_vars_conn_bc(:)
 
+     PetscInt                                   :: nLeaf, nleafGE
+     PetscInt                         , pointer :: LeafGE2CAirAuxVar_in(:,:)
+
    contains
 
      procedure, public :: Setup                     => CAirTempSetup
@@ -40,6 +43,8 @@ module GoveqnCanopyAirTemperatureType
      procedure, public :: ComputeRhs                => CAirTempComputeRhs
      procedure, public :: ComputeOperatorsDiag      => CAirTempComputeOperatorsDiag
      procedure, public :: ComputeOperatorsOffDiag   => CAirTempComputeOperatorsOffDiag
+     procedure, public :: SetLeaf2CAirMap
+     procedure, public :: SetDefaultLeaf2CAirMap
 
   end type goveqn_cair_temp_type
 
@@ -69,7 +74,61 @@ contains
     nullify(this%aux_vars_conn_in)
     nullify(this%aux_vars_conn_bc)
 
+    this%nLeaf = 0
+    this%nleafGE = 0
+    nullify(this%LeafGE2CAirAuxVar_in)
+
   end subroutine CAirTempSetup
+
+  !------------------------------------------------------------------------
+  subroutine SetLeaf2CAirMap(this, CAirIdForLeaf, nCAirIdForLeaf)
+
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cair_temp_type) :: this
+    PetscInt, pointer :: CAirIdForLeaf(:)
+    PetscInt          :: nCAirIdForLeaf
+    !
+    PetscInt :: ileaf, icair
+    PetscInt, pointer :: nleaf(:)
+
+    allocate(this%LeafGE2CAirAuxVar_in(nCAirIdForLeaf,2))
+    allocate(nLeaf(this%mesh%ncells_all))
+
+    this%nleaf = nCAirIdForLeaf
+    nleaf(:) = 0
+    do ileaf = 1, nCAirIdForLeaf
+       icair = CAirIdForLeaf(ileaf)
+       nLeaf(icair) = nLeaf(icair) + 1
+
+       this%LeafGE2CAirAuxVar_in(ileaf, 1) = icair       ! Canopy airspace id for the ileaf-th leaf
+       this%LeafGE2CAirAuxVar_in(ileaf, 2) = nLeaf(icair)! The id of leaf within the canopy airspace
+    enddo
+
+  end subroutine SetLeaf2CAirMap
+
+  !------------------------------------------------------------------------
+  subroutine SetDefaultLeaf2CAirMap(this)
+
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cair_temp_type) :: this
+    !
+    PetscInt :: ileaf, icair
+
+    allocate(this%LeafGE2CAirAuxVar_in(this%mesh%ncells_all,2))
+
+    this%nleaf = this%mesh%ncells_all
+    do ileaf = 1, this%mesh%ncells_all
+       icair = ileaf
+
+       this%LeafGE2CAirAuxVar_in(icair, 1) = icair  ! Canopy airspace id for the ileaf-th leaf
+       this%LeafGE2CAirAuxVar_in(icair, 2) = 1      ! The id of leaf within the canopy airspace
+    enddo
+
+  end subroutine SetDefaultLeaf2CAirMap
 
   !------------------------------------------------------------------------
   subroutine CAirTempAllocateAuxVars(this)
@@ -97,27 +156,41 @@ contains
     class(connection_set_type)   , pointer :: cur_conn_set
     PetscInt                               :: ncells_cond
     PetscInt                               :: ncond
-    PetscInt                               :: icond
-    PetscInt                               :: nleaf
+    PetscInt                               :: icond, icell, icair, ileaf
+    PetscInt                     , pointer :: nleaf(:)
     PetscInt                               :: sum_conn
 
-    !
+    ! Allocate memory and initialize aux vars: For internal connections
+    allocate(this%aux_vars_in(this%mesh%ncells_all))
+    allocate(nLeaf(this%mesh%ncells_all))
+
     ! Determine the number of leaves that are coupled with the canopy
     ! air space
-    nleaf = 0
+    this%nleafGE = 0
     cpl_var => this%coupling_vars%first
     do
        if (.not.associated(cpl_var)) exit
        if ( cpl_var%variable_type == VAR_LEAF_TEMPERATURE) then
-          nleaf = nleaf + 1
+          this%nleafGE = this%nleafGE + 1
        end if
        cpl_var => cpl_var%next
     end do
 
-    ! Allocate memory and initialize aux vars: For internal connections
-    allocate(this%aux_vars_in(this%mesh%ncells_all))
-    do icond = 1,this%mesh%ncells_all
-       call this%aux_vars_in(icond)%Init(nleaf)
+    if (this%nLeaf == 0) then
+       call endrun(msg="Leaf2CAirMap needs be set before allocating auxvars "//errmsg(__FILE__, __LINE__))
+    endif
+
+    nLeaf(:) = 0
+    do ileaf = 1, this%nLeaf
+       icair = this%LeafGE2CAirAuxVar_in(ileaf,1)
+       if (icair > this%mesh%ncells_local) then
+          call endrun(msg="Leaf2CAirMap is incorrect as the canopy airspace id is greater than number of grid cells "//errmsg(__FILE__, __LINE__))
+       endif
+       nLeaf(icair) = nLeaf(icair) + 1
+    enddo
+
+    do icell = 1,this%mesh%ncells_all
+       call this%aux_vars_in(icell)%Init(nleaf(icell) * this%nleafGE)
     enddo
 
     ! Allocate memory and initialize aux vars: For boundary connections
@@ -132,7 +205,7 @@ contains
     enddo
     allocate(this%aux_vars_bc(ncells_cond))
     do icond = 1,ncells_cond
-       call this%aux_vars_bc(icond)%Init(nleaf)
+       call this%aux_vars_bc(icond)%Init(0)
     enddo
 
     ! Find number of internal connections
@@ -306,7 +379,7 @@ contains
   end subroutine CAirTempGetRValues
 
   !------------------------------------------------------------------------
-  subroutine CAirTempSetRValues (this, auxvar_type, var_type, leaf_idx, nauxvar, var_values)
+  subroutine CAirTempSetRValues (this, auxvar_type, var_type, geq_leaf_temp_rank, nauxvar, var_values)
     !
     ! !DESCRIPTION:
     !
@@ -321,15 +394,15 @@ contains
     class(goveqn_cair_temp_type) :: this
     PetscInt                     :: auxvar_type
     PetscInt                     :: var_type
-    PetscInt                     :: leaf_idx
+    PetscInt                     :: geq_leaf_temp_rank
     PetscInt                     :: nauxvar
     PetscReal, pointer           :: var_values(:)
 
     select case(auxvar_type)
     case(AUXVAR_INTERNAL)
-       call CAirTempSetRValuesFromAuxVars(this%aux_vars_in, var_type, leaf_idx, nauxvar, var_values)
+       call CAirTempSetRValuesFromAuxVars(this%aux_vars_in, var_type, geq_leaf_temp_rank, nauxvar, var_values, this%LeafGE2CAirAuxVar_in, this%nleafGE)
     case (AUXVAR_BC)
-       call CAirTempSetRValuesFromAuxVars(this%aux_vars_bc, var_type, leaf_idx, nauxvar, var_values)
+       call CAirTempSetRValuesFromAuxVars(this%aux_vars_bc, geq_leaf_temp_rank, var_type, nauxvar, var_values)
     case default
        write(*,*)'Unknown auxvar_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -368,7 +441,7 @@ contains
   end subroutine CAirTempGetRValuesFromAuxVars
 
   !------------------------------------------------------------------------
-  subroutine CAirTempSetRValuesFromAuxVars (aux_var, var_type, leaf_idx, nauxvar, var_values)
+  subroutine CAirTempSetRValuesFromAuxVars (aux_var, var_type, geq_leaf_temp_rank, nauxvar, var_values, LeafGE2CAirAuxVar, nleafGE)
     !
     ! !DESCRIPTION:
     !
@@ -381,16 +454,25 @@ contains
     ! !ARGUMENTS
     type(cair_temp_auxvar_type) , pointer :: aux_var(:)
     PetscInt                              :: var_type
-    PetscInt                              :: leaf_idx
+    PetscInt                              :: leaf_idx, cair_auxvar_idx, geq_leaf_temp_rank
     PetscInt                              :: nauxvar
     PetscReal                   , pointer :: var_values(:)
+    PetscInt         , optional , pointer :: LeafGE2CAirAuxVar(:,:)
+    PetscInt         , optional           :: nleafGE
     !
     PetscInt :: iauxvar
 
     select case(var_type)
     case(VAR_LEAF_TEMPERATURE)
+       if (.not.present(LeafGE2CAirAuxVar) .or. .not.present(nleafGE)) then
+          write(iulog,*) 'Optional arguments LeafGE2CAirAuxVar and nleafGE needed for setting leaf temperature'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+       endif
        do iauxvar = 1,nauxvar
-          aux_var(iauxvar)%leaf_temperature(leaf_idx) = var_values(iauxvar)
+          cair_auxvar_idx = LeafGE2CAirAuxVar(iauxvar,1)
+          leaf_idx        = LeafGE2CAirAuxVar(iauxvar,2) + &
+                            (geq_leaf_temp_rank-1)*aux_var(cair_auxvar_idx)%nleaf/nleafGE
+          aux_var(cair_auxvar_idx)%leaf_temperature(leaf_idx) = var_values(iauxvar)
        end do
     case(VAR_WATER_VAPOR)
        do iauxvar = 1,nauxvar
@@ -782,7 +864,7 @@ contains
     !
     ! !LOCAL VARIABLES
     class(connection_set_type)   , pointer :: cur_conn_set
-    PetscInt                               :: icell, ileaf, row, col, iconn
+    PetscInt                               :: icell, ileaf, row, col, iconn, geq_leaf_temp_rank, cair_auxvar_idx, leaf_idx
     PetscReal                              :: value, gleaf, gleaf_et, gsw, gsa, gs0, lambda
     PetscBool                              :: found
 
@@ -822,25 +904,31 @@ contains
        enddo
 
     case (GE_CANOPY_LEAF_TEMP)
-       ileaf = rank_of_other_goveq - 2
-       do icell = 1, this%mesh%ncells_local
-          row = icell-1; col = icell-1
-          if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
+       geq_leaf_temp_rank = rank_of_other_goveq
+       do ileaf = 1, this%nLeaf
+          cair_auxvar_idx = this%LeafGE2CAirAuxVar_in(ileaf,1)
+          leaf_idx        = this%LeafGE2CAirAuxVar_in(ileaf,2) + &
+                            (geq_leaf_temp_rank-1)*this%aux_vars_in(cair_auxvar_idx)%nleaf/this%nleafGE
+
+          if (this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) > 0.d0) then
+
+          row = cair_auxvar_idx-1; col = ileaf-1
 
 #ifdef USE_BONAN_FORMULATION
-             value = -2.d0 * this%aux_vars_in(icell)%gbh * &
-                  this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                  this%aux_vars_in(icell)%leaf_dpai(ileaf)
+             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
+                  this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
+                  this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 #else
-             value = -2.d0 * this%aux_vars_in(icell)%gbh * &
-                  this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                  this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
-                  this%mesh%vol(icell)
+             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
+                  this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
+                  this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) / &
+                  this%mesh%vol(cair_auxvar_idx)
 #endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if
        end do
+
 
     end select
 
