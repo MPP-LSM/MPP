@@ -37,7 +37,7 @@ contains
     character(len=256) :: ioerror_msg
     character(len=2560):: namelist_buffer
     integer            :: nml_unit, nml_error
-    namelist / problem_options / ncair
+    namelist / problem_options / ncair, ntree
 
     ncair = 1;
     ntree = 1;
