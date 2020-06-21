@@ -1,11 +1,7 @@
 set(MPP_THERMAL_E_SOURCES
   MultiPhysicsProbThermalEnthalpy.F90
   GoveqnThermalEnthalpySoilType.F90
-  SystemOfEquationsThermalEnthalpyAuxType.F90
-  SystemOfEquationsThermalEnthalpyAuxMod.F90
   SystemOfEquationsThermalEnthalpyType.F90
-  ThermalEnthalpySoilAuxType.F90
-  ThermalEnthalpySoilAuxMod.F90
   ThermalEnthalpyMod.F90
 )
 

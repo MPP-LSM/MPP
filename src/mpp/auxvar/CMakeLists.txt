@@ -10,6 +10,10 @@ set(MPP_AUXVAR_SOURCES
   RichardsODEPressureConnAuxType.F90
   SystemOfEquationsMLCAuxType.F90
   SystemOfEquationsVSFMAuxType.F90
+  SystemOfEquationsThermalEnthalpyAuxType.F90
+  SystemOfEquationsThermalEnthalpyAuxMod.F90
+  ThermalEnthalpySoilAuxType.F90
+  ThermalEnthalpySoilAuxMod.F90
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
