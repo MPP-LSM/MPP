@@ -3,6 +3,7 @@ set(MPP_DRIVER_SOURCES
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)

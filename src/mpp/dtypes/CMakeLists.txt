@@ -13,6 +13,7 @@ set(MPP_DTYPES_SOURCES
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
 
 include(add_mpp_library)

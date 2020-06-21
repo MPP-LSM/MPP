@@ -3,6 +3,8 @@ set(MPP_UTIL_SOURCES
   EOSWaterMod.F90
   SatVapor.F90
   MultiPhysicsProbConstants.F90
+  PorosityFunctionMod.F90
+  SaturationFunction.F90
   mpp_abortutils.F90
   mpp_bounds.F90
   mpp_mesh_utils.F90
@@ -14,6 +16,7 @@ set(MPP_UTIL_SOURCES
 
 #include_directories(${CMAKE_BINARY_DIR}/src/stub_clm)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
 
