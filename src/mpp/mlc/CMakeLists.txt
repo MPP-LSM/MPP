@@ -10,6 +10,7 @@ set(MPP_MLC_SOURCES
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 
 include(add_mpp_library)
 add_mpp_library(mpp_mlc ${MPP_MLC_SOURCES})
