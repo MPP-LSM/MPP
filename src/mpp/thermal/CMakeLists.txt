@@ -3,16 +3,7 @@ set(MPP_THERMAL_SOURCES
   GoveqnThermalKSPTemperatureSnowType.F90
   GoveqnThermalKSPTemperatureSoilType.F90
   MultiPhysicsProbThermal.F90
-  SystemOfEquationsThermalAuxMod.F90
-  SystemOfEquationsThermalAuxType.F90
   SystemOfEquationsThermalType.F90
-  ThermalKSPTemperatureBaseAuxType.F90
-  ThermalKSPTemperatureSSWAuxMod.F90
-  ThermalKSPTemperatureSSWAuxType.F90
-  ThermalKSPTemperatureSnowAuxMod.F90
-  ThermalKSPTemperatureSnowAuxType.F90
-  ThermalKSPTemperatureSoilAuxMod.F90
-  ThermalKSPTemperatureSoilAuxType.F90
   )
 
 #include_directories(${CMAKE_BINARY_DIR}/src/stub_clm)
