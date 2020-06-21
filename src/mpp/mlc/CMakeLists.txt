@@ -1,12 +1,12 @@
 set(MPP_MLC_SOURCES
   MultiPhysicsProbMLC.F90
-  SystemOfEquationsMLCType.F90
 )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/ge)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/soe)
 
 include(add_mpp_library)
 add_mpp_library(mpp_mlc ${MPP_MLC_SOURCES})

@@ -1,12 +1,12 @@
 set(MPP_TH_SOURCES
   MultiPhysicsProbTH.F90
-  SystemOfEquationsTHType.F90
 )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/ge)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/soe)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal-e)
 

@@ -1,6 +1,5 @@
 set(MPP_THERMAL_E_SOURCES
   MultiPhysicsProbThermalEnthalpy.F90
-  SystemOfEquationsThermalEnthalpyType.F90
 )
 
 #include_directories(${CMAKE_BINARY_DIR}/src/stub_clm)
@@ -8,6 +7,7 @@ include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/ge)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/soe)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
 
