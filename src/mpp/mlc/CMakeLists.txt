@@ -1,16 +1,9 @@
 set(MPP_MLC_SOURCES
-  CanopyTurbulenceAuxType.F90
   CanopyTurbulence.F90
-  CanopyAirTemperatureAuxType.F90
-  CanopyAirTemperatureConnAuxType.F90
-  CanopyAirVaporAuxType.F90
-  CanopyAirVaporConnAuxType.F90
-  CanopyLeafTemperatureAuxType.F90
   GoveqnCanopyAirTemperatureType.F90
   GoveqnCanopyAirVaporType.F90
   GoveqnCanopyLeafTemperatureType.F90
   MultiPhysicsProbMLC.F90
-  SystemOfEquationsMLCAuxType.F90
   SystemOfEquationsMLCType.F90
   MathTools.F90
 )

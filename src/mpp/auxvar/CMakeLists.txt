@@ -1,7 +1,14 @@
 set(MPP_AUXVAR_SOURCES
+  CanopyAirTemperatureAuxType.F90
+  CanopyAirTemperatureConnAuxType.F90
+  CanopyAirVaporAuxType.F90
+  CanopyAirVaporConnAuxType.F90
+  CanopyLeafTemperatureAuxType.F90
+  CanopyTurbulenceAuxType.F90
   RichardsODEPressureAuxType.F90
   RichardsODEPressureAuxMod.F90
   RichardsODEPressureConnAuxType.F90
+  SystemOfEquationsMLCAuxType.F90
   SystemOfEquationsVSFMAuxType.F90
   )
 
