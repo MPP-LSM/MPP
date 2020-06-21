@@ -14,7 +14,6 @@ set(MPP_UTIL_SOURCES
   mpp_varpar.F90
   )
 
-#include_directories(${CMAKE_BINARY_DIR}/src/stub_clm)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
