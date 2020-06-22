@@ -839,16 +839,71 @@ contains
     ! !DESCRIPTION:
     ! Adds a governing equation
     !
-    implicit none
+   use MultiPhysicsProbConstants     , only : GE_THERM_SOIL_EBASED
+   use MultiPhysicsProbConstants     , only : GE_RE
+   use GoverningEquationBaseType     , only : goveqn_base_type
+   use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
+   use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
+   !
+   implicit none
     !
     ! !ARGUMENTS
     class(sysofeqns_base_type) :: this
     PetscInt                   :: geq_type
     character(len =*)          :: name
     PetscInt                   :: mesh_itype
+   !
+    class (goveqn_base_type)                  , pointer :: cur_goveqn
+    class (goveqn_thermal_enthalpy_soil_type) , pointer :: goveq_soil
+    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
+    integer                                             :: igoveqn
 
-    write(iulog,*) 'SOEBaseAddGovEqn must be extended'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
+    cur_goveqn => this%goveqns
+
+    do igoveqn = 1, this%ngoveqns - 1
+       cur_goveqn => cur_goveqn%next
+    enddo
+
+    this%ngoveqns = this%ngoveqns + 1
+
+    select case(geq_type)
+    case (GE_THERM_SOIL_EBASED)
+
+       allocate(goveq_soil)
+       call goveq_soil%Setup()
+
+       goveq_soil%name                 = trim(name)
+       goveq_soil%rank_in_soe_list     = this%ngoveqns
+       goveq_soil%mesh_itype           = mesh_itype
+
+       if (this%ngoveqns               == 1) then
+          this%goveqns                 => goveq_soil
+       else
+          cur_goveqn%next              => goveq_soil
+       endif
+
+    case (GE_RE)
+
+       allocate(goveq_richards)
+       call goveq_richards%Setup()
+
+       goveq_richards%name             = trim(name)
+       goveq_richards%rank_in_soe_list = this%ngoveqns
+       goveq_richards%mesh_itype       = mesh_itype
+
+       if (this%ngoveqns == 1) then
+          this%goveqns => goveq_richards
+       else
+          cur_goveqn%next => goveq_richards
+       endif
+
+    case default
+       write(iulog,*) 'Unknown governing equation type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
+    !write(iulog,*) 'SOEBaseAddGovEqn must be extended'
+    !call endrun(msg=errMsg(__FILE__, __LINE__))
 
   end subroutine SOEBaseAddGovEqn
 
@@ -858,16 +913,106 @@ contains
     ! !DESCRIPTION:
     ! Adds a governing equation
     !
-    implicit none
-    !
-    ! !ARGUMENTS
+   use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+   use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
+   use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+   use GoveqnRichardsODEPressureType   , only : goveqn_richards_ode_pressure_type
+   use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_TEMP
+   use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_VAPOR
+   use MultiPhysicsProbConstants       , only : GE_CANOPY_LEAF_TEMP
+   use MultiPhysicsProbConstants       , only : GE_RE
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
     class(sysofeqns_base_type) :: this
     PetscInt                   :: geq_type
     character(len =*)          :: name
     PetscInt                   :: mesh_rank
+   !
+    class (goveqn_base_type)                  , pointer :: cur_goveqn
+    class (goveqn_cair_temp_type)             , pointer :: geq_air_temp
+    class (goveqn_cair_vapor_type)            , pointer :: geq_air_vapor
+    class (goveqn_cleaf_temp_type)            , pointer :: geq_leaf_temp
+    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
+    integer                                             :: igoveqn
 
-    write(iulog,*) 'SOEBaseAddGovEqnWithMeshRank must be extended'
-    call endrun(msg=errMsg(__FILE__, __LINE__))
+    cur_goveqn => this%goveqns
+
+    do igoveqn = 1, this%ngoveqns - 1
+       cur_goveqn => cur_goveqn%next
+    enddo
+
+    this%ngoveqns = this%ngoveqns + 1
+
+    select case(geq_type)
+    case (GE_CANOPY_AIR_TEMP)
+       allocate(geq_air_temp)
+
+       call geq_air_temp%Setup()
+
+       geq_air_temp%name              = trim(name)
+       geq_air_temp%rank_in_soe_list  = this%ngoveqns
+       geq_air_temp%mesh_rank         = mesh_rank
+
+       if (this%ngoveqns == 1) then
+          this%goveqns => geq_air_temp
+       else
+          cur_goveqn%next => geq_air_temp
+       endif
+
+    case (GE_CANOPY_AIR_VAPOR)
+       allocate(geq_air_vapor)
+
+       call geq_air_vapor%Setup()
+
+       geq_air_vapor%name              = trim(name)
+       geq_air_vapor%rank_in_soe_list  = this%ngoveqns
+       geq_air_vapor%mesh_rank         = mesh_rank
+
+       if (this%ngoveqns == 1) then
+          this%goveqns => geq_air_vapor
+       else
+          cur_goveqn%next => geq_air_vapor
+       endif
+
+    case (GE_CANOPY_LEAF_TEMP)
+       allocate(geq_leaf_temp)
+
+       call geq_leaf_temp%Setup()
+
+       geq_leaf_temp%name              = trim(name)
+       geq_leaf_temp%rank_in_soe_list  = this%ngoveqns
+       geq_leaf_temp%mesh_rank         = mesh_rank
+
+       if (this%ngoveqns == 1) then
+          this%goveqns => geq_leaf_temp
+       else
+          cur_goveqn%next => geq_leaf_temp
+       endif
+
+      case (GE_RE)
+
+         allocate(goveq_richards)
+         call goveq_richards%Setup()
+  
+         goveq_richards%name              = trim(name)
+         goveq_richards%rank_in_soe_list  = this%ngoveqns
+         goveq_richards%mesh_rank         = mesh_rank
+  
+         if (this%ngoveqns == 1) then
+            this%goveqns => goveq_richards
+         else
+            cur_goveqn%next => goveq_richards
+         endif
+
+      case default
+       write(iulog,*) 'Unknown governing equation type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
+    !write(iulog,*) 'SOEBaseAddGovEqnWithMeshRank must be extended'
+    !call endrun(msg=errMsg(__FILE__, __LINE__))
 
   end subroutine SOEBaseAddGovEqnWithMeshRank
 

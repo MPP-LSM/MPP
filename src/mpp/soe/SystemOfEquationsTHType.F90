@@ -33,7 +33,6 @@ module SystemOfEquationsTHType
 
    contains
      procedure, public :: Init                   => SOETHInit
-     procedure, public :: AddGovEqn              => SOETHAddGovEqn
 
      procedure, public :: CreateVectorsForGovEqn => SOETHCreateVectorsForGovEqn
 
@@ -77,82 +76,6 @@ contains
     nullify(this%soe_auxvars_ss_ncells_per_goveqn)
 
   end subroutine SOETHInit
-
-  !------------------------------------------------------------------------
-  subroutine SOETHAddGovEqn(this, geq_type, name, mesh_itype)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to system-of-equations
-    !
-    ! !USES:
-    use SystemOfEquationsBaseType     , only : SOEBaseInit
-    use MultiPhysicsProbConstants     , only : GE_THERM_SOIL_EBASED
-    use MultiPhysicsProbConstants     , only : MESH_CLM_THERMAL_SOIL_COL
-    use MultiPhysicsProbConstants     , only : GE_RE
-    use MultiPhysicsProbConstants     , only : MESH_CLM_SOIL_COL
-    use GoverningEquationBaseType     , only : goveqn_base_type
-    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
-    use GoveqnThermalEnthalpySoilType , only : goveqn_thermal_enthalpy_soil_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_th_type)                            :: this
-    PetscInt                                            :: geq_type
-    character(len=*)                                    :: name
-    PetscInt                                            :: mesh_itype
-    !
-    ! !LOCAL VARIABLES:
-    class (goveqn_thermal_enthalpy_soil_type) , pointer :: goveq_soil
-    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
-    class(goveqn_base_type)                   , pointer :: cur_goveqn
-    integer                                             :: igoveqn
-
-    cur_goveqn => this%goveqns
-
-    do igoveqn = 1, this%ngoveqns - 1
-       cur_goveqn => cur_goveqn%next
-    enddo
-
-    this%ngoveqns = this%ngoveqns + 1
-
-    select case(geq_type)
-       case (GE_THERM_SOIL_EBASED)
-
-          allocate(goveq_soil)
-          call goveq_soil%Setup()
-
-          goveq_soil%name              = trim(name)
-          goveq_soil%rank_in_soe_list  = this%ngoveqns
-          goveq_soil%mesh_itype        = mesh_itype
-
-          if (this%ngoveqns == 1) then
-             this%goveqns => goveq_soil
-          else
-             cur_goveqn%next => goveq_soil
-          endif
-
-       case (GE_RE)
-
-          allocate(goveq_richards)
-          call goveq_richards%Setup()
-
-          goveq_richards%name              = trim(name)
-          goveq_richards%rank_in_soe_list  = this%ngoveqns
-          goveq_richards%mesh_itype        = mesh_itype
-
-          if (this%ngoveqns == 1) then
-             this%goveqns => goveq_richards
-          else
-             cur_goveqn%next => goveq_richards
-          endif
-
-       case default
-          write(iulog,*) 'Unknown governing equation type'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       end select
-
-     end subroutine SOETHAddGovEqn
 
   !------------------------------------------------------------------------
   subroutine SOETHCreateVectorsForGovEqn(this)

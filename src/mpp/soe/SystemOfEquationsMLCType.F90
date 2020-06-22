@@ -41,7 +41,6 @@ module SystemOfEquationsMlcType
    contains
 
     procedure, public :: Init                  => MlcSoeInit
-    procedure, public :: AddGovEqnWithMeshRank => MlcSoeAddGovEqnWithMeshRank
     procedure, public :: PreSolve              => MlcSoePreSolve
     procedure, public :: PostSolve             => MlcSoePostSolve
     procedure, public :: ComputeRHS            => MlcSoeComputeRhs
@@ -74,94 +73,6 @@ contains
     this%ncair = 0
 
   end subroutine MlcSoeInit
-
-  !------------------------------------------------------------------------
-  subroutine MlcSoeAddGovEqnWithMeshRank(this, geq_type, name, mesh_rank)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to system-of-equations
-    !
-    ! !USES:
-    use SystemOfEquationsBaseType, only : SOEBaseInit
-    use MultiPhysicsProbConstants, only : GE_CANOPY_AIR_TEMP
-    use MultiPhysicsProbConstants, only : GE_CANOPY_AIR_VAPOR
-    use MultiPhysicsProbConstants, only : GE_CANOPY_LEAF_TEMP
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_mlc_type) :: this
-    PetscInt                      :: geq_type
-    character(len=*)              :: name
-    PetscInt                      :: mesh_rank
-    !
-    ! !LOCAL VARIABLES:
-    class (goveqn_cair_temp_type)  , pointer :: geq_air_temp
-    class (goveqn_cair_vapor_type) , pointer :: geq_air_vapor
-    class (goveqn_cleaf_temp_type) , pointer :: geq_leaf_temp
-    class(goveqn_base_type)        , pointer :: cur_goveqn
-    integer                                  :: igoveqn
-
-    cur_goveqn => this%goveqns
-
-    do igoveqn = 1, this%ngoveqns - 1
-       cur_goveqn => cur_goveqn%next
-    enddo
-
-    this%ngoveqns = this%ngoveqns + 1
-
-    select case(geq_type)
-    case (GE_CANOPY_AIR_TEMP)
-       allocate(geq_air_temp)
-
-       call geq_air_temp%Setup()
-
-       geq_air_temp%name              = trim(name)
-       geq_air_temp%rank_in_soe_list  = this%ngoveqns
-       geq_air_temp%mesh_rank         = mesh_rank
-
-       if (this%ngoveqns == 1) then
-          this%goveqns => geq_air_temp
-       else
-          cur_goveqn%next => geq_air_temp
-       endif
-
-    case (GE_CANOPY_AIR_VAPOR)
-       allocate(geq_air_vapor)
-
-       call geq_air_vapor%Setup()
-
-       geq_air_vapor%name              = trim(name)
-       geq_air_vapor%rank_in_soe_list  = this%ngoveqns
-       geq_air_vapor%mesh_rank         = mesh_rank
-
-       if (this%ngoveqns == 1) then
-          this%goveqns => geq_air_vapor
-       else
-          cur_goveqn%next => geq_air_vapor
-       endif
-
-    case (GE_CANOPY_LEAF_TEMP)
-       allocate(geq_leaf_temp)
-
-       call geq_leaf_temp%Setup()
-
-       geq_leaf_temp%name              = trim(name)
-       geq_leaf_temp%rank_in_soe_list  = this%ngoveqns
-       geq_leaf_temp%mesh_rank         = mesh_rank
-
-       if (this%ngoveqns == 1) then
-          this%goveqns => geq_leaf_temp
-       else
-          cur_goveqn%next => geq_leaf_temp
-       endif
-
-    case default
-       write(iulog,*) 'Unknown governing equation type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-     end subroutine MlcSoeAddGovEqnWithMeshRank
 
   !------------------------------------------------------------------------
   subroutine MlcSoePreSolve(this)
