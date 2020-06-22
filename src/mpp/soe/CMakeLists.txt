@@ -1,9 +1,14 @@
 set(MPP_SOE_SOURCES
+  SystemOfEquationsBasePointerType.F90
+  SystemOfEquationsBaseType.F90
+  SystemOfEquationsMLCAuxType.F90
   SystemOfEquationsMLCType.F90
   SystemOfEquationsThermalEnthalpyType.F90
+  SystemOfEquationsThermalAuxMod.F90
   SystemOfEquationsThermalType.F90
   SystemOfEquationsTHType.F90
   SystemOfEquationsVSFMType.F90  
+  SystemOfEquationsThermalEnthalpyAuxMod.F90
 )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)

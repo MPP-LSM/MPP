@@ -8,11 +8,8 @@ set(MPP_AUXVAR_SOURCES
   RichardsODEPressureAuxType.F90
   RichardsODEPressureAuxMod.F90
   RichardsODEPressureConnAuxType.F90
-  SystemOfEquationsMLCAuxType.F90
   SystemOfEquationsVSFMAuxType.F90
   SystemOfEquationsThermalEnthalpyAuxType.F90
-  SystemOfEquationsThermalEnthalpyAuxMod.F90
-  SystemOfEquationsThermalAuxMod.F90
   SystemOfEquationsThermalAuxType.F90
   ThermalEnthalpySoilAuxType.F90
   ThermalEnthalpySoilAuxMod.F90
