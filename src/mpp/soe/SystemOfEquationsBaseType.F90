@@ -70,6 +70,7 @@ module SystemOfEquationsBaseType
      procedure, public :: ComputeRHS                   => SOEComputeRHS
      procedure, public :: ComputeOperators             => SOEComputeOperators
      procedure, public :: StepDT                       => SOEBaseStepDT
+     procedure, public :: SavePrimaryIndependentVar    => SOEBaseSavePrimaryIndependentVar
      procedure, public :: PreSolve                     => SOEBasePreSolve
      procedure, public :: PostSolve                    => SOEBasePostSolve
      procedure, public :: PreStepDT                    => SOEBasePreStepDT
@@ -238,6 +239,60 @@ contains
   end subroutine SOEBasePreSolve
 
   !------------------------------------------------------------------------
+  subroutine SOEBaseSavePrimaryIndependentVar(this, X)
+   !
+   ! !DESCRIPTION:
+   ! Save primary independent variable for each governing equation
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(sysofeqns_base_type) :: this
+   Vec :: X
+   !
+   class(goveqn_base_type) , pointer :: cur_goveq
+   PetscInt                          :: ii
+   PetscInt                          :: nDM
+   DM                      , pointer :: dms(:)
+   Vec                     , pointer :: soln_subvecs(:)
+   class(goveqn_base_type) , pointer :: cur_goveqn
+   PetscErrorCode                    :: ierr
+
+    ! Find number of GEs packed within the SoE
+   call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
+
+   ! Get DMs for each GE
+   allocate (dms(nDM))
+   call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr)
+
+   ! Allocate vectors for individual GEs
+   allocate(soln_subvecs(nDM))
+
+   ! Get solution vectors for individual GEs
+   call DMCompositeGetAccessArray(this%solver%dm, &
+        X, nDM, &
+        PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+   ii = 0
+   cur_goveqn => this%goveqns
+   do
+      if (.not.associated(cur_goveqn)) exit
+      ii = ii + 1
+      call cur_goveqn%SavePrimaryIndependentVar(soln_subvecs(ii))
+      cur_goveqn => cur_goveqn%next
+   enddo
+
+   call DMCompositeRestoreAccessArray(this%solver%dm, &
+        X, nDM, &
+        PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+   ! Free memory
+   deallocate(dms)
+   deallocate(soln_subvecs)
+
+      end subroutine SOEBaseSavePrimaryIndependentVar
+
+ !------------------------------------------------------------------------
   subroutine SOEBasePreStepDT(this)
     !
     ! !DESCRIPTION:

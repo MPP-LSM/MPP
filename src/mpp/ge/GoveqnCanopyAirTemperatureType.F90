@@ -283,7 +283,7 @@ contains
 
           if (this%aux_vars_in(icell)%is_soil) then
              ! soil-layer
-             this%aux_vars_in(icell)%temperature      = cturb%tsoi(icair)
+             !this%aux_vars_in(icell)%temperature      = cturb%tsoi(icair)
              this%aux_vars_in(icell)%soil_rhg         = cturb%rhgsoi(icair)
              this%aux_vars_in(icell)%soil_rn          = cturb%rnsoi(icair)
              this%aux_vars_in(icell)%soil_tk          = cturb%tksoi(icair)

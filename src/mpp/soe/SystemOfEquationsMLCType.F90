@@ -103,6 +103,8 @@ contains
     class(goveqn_base_type) , pointer :: cur_goveqn
     PetscErrorCode                    :: ierr
 
+    call this%SavePrimaryIndependentVar(this%solver%soln)
+
     call ObukhovLength(this%cturb)
     call WindProfile(this%cturb)
     call AerodynamicConductances(this%cturb)
@@ -124,34 +126,6 @@ contains
 
        cur_goveq => cur_goveq%next
     enddo
-
-    ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
-
-    ! Get DMs for each GE
-    allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr)
-
-    ! Allocate vectors for individual GEs
-    allocate(soln_subvecs(nDM))
-
-    ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(this%solver%dm, &
-         this%solver%soln, nDM, &
-         PETSC_NULL_INTEGER, soln_subvecs, ierr)
-
-    ii = 0
-    cur_goveqn => this%goveqns
-    do
-       if (.not.associated(cur_goveqn)) exit
-       ii = ii + 1
-       call cur_goveqn%SavePrimaryIndependentVar(soln_subvecs(ii))
-       cur_goveqn => cur_goveqn%next
-    enddo
-
-    call DMCompositeRestoreAccessArray(this%solver%dm, &
-         this%solver%soln, nDM, &
-         PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
   end subroutine MlcSoePreSolve
 
