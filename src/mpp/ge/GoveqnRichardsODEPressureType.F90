@@ -50,6 +50,8 @@ module GoveqnRichardsODEPressureType
      procedure, public :: ComputeJacobian           => RichardsODEComputeJacobian
      procedure, public :: ComputeOffDiagJacobian    => RichardsODEComputeOffDiagJacobian
 
+     procedure, public :: SavePrimaryIndependentVar => RichardsODESavePrmIndepVar
+
      procedure, public :: GetFromSOEAuxVarsIntrn    => RichardsODEPressureGetFromSOEAuxVarsIntrn
      procedure, public :: SetFromSOEAuxVarsIntrn    => RichardsODEPressureSetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC       => RichardsODEPressureGetFromSOEAuxVarsBC
@@ -498,6 +500,38 @@ contains
 
   end subroutine RichardsODEComputeOffDiagJacobian
 
+  !------------------------------------------------------------------------
+  subroutine RichardsODESavePrmIndepVar (this, x)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_richards_ode_pressure_type) :: this
+   Vec :: x
+   !
+   PetscScalar, pointer :: x_p(:)
+   PetscInt             :: ghosted_id, size
+   PetscErrorCode       :: ierr
+   
+   call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+   if (size /= this%mesh%ncells_local) then
+      call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+   end if
+
+   call VecGetArrayF90(x, x_p, ierr); CHKERRQ(ierr)
+
+   do ghosted_id = 1, this%mesh%ncells_local
+      this%aux_vars_in(ghosted_id)%pressure = x_p(ghosted_id)
+   end do
+
+   call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)
+
+ end subroutine RichardsODESavePrmIndepVar
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureGetFromSOEAuxVarsIntrn(this, soe_avars, offset)
