@@ -430,13 +430,11 @@ contains
 
     offset = 0
 
-       ! 1) {soln_prev}  ---> aux_vars_in()
+   ! 1) {soln_prev}  ---> sim_aux()
     call this%SavePrimaryIndependentVar(this%solver%soln_prev)
 
     select case (this%itype)
     case(SOE_THERMAL_TBASED)
-
-       !call ThermalSOEUpdateAuxVarsTBased(this, this%solver%soln_prev)
 
        ! 2) GE ---> GetFromSimAux()
        cur_goveq => this%goveqns

@@ -571,8 +571,8 @@ contains
 
        if (this%mesh%is_active(iauxvar)) then
           ! Copy temperature.
-          ge_avars(iauxvar)%temperature =  &
-               soe_avars(iauxvar+offset)%temperature
+          !ge_avars(iauxvar)%temperature =  &
+          !     soe_avars(iauxvar+offset)%temperature
 
           ! Copy frac_liq_sat.
           ge_avars(iauxvar)%frac_liq_sat =  &
