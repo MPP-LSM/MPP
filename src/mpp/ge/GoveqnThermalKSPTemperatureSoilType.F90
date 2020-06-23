@@ -36,6 +36,8 @@ module GoveqnThermalKSPTemperatureSoilType
      procedure, public :: Setup                   => ThermKSPTempSoilSetup
      procedure, public :: AllocateAuxVars         => ThermKSPTempSoilAllocateAuxVars
 
+     procedure, public :: SavePrimaryIndependentVar => ThermalKSPTempSoilSavePrmIndepVar
+
      procedure, public :: GetFromSOEAuxVarsIntrn  => ThermKSPTempSoilGetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC     => ThermKSPTempSoilGetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS     => ThermKSPTempSoilGetFromSOEAuxVarsSS
@@ -152,6 +154,39 @@ contains
   end subroutine ThermKSPTempSoilAllocateAuxVars
 
   !------------------------------------------------------------------------
+  subroutine ThermalKSPTempSoilSavePrmIndepVar (this, x)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_thermal_ksp_temp_soil_type)  :: this
+   Vec :: x
+   !
+   PetscScalar, pointer :: x_p(:)
+   PetscInt             :: ghosted_id, size
+   PetscErrorCode       :: ierr
+   
+   call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+   if (size /= this%mesh%ncells_local) then
+      call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+   end if
+
+   call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+   do ghosted_id = 1, this%mesh%ncells_local
+      this%aux_vars_in(ghosted_id)%temperature = x_p(ghosted_id)
+   end do
+
+   call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+ end subroutine ThermalKSPTempSoilSavePrmIndepVar
+ 
+ !------------------------------------------------------------------------
   subroutine ThermKSPTempSoilGetDataFromSOEAuxVar(this, soe_avar_type, soe_avars, &
        offset)
     !
@@ -224,7 +259,7 @@ contains
 
     do iauxvar = 1, nauxvar
 
-       this%aux_vars_in(iauxvar)%temperature    = soe_avars(iauxvar+offset)%temperature
+       !this%aux_vars_in(iauxvar)%temperature    = soe_avars(iauxvar+offset)%temperature
        this%aux_vars_in(iauxvar)%liq_areal_den  = soe_avars(iauxvar+offset)%liq_areal_den
        this%aux_vars_in(iauxvar)%ice_areal_den  = soe_avars(iauxvar+offset)%ice_areal_den
        this%aux_vars_in(iauxvar)%snow_water     = soe_avars(iauxvar+offset)%snow_water

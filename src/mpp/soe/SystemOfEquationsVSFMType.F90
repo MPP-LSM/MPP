@@ -115,6 +115,7 @@ contains
     PetscViewer                     :: viewer
     character(len=256)              :: string
 
+   ! 1) {soln_prev}  ---> aux_vars_in()
     call this%SavePrimaryIndependentVar(X)
 
     ! Find number of GEs packed within the SoE

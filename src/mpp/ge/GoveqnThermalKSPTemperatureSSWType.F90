@@ -37,6 +37,8 @@ module GoveqnThermalKSPTemperatureSSWType
      procedure, public :: Setup                     => ThermKSPTempSSWSetup
      procedure, public :: AllocateAuxVars           => ThermKSPTempSSWAllocateAuxVars
 
+     procedure, public :: SavePrmIndepVar           => ThermalKSPTempSSWSavePrmIndepVar
+
      procedure, public :: GetFromSOEAuxVarsIntrn    => ThermKSPTempSSWGetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC       => ThermKSPTempSSWGetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS       => ThermKSPTempSSWGetFromSOEAuxVarsSS
@@ -153,6 +155,39 @@ contains
   end subroutine ThermKSPTempSSWAllocateAuxVars
 
   !------------------------------------------------------------------------
+  subroutine ThermalKSPTempSSWSavePrmIndepVar (this, x)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_thermal_ksp_temp_ssw_type)  :: this
+   Vec :: x
+   !
+   PetscScalar, pointer :: x_p(:)
+   PetscInt             :: ghosted_id, size
+   PetscErrorCode       :: ierr
+   
+   call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+   if (size /= this%mesh%ncells_local) then
+      call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+   end if
+
+   call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+   do ghosted_id = 1, this%mesh%ncells_local
+      this%aux_vars_in(ghosted_id)%temperature = x_p(ghosted_id)
+   end do
+
+   call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+ end subroutine ThermalKSPTempSSWSavePrmIndepVar
+ 
+  !------------------------------------------------------------------------
   subroutine ThermKSPTempSSWGetDataFromSOEAuxVar(this, soe_avar_type, soe_avars, &
        offset)
     !
@@ -224,7 +259,7 @@ contains
     endif
 
     do iauxvar = 1, nauxvar
-       this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
+       !this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
        this%aux_vars_in(iauxvar)%is_active   = soe_avars(iauxvar+offset)%is_active
        this%aux_vars_in(iauxvar)%dz          = soe_avars(iauxvar+offset)%dz
        this%aux_vars_in(iauxvar)%frac        = soe_avars(iauxvar+offset)%frac
@@ -438,8 +473,8 @@ contains
 
        do iauxvar = 1, size(ge_avars)
           if (this%mesh%is_active(iauxvar)) then
-             soe_avars(iauxvar+iauxvar_off)%temperature =  &
-                  ge_avars(iauxvar)%temperature
+             !soe_avars(iauxvar+iauxvar_off)%temperature =  &
+             !     ge_avars(iauxvar)%temperature
           endif
        enddo
 
