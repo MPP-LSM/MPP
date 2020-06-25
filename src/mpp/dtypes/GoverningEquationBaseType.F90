@@ -62,6 +62,8 @@ module GoverningEquationBaseType
      procedure, public :: GetMeshGridCellIsActive           => GoveqnBaseGetMeshGridCellIsActive
      procedure, public :: GetConnIDDnForCondsExcptCondItype => GoveqnBaseGetConnIDDnForCondsExcptCondItype
      procedure, public :: IsCoupledToOtherEquation          => GoveqnIsCoupledToOtherEquation
+     procedure, public :: AllocateAuxVars                   => GoveqnAllocateAuxVars
+     procedure, public :: SavePrimaryIndependentVar         => GoveqnSavePrimaryIndependentVar
   end type goveqn_base_type
   !------------------------------------------------------------------------
 
@@ -821,6 +823,39 @@ contains
     enddo
 
   end subroutine GoveqnIsCoupledToOtherEquation
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnAllocateAuxVars(this)
+    !
+    ! !DESCRIPTION:
+    ! Dummy subroutine for PETSc SNES Function evaluation
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type) :: this
+
+    write(iulog,*)'GoveqnAllocateAuxVars must be extended by child class.'
+    call endrun(msg=errMsg(__FILE__, __LINE__))
+
+  end subroutine GoveqnAllocateAuxVars
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnSavePrimaryIndependentVar(this, x)
+    !
+    ! !DESCRIPTION:
+    ! Dummy subroutine to save the primary independent variable
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type) :: this
+    Vec :: x
+
+    write(iulog,*)'GoveqnSavePrimaryIndependentVar must be extended by child class.'
+    call endrun(msg=errMsg(__FILE__, __LINE__))
+
+  end subroutine GoveqnSavePrimaryIndependentVar
 
 #endif
 

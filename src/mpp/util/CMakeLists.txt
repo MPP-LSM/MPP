@@ -1,6 +1,7 @@
 set(MPP_UTIL_SOURCES
   ArrayDimThree.F90
   EOSWaterMod.F90
+  SatVapor.F90
   MultiPhysicsProbConstants.F90
   mpp_abortutils.F90
   mpp_bounds.F90

@@ -45,6 +45,21 @@ module SystemOfEquationsBaseType
      PetscReal                       :: dtime                        ! [sec]
      PetscReal                       :: nstep                        ! [-]
 
+     PetscInt                        :: num_calls_to_ifunction
+     PetscInt                        :: num_calls_to_ijacobian
+
+     PetscInt, pointer               :: soe_auxvars_in_offset (:) ! Cummulative sum of number of control volumes associated with each internal cell.
+     PetscInt, pointer               :: soe_auxvars_bc_offset (:) ! Cummulative sum of number of control volumes associated with each boundary condition.
+     PetscInt, pointer               :: soe_auxvars_ss_offset (:) ! Cummulative sum of number of control volumes associated with each source-sink condition.
+     PetscInt, pointer               :: soe_auxvars_in_ncells (:) ! Number of control volumes associated with each internal cell.
+     PetscInt, pointer               :: soe_auxvars_bc_ncells (:) ! Number of control volumes associated with each boundary condition.
+     PetscInt, pointer               :: soe_auxvars_ss_ncells (:) ! Number of control volumes associated with each source-sink condition.
+
+     PetscInt                        :: num_auxvars_in            ! Number of auxvars associated with internal state.
+     PetscInt                        :: num_auxvars_in_local      ! Number of auxvars associated with internal state.
+     PetscInt                        :: num_auxvars_bc            ! Number of auxvars associated with boundary condition.
+     PetscInt                        :: num_auxvars_ss            ! Number of auxvars associated with source-sink condition.
+
      type(solver_type)               :: solver
 
    contains
@@ -100,9 +115,22 @@ contains
     this%dtime                        = 0.d0
     this%nstep                        = 0
 
+    this%num_calls_to_ifunction = 0;
+    this%num_calls_to_ijacobian = 0;
+
+    this%num_auxvars_in         = 0
+    this%num_auxvars_in_local   = 0
+    this%num_auxvars_bc         = 0
+    this%num_auxvars_ss         = 0
+
     call this%solver%Init()
     
     nullify(this%goveqns)
+    nullify(this%soe_auxvars_bc_offset )
+    nullify(this%soe_auxvars_ss_offset )
+    nullify(this%soe_auxvars_bc_ncells )
+    nullify(this%soe_auxvars_ss_ncells )
+
 
   end subroutine SOEBaseInit
 
@@ -516,7 +544,7 @@ contains
     ! Did KSP converge?
     if (converged_reason < 0) then
        write(iulog,*) 'KSP Diverged. Add new code'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
+       !call endrun(msg=errMsg(__FILE__, __LINE__))
        converged = PETSC_FALSE
     else
        converged = PETSC_TRUE

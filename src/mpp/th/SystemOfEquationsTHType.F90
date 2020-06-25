@@ -28,23 +28,8 @@ module SystemOfEquationsTHType
      type (sysofeqns_thermal_enthalpy_auxvar_type), pointer :: aux_vars_bc(:)            !!< Boundary conditions.
      type (sysofeqns_thermal_enthalpy_auxvar_type), pointer :: aux_vars_ss(:)            !!< Source-sink.
 
-     PetscInt                                      :: num_calls_to_ifunction
-     PetscInt                                      :: num_calls_to_ijacobian
-
-     PetscInt, pointer                             :: soe_auxvars_in_offset (:) ! Cummulative sum of number of control volumes associated with internal condition.
-     PetscInt, pointer                             :: soe_auxvars_bc_offset (:) ! Cummulative sum of number of control volumes associated with each boundary condition.
-     PetscInt, pointer                             :: soe_auxvars_ss_offset (:) ! Cummulative sum of number of control volumes associated with each source-sink condition.
-
-     PetscInt, pointer                             :: soe_auxvars_in_ncells (:) ! Number of control volumes associated with each internal condition.
-     PetscInt, pointer                             :: soe_auxvars_bc_ncells (:) ! Number of control volumes associated with each boundary condition.
-     PetscInt, pointer                             :: soe_auxvars_ss_ncells (:) ! Number of control volumes associated with each source-sink condition.
      PetscInt, pointer                             :: soe_auxvars_bc_ncells_per_goveqn (:) ! Number of control volumes associated with each boundary condition (excludes COND_DIRICHLET_FRM_OTR_GOVEQ)
      PetscInt, pointer                             :: soe_auxvars_ss_ncells_per_goveqn (:) ! Number of control volumes associated with each source-sink condition.
-
-     PetscInt                                      :: num_auxvars_in            ! Number of auxvars associated with internal state.
-     PetscInt                                      :: num_auxvars_in_local      ! Number of auxvars associated with internal state.
-     PetscInt                                      :: num_auxvars_bc            ! Number of auxvars associated with boundary condition (excludes COND_DIRICHLET_FRM_OTR_GOVEQ)
-     PetscInt                                      :: num_auxvars_ss            ! Number of auxvars associated with source-sink condition.
 
    contains
      procedure, public :: Init                   => SOETHInit
@@ -84,21 +69,10 @@ contains
 
     call SOEBaseInit(this)
 
-    this%num_auxvars_in         = 0
-    this%num_auxvars_in_local   = 0
-    this%num_auxvars_bc         = 0
-    this%num_auxvars_ss         = 0
+    nullify(this%aux_vars_in)
+    nullify(this%aux_vars_bc)
+    nullify(this%aux_vars_ss)
 
-    nullify(this%aux_vars_in           )
-    nullify(this%aux_vars_bc           )
-    nullify(this%aux_vars_ss           )
-
-    nullify(this%soe_auxvars_in_offset )
-    nullify(this%soe_auxvars_bc_offset )
-    nullify(this%soe_auxvars_ss_offset )
-    nullify(this%soe_auxvars_in_ncells )
-    nullify(this%soe_auxvars_bc_ncells )
-    nullify(this%soe_auxvars_ss_ncells )
     nullify(this%soe_auxvars_bc_ncells_per_goveqn)
     nullify(this%soe_auxvars_ss_ncells_per_goveqn)
 
