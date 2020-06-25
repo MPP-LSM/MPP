@@ -7,7 +7,9 @@ set(MLC_PROBLEM_SOURCES
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
-include_directories(${CMAKE_BINARY_DIR}/src/mpp/mlc)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/ge)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/soe)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/mpp)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
 include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/util)
 

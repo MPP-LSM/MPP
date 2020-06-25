@@ -48,8 +48,6 @@ module SystemOfEquationsVSFMType
      procedure, public :: GetConditionNames      => VSFMSGetConditionNames
      procedure, public :: SetDataFromCLMForGhost => VSFMSOESetDataFromCLMForGhost
      procedure, public :: ComputeLateralFlux     => VSFMComputeLateralFlux
-     procedure, public :: AddGovEqn              => VSFMAddGovEqn
-     procedure, public :: AddGovEqnWithMeshRank  => VSFMAddGovEqnWithMeshRank
      procedure, public :: CreateVectorsForGovEqn => VSFMCreateVectorsForGovEqn
   end type sysofeqns_vsfm_type
 
@@ -117,6 +115,9 @@ contains
     PetscViewer                     :: viewer
     character(len=256)              :: string
 
+   ! 1) {soln_prev}  ---> aux_vars_in()
+    call this%SavePrimaryIndependentVar(X)
+
     ! Find number of GEs packed within the SoE
     call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr); CHKERRQ(ierr)
 
@@ -134,10 +135,7 @@ contains
     call DMCompositeGetAccessArray(this%solver%dm, F, nDM, PETSC_NULL_INTEGER, F_subvecs, &
          ierr); CHKERRQ(ierr)
 
-    ! 1) {X}  ---> sim_aux()
-    call VSFMSOEUpdateAuxVarsODE(this, X)
-
-    ! 2.1) GE ---> GetFromSimAux()
+    ! 1) GE ---> GetFromSimAux()
     ! Get pointers to governing-equations
     offset = 0
     cur_goveq => this%goveqns
@@ -156,7 +154,7 @@ contains
        cur_goveq => cur_goveq%next
     enddo
 
-    ! 3  ) GE_1 <---> GE_2 exchange AuxVars()
+    ! 2  ) GE_1 <---> GE_2 exchange AuxVars()
     do row = 1,nDM
        do col = row+1,nDM
           call this%SetPointerToIthGovEqn(row, cur_goveq_1)
@@ -361,93 +359,6 @@ contains
   end subroutine VSFMJacobian
 
   !------------------------------------------------------------------------
-  subroutine VSFMSOEUpdateAuxVarsODE(vsfm_soe, X)
-    !
-    ! !DESCRIPTION:
-    ! Updates the SoE vars for the discretized ODE based on the input
-    ! vector X
-    !
-    ! !USES:
-    use MultiPhysicsProbConstants, only : SOE_RE_ODE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_vsfm_type)    :: vsfm_soe
-    Vec                           :: X
-    !
-    ! !LOCAL VARIABLES:
-
-    select case (vsfm_soe%itype)
-    case (SOE_RE_ODE)
-       call VSFMSOEUpdateAuxVarsRichEqnODE(vsfm_soe, X)
-    case default
-       write(iulog,*) 'VSFMSOEUpdateAuxVars: unknown vsfm_soe%itype'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-  end subroutine VSFMSOEUpdateAuxVarsODE
-
-  !------------------------------------------------------------------------
-  subroutine VSFMSOEUpdateAuxVarsRichEqnODE(vsfm_soe, X)
-    !
-    ! !DESCRIPTION:
-    ! Updates the SoE vars for the discretized ODE of Richards equation
-    ! based on the input vector X
-    !
-    ! !USES:
-    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
-    use MultiPhysicsProbConstants, only : VAR_PRESSURE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_vsfm_type) :: vsfm_soe
-    Vec                        :: X
-    !
-    ! !LOCAL VARIABLES:
-    PetscInt                   :: dm_id
-    PetscInt                   :: nDM
-    DM, pointer                :: dms(:)
-    Vec, pointer               :: X_subvecs(:)
-    PetscInt                   :: size
-    PetscInt                   :: offset
-    PetscErrorCode             :: ierr
-
-    ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(vsfm_soe%solver%dm, nDM, ierr); CHKERRQ(ierr)
-
-    ! Get DMs for each GE
-    allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(vsfm_soe%solver%dm, dms, ierr); CHKERRQ(ierr)
-
-    ! Allocate vectors for individual GEs
-    allocate(X_subvecs(nDM))
-
-    ! Get vectors (X) for individual GEs
-    call DMCompositeGetAccessArray(vsfm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
-         X_subvecs, ierr); CHKERRQ(ierr)
-
-    ! Update the SoE auxvars
-    offset = 0
-    do dm_id = 1, nDM
-       call VSFMSOESetAuxVars(vsfm_soe, AUXVAR_INTERNAL, VAR_PRESSURE, &
-            X_subvecs(dm_id), offset)
-       call VecGetSize(X_subvecs(dm_id), size, ierr); CHKERRQ(ierr)
-       offset = offset + size
-    enddo
-
-    ! Restore vectors (u,udot,F) for individual GEs
-    call DMCompositeRestoreAccessArray(vsfm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
-         X_subvecs, ierr); CHKERRQ(ierr)
-
-    ! Free memory
-    deallocate(dms)
-    deallocate(X_subvecs)
-
-  end subroutine VSFMSOEUpdateAuxVarsRichEqnODE
-
-  !------------------------------------------------------------------------
   subroutine VSFMSOESetAuxVars(vsfm_soe, auxvar_type, var_type, &
        var_vec, offset)
     !
@@ -572,13 +483,12 @@ contains
     class(goveqn_base_type),pointer :: cur_goveq
     PetscInt :: offset
 
+    call this%SavePrimaryIndependentVar(this%solver%soln_prev)
+
     select case (this%itype)
     case(SOE_RE_ODE)
 
-       ! 1) {soln_prev}  ---> sim_aux()
-       call VSFMSOEUpdateAuxVarsODE(this, this%solver%soln_prev)
-
-       ! 2) GE ---> GetFromSimAux()
+       ! 1) GE ---> GetFromSimAux()
        offset = 0
        cur_goveq => this%goveqns
        do
@@ -1022,120 +932,6 @@ contains
     enddo
 
   end subroutine VSFMSGetConditionNames
-
-  !------------------------------------------------------------------------
-  subroutine VSFMAddGovEqn(this, geq_type, name, mesh_itype)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to system-of-equations
-    !
-    ! !USES:
-    use SystemOfEquationsBaseType     , only : SOEBaseInit
-    use GoverningEquationBaseType     , only : goveqn_base_type
-    use MultiPhysicsProbConstants     , only : GE_RE
-    use MultiPhysicsProbConstants     , only : MESH_CLM_SOIL_COL
-    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_vsfm_type) :: this
-    PetscInt                   :: geq_type
-    character(len=*)           :: name
-    PetscInt                   :: mesh_itype
-    !
-    ! !LOCAL VARIABLES:
-    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
-    class(goveqn_base_type),pointer                     :: cur_goveqn
-    integer                                             :: igoveqn
-
-    cur_goveqn => this%goveqns
-
-    do igoveqn = 1, this%ngoveqns - 1
-       cur_goveqn => cur_goveqn%next
-    enddo
-
-    this%ngoveqns = this%ngoveqns + 1
-
-    select case(geq_type)
-    case (GE_RE)
-
-       allocate(goveq_richards)
-       call goveq_richards%Setup()
-
-       goveq_richards%name              = trim(name)
-       goveq_richards%rank_in_soe_list  = this%ngoveqns
-       goveq_richards%mesh_itype        = mesh_itype
-
-       if (this%ngoveqns == 1) then
-          this%goveqns => goveq_richards
-       else
-          cur_goveqn%next => goveq_richards
-       endif
-
-    case default
-       write(iulog,*) 'Unknown governing equation type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-  end subroutine VSFMAddGovEqn
-
-  !------------------------------------------------------------------------
-  subroutine VSFMAddGovEqnWithMeshRank(this, geq_type, name, mesh_rank)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to system-of-equations
-    !
-    ! !USES:
-    use SystemOfEquationsBaseType     , only : SOEBaseInit
-    use GoverningEquationBaseType     , only : goveqn_base_type
-    use MultiPhysicsProbConstants     , only : GE_RE
-    use MultiPhysicsProbConstants     , only : MESH_CLM_SOIL_COL
-    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_vsfm_type) :: this
-    PetscInt                   :: geq_type
-    character(len=*)           :: name
-    PetscInt                   :: mesh_rank
-    !
-    ! !LOCAL VARIABLES:
-    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
-    class(goveqn_base_type), pointer                    :: cur_goveqn
-    integer                                             :: igoveqn
-
-    cur_goveqn => this%goveqns
-
-    do igoveqn = 1, this%ngoveqns - 1
-       cur_goveqn => cur_goveqn%next
-    enddo
-
-    this%ngoveqns = this%ngoveqns + 1
-
-    select case(geq_type)
-    case (GE_RE)
-
-       allocate(goveq_richards)
-       call goveq_richards%Setup()
-
-       goveq_richards%name              = trim(name)
-       goveq_richards%rank_in_soe_list  = this%ngoveqns
-       goveq_richards%mesh_rank         = mesh_rank
-
-       if (this%ngoveqns == 1) then
-          this%goveqns => goveq_richards
-       else
-          cur_goveqn%next => goveq_richards
-       endif
-
-    case default
-       write(iulog,*) 'Unknown governing equation type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-  end subroutine VSFMAddGovEqnWithMeshRank
 
   !------------------------------------------------------------------------
   subroutine VSFMCreateVectorsForGovEqn(this)

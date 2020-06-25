@@ -1,4 +1,4 @@
-module GoveqnThermalKSPTemperatureSoilType
+module GoveqnThermalKSPTemperatureSnowType
 
 #ifdef USE_PETSC_LIB
   !-----------------------------------------------------------------------
@@ -13,7 +13,7 @@ module GoveqnThermalKSPTemperatureSoilType
   use mpp_abortutils                   , only : endrun
   use mpp_shr_log_mod                  , only : errMsg => shr_log_errMsg
   use GoverningEquationBaseType        , only : goveqn_base_type
-  use ThermalKSPTemperatureSoilAuxType , only : therm_ksp_temp_soil_auxvar_type
+  use ThermalKSPTemperatureSnowAuxType , only : therm_ksp_temp_snow_auxvar_type
   use SystemOfEquationsThermalAuxType  , only : sysofeqns_thermal_auxvar_type
   use petscsys
   use petscvec
@@ -23,60 +23,61 @@ module GoveqnThermalKSPTemperatureSoilType
   implicit none
   private
 
-  type, public, extends(goveqn_base_type) :: goveqn_thermal_ksp_temp_soil_type
-     type (therm_ksp_temp_soil_auxvar_type), pointer :: aux_vars_in(:)  ! Internal state.
-     type (therm_ksp_temp_soil_auxvar_type), pointer :: aux_vars_bc(:)  ! Boundary conditions.
-     type (therm_ksp_temp_soil_auxvar_type), pointer :: aux_vars_ss(:)  ! Source-sink.
+  type, public, extends(goveqn_base_type) :: goveqn_thermal_ksp_temp_snow_type
+     type (therm_ksp_temp_snow_auxvar_type), pointer :: aux_vars_in(:)  ! Internal state.
+     type (therm_ksp_temp_snow_auxvar_type), pointer :: aux_vars_bc(:)  ! Boundary conditions.
+     type (therm_ksp_temp_snow_auxvar_type), pointer :: aux_vars_ss(:)  ! Source-sink.
 
      PetscInt, pointer                             :: soe_auxvars_bc_offset (:) ! SoE auxvar offset corresponding to BCs
      PetscInt, pointer                             :: soe_auxvars_ss_offset (:) ! SoE auxvar offset corresponding to SSs
 
-   contains
+  contains
+     procedure, public :: Setup                     => ThermKSPTempSnowSetup
+     procedure, public :: AllocateAuxVars           => ThermKSPTempSnowAllocateAuxVars
 
-     procedure, public :: Setup                   => ThermKSPTempSoilSetup
-     procedure, public :: AllocateAuxVars         => ThermKSPTempSoilAllocateAuxVars
+     procedure, public :: SavePrmIndepVar           => ThermalKSPTempSnowSavePrmIndepVar
 
-     procedure, public :: GetFromSOEAuxVarsIntrn  => ThermKSPTempSoilGetFromSOEAuxVarsIntrn
-     procedure, public :: GetFromSOEAuxVarsBC     => ThermKSPTempSoilGetFromSOEAuxVarsBC
-     procedure, public :: GetFromSOEAuxVarsSS     => ThermKSPTempSoilGetFromSOEAuxVarsSS
-     procedure, public :: GetDataFromSOEAuxVar    => ThermKSPTempSoilGetDataFromSOEAuxVar
+     procedure, public :: GetFromSOEAuxVarsIntrn    => ThermKSPTempSnowGetFromSOEAuxVarsIntrn
+     procedure, public :: GetFromSOEAuxVarsBC       => ThermKSPTempSnowGetFromSOEAuxVarsBC
+     procedure, public :: GetFromSOEAuxVarsSS       => ThermKSPTempSnowGetFromSOEAuxVarsSS
+     procedure, public :: GetDataFromSOEAuxVar      => ThermKSPTempSnowGetDataFromSOEAuxVar
 
-     procedure, public :: SetDataInSOEAuxVar      => ThermKSPTempSoilSetDataInSOEAuxVar
-     procedure, public :: SetSOEAuxVarOffsets     => ThermKSPTempSoilSetSOEAuxVarOffsets
-     procedure, public :: UpdateBoundaryConn      => ThermKSPTempSoilUpdateBoundaryConn
-     procedure, public :: UpdateAuxVarsIntrn      => ThermKSPTempSoilUpdateAuxVarsIntrn
-     procedure, public :: UpdateAuxVarsBC         => ThermKSPTempSoilUpdateAuxVarsBC
+     procedure, public :: SetDataInSOEAuxVar        => ThermKSPTempSnowSetDataInSOEAuxVar
+     procedure, public :: SetSOEAuxVarOffsets       => ThermKSPTempSnowSetSOEAuxVarOffsets
+     procedure, public :: UpdateInternalConn        => ThermKSPTempSnowUpdateInternalConn
+     procedure, public :: UpdateBoundaryConn        => ThermKSPTempSnowUpdateBoundaryConn
+     procedure, public :: UpdateAuxVarsIntrn        => ThermKSPTempSnowUpdateAuxVarsIntrn
 
-     procedure, public :: ComputeRHS              => ThermKSPTempSoilComputeRHS
-     procedure, public :: ComputeOperatorsDiag    => ThermKSPTempSoilComputeOperatorsDiag
-     procedure, public :: ComputeOperatorsOffDiag => ThermKSPTempSoilComputeOperatorsOffDiag
-
-  end type goveqn_thermal_ksp_temp_soil_type
+     procedure, public :: ComputeRHS                => ThermKSPTempSnowComputeRHS
+     procedure, public :: ComputeOperatorsDiag      => ThermKSPTempSnowComputeOperatorsDiag
+     procedure, public :: ComputeOperatorsOffDiag   => ThermKSPTempSnowComputeOperatorsOffDiag
+     
+  end type goveqn_thermal_ksp_temp_snow_type
 
   !------------------------------------------------------------------------
 
 contains
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilSetup(this)
+  subroutine ThermKSPTempSnowSetup(this)
     !
     ! !DESCRIPTION:
     ! Default setup of governing equation for Thermal equation.
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GE_THERM_SOIL_TBASED
-    use MultiPhysicsProbConstants, only : MESH_CLM_SOIL_COL
+    use MultiPhysicsProbConstants, only : GE_THERM_SNOW_TBASED
+    use MultiPhysicsProbConstants, only : MESH_CLM_SNOW_COL
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
 
     call this%Create()
 
-    this%name       = "Soil thermal equation based on temperature"
-    this%itype      = GE_THERM_SOIL_TBASED
-    this%mesh_itype = MESH_CLM_SOIL_COL
+    this%name       = "Snow thermal equation based on temperature"
+    this%itype      = GE_THERM_SNOW_TBASED
+    this%mesh_itype = MESH_CLM_SNOW_COL
 
     nullify(this%aux_vars_in)
     nullify(this%aux_vars_bc)
@@ -85,10 +86,10 @@ contains
     nullify(this%soe_auxvars_bc_offset)
     nullify(this%soe_auxvars_ss_offset)
 
-  end subroutine ThermKSPTempSoilSetup
+  end subroutine ThermKSPTempSnowSetup
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilAllocateAuxVars(this)
+  subroutine ThermKSPTempSnowAllocateAuxVars(this)
     !
     ! !DESCRIPTION:
     ! Allocates memory for storing auxiliary variables associated with:
@@ -98,11 +99,12 @@ contains
     !
     ! !USES:
     use ConditionType, only : condition_type
+    use ThermalKSPTemperatureSnowAuxMod     , only : ThermKSPTempSnowAuxVarGetRValues
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
     !
     type(condition_type),pointer             :: cur_cond
     PetscInt                                 :: ncells_cond
@@ -149,10 +151,42 @@ contains
     allocate(this%soe_auxvars_ss_offset(ncond))
     this%soe_auxvars_ss_offset(:) = -1
 
-  end subroutine ThermKSPTempSoilAllocateAuxVars
+  end subroutine ThermKSPTempSnowAllocateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilGetDataFromSOEAuxVar(this, soe_avar_type, soe_avars, &
+  subroutine ThermalKSPTempSnowSavePrmIndepVar (this, x)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_thermal_ksp_temp_snow_type) :: this
+   Vec :: x
+   !
+   PetscScalar, pointer :: x_p(:)
+   PetscInt             :: ghosted_id, size
+   PetscErrorCode       :: ierr
+   
+   call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+   if (size /= this%mesh%ncells_local) then
+      call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+   end if
+
+   call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+   do ghosted_id = 1, this%mesh%ncells_local
+      this%aux_vars_in(ghosted_id)%temperature = x_p(ghosted_id)
+   end do
+
+   call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+ end subroutine ThermalKSPTempSnowSavePrmIndepVar
+   !------------------------------------------------------------------------
+  subroutine ThermKSPTempSnowGetDataFromSOEAuxVar(this, soe_avar_type, soe_avars, &
        offset)
     !
     ! !DESCRIPTION:
@@ -167,13 +201,13 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type), intent(inout)        :: this
-    PetscInt, intent(in)                                           :: soe_avar_type
-    type (sysofeqns_thermal_auxvar_type), dimension(:), intent(in) :: soe_avars
-    PetscInt, intent(in), optional                                 :: offset
+    class(goveqn_thermal_ksp_temp_snow_type) , intent(inout)            :: this
+    PetscInt                                 , intent(in)               :: soe_avar_type
+    type (sysofeqns_thermal_auxvar_type)     , dimension(:), intent(in) :: soe_avars
+    PetscInt                                 , intent(in), optional     :: offset
     !
     ! !LOCAL VARIABLES
-    PetscInt                                                       :: iauxvar_off
+    PetscInt                                                            :: iauxvar_off
 
     select case(soe_avar_type)
     case (AUXVAR_INTERNAL)
@@ -182,20 +216,20 @@ contains
        else
           iauxvar_off = 0
        endif
-       call ThermKSPTempSoilGetFromSOEAuxVarsIntrn(this, soe_avars, iauxvar_off)
+       call ThermKSPTempSnowGetFromSOEAuxVarsIntrn(this, soe_avars, iauxvar_off)
     case (AUXVAR_BC)
-       call ThermKSPTempSoilGetFromSOEAuxVarsBC(this, soe_avars)
+       call ThermKSPTempSnowGetFromSOEAuxVarsBC(this, soe_avars)
     case (AUXVAR_SS)
-       call ThermKSPTempSoilGetFromSOEAuxVarsSS(this, soe_avars)
+       call ThermKSPTempSnowGetFromSOEAuxVarsSS(this, soe_avars)
     case default
-       write(iulog,*) 'ThermKSPTempSoilGetDataFromSOEAuxVar: soe_avar_type not supported'
+       write(iulog,*) 'ThermKSPTempSnowGetDataFromSOEAuxVar: soe_avar_type not supported'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-  end subroutine ThermKSPTempSoilGetDataFromSOEAuxVar
+  end subroutine ThermKSPTempSnowGetDataFromSOEAuxVar
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilGetFromSOEAuxVarsIntrn(this, soe_avars, offset)
+  subroutine ThermKSPTempSnowGetFromSOEAuxVarsIntrn(this, soe_avars, offset)
     !
     ! !DESCRIPTION:
     ! Copies values from SoE auxiliary variable into GE auxiliary variable
@@ -208,13 +242,13 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) , intent(inout)            :: this
+    class(goveqn_thermal_ksp_temp_snow_type) , intent(inout)            :: this
     type(sysofeqns_thermal_auxvar_type)      , dimension(:), intent(in) :: soe_avars
     PetscInt                                 , intent(in)               :: offset
     !
     ! LOCAL VARIABLES
-    PetscInt :: iauxvar
-    PetscInt :: nauxvar
+    PetscInt                                                            :: iauxvar
+    PetscInt                                                            :: nauxvar
 
     nauxvar = size(this%aux_vars_in)
     if( nauxvar > size(soe_avars) ) then
@@ -224,42 +258,47 @@ contains
 
     do iauxvar = 1, nauxvar
 
-       this%aux_vars_in(iauxvar)%temperature    = soe_avars(iauxvar+offset)%temperature
+       !this%aux_vars_in(iauxvar)%temperature    = soe_avars(iauxvar+offset)%temperature
        this%aux_vars_in(iauxvar)%liq_areal_den  = soe_avars(iauxvar+offset)%liq_areal_den
        this%aux_vars_in(iauxvar)%ice_areal_den  = soe_avars(iauxvar+offset)%ice_areal_den
-       this%aux_vars_in(iauxvar)%snow_water     = soe_avars(iauxvar+offset)%snow_water
        this%aux_vars_in(iauxvar)%num_snow_layer = soe_avars(iauxvar+offset)%num_snow_layer
-       this%aux_vars_in(iauxvar)%tuning_factor  = soe_avars(iauxvar+offset)%tuning_factor
+       this%aux_vars_in(iauxvar)%is_active      = soe_avars(iauxvar+offset)%is_active
        this%aux_vars_in(iauxvar)%frac           = soe_avars(iauxvar+offset)%frac
+       this%aux_vars_in(iauxvar)%tuning_factor  = soe_avars(iauxvar+offset)%tuning_factor
        this%aux_vars_in(iauxvar)%dz             = soe_avars(iauxvar+offset)%dz
+       this%aux_vars_in(iauxvar)%dist_up        = soe_avars(iauxvar+offset)%dist_up
+       this%aux_vars_in(iauxvar)%dist_dn        = soe_avars(iauxvar+offset)%dist_dn
 
+       if (this%aux_vars_in(iauxvar)%is_active) then
+          this%mesh%dz(iauxvar) = soe_avars(iauxvar+offset)%dz
+       endif
     enddo
 
-  end subroutine ThermKSPTempSoilGetFromSOEAuxVarsIntrn
+  end subroutine ThermKSPTempSnowGetFromSOEAuxVarsIntrn
 
   !------------------------------------------------------------------------
 
-  subroutine ThermKSPTempSoilGetFromSOEAuxVarsBC(this, soe_avars)
+  subroutine ThermKSPTempSnowGetFromSOEAuxVarsBC(this, soe_avars)
     !
     ! !DESCRIPTION:
     ! Copies values from SoE auxiliary variable into GE auxiliary variable
     ! for bondary conditions
     !
     ! !USES:
-    use ConditionType             , only : condition_type
-    use ConnectionSetType         , only : connection_set_type
-    use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use MultiPhysicsProbConstants , only : VAR_BC_SS_CONDITION
+    use ConditionType                   , only : condition_type
+    use ConnectionSetType               , only : connection_set_type
+    use MultiPhysicsProbConstants       , only : COND_HEAT_FLUX
+    use MultiPhysicsProbConstants       , only : COND_DIRICHLET_FRM_OTR_GOVEQ
+    use MultiPhysicsProbConstants       , only : VAR_BC_SS_CONDITION
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) , intent(inout)            :: this
-    type(sysofeqns_thermal_auxvar_type)      , dimension(:), intent(in) :: soe_avars
+    class(goveqn_thermal_ksp_temp_snow_type), intent(inout)       :: this
+    type(sysofeqns_thermal_auxvar_type), dimension(:), intent(in) :: soe_avars
     !
     ! LOCAL VARIABLES
+    integer                             :: cell_id
     integer                             :: iauxvar
     integer                             :: iauxvar_off 
     integer                             :: iconn
@@ -267,7 +306,6 @@ contains
     integer                             :: nauxVar_soe
     integer                             :: condition_id
     integer                             :: sum_conn
-    integer                             :: cell_id
     type(condition_type)      , pointer :: cur_cond
     type(connection_set_type) , pointer :: cur_conn_set
     character(len=256)                  :: string
@@ -288,6 +326,7 @@ contains
        condition_id = condition_id + 1
 
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
+          sum_conn = sum_conn + cur_cond%conn_set%num_connections
           cur_cond => cur_cond%next
           cycle
        endif
@@ -303,24 +342,19 @@ contains
 
           select case(cur_cond%itype)
           case (COND_HEAT_FLUX)
+             ! H
              this%aux_vars_bc(sum_conn)%condition_value =  &
                   soe_avars(iconn + iauxvar_off)%condition_value
 
              ! H - dH/dT * T
-             cur_cond%value(iconn) =                               &
+             cur_cond%value(iconn) = &
                   soe_avars(iconn + iauxvar_off)%condition_value - &
-                  soe_avars(iconn + iauxvar_off)%dhsdT *           &
+                  soe_avars(iconn + iauxvar_off)%dhsdT * &
                   this%aux_vars_in(cell_id)%temperature
 
+             ! dH/dT
              this%aux_vars_bc(sum_conn)%dhsdT = &
                   soe_avars(iconn + iauxvar_off)%dhsdT
-
-             this%aux_vars_bc(sum_conn)%frac = &
-                  soe_avars(iconn + iauxvar_off)%frac
-
-          case (COND_DIRICHLET)
-             this%aux_vars_bc(sum_conn)%condition_value =  &
-                  soe_avars(iconn + iauxvar_off)%condition_value
 
           case (COND_DIRICHLET_FRM_OTR_GOVEQ)
              ! Do nothing
@@ -335,11 +369,10 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermKSPTempSoilGetFromSOEAuxVarsBC
-
+  end subroutine ThermKSPTempSnowGetFromSOEAuxVarsBC
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilGetFromSOEAuxVarsSS(this, soe_avars)
+  subroutine ThermKSPTempSnowGetFromSOEAuxVarsSS(this, soe_avars)
     !
     ! !DESCRIPTION:
     ! Copies values from SoE auxiliary variable into GE auxiliary variable
@@ -354,27 +387,29 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type), intent(inout)       :: this
-    type(sysofeqns_thermal_auxvar_type), dimension(:), intent(in) :: soe_avars
+    class(goveqn_thermal_ksp_temp_snow_type) , intent(inout)            :: this
+    type(sysofeqns_thermal_auxvar_type)      , dimension(:), intent(in) :: soe_avars
     !
     ! LOCAL VARIABLES
-    integer                             :: iauxvar
-    integer                             :: iauxvar_off
-    integer                             :: iconn
-    integer                             :: nauxVar_ge
-    integer                             :: nauxVar_soe
-    integer                             :: condition_id
-    integer                             :: sum_conn
-    PetscReal                           :: var_value
-    type(condition_type)      , pointer :: cur_cond
-    type(connection_set_type) , pointer :: cur_conn_set
-    character(len=256)                  :: string
+    integer                                                       :: iauxvar
+    integer                                                       :: iauxvar_off
+    integer                                                       :: iconn
+    integer                                                       :: nauxVar_ge
+    integer                                                       :: nauxVar_soe
+    integer                                                       :: condition_id
+    integer                                                       :: sum_conn
+    PetscReal                                                     :: var_value
+    type(therm_ksp_temp_snow_auxvar_type) , dimension(:), pointer :: ge_avars
+    type(condition_type)                  , pointer               :: cur_cond
+    type(connection_set_type)             , pointer               :: cur_conn_set
+    character(len=256)                                            :: string
 
-    nauxVar_ge  = size(this%aux_vars_ss)
+    ge_avars => this%aux_vars_ss
+    nauxVar_ge = size(ge_avars)
+
     nauxVar_soe = size(soe_avars)
-
     if( nauxVar_ge > nauxVar_soe ) then
-       write(iulog,*) 'size(this%aux_vars_ss) > size(soe_avars)'
+       write(iulog,*) 'size(ge_avars) > size(soe_avars)'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
@@ -388,30 +423,36 @@ contains
        ! Find first soe-auxvar corresponding to goveqn-auxvar.
        iauxvar_off = this%soe_auxvars_ss_offset(condition_id)
 
-       cur_conn_set => cur_cond%conn_set
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn = sum_conn + 1
-          select case(cur_cond%itype)
-          case (COND_HEAT_RATE)
-
-             var_value = soe_avars(iconn + iauxvar_off)%condition_value
-
-             this%aux_vars_ss(sum_conn)%condition_value = var_value
-             cur_cond%value(iconn)                      = var_value
-          case default
-             write(string,*) cur_cond%itype
-             write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          end select
-       enddo
+       if (trim(cur_cond%name) /= 'Lateral_flux') then
+          !
+          ! Do not update values associated with lateral flux because:
+          !  - SOE auxvars associated with lateral flux source-sink
+          !    have zero values, AND
+          !  - GE auxvars already have pre-computed values of lateral flux.
+          !
+          cur_conn_set => cur_cond%conn_set
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+             select case(cur_cond%itype)
+             case (COND_HEAT_RATE)
+                var_value = soe_avars(iconn + iauxvar_off)%condition_value
+                ge_avars(sum_conn)%condition_value = var_value
+                cur_cond%value(iconn) = var_value
+             case default
+                write(string,*) cur_cond%itype
+                write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             end select
+          enddo
+       endif
 
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermKSPTempSoilGetFromSOEAuxVarsSS
+  end subroutine ThermKSPTempSnowGetFromSOEAuxVarsSS
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilSetDataInSOEAuxVar(this, soe_avar_type, soe_avars, &
+  subroutine ThermKSPTempSnowSetDataInSOEAuxVar(this, soe_avar_type, soe_avars, &
        offset)
     !
     ! !DESCRIPTION:
@@ -423,14 +464,14 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type)                        :: this
+    class(goveqn_thermal_ksp_temp_snow_type)                        :: this
     PetscInt                                                        :: soe_avar_type
     type (sysofeqns_thermal_auxvar_type), dimension(:), intent(out) :: soe_avars
     PetscInt, optional                                              :: offset
     !
     ! !LOCAL VARIABLES
-    PetscInt                                                       :: iauxvar
-    PetscInt                                                       :: iauxvar_off
+    PetscInt           :: iauxvar
+    PetscInt           :: iauxvar_off
 
     if (present(offset)) then
        iauxvar_off = offset
@@ -440,7 +481,6 @@ contains
 
     select case(soe_avar_type)
     case (AUXVAR_INTERNAL)
-       this%aux_vars_in => this%aux_vars_in
 
        if ( size(this%aux_vars_in) > size(soe_avars)) then
           write(iulog,*) 'size(this%aux_vars_in) > size(soe_avars)'
@@ -455,14 +495,14 @@ contains
        enddo
 
     case default
-       write(iulog,*) 'RichardsODESetDataInSOEAuxVar: soe_avar_type not supported'
+       write(iulog,*) 'soe_avar_type not supported'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-  end subroutine ThermKSPTempSoilSetDataInSOEAuxVar
+  end subroutine ThermKSPTempSnowSetDataInSOEAuxVar
 
   !------------------------------------------------------------------------
-  subroutine ThermKSPTempSoilSetSOEAuxVarOffsets(this, bc_offset_count, bc_offsets, &
+  subroutine ThermKSPTempSnowSetSOEAuxVarOffsets(this, bc_offset_count, bc_offsets, &
     ss_offset_count, ss_offsets)
     !
     ! !DESCRIPTION:
@@ -471,11 +511,12 @@ contains
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
     use MultiPhysicsProbConstants , only : COND_BC
     use MultiPhysicsProbConstants , only : COND_SS
+    use MultiPhysicsProbConstants , only : COND_NULL
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
     PetscInt                                 :: bc_offset_count
     PetscInt, pointer                        :: bc_offsets(:)
     PetscInt                                 :: ss_offset_count
@@ -484,14 +525,21 @@ contains
     ! !LOCAL VARIABLES
     type(condition_type),pointer             :: cur_cond
     PetscInt                                 :: cond_count
+    PetscInt                                 :: cond_itype_to_exclude
 
-    call this%GetNConditionsExcptCondItype(COND_BC, -1, cond_count)
+    cond_itype_to_exclude = COND_NULL
+    call this%GetNConditionsExcptCondItype(COND_BC, &
+         cond_itype_to_exclude, cond_count)
+
     if (bc_offset_count > cond_count) then
        write(iulog,*) 'ERROR: bc_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
-    call this%GetNConditionsExcptCondItype(COND_SS, -1, cond_count)
+    cond_itype_to_exclude = COND_NULL
+    call this%GetNConditionsExcptCondItype(COND_SS, &
+         cond_itype_to_exclude, cond_count)
+
     if (ss_offset_count > cond_count) then
        write(iulog,*) 'ERROR: ss_offset_count > cond_count'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -517,11 +565,145 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermKSPTempSoilSetSOEAuxVarOffsets
+  end subroutine ThermKSPTempSnowSetSOEAuxVarOffsets
 
   !------------------------------------------------------------------------
 
-  subroutine ThermKSPTempSoilUpdateAuxVarsIntrn(this)
+  subroutine ThermKSPTempSnowUpdateInternalConn(this)
+    !
+    ! !DESCRIPTION:
+    !
+    use ConnectionSetType, only          : connection_set_type
+    use mpp_varpar, only                 : nlevsno
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
+    !
+    ! !LOCAL VARIABLES
+    class(connection_set_type), pointer      :: cur_conn_set
+    PetscInt                                 :: icell
+    PetscInt                                 :: cell_id_up
+    PetscInt                                 :: cell_id_dn
+    PetscInt                                 :: iconn
+
+    do icell = 1, this%mesh%ncells_local
+       if (this%aux_vars_in(icell)%is_active) then
+          this%mesh%vol(icell) = this%mesh%dx(icell)* &
+                                 this%mesh%dy(icell)* &
+                                 this%mesh%dz(icell)          
+       else
+          this%mesh%vol(icell) = 0.d0
+       endif
+    enddo
+
+    cur_conn_set => this%mesh%intrn_conn_set_list%first
+
+    iconn = 0
+    do iconn = 1, cur_conn_set%num_connections
+
+       cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+       cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
+
+       call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_in(cell_id_up)%dist_up)
+       call cur_conn_set%conn(iconn)%SetDistDn(this%aux_vars_in(cell_id_dn)%dist_dn)
+
+    end do
+
+  end subroutine ThermKSPTempSnowUpdateInternalConn
+  
+  !------------------------------------------------------------------------
+
+  subroutine ThermKSPTempSnowUpdateBoundaryConn(this)
+    !
+    ! !DESCRIPTION:
+    !
+    use ConnectionSetType, only          : connection_set_type
+    use ConditionType, only              : condition_type
+    use mpp_varpar, only                 : nlevsno
+    use MultiPhysicsProbConstants , only : GE_THERM_SOIL_TBASED
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
+    !
+    ! !LOCAL VARIABLES
+    class(connection_set_type), pointer      :: conn_set
+    PetscInt                                 :: ieqn
+    PetscInt                                 :: iconn
+    PetscInt                                 :: cell_id
+    PetscInt                                 :: offset
+    type(condition_type),pointer             :: cur_cond
+    type(condition_type),pointer             :: top_hflux_cond
+    type(condition_type),pointer             :: soil_temp_cond
+    PetscBool                                :: top_hflux_cond_found
+    PetscBool                                :: soil_temp_cond_found
+
+    ! Boundary cells
+    top_hflux_cond_found = PETSC_FALSE
+    soil_temp_cond_found = PETSC_FALSE
+
+    offset = 0
+    cur_cond => this%boundary_conditions%first
+    do
+       if (.not.associated(cur_cond)) exit
+
+       if (trim(cur_cond%name) == 'Heat_flux_BC_at_top_of_snow') then
+          top_hflux_cond => cur_cond
+          top_hflux_cond_found = PETSC_TRUE
+       endif
+       
+       do ieqn = 1, cur_cond%num_other_goveqs
+          if (cur_cond%itype_of_other_goveqs(ieqn) == GE_THERM_SOIL_TBASED) then
+             soil_temp_cond => cur_cond
+             soil_temp_cond_found = PETSC_TRUE
+          endif
+       enddo
+
+       if (.not.soil_temp_cond_found) then
+          offset = offset + cur_cond%conn_set%num_connections
+       endif
+
+       cur_cond => cur_cond%next
+    enddo
+
+    if (.not.top_hflux_cond_found) then
+       write(iulog,*)'Heat flux BC at the top of snow not found.'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+    
+    if (.not.soil_temp_cond_found) then
+       write(iulog,*)'BC with soil not found.'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    endif
+
+    ! Update 'id_dn' on which the top heat flux BC will be applied
+    conn_set => top_hflux_cond%conn_set
+    do iconn = 1, conn_set%num_connections
+       if (this%aux_vars_in(iconn*nlevsno)%is_active ) then
+          call conn_set%conn(iconn)%SetIDDn(iconn*nlevsno - &
+               this%aux_vars_in(iconn*nlevsno)%num_snow_layer + 1)
+       endif       
+    enddo
+
+    ! Update 'dist' on which the top heat flux BC will be applied
+    conn_set => soil_temp_cond%conn_set
+    do iconn = 1, conn_set%num_connections
+
+       cell_id = conn_set%conn(iconn)%GetIDDn()
+
+       if (this%aux_vars_in(cell_id)%is_active ) then
+          call conn_set%conn(iconn)%SetDistDn(this%aux_vars_in(cell_id)%dist_up)
+       endif       
+    enddo
+
+  end subroutine ThermKSPTempSnowUpdateBoundaryConn
+
+  !------------------------------------------------------------------------
+
+  subroutine ThermKSPTempSnowUpdateAuxVarsIntrn(this)
     !
     ! !DESCRIPTION:
     !
@@ -529,7 +711,7 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
     !
     ! !LOCAL VARIABLES
     PetscInt :: ghosted_id
@@ -540,100 +722,36 @@ contains
             this%mesh%dz(ghosted_id), this%mesh%vol(ghosted_id))
     enddo
 
-  end subroutine ThermKSPTempSoilUpdateAuxVarsIntrn
+  end subroutine ThermKSPTempSnowUpdateAuxVarsIntrn
 
   !------------------------------------------------------------------------
 
-  subroutine ThermKSPTempSoilUpdateAuxVarsBC(this)
-    !
-    ! !DESCRIPTION:
-    ! Updates auxiliary variable associated with boundary condition
-    !
-    use ConditionType             , only : condition_type
-    use ConnectionSetType         , only : connection_set_type
-    use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET
-    use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
-    !
-    ! !LOCAL VARIABLES
-    PetscInt                                 :: ghosted_id
-    PetscInt                                 :: iconn
-    PetscInt                                 :: sum_conn
-    type(condition_type)      , pointer      :: cur_cond
-    type(connection_set_type) , pointer      :: cur_conn_set
-    character(len=256)                       :: string
-
-    ! Update aux vars for boundary cells
-    sum_conn = 0
-    cur_cond => this%boundary_conditions%first
-    do
-       if (.not.associated(cur_cond)) exit
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-          sum_conn   = sum_conn + 1
-          ghosted_id = cur_conn_set%conn(iconn)%GetIDDn()
-
-          select case(cur_cond%itype)
-          case (COND_DIRICHLET)
-             this%aux_vars_bc(sum_conn)%temperature = &
-                  this%aux_vars_bc(sum_conn)%condition_value
-
-          case (COND_HEAT_FLUX)
-             this%aux_vars_bc(sum_conn)%temperature =  &
-                this%aux_vars_in(ghosted_id)%temperature
-
-          case (COND_DIRICHLET_FRM_OTR_GOVEQ)
-             ! Do nothing
-
-          case default
-             write(string,*) cur_cond%itype
-             write(iulog,*) 'Unknown cur_cond%itype = ' // trim(string)
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          end select
-
-          call this%aux_vars_bc(sum_conn)%AuxVarCompute( &
-               this%mesh%dz(ghosted_id), this%mesh%vol(ghosted_id))
-
-       enddo
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermKSPTempSoilUpdateAuxVarsBC
-  !------------------------------------------------------------------------
-
-  subroutine ThermKSPTempSoilComputeRHS(this, B, ierr)
+  subroutine ThermKSPTempSnowComputeRHS(this, B, ierr)
     !
     ! !DESCRIPTION:
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
     Vec                                      :: B
     PetscErrorCode                           :: ierr
     !
     ! !LOCAL VARIABLES
     PetscReal, dimension(:), pointer         :: b_p
-    
+
     call VecGetArrayF90(B, b_p, ierr); CHKERRQ(ierr);
 
-    call ThermalKSPTempSoilAccum(this, b_p)
-    call ThermalKSPTempSoilDivergence(this, b_p)
-
+    call ThermalKSPTempSnowAccum(this, b_p)
+    call ThermalKSPTempSnowDivergence(this, b_p)
+    
     call VecRestoreArrayF90(B, b_p, ierr); CHKERRQ(ierr)
 
-  end subroutine ThermKSPTempSoilComputeRHS
+  end subroutine ThermKSPTempSnowComputeRHS
 
   !------------------------------------------------------------------------
 
-  subroutine ThermalKSPTempSoilAccum(geq_soil, b_p)
+  subroutine ThermalKSPTempSnowAccum(geq_snow, b_p)
     !
     ! !DESCRIPTION:
     !
@@ -644,7 +762,7 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: geq_soil
+    class(goveqn_thermal_ksp_temp_snow_type) :: geq_snow
     PetscReal, dimension(:), intent(out)     :: b_p
     !
     ! !LOCAL VARIABLES
@@ -655,77 +773,64 @@ contains
     PetscReal                                :: vol
     PetscReal                                :: dt
 
-    dt = geq_soil%dtime
+    dt = geq_snow%dtime
 
     ! Interior cells
-    do cell_id = 1, geq_soil%mesh%ncells_local
+    do cell_id = 1, geq_snow%mesh%ncells_local
 
-       if (geq_soil%aux_vars_in(cell_id)%is_active) then
+       if (geq_snow%aux_vars_in(cell_id)%is_active) then
 
-          T        = geq_soil%aux_vars_in(cell_id)%temperature
-          heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
-          tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
-          vol      = geq_soil%mesh%vol(cell_id)
+          T        = geq_snow%aux_vars_in(cell_id)%temperature
+          heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
+          tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
+          vol      = geq_snow%mesh%vol(cell_id)
 
 #ifdef MATCH_CLM_FORMULATION
           b_p(cell_id) = T
 #else
           b_p(cell_id) = heat_cap*vol/(dt*tfactor)*T
 #endif
-
        endif
     enddo
 
-  end subroutine ThermalKSPTempSoilAccum
+  end subroutine ThermalKSPTempSnowAccum
 
   !------------------------------------------------------------------------
 
-  subroutine ThermalKSPTempSoilDivergence(geq_soil, b_p)
+  subroutine ThermalKSPTempSnowDivergence(geq_snow, b_p)
     !
     ! !DESCRIPTION:
     !
     ! !USES:
-    use ConditionType             , only : condition_type
-    use ConnectionSetType         , only : connection_set_type
-    use mpp_varcon                , only : cnfac
+    use ConditionType     , only : condition_type
+    use ConnectionSetType , only : connection_set_type
+    use mpp_varcon        , only : cnfac
     use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
     use MultiPhysicsProbConstants , only : COND_HEAT_RATE
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET
-    use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: geq_soil
+    class(goveqn_thermal_ksp_temp_snow_type) :: geq_snow
     PetscReal, dimension(:), intent(out)     :: b_p
     !
     ! !LOCAL VARIABLES
-    PetscInt                                 :: ieqn
-    PetscInt                                 :: iconn
-    PetscInt                                 :: sum_conn
-    PetscInt                                 :: cell_id_dn
-    PetscInt                                 :: cell_id_up
-    PetscInt                                 :: cell_id
-    PetscReal                                :: flux
-    PetscReal                                :: area
-    type(condition_type),pointer             :: cur_cond
-    class(connection_set_type), pointer      :: cur_conn_set
-    PetscReal                                :: factor
-    PetscReal                                :: T
-    PetscReal                                :: dt
-    PetscReal                                :: heat_cap
-    PetscReal                                :: tfactor
-    PetscReal                                :: vol
-    PetscBool                                :: is_bc_sh2o
-    PetscReal                                :: dist, dist_up, dist_dn
-    PetscReal                                :: therm_cond_aveg, therm_cond_up, therm_cond_dn
-    PetscReal                                :: T_up, T_dn
+    PetscInt                           :: iconn
+    PetscInt                           :: sum_conn
+    PetscInt                           :: cell_id_dn
+    PetscInt                           :: cell_id_up
+    PetscInt                           :: cell_id
+    PetscReal                          :: flux
+    PetscReal                          :: dt
+    PetscReal                          :: area, heat_cap, tfactor, vol, factor
+    type(condition_type),pointer       :: cur_cond
+    class(connection_set_type), pointer:: cur_conn_set
 
-    dt = geq_soil%dtime
+    dt = geq_snow%dtime
 
     ! Interior cells
-    cur_conn_set => geq_soil%mesh%intrn_conn_set_list%first
+    cur_conn_set => geq_snow%mesh%intrn_conn_set_list%first
     sum_conn = 0
     do
        if (.not.associated(cur_conn_set)) exit
@@ -736,13 +841,13 @@ contains
           cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
           cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
 
-          if ((.not.geq_soil%aux_vars_in(cell_id_up)%is_active) .or. &
-              (.not.geq_soil%aux_vars_in(cell_id_dn)%is_active)) cycle
+          if ((.not.geq_snow%aux_vars_in(cell_id_up)%is_active) .or. &
+              (.not.geq_snow%aux_vars_in(cell_id_dn)%is_active)) cycle
 
-          call DiffHeatFlux(geq_soil%aux_vars_in(cell_id_up)%temperature,  &
-                            geq_soil%aux_vars_in(cell_id_up)%therm_cond,   &
-                            geq_soil%aux_vars_in(cell_id_dn)%temperature,  &
-                            geq_soil%aux_vars_in(cell_id_dn)%therm_cond,   &
+          call DiffHeatFlux(geq_snow%aux_vars_in(cell_id_up)%temperature,  &
+                            geq_snow%aux_vars_in(cell_id_up)%therm_cond,   &
+                            geq_snow%aux_vars_in(cell_id_dn)%temperature,  &
+                            geq_snow%aux_vars_in(cell_id_dn)%therm_cond,   &
                             cur_conn_set%conn(iconn)%GetDistUp(),                   &
                             cur_conn_set%conn(iconn)%GetDistDn(),                   &
                             flux                                           &
@@ -750,10 +855,9 @@ contains
 
           area = cur_conn_set%conn(iconn)%GetArea()
 
-          T        = geq_soil%aux_vars_in(cell_id_up)%temperature
-          heat_cap = geq_soil%aux_vars_in(cell_id_up)%heat_cap_pva
-          tfactor  = geq_soil%aux_vars_in(cell_id_up)%tuning_factor
-          vol      = geq_soil%mesh%vol(cell_id_up)
+          heat_cap = geq_snow%aux_vars_in(cell_id_up)%heat_cap_pva
+          tfactor  = geq_snow%aux_vars_in(cell_id_up)%tuning_factor
+          vol      = geq_snow%mesh%vol(cell_id_up)
 #ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
 #else
@@ -761,11 +865,9 @@ contains
 #endif
           b_p(cell_id_up) = b_p(cell_id_up) + cnfac*flux*area*factor
 
-
-          T        = geq_soil%aux_vars_in(cell_id_dn)%temperature
-          heat_cap = geq_soil%aux_vars_in(cell_id_dn)%heat_cap_pva
-          tfactor  = geq_soil%aux_vars_in(cell_id_dn)%tuning_factor
-          vol      = geq_soil%mesh%vol(cell_id_dn)
+          heat_cap = geq_snow%aux_vars_in(cell_id_dn)%heat_cap_pva
+          tfactor  = geq_snow%aux_vars_in(cell_id_dn)%tuning_factor
+          vol      = geq_snow%mesh%vol(cell_id_dn)
 #ifdef MATCH_CLM_FORMULATION
           factor =  (dt*tfactor)/(heat_cap*vol)
 #else
@@ -779,17 +881,10 @@ contains
     enddo
 
     ! Boundary cells
-    cur_cond => geq_soil%boundary_conditions%first
+    cur_cond => geq_snow%boundary_conditions%first
     sum_conn = 0
     do
        if (.not.associated(cur_cond)) exit
-
-       is_bc_sh2o = PETSC_FALSE
-       do ieqn = 1, cur_cond%num_other_goveqs
-          if (cur_cond%itype_of_other_goveqs(ieqn) == GE_THERM_SSW_TBASED) then
-             is_bc_sh2o = PETSC_TRUE
-          endif
-       enddo
 
        cur_conn_set => cur_cond%conn_set
 
@@ -798,109 +893,58 @@ contains
           cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
-          if (.not.geq_soil%aux_vars_in(cell_id )%is_active) cycle
+          if (.not.geq_snow%aux_vars_in(cell_id )%is_active) cycle
           
           select case(cur_cond%itype)
           case(COND_DIRICHLET_FRM_OTR_GOVEQ)
+             area = cur_conn_set%conn(iconn)%GetArea()
 
-             if (.not.geq_soil%aux_vars_bc(sum_conn)%is_active) cycle
+             call DiffHeatFlux(geq_snow%aux_vars_bc(sum_conn)%temperature,  &
+                               geq_snow%aux_vars_bc(sum_conn)%therm_cond,   &
+                               geq_snow%aux_vars_in(cell_id )%temperature,  &
+                               geq_snow%aux_vars_in(cell_id )%therm_cond,   &
+                               cur_conn_set%conn(iconn)%GetDistUp(),                   &
+                               cur_conn_set%conn(iconn)%GetDistDn(),                   &
+                               flux                                           &
+                               )
 
-                if (is_bc_sh2o) then
-                   dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
-                   dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
-                   dist          = dist_up + dist_dn
 
-                   therm_cond_up = geq_soil%aux_vars_bc(sum_conn)%therm_cond
-                   therm_cond_dn = geq_soil%aux_vars_in(cell_id )%therm_cond
-
-                   T_up = geq_soil%aux_vars_bc(sum_conn)%temperature
-                   T_dn = geq_soil%aux_vars_in(cell_id )%temperature
-
-                   dist_dn = geq_soil%aux_vars_in(cell_id)%dz/2.d0
-                   therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
-                        (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
-                   dist = dist_dn + max(1.d-6, dist_up*2.d0)/2.d0
-
-                   flux = -therm_cond_aveg*(T_up - T_dn)/(dist)
-
-                else
-
-                   call DiffHeatFlux(geq_soil%aux_vars_bc(sum_conn)%temperature, &
-                                     geq_soil%aux_vars_bc(sum_conn)%therm_cond,  &
-                                     geq_soil%aux_vars_in(cell_id )%temperature, &
-                                     geq_soil%aux_vars_in(cell_id )%therm_cond,  &
-                                     cur_conn_set%conn(iconn)%GetDistUp(),                &
-                                     cur_conn_set%conn(iconn)%GetDistDn(),                &
-                                     flux                                        &
-                                    )
-                endif
-
-                T        = geq_soil%aux_vars_in(cell_id)%temperature
-                heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
-                tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
-                vol      = geq_soil%mesh%vol(cell_id)
+                heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
+                tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
+                vol      = geq_snow%mesh%vol(cell_id)
 #ifdef MATCH_CLM_FORMULATION
                 factor =  (dt*tfactor)/(heat_cap*vol)
 #else
                 factor = 1.d0
 #endif
 
-                b_p(cell_id) = b_p(cell_id) - &
-                     geq_soil%aux_vars_bc(sum_conn)%frac* &
-                     cnfac * flux * area * factor
-
-          case(COND_DIRICHLET)
-
-             if (.not.geq_soil%aux_vars_bc(sum_conn)%is_active) cycle
-
-                if (is_bc_sh2o) then
-                   write(iulog,*)'unsupported'
-                   stop
-                endif
-
-                dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
-                dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
-                dist          = dist_up + dist_dn
-
-                therm_cond_up = geq_soil%aux_vars_bc(sum_conn)%therm_cond
-                therm_cond_dn = geq_soil%aux_vars_in(cell_id )%therm_cond
-
-                therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up+dist_dn)/ &
-                                  (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
-
-                b_p(cell_id) = b_p(cell_id) + &
-                     therm_cond_aveg/dist*geq_soil%aux_vars_bc(sum_conn)%temperature * &
-                     area * factor
+                b_p(cell_id) = b_p(cell_id) - cnfac*flux*area*factor
 
           case (COND_HEAT_FLUX)             
-             area = cur_conn_set%conn(iconn)%GetArea()
-
-             T        = geq_soil%aux_vars_in(cell_id)%temperature
-             heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
-             tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
-             vol      = geq_soil%mesh%vol(cell_id)
+             area     = cur_conn_set%conn(iconn)%GetArea()
+             heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
+             tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
+             vol      = geq_snow%mesh%vol(cell_id)
 #ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
 #else
              factor = 1.d0
 #endif
-             b_p(cell_id) = b_p(cell_id) + &
-                  factor*cur_cond%value(iconn)               * &
-                  geq_soil%aux_vars_bc(sum_conn)%frac * &
-                  area
+
+             b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)*area*factor
 
           case default
-           write(iulog,*)'ThermalKSPTempSoilDivergence: Unknown boundary condition type'
+           write(iulog,*)'ThermalKSPTempSnowDivergence: Unknown boundary condition type'
            call endrun(msg=errMsg(__FILE__, __LINE__))
 
         end select
 
        enddo
        cur_cond => cur_cond%next
-    enddo    
+    enddo
 
     ! Source-sink cells
-    cur_cond => geq_soil%source_sinks%first
+    cur_cond => geq_snow%source_sinks%first
     do
        if (.not.associated(cur_cond)) exit
 
@@ -909,23 +953,22 @@ contains
        do iconn = 1, cur_conn_set%num_connections
           cell_id = cur_conn_set%conn(iconn)%GetIDDn()
 
-          if ((.not.geq_soil%aux_vars_in(cell_id)%is_active)) cycle
+          if ((.not.geq_snow%aux_vars_in(cell_id)%is_active)) cycle
 
           select case(cur_cond%itype)
           case(COND_HEAT_RATE)
-             T        = geq_soil%aux_vars_in(cell_id)%temperature
-             heat_cap = geq_soil%aux_vars_in(cell_id)%heat_cap_pva
-             tfactor  = geq_soil%aux_vars_in(cell_id)%tuning_factor
-             vol      = geq_soil%mesh%vol(cell_id)
+             heat_cap = geq_snow%aux_vars_in(cell_id)%heat_cap_pva
+             tfactor  = geq_snow%aux_vars_in(cell_id)%tuning_factor
+             vol      = geq_snow%mesh%vol(cell_id)
 #ifdef MATCH_CLM_FORMULATION
              factor =  (dt*tfactor)/(heat_cap*vol)
 #else
              factor = 1.d0
 #endif
-
              b_p(cell_id) = b_p(cell_id) + cur_cond%value(iconn)*factor
+
           case default
-           write(iulog,*)'ThermalKSPTempSoilDivergence: Unknown source-sink condition type'
+           write(iulog,*)'ThermalKSPTempSnowDivergence: Unknown source-sink condition type'
            call endrun(msg=errMsg(__FILE__, __LINE__))
 
         end select
@@ -934,7 +977,7 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermalKSPTempSoilDivergence
+  end subroutine ThermalKSPTempSnowDivergence
 
   !------------------------------------------------------------------------
 
@@ -965,11 +1008,11 @@ contains
 
     flux = -therm_cond*(T_up - T_dn)/(dist_up + dist_dn)
 
-  end subroutine DiffHeatFlux
+    end subroutine DiffHeatFlux
 
-  !------------------------------------------------------------------------
+    !------------------------------------------------------------------------
 
-  subroutine ThermKSPTempSoilComputeOperatorsDiag(this, A, B, ierr)
+    subroutine ThermKSPTempSnowComputeOperatorsDiag(this, A, B, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -979,43 +1022,28 @@ contains
     use mpp_varcon                , only : cnfac
     use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET
-    use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
     Mat                                      :: A
     Mat                                      :: B
     PetscErrorCode                           :: ierr
     !
     ! !LOCAL VARIABLES
-    PetscInt                                 :: ieqn
-    PetscInt                                 :: iconn
-    PetscInt                                 :: sum_conn
-    PetscInt                                 :: cell_id
-    PetscInt                                 :: cell_id_up
-    PetscInt                                 :: cell_id_dn
-    PetscReal                                :: dist
-    PetscReal                                :: dist_up
-    PetscReal                                :: dist_dn
-    PetscReal                                :: area
-    PetscReal                                :: therm_cond_aveg
-    PetscReal                                :: therm_cond_up
-    PetscReal                                :: therm_cond_dn
-    PetscReal                                :: heat_cap
-    PetscReal                                :: tfactor
-    PetscReal                                :: vol
-    PetscReal                                :: dhsdT
-    PetscReal                                :: frac
-    PetscReal                                :: dt
-    PetscReal                                :: value
-    class(connection_set_type), pointer      :: cur_conn_set
-    type(condition_type),pointer             :: cur_cond
-    PetscReal :: factor
-    PetscReal                                :: T
-    PetscBool :: is_bc_sh2o
+    PetscInt                                   :: iconn, sum_conn
+    PetscInt                                   :: cell_id, cell_id_up, cell_id_dn
+    PetscReal                                  :: dist, dist_up, dist_dn
+    PetscReal                                  :: area, vol
+    PetscReal                                  :: therm_cond_aveg, therm_cond_up, therm_cond_dn
+    PetscReal                                  :: heat_cap
+    PetscReal                                  :: tfactor
+    PetscReal                                  :: dhsdT
+    PetscReal                                  :: dt
+    PetscReal                                  :: value, factor
+    class(connection_set_type), pointer        :: cur_conn_set
+    type(condition_type),pointer               :: cur_cond
 
     dt = this%dtime
 
@@ -1069,7 +1097,6 @@ contains
 
           value = (1.d0 - cnfac)*therm_cond_aveg/dist*area
 
-          T        = this%aux_vars_in(cell_id_up)%temperature
           heat_cap = this%aux_vars_in(cell_id_up)%heat_cap_pva
           tfactor  = this%aux_vars_in(cell_id_up)%tuning_factor
           vol      = this%mesh%vol(cell_id_up)
@@ -1078,11 +1105,9 @@ contains
 #else
           factor = 1.d0
 #endif
-
           call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_up-1,  value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
           call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-          T        = this%aux_vars_in(cell_id_dn)%temperature
           heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
           tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
           vol      = this%mesh%vol(cell_id_dn)
@@ -1091,7 +1116,6 @@ contains
 #else
           factor = 1.d0
 #endif
-
           call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
           call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1,  value*factor, ADD_VALUES, ierr); CHKERRQ(ierr)
 
@@ -1106,28 +1130,19 @@ contains
     do
        if (.not.associated(cur_cond)) exit
 
-       is_bc_sh2o = PETSC_FALSE
-       do ieqn = 1, cur_cond%num_other_goveqs
-          if (cur_cond%itype_of_other_goveqs(ieqn) == GE_THERM_SSW_TBASED) then
-             is_bc_sh2o = PETSC_TRUE
-          endif
-       enddo
-
        cur_conn_set => cur_cond%conn_set
 
        do iconn = 1, cur_conn_set%num_connections
 
-          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
           cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
+          cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
           sum_conn = sum_conn + 1
 
           if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
           select case(cur_cond%itype)
-          case(COND_DIRICHLET_FRM_OTR_GOVEQ, COND_DIRICHLET)
-             if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
+          case(COND_DIRICHLET_FRM_OTR_GOVEQ)
 
-             frac          = this%aux_vars_bc(sum_conn)%frac
              area          = cur_conn_set%conn(iconn)%GetArea()
              dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
              dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
@@ -1137,16 +1152,9 @@ contains
              therm_cond_dn = this%aux_vars_in(cell_id_dn)%therm_cond
 
              ! Distance weighted harmonic average
-             if (is_bc_sh2o) then
-                therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
-                     (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
-                dist = dist_dn + max(1.d-6, dist_up*2.d0)/2.d0
-             else
-                therm_cond_aveg = therm_cond_up*therm_cond_dn*dist/ &
-                     (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
-             endif
+             therm_cond_aveg = therm_cond_up*therm_cond_dn*dist/ &
+                  (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
-             T        = this%aux_vars_in(cell_id_dn)%temperature
              heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
              tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
              vol      = this%mesh%vol(cell_id_dn)
@@ -1155,8 +1163,7 @@ contains
 #else
              factor = 1.d0
 #endif
-
-             value = frac*(1.d0 - cnfac)*therm_cond_aveg/dist*area*factor
+             value = factor*(1.d0 - cnfac)*therm_cond_aveg/dist*area
 
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1, value, &
                   ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1164,10 +1171,7 @@ contains
           case (COND_HEAT_FLUX)
 
              dhsdT = this%aux_vars_bc(sum_conn)%dhsdT
-             frac  = this%aux_vars_bc(sum_conn)%frac
              area  = cur_conn_set%conn(iconn)%GetArea()
-
-             T        = this%aux_vars_in(cell_id_dn)%temperature
              heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
              tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
              vol      = this%mesh%vol(cell_id_dn)
@@ -1177,7 +1181,7 @@ contains
              factor = 1.d0
 #endif
 
-             value = -frac*dhsdT**area*factor
+             value = -dhsdT*area*factor
 
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1, value, &
                   ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1191,11 +1195,11 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermKSPTempSoilComputeOperatorsDiag
+  end subroutine ThermKSPTempSnowComputeOperatorsDiag
 
   !------------------------------------------------------------------------
 
-  subroutine ThermKSPTempSoilComputeOperatorsOffDiag(this, A, B, &
+  subroutine ThermKSPTempSnowComputeOperatorsOffDiag(this, A, B, &
        itype_of_other_goveq, rank_of_other_goveq, ierr)
     !
     ! !DESCRIPTION:
@@ -1206,12 +1210,11 @@ contains
     use mpp_varcon                , only : cnfac
     use MultiPhysicsProbConstants , only : COND_HEAT_FLUX
     use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
+    class(goveqn_thermal_ksp_temp_snow_type) :: this
     Mat                                      :: A
     Mat                                      :: B
     PetscInt                                 :: itype_of_other_goveq
@@ -1220,61 +1223,42 @@ contains
     !
     ! !LOCAL VARIABLES
     PetscInt                                 :: ieqn
-    PetscInt                                 :: iconn
-    PetscInt                                 :: sum_conn
-    PetscInt                                 :: cell_id_up
-    PetscInt                                 :: cell_id_dn
-    PetscReal                                :: dist
-    PetscReal                                :: dist_up
-    PetscReal                                :: dist_dn
-    PetscReal                                :: area
-    PetscReal                                :: therm_cond_aveg
-    PetscReal                                :: therm_cond_up
-    PetscReal                                :: therm_cond_dn
-    PetscReal                                :: frac
-    PetscReal                                :: value
-    PetscReal                                :: factor
-    PetscReal                                :: T
+    PetscInt                                 :: iconn, sum_conn
+    PetscInt                                 :: cell_id_up, cell_id_dn
+    PetscReal                                :: dist, dist_up, dist_dn
+    PetscReal                                :: area, vol
+    PetscReal                                :: therm_cond_aveg, therm_cond_up, therm_cond_dn
     PetscReal                                :: heat_cap
     PetscReal                                :: tfactor
-    PetscReal                                :: vol
     PetscReal                                :: dt
-    PetscBool                                :: is_bc_sh2o
+    PetscReal                                :: value
     class(connection_set_type), pointer      :: cur_conn_set
-    type(condition_type)     , pointer       :: cur_cond
+    type(condition_type),pointer             :: cur_cond
+    PetscReal                                :: factor
+    PetscReal                                :: T
+
 
     dt = this%dtime
 
     ! Boundary cells
-    cur_cond => this%boundary_conditions%first
+    Cur_cond => this%boundary_conditions%first
     sum_conn = 0
     do
        if (.not.associated(cur_cond)) exit
 
-       is_bc_sh2o = PETSC_FALSE
-       do ieqn = 1, cur_cond%num_other_goveqs
-          if (cur_cond%itype_of_other_goveqs(ieqn) == GE_THERM_SSW_TBASED) then
-             is_bc_sh2o = PETSC_TRUE
-          endif
-       enddo
        cur_conn_set => cur_cond%conn_set
 
        if (cur_cond%itype == COND_DIRICHLET_FRM_OTR_GOVEQ) then
           do ieqn = 1, cur_cond%num_other_goveqs
              if (cur_cond%rank_of_other_goveqs(ieqn) == rank_of_other_goveq) then
-
                 do iconn = 1, cur_conn_set%num_connections
 
                    cell_id_dn = cur_conn_set%conn(iconn)%GetIDDn()
                    cell_id_up = cur_conn_set%conn(iconn)%GetIDUp()
-
                    sum_conn = sum_conn + 1
 
                    if ((.not.this%aux_vars_in(cell_id_dn)%is_active)) cycle
 
-                   if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
-
-                   frac          = this%aux_vars_bc(sum_conn)%frac
                    area          = cur_conn_set%conn(iconn)%GetArea()
                    dist_up       = cur_conn_set%conn(iconn)%GetDistUp()
                    dist_dn       = cur_conn_set%conn(iconn)%GetDistDn()
@@ -1284,33 +1268,26 @@ contains
                    therm_cond_dn = this%aux_vars_in(cell_id_dn)%therm_cond
 
                    ! Distance weighted harmonic average
-                   if (is_bc_sh2o) then
-                      therm_cond_aveg = therm_cond_up*therm_cond_dn*(dist_up + dist_dn)/ &
-                           (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
-                      dist = dist_dn + max(1.d-6, dist_up*2.d0)/2.d0
-                   else
-                      therm_cond_aveg = therm_cond_up*therm_cond_dn*dist/ &
-                           (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
-                   endif
+                   therm_cond_aveg = therm_cond_up*therm_cond_dn*dist/ &
+                        (therm_cond_up*dist_dn + therm_cond_dn*dist_up)
 
                    T        = this%aux_vars_in(cell_id_dn)%temperature
                    heat_cap = this%aux_vars_in(cell_id_dn)%heat_cap_pva
                    tfactor  = this%aux_vars_in(cell_id_dn)%tuning_factor
                    vol      = this%mesh%vol(cell_id_dn)
+                   factor =  (dt*tfactor)/(heat_cap*vol)
+
 #ifdef MATCH_CLM_FORMULATION
                    factor =  (dt*tfactor)/(heat_cap*vol)
 #else
                    factor = 1.d0
 #endif
-
-                   value = frac*(1.d0 - cnfac)*therm_cond_aveg/dist*area*factor
+                   value = (1.d0 - cnfac)*therm_cond_aveg/dist*area*factor
 
                    call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value, &
                         ADD_VALUES, ierr); CHKERRQ(ierr)
 
                 enddo
-             else
-                sum_conn = sum_conn + cur_conn_set%num_connections
              endif
           enddo
        else
@@ -1320,83 +1297,9 @@ contains
        cur_cond => cur_cond%next
     enddo
 
-  end subroutine ThermKSPTempSoilComputeOperatorsOffDiag
+  end subroutine ThermKSPTempSnowComputeOperatorsOffDiag
 
 
-  !------------------------------------------------------------------------
-
-  subroutine ThermKSPTempSoilUpdateBoundaryConn(this)
-    !
-    ! !DESCRIPTION:
-    !
-    ! !USES:
-    use MultiPhysicsProbConstants , only : COND_DIRICHLET_FRM_OTR_GOVEQ
-    use ConnectionSetType, only          : connection_set_type
-    use ConditionType, only              : condition_type
-    use mpp_varpar, only                 : nlevsno
-    use MultiPhysicsProbConstants , only : GE_THERM_SSW_TBASED
-    use MultiPhysicsProbConstants , only : GE_THERM_SNOW_TBASED
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(goveqn_thermal_ksp_temp_soil_type) :: this
-    !
-    PetscInt                                 :: ieqn
-    PetscInt                                 :: iconn
-    PetscInt                                 :: cell_id
-    PetscInt                                 :: sum_conn
-    PetscBool                                :: is_bc_snow
-    PetscBool                                :: is_bc_sh2o
-    type(condition_type),pointer             :: cur_cond
-    class(connection_set_type), pointer      :: cur_conn_set
-      
-    ! Boundary cells
-    cur_cond => this%boundary_conditions%first
-    sum_conn = 0
-    do
-       if (.not.associated(cur_cond)) exit
-
-       is_bc_snow = PETSC_FALSE
-       is_bc_sh2o = PETSC_FALSE
-
-       do ieqn = 1, cur_cond%num_other_goveqs
-       if (cur_cond%itype_of_other_goveqs(ieqn) == GE_THERM_SSW_TBASED) then
-          is_bc_sh2o = PETSC_TRUE
-       endif
-       enddo
-       
-       do ieqn = 1, cur_cond%num_other_goveqs
-       if (cur_cond%itype_of_other_goveqs(ieqn) == GE_THERM_SNOW_TBASED) then
-          is_bc_snow = PETSC_TRUE
-       endif
-       enddo
-
-       cur_conn_set => cur_cond%conn_set
-
-       do iconn = 1, cur_conn_set%num_connections
-
-          cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
-          sum_conn = sum_conn + 1
-
-          select case(cur_cond%itype)
-          case(COND_DIRICHLET_FRM_OTR_GOVEQ)
-             if (.not. this%aux_vars_bc(sum_conn)%is_active) cycle
-             
-             if (is_bc_snow) then
-                call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_bc(sum_conn)%dist_up)
-             elseif (is_bc_sh2o) then
-                call cur_conn_set%conn(iconn)%SetDistUp(this%aux_vars_bc(sum_conn)%dz/2.d0)
-             endif
-
-          case default
-
-          end select
-       enddo
-       cur_cond => cur_cond%next
-    enddo
-
-  end subroutine ThermKSPTempSoilUpdateBoundaryConn
 #endif
   
-end module GoveqnThermalKSPTemperatureSoilType
+end module GoveqnThermalKSPTemperatureSnowType

@@ -42,7 +42,6 @@ module SystemOfEquationsThermalEnthalpyType
      procedure, public :: SetBDataFromCLM        => SOEThermalEnthalpySetBDataFromCLM
      procedure, public :: PreStepDT              => SOEThermalEnthalpyPreStepDT
      procedure, public :: PreSolve               => SOEThermalEnthalpyPreSolve
-     procedure, public :: AddGovEqn              => SOEThermalEnthalpyAddGovEqn
      procedure, public :: SetDataFromCLM         => SOEThermalEnthalpySetDataFromCLM
      procedure, public :: GetDataForCLM          => SOEThermalEnthalpyGetDataForCLM
      procedure, public :: CreateVectorsForGovEqn => SOEThermalEnthalpyCreateVectorsForGovEqn
@@ -77,80 +76,6 @@ contains
     nullify(this%aux_vars_ss)
 
   end subroutine SOEThermalEnthalpyInit
-
-  !------------------------------------------------------------------------
-  subroutine SOEThermalEnthalpyAddGovEqn(this, geq_type, name, mesh_itype)
-    !
-    ! !DESCRIPTION:
-    ! Adds a governing equation to system-of-equations
-    !
-    ! !USES:
-    use SystemOfEquationsBaseType     , only : SOEBaseInit
-    use MultiPhysicsProbConstants     , only : GE_THERM_SOIL_EBASED
-    use MultiPhysicsProbConstants     , only : GE_RE
-    use MultiPhysicsProbConstants     , only : MESH_CLM_SOIL_COL
-    use GoverningEquationBaseType     , only : goveqn_base_type
-    use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_thermal_enthalpy_type)              :: this
-    PetscInt                                            :: geq_type
-    character(len=*)                                    :: name
-    PetscInt                                            :: mesh_itype
-    !
-    ! !LOCAL VARIABLES:
-    class (goveqn_thermal_enthalpy_soil_type) , pointer :: goveq_soil
-    class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
-    class(goveqn_base_type)                   , pointer :: cur_goveqn
-    integer                                             :: igoveqn
-
-    cur_goveqn => this%goveqns
-
-    do igoveqn = 1, this%ngoveqns - 1
-       cur_goveqn => cur_goveqn%next
-    enddo
-
-    this%ngoveqns = this%ngoveqns + 1
-
-    select case(geq_type)
-       case (GE_THERM_SOIL_EBASED)
-
-          allocate(goveq_soil)
-          call goveq_soil%Setup()
-
-          goveq_soil%name                 = trim(name)
-          goveq_soil%rank_in_soe_list     = this%ngoveqns
-          goveq_soil%mesh_itype           = mesh_itype
-
-          if (this%ngoveqns               == 1) then
-             this%goveqns                 => goveq_soil
-          else
-             cur_goveqn%next              => goveq_soil
-          endif
-
-       case (GE_RE)
-
-          allocate(goveq_richards)
-          call goveq_richards%Setup()
-
-          goveq_richards%name             = trim(name)
-          goveq_richards%rank_in_soe_list = this%ngoveqns
-          goveq_richards%mesh_itype       = mesh_itype
-
-          if (this%ngoveqns == 1) then
-             this%goveqns => goveq_richards
-          else
-             cur_goveqn%next => goveq_richards
-          endif
-
-       case default
-          write(iulog,*) 'Unknown governing equation type'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       end select
-
-  end subroutine SOEThermalEnthalpyAddGovEqn
 
   !------------------------------------------------------------------------
   subroutine SOEThermalEnthalpySetSolnPrevCLM(this, data_1d)
@@ -356,15 +281,11 @@ contains
     ! !ARGUMENTS
     class(sysofeqns_thermal_enthalpy_type) :: this
     class(goveqn_base_type),pointer        :: cur_goveq
-    PetscInt                               :: offset
 
-    offset = 0
+    call this%SavePrimaryIndependentVar(this%solver%soln_prev)
 
     select case (this%itype)
     case(SOE_THERMAL_EBASED)
-
-       ! 1) {soln_prev}  ---> sim_aux()
-       call SOEThermalEnthalpyUpdateAuxVars(this, this%solver%soln_prev)
 
        ! 2) GE ---> GetFromSimAux()
        cur_goveq => this%goveqns
@@ -373,8 +294,6 @@ contains
           select type(cur_goveq)
 
           class is (goveqn_thermal_enthalpy_soil_type)
-             call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
-             offset = offset + cur_goveq%mesh%ncells_local
 
              call cur_goveq%GetFromSOEAuxVarsBC(this%aux_vars_bc)
              call cur_goveq%GetFromSOEAuxVarsSS(this%aux_vars_ss)
@@ -396,127 +315,6 @@ contains
     end select
 
   end subroutine SOEThermalEnthalpyPreSolve
-
-  !------------------------------------------------------------------------
-  subroutine SOEThermalEnthalpyUpdateAuxVars(therm_soe, X)
-    !
-    ! !DESCRIPTION:
-    ! Updates the SoE vars for the discretized ODE based on the input
-    ! vector X
-    !
-    ! !USES:
-    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
-    use MultiPhysicsProbConstants, only : VAR_TEMPERATURE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_thermal_enthalpy_type) :: therm_soe
-    Vec                                    :: X
-    !
-    ! !LOCAL VARIABLES:
-    PetscInt                               :: dm_id
-    PetscInt                               :: nDM
-    DM, pointer                            :: dms(:)
-    Vec, pointer                           :: X_subvecs(:)
-    PetscInt                               :: size
-    PetscInt                               :: offset
-    PetscErrorCode                         :: ierr
-
-    ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(therm_soe%solver%dm, nDM, ierr); CHKERRQ(ierr)
-
-    ! Get DMs for each GE
-    allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(therm_soe%solver%dm, dms, ierr); CHKERRQ(ierr)
-
-    ! Allocate vectors for individual GEs
-    allocate(X_subvecs(nDM))
-
-    ! Get vectors (X) for individual GEs
-    call DMCompositeGetAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
-         X_subvecs, ierr); CHKERRQ(ierr)
-
-    ! Update the SoE auxvars
-    offset = 0
-    do dm_id = 1, nDM
-       call SOEThermalEnthalpySetAuxVars(therm_soe, AUXVAR_INTERNAL, VAR_TEMPERATURE, &
-            X_subvecs(dm_id), offset)
-       call VecGetSize(X_subvecs(dm_id), size, ierr); CHKERRQ(ierr)
-       offset = offset + size
-    enddo
-
-    ! Restore vectors (u,udot,F) for individual GEs
-    call DMCompositeRestoreAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
-         X_subvecs, ierr); CHKERRQ(ierr)
-
-    ! Free memory
-    deallocate(dms)
-    deallocate(X_subvecs)
-
-
-  end subroutine SOEThermalEnthalpyUpdateAuxVars
-
-  !------------------------------------------------------------------------
-  subroutine SOEThermalEnthalpySetAuxVars(therm_soe, auxvar_type, var_type, &
-       var_vec, offset)
-    !
-    ! !DESCRIPTION:
-    ! Set values in SoE auxvars.
-    !
-    ! !USES:
-    use MultiPhysicsProbConstants              , only : AUXVAR_INTERNAL
-    use SystemOfEquationsThermalEnthalpyAuxMod , only : SOEThermalEnthalpyAuxSetRData
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_thermal_enthalpy_type) :: therm_soe
-    PetscInt                               :: auxvar_type
-    PetscInt, intent(in)                   :: var_type
-    Vec                                    :: var_vec
-    !
-    ! !LOCAL VARIABLES:
-    PetscReal, pointer                     :: var_p(:)
-    PetscInt                               :: nauxvar
-    PetscInt                               :: nvar
-    PetscInt, optional                     :: offset
-    PetscInt                               :: iauxvar
-    PetscInt                               :: iauxvar_off
-    PetscErrorCode                         :: ierr
-
-    if (present(offset)) then
-       iauxvar_off = offset
-    else
-       iauxvar_off = 0
-    endif
-
-    select case(auxvar_type)
-    case (AUXVAR_INTERNAL)
-
-       nauxvar = size(therm_soe%aux_vars_in)
-
-       call VecGetLocalSize(var_vec, nvar, ierr); CHKERRQ(ierr)
-
-       if (nvar+iauxvar_off > nauxvar) then
-          write(iulog,*) 'SOEThermalEnthalpySetAuxVars: nvar+iauxvar_off > nauxvar.'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       endif
-
-       call VecGetArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
-
-       call SOEThermalEnthalpyAuxSetRData(therm_soe%aux_vars_in, var_type, &
-            nauxvar, iauxvar_off, var_p)
-
-       call VecRestoreArrayReadF90(var_vec, var_p, ierr); CHKERRQ(ierr)
-
-    case default
-       write(iulog,*) 'SOEThermalEnthalpySetAuxVars: auxvar_type not supported'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
-
-  end subroutine SOEThermalEnthalpySetAuxVars
 
   !------------------------------------------------------------------------
 
@@ -551,6 +349,8 @@ contains
     PetscInt                               :: offset
     PetscViewer :: viewer
     
+    call this%SavePrimaryIndependentVar(this%solver%soln_prev)
+    
     ! Find number of GEs packed within the SoE
     call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr); CHKERRQ(ierr)
 
@@ -567,26 +367,6 @@ contains
          ierr); CHKERRQ(ierr)
     call DMCompositeGetAccessArray(this%solver%dm, F, nDM, PETSC_NULL_INTEGER, F_subvecs, &
          ierr); CHKERRQ(ierr)
-
-    ! 1) {X}  ---> sim_aux()
-    call SOEThermalEnthalpyUpdateAuxVars(this, X)
-
-    ! 2.1) GE ---> GetFromSimAux()
-    ! Get pointers to governing-equations
-    cur_goveq => this%goveqns
-    do
-       if (.not.associated(cur_goveq)) exit
-       select type(cur_goveq)
-       class is (goveqn_thermal_enthalpy_soil_type)
-          call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
-
-          call cur_goveq%UpdateAuxVarsIntrn()
-          offset = offset + cur_goveq%mesh%ncells_local
-
-       end select
-
-       cur_goveq => cur_goveq%next
-    enddo
 
     cur_goveq => this%goveqns
     do
@@ -1070,7 +850,6 @@ contains
           class is (goveqn_thermal_enthalpy_soil_type)
 
              call cur_goveq%SetDataInSOEAuxVar(AUXVAR_INTERNAL, this%aux_vars_in)
-             !call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC      , this%aux_vars_bc)
 
           end select
           cur_goveq => cur_goveq%next

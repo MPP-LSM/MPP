@@ -430,11 +430,11 @@ contains
 
     offset = 0
 
+   ! 1) {soln_prev}  ---> sim_aux()
+    call this%SavePrimaryIndependentVar(this%solver%soln_prev)
+
     select case (this%itype)
     case(SOE_THERMAL_TBASED)
-
-       ! 1) {soln_prev}  ---> sim_aux()
-       call ThermalSOEUpdateAuxVarsTBased(this, this%solver%soln_prev)
 
        ! 2) GE ---> GetFromSimAux()
        cur_goveq => this%goveqns
@@ -479,66 +479,6 @@ contains
     end select
 
   end subroutine ThermalSOEPreSolve
-
-  !------------------------------------------------------------------------
-  subroutine ThermalSOEUpdateAuxVarsTBased(therm_soe, X)
-    !
-    ! !DESCRIPTION:
-    ! Updates the SoE vars for the discretized ODE based on the input
-    ! vector X
-    !
-    ! !USES:
-    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
-    use MultiPhysicsProbConstants, only : VAR_TEMPERATURE
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_thermal_type) :: therm_soe
-    Vec                           :: X
-    !
-    ! !LOCAL VARIABLES:
-    PetscInt                   :: dm_id
-    PetscInt                   :: nDM
-    DM, pointer                :: dms(:)
-    Vec, pointer               :: X_subvecs(:)
-    PetscInt                   :: size
-    PetscInt                   :: offset
-    PetscErrorCode             :: ierr
-
-    ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(therm_soe%solver%dm, nDM, ierr); CHKERRQ(ierr)
-
-    ! Get DMs for each GE
-    allocate (dms(nDM))
-    call DMCompositeGetEntriesArray(therm_soe%solver%dm, dms, ierr); CHKERRQ(ierr)
-
-    ! Allocate vectors for individual GEs
-    allocate(X_subvecs(nDM))
-
-    ! Get vectors (X) for individual GEs
-    call DMCompositeGetAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
-         X_subvecs, ierr); CHKERRQ(ierr)
-
-    ! Update the SoE auxvars
-    offset = 0
-    do dm_id = 1, nDM
-       call ThermalSOESetAuxVars(therm_soe, AUXVAR_INTERNAL, VAR_TEMPERATURE, &
-            X_subvecs(dm_id), offset)
-       call VecGetSize(X_subvecs(dm_id), size, ierr); CHKERRQ(ierr)
-       offset = offset + size
-    enddo
-
-    ! Restore vectors (u,udot,F) for individual GEs
-    call DMCompositeRestoreAccessArray(therm_soe%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
-         X_subvecs, ierr); CHKERRQ(ierr)
-
-    ! Free memory
-    deallocate(dms)
-    deallocate(X_subvecs)
-
-
-  end subroutine ThermalSOEUpdateAuxVarsTBased
 
   !------------------------------------------------------------------------
   subroutine ThermalSOESetAuxVars(therm_soe, auxvar_type, var_type, &

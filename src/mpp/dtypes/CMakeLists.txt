@@ -4,15 +4,13 @@ set(MPP_DTYPES_SOURCES
   CouplingVariableType.F90
   GoverningEquationBaseType.F90
   MeshType.F90
-  MultiPhysicsProbBaseType.F90
   SolverType.F90
-  SystemOfEquationsBasePointerType.F90
-  SystemOfEquationsBaseType.F90
   UnstructuredGridType.F90
  )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/thermal)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
+include_directories(${CMAKE_BINARY_DIR}/src/mpp/auxvar)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/vsfm)
 
 include(add_mpp_library)

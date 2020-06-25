@@ -39,7 +39,9 @@ module GoveqnThermalEnthalpySoilType
      procedure, public :: Setup                   => ThermEnthalpySoilSetup
      procedure, public :: AllocateAuxVars         => ThermEnthalpySoilAllocateAuxVars
 
-     procedure, public :: GetFromSOEAuxVarsIntrn  => ThermEnthalpySoilGetFromSOEAuxVarsIntrn
+     procedure, public :: SavePrimaryIndependentVar => ThermEnthalpySoilSavePrmIndepVar
+
+!     procedure, public :: GetFromSOEAuxVarsIntrn  => ThermEnthalpySoilGetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC     => ThermEnthalpySoilGetFromSOEAuxVarsBC
      procedure, public :: GetFromSOEAuxVarsSS     => ThermEnthalpySoilGetFromSOEAuxVarsSS
      procedure, public :: GetDataFromSOEAuxVar    => ThermEnthalpySoilGetDataFromSOEAuxVar
@@ -176,6 +178,39 @@ contains
   end subroutine ThermEnthalpySoilAllocateAuxVars
 
   !------------------------------------------------------------------------
+  subroutine ThermEnthalpySoilSavePrmIndepVar (this, x)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_thermal_enthalpy_soil_type) :: this
+   Vec :: x
+   !
+   PetscScalar, pointer :: x_p(:)
+   PetscInt             :: ghosted_id, size
+   PetscErrorCode       :: ierr
+   
+   call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+   if (size /= this%mesh%ncells_local) then
+      call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+   end if
+
+   call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+   do ghosted_id = 1, this%mesh%ncells_local
+      this%aux_vars_in(ghosted_id)%temperature = x_p(ghosted_id)
+   end do
+
+   call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+ end subroutine ThermEnthalpySoilSavePrmIndepVar
+
+ !------------------------------------------------------------------------
   subroutine ThermEnthalpySoilGetDataFromSOEAuxVar(this, soe_avar_type, soe_avars, &
        offset)
     !
@@ -247,8 +282,8 @@ contains
     endif
 
     do iauxvar = 1, nauxvar
-       this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
-       this%aux_vars_in(iauxvar)%pressure    = soe_avars(iauxvar+offset)%pressure
+       !this%aux_vars_in(iauxvar)%temperature = soe_avars(iauxvar+offset)%temperature
+       !this%aux_vars_in(iauxvar)%pressure    = soe_avars(iauxvar+offset)%pressure
     enddo
 
   end subroutine ThermEnthalpySoilGetFromSOEAuxVarsIntrn

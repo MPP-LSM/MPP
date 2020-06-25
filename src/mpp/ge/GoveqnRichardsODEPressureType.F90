@@ -50,6 +50,8 @@ module GoveqnRichardsODEPressureType
      procedure, public :: ComputeJacobian           => RichardsODEComputeJacobian
      procedure, public :: ComputeOffDiagJacobian    => RichardsODEComputeOffDiagJacobian
 
+     procedure, public :: SavePrimaryIndependentVar => RichardsODESavePrmIndepVar
+
      procedure, public :: GetFromSOEAuxVarsIntrn    => RichardsODEPressureGetFromSOEAuxVarsIntrn
      procedure, public :: SetFromSOEAuxVarsIntrn    => RichardsODEPressureSetFromSOEAuxVarsIntrn
      procedure, public :: GetFromSOEAuxVarsBC       => RichardsODEPressureGetFromSOEAuxVarsBC
@@ -498,6 +500,38 @@ contains
 
   end subroutine RichardsODEComputeOffDiagJacobian
 
+  !------------------------------------------------------------------------
+  subroutine RichardsODESavePrmIndepVar (this, x)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_richards_ode_pressure_type) :: this
+   Vec :: x
+   !
+   PetscScalar, pointer :: x_p(:)
+   PetscInt             :: ghosted_id, size
+   PetscErrorCode       :: ierr
+   
+   call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+   if (size /= this%mesh%ncells_local) then
+      call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+   end if
+
+   call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+   do ghosted_id = 1, this%mesh%ncells_local
+      this%aux_vars_in(ghosted_id)%pressure = x_p(ghosted_id)
+   end do
+
+   call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+ end subroutine RichardsODESavePrmIndepVar
 
   !------------------------------------------------------------------------
   subroutine RichardsODEPressureGetFromSOEAuxVarsIntrn(this, soe_avars, offset)
@@ -537,16 +571,16 @@ contains
 
        if (this%mesh%is_active(iauxvar)) then
           ! Copy temperature.
-          ge_avars(iauxvar)%temperature =  &
-               soe_avars(iauxvar+offset)%temperature
+          !ge_avars(iauxvar)%temperature =  &
+          !     soe_avars(iauxvar+offset)%temperature
 
           ! Copy frac_liq_sat.
           ge_avars(iauxvar)%frac_liq_sat =  &
                soe_avars(iauxvar+offset)%frac_liq_sat
 
           ! Copy pressure.
-          ge_avars(iauxvar)%pressure =  &
-               soe_avars(iauxvar+offset)%pressure
+          !ge_avars(iauxvar)%pressure =  &
+          !     soe_avars(iauxvar+offset)%pressure
        endif
     enddo
 
@@ -1133,7 +1167,10 @@ contains
              soe_avars(iauxvar+iauxvar_off)%liq_sat =  &
                   ge_avars(iauxvar)%sat
 
-             mass =  &
+             soe_avars(iauxvar+iauxvar_off)%pressure =  &
+                  ge_avars(iauxvar)%pressure
+
+                  mass =  &
                   this%aux_vars_in(iauxvar)%por*        & ! [-]
                   this%aux_vars_in(iauxvar)%den*FMWH2O* & ! [kg m^{-3}]
                   this%aux_vars_in(iauxvar)%sat*        & ! [-]
