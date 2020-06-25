@@ -1,0 +1,13 @@
+&mpp_driver
+  problem_type = 'mlc'
+/
+
+&regression_test
+  write_regression_output = .true.
+  num_cells = 6
+/
+
+&problem_options
+  ncair = 2
+/
+

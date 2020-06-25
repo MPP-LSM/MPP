@@ -24,12 +24,14 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: MPP_THERMAL_TBASED_KSP_CLM        = 12
   PetscInt, parameter, public :: MPP_THERMAL_EBASED_SNES_CLM       = 13
   PetscInt, parameter, public :: MPP_TH_SNES_CLM                   = 14
+  PetscInt, parameter, public :: MPP_MLC_KSP                       = 15
 
   ! soe_itype
   PetscInt, parameter, public :: SOE_RE_ODE                        = 101
   PetscInt, parameter, public :: SOE_THERMAL_TBASED                = 102
   PetscInt, parameter, public :: SOE_THERMAL_EBASED                = 103
   PetscInt, parameter, public :: SOE_TH                            = 104
+  PetscInt, parameter, public :: SOE_MLC                           = 105
 
   ! ge_itype
   PetscInt, parameter, public :: GE_RE                             = 201
@@ -37,6 +39,9 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: GE_THERM_SNOW_TBASED              = 203
   PetscInt, parameter, public :: GE_THERM_SSW_TBASED               = 204
   PetscInt, parameter, public :: GE_THERM_SOIL_EBASED              = 205
+  PetscInt, parameter, public :: GE_CANOPY_AIR_TEMP                = 206
+  PetscInt, parameter, public :: GE_CANOPY_AIR_VAPOR               = 207
+  PetscInt, parameter, public :: GE_CANOPY_LEAF_TEMP               = 208
 
   ! mesh_itype
   PetscInt, parameter, public :: MESH_CLM_SOIL_COL                 = 301
@@ -125,6 +130,10 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_CONDUCTANCE_TYPE              = 645
   PetscInt, parameter, public :: VAR_CONDUCTANCE_UP                = 646
   PetscInt, parameter, public :: VAR_CONDUCTANCE_DN                = 647
+  PetscInt, parameter, public :: VAR_WATER_VAPOR                   = 648
+!  PetscInt, parameter, public :: VAR_SUNLIT_TEMPERATURE            = 649
+!  PetscInt, parameter, public :: VAR_SHADED_TEMPERATURE            = 650
+  PetscInt, parameter, public :: VAR_LEAF_TEMPERATURE              = 651
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
@@ -154,9 +163,18 @@ module MultiPhysicsProbConstants
 
   !
   PetscReal, parameter, public :: PRESSURE_REF                     = 101325.d0     ! [Pa]
-  PetscReal, parameter, public :: GRAVITY_CONSTANT                 = 9.8068d0      ! [m s^{-2}]
+  !PetscReal, parameter, public :: GRAVITY_CONSTANT                 = 9.8068d0      ! [m s^{-2}]
+  PetscReal, parameter, public :: GRAVITY_CONSTANT                 = 9.80665d0      ! [m s^{-2}]
   PetscReal, parameter, public :: FMWH2O                           = 18.01534d0    ! [kg kmol^{-1}]
 
+  PetscReal, parameter, public :: VKC                              = 0.4d0         ! von Karman constant [-]
+  PetscReal, parameter, public :: TFRZ                             = 273.15d0      ! [K]
+  PetscReal, parameter, public :: MM_H2O                           = 18.02d-3      ! [kgmol{-1}]
+  PetscReal, parameter, public :: MM_DRY_AIR                       = 28.97d-3      ! [kg mol^{-1}]
+  PetscReal, parameter, public :: HVAP                             = 2.501e6       ! [J/kg]
+  PetscReal, parameter, public :: CPD                              = 1005.d0       ! [J/kg/K]
+  PetscReal, parameter, public :: CPW                              = 1846.d0       ! [J/kg/K]
+  PetscReal, parameter, public :: RGAS                             = 8.31446d0     ! [J/K/mol]
 #endif
 
 

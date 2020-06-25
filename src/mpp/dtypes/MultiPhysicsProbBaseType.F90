@@ -187,6 +187,7 @@ contains
     use MultiPhysicsProbConstants, only : MPP_THERMAL_TBASED_KSP_CLM
     use MultiPhysicsProbConstants, only : MPP_THERMAL_EBASED_SNES_CLM
     use MultiPhysicsProbConstants, only : MPP_TH_SNES_CLM
+    use MultiPhysicsProbConstants, only : MPP_MLC_KSP
     use MultiPhysicsProbConstants, only : PETSC_SNES
     use MultiPhysicsProbConstants, only : PETSC_KSP
     use MultiPhysicsProbConstants, only : SOE_RE_ODE
@@ -203,7 +204,7 @@ contains
        this%id                    = id
        this%solver_type           = PETSC_SNES
 
-    case (MPP_THERMAL_TBASED_KSP_CLM)
+    case (MPP_THERMAL_TBASED_KSP_CLM,MPP_MLC_KSP)
        this%id                    = id
        this%solver_type           = PETSC_KSP
 
@@ -706,6 +707,7 @@ contains
           write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
                ', no coupling boundary condition found to copule it with ' // &
                'equation_number = ', goveqn_ids(ivar)
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
 
        cur_goveq_2 => this%soe%goveqns
@@ -741,6 +743,7 @@ contains
           write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
                ', no coupling boundary condition found to copule it with ' // &
                'equation_number = ', bc_idx_2
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
 
        cpl_var => CouplingVariableCreate()
@@ -918,9 +921,10 @@ contains
           enddo
 
           if (.not.bc_found) then
-             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_1%name) // &
+             write(iulog,*)'1) For goveqn%name = ',trim(cur_goveq_1%name) // &
                   ', no coupling boundary condition found to copule it with ' // &
                   'equation_number = ', goveqn_ids(ivar)
+             call endrun(msg=errMsg(__FILE__, __LINE__))
           endif
 
           cur_goveq_2 => this%soe%goveqns
@@ -953,9 +957,10 @@ contains
           enddo
 
           if (.not.bc_found) then
-             write(iulog,*)'For goveqn%name = ',trim(cur_goveq_2%name) // &
+             write(iulog,*)'2) For goveqn%name = ',trim(cur_goveq_2%name) // &
                   ', no coupling boundary condition found to copule it with ' // &
                   'equation_number = ', bc_idx_2
+             call endrun(msg=errMsg(__FILE__, __LINE__))
           endif
 
           cpl_var => CouplingVariableCreate()
@@ -1109,7 +1114,7 @@ contains
 
        write(name,*) igoveq
        name = 'fgoveq_' // trim(adjustl(name))
-       call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
+       !call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
 
        call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
        call DMSetUp(         dms(igoveq) , ierr); CHKERRQ(ierr)
@@ -1125,7 +1130,7 @@ contains
 
     ! Create DMComposite: temperature
     call DMCompositeCreate(PETSC_COMM_SELF, base_soe%solver%dm, ierr); CHKERRQ(ierr)
-    call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
+    !call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
 
     ! Add DMs to DMComposite
     do igoveq = 1, base_soe%ngoveqns
@@ -1230,7 +1235,7 @@ contains
 
        write(name,*) igoveq
        name = 'fgoveq_' // trim(adjustl(name))
-       call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
+       !call DMSetOptionsPrefix(dms(igoveq), name, ierr); CHKERRQ(ierr)
 
        call DMSetFromOptions(dms(igoveq), ierr); CHKERRQ(ierr)
        call DMSetUp         (dms(igoveq), ierr); CHKERRQ(ierr)
@@ -1246,7 +1251,7 @@ contains
 
     ! Create DMComposite: temperature
     call DMCompositeCreate(PETSC_COMM_SELF, base_soe%solver%dm, ierr); CHKERRQ(ierr)
-    call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
+    !call DMSetOptionsPrefix(base_soe%solver%dm, "temperature_", ierr); CHKERRQ(ierr)
 
     ! Add DMs to DMComposite
     do igoveq = 1, base_soe%ngoveqns
@@ -1280,7 +1285,7 @@ contains
 
     ! Create KSP
     call KSPCreate              (PETSC_COMM_SELF , base_soe%solver%ksp, ierr); CHKERRQ(ierr)
-    call KSPSetOptionsPrefix    (base_soe%solver%ksp   , "temperature_", ierr); CHKERRQ(ierr)
+    !call KSPSetOptionsPrefix    (base_soe%solver%ksp   , "temperature_", ierr); CHKERRQ(ierr)
 
     call KSPSetComputeRHS       (base_soe%solver%ksp   , SOEComputeRHS      , &
          this%soe_ptr, ierr); CHKERRQ(ierr)

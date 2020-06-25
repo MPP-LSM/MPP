@@ -2,7 +2,7 @@
 
 git clone https://gitlab.com/petsc/petsc.git
 
-PETSC_GIT_HASH=v3.11.1
+PETSC_GIT_HASH=v3.13
 DEBUG=1
 
 cd petsc
@@ -27,5 +27,5 @@ export PETSC_DIR=$PWD
 
 
 make all
-make test
+#make test
 

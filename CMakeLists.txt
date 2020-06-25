@@ -22,7 +22,7 @@ endif()
 
 set(PETSC_ARCH $ENV{PETSC_ARCH})
 set(PETSC_DIR $ENV{PETSC_DIR})
-include($ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/initial_cache_file.cmake)
+#include($ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/initial_cache_file.cmake)
 
 # Make sure compilers are set. This must be done before enabling languages.
 if (NOT CMAKE_C_COMPILER)
