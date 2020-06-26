@@ -31,6 +31,7 @@ module GoverningEquationBaseType
      class(mesh_type),pointer        :: mesh                                 ! pointer to the mesh
      PetscInt                        :: mesh_itype                           ! type of mesh
      PetscInt                        :: mesh_rank                            ! rank of mesh within the MPP mesh list
+     PetscInt                        :: dof                                  ! number of degrees of freedom per cell
      type(condition_list_type)       :: boundary_conditions                  ! boundary conditions to the GE
      type(condition_list_type)       :: source_sinks                         ! source/sinks in the GE
 
@@ -90,6 +91,7 @@ contains
     this%rank_in_soe_list = -1
     this%mesh_itype       = 0
     this%mesh_rank        = 0
+    this%dof              = 1
     this%dtime            = 0.d0
 
     nullify(this%mesh)

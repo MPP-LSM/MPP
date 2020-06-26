@@ -1108,7 +1108,7 @@ contains
        size   = cur_goveq%mesh%ncells_local
 
        call DMDACreate1d(PETSC_COMM_SELF, &
-            DM_BOUNDARY_NONE, size, 1, 1, &
+            DM_BOUNDARY_NONE, size, cur_goveq%dof, 1, &
             PETSC_NULL_INTEGER, dms(igoveq), ierr);
        CHKERRQ(ierr)
 
