@@ -42,6 +42,7 @@ program standalone_mpp
   use thermal_mms_problem         , only : run_thermal_mms_problem
   use thermal_mms_problem         , only : output_regression_th_mms_problem
   use mlc_problem                 , only : run_mlc_problem, output_regression_mlc_problem
+  use leafbndlyr_problem          , only : run_leafbndlyr_problem, output_regression_leafbndlyr_problem
   
   use petscsys
   !
@@ -170,7 +171,14 @@ program standalone_mpp
         call output_regression_mlc_problem(filename_base, num_cells)
      endif
 
-  else
+   else if(trim(problem_type) == 'leafbndlyr') then
+      call run_leafbndlyr_problem(namelist_filename)
+ 
+      if (write_regression_output) then
+         call output_regression_leafbndlyr_problem(filename_base, num_cells)
+      endif
+
+   else
      write(*,*)"problem_type = '", trim(problem_type), "' is unsupported."
   endif
 

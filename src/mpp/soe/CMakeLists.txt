@@ -3,6 +3,8 @@ set(MPP_SOE_SOURCES
   SystemOfEquationsBaseType.F90
   SystemOfEquationsMLCAuxType.F90
   SystemOfEquationsMLCType.F90
+  SystemOfEquationsLblAuxType.F90
+  SystemOfEquationsLblType.F90
   SystemOfEquationsThermalEnthalpyType.F90
   SystemOfEquationsThermalAuxMod.F90
   SystemOfEquationsThermalType.F90

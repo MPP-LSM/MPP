@@ -87,6 +87,7 @@ module SystemOfEquationsBaseType
      procedure, public :: AddCouplingBCsInGovEqn       => SOEBaseAddCouplingBCsInGovEqn
      procedure, public :: AddConditionInGovEqn         => SOEBaseAddConditionInGovEqn
      procedure, public :: CreateVectorsForGovEqn       => SOBCreateVectorsForGovEqn
+     procedure, public :: AllocateAuxVars              => SOEBaseAllocateAuxVars
   end type sysofeqns_base_type
 
   public :: SOEBaseInit
@@ -972,10 +973,12 @@ contains
    use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
    use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
    use GoveqnRichardsODEPressureType   , only : goveqn_richards_ode_pressure_type
+   use GoveqnLeafBoundaryLayer         , only : goveqn_leaf_bnd_lyr_type
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_TEMP
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_VAPOR
    use MultiPhysicsProbConstants       , only : GE_CANOPY_LEAF_TEMP
    use MultiPhysicsProbConstants       , only : GE_RE
+   use MultiPhysicsProbConstants       , only : GE_LEAF_BND_LAYER
    !
    implicit none
    !
@@ -990,6 +993,7 @@ contains
     class (goveqn_cair_vapor_type)            , pointer :: geq_air_vapor
     class (goveqn_cleaf_temp_type)            , pointer :: geq_leaf_temp
     class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
+    class (goveqn_leaf_bnd_lyr_type)          , pointer :: goveq_lbl
     integer                                             :: igoveqn
 
     cur_goveqn => this%goveqns
@@ -1059,6 +1063,18 @@ contains
             this%goveqns => goveq_richards
          else
             cur_goveqn%next => goveq_richards
+         endif
+      case (GE_LEAF_BND_LAYER)
+         allocate(goveq_lbl)
+         call goveq_lbl%Setup()
+         goveq_lbl%name              = trim(name)
+         goveq_lbl%rank_in_soe_list  = this%ngoveqns
+         goveq_lbl%mesh_rank         = mesh_rank
+  
+         if (this%ngoveqns == 1) then
+            this%goveqns => goveq_lbl
+         else
+            cur_goveqn%next => goveq_lbl
          endif
 
       case default
@@ -1190,6 +1206,20 @@ contains
     class(sysofeqns_base_type) :: this
 
   end subroutine SOBCreateVectorsForGovEqn
+
+  !------------------------------------------------------------------------
+  subroutine SOEBaseAllocateAuxVars(this)
+   !
+   ! !DESCRIPTION:
+   ! Dummy subroutine that is extended by child SoE class
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(sysofeqns_base_type) :: this
+
+ end subroutine SOEBaseAllocateAuxVars
+
 #endif
 
 end module SystemOfEquationsBaseType

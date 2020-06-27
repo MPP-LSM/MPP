@@ -1,5 +1,6 @@
 set(MPP_MPP_SOURCES
   MultiPhysicsProbBaseType.F90
+  MultiPhysicsProbLBL.F90
   MultiPhysicsProbMLC.F90
   MultiPhysicsProbTH.F90
   MultiPhysicsProbThermal.F90

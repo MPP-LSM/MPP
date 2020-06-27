@@ -30,9 +30,9 @@ module SystemOfEquationsMlcType
 
   type, public, extends(sysofeqns_base_type) :: sysofeqns_mlc_type
 
-     type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_in(:) ! Internal state.
-     type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_bc(:) ! Boundary conditions.
-     type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_ss(:) ! Source-sink.
+     !type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_in(:) ! Internal state.
+     !type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_bc(:) ! Boundary conditions.
+     !type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_ss(:) ! Source-sink.
 
      type (canopy_turbulence_auxvar_type) :: cturb
      PetscInt :: ncair
@@ -66,9 +66,9 @@ contains
 
     call SOEBaseInit(this)
 
-    nullify(this%aux_vars_in)
-    nullify(this%aux_vars_bc)
-    nullify(this%aux_vars_ss)
+    !nullify(this%aux_vars_in)
+    !nullify(this%aux_vars_bc)
+    !nullify(this%aux_vars_ss)
 
     this%ncair = 0
 
