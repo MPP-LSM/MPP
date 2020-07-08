@@ -2,6 +2,7 @@ set(MPP_UTIL_SOURCES
   ArrayDimThree.F90
   EOSWaterMod.F90
   SatVapor.F90
+  MathUtils.F90
   MultiPhysicsProbConstants.F90
   PorosityFunctionMod.F90
   SaturationFunction.F90

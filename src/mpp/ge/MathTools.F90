@@ -19,7 +19,6 @@ module MathToolsMod
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: hybrid             ! Solve for the root of a function using secant and Brent's methods
   public :: zbrent             ! Use Brent's method to find the root of a function
-  public :: quadratic          ! Solve a quadratic equation for its two roots
   public :: tridiag            ! Solve a tridiagonal system of equations
   public :: beta_function      ! Evaluate the beta function at p and q: B(p,q)
   public :: log_gamma_function ! Evaluate the log natural of the gamma function at x: ln(G(x))
@@ -234,43 +233,6 @@ contains
     end if
 
   end function zbrent
-
-  !-----------------------------------------------------------------------
-  subroutine quadratic (a, b, c, r1, r2)
-    !
-    ! !DESCRIPTION:
-    ! Solve a quadratic equation for its two roots
-    !
-    ! !USES:
-    !
-    ! !ARGUMENTS:
-    implicit none
-    PetscReal, intent(in)  :: a,b,c       ! Terms for quadratic equation
-    PetscReal, intent(out) :: r1,r2       ! Roots of quadratic equation
-    !
-    ! !LOCAL VARIABLES:
-    PetscReal :: q                        ! Temporary term for quadratic solution
-    !---------------------------------------------------------------------
-
-    if (a == 0.d0) then
-       write (iulog,*) 'Quadratic solution error: a = ',a
-       call endrun()
-    end if
-
-    if (b >= 0.d0) then
-       q = -0.5d0 * (b + sqrt(b*b - 4.d0*a*c))
-    else
-       q = -0.5d0 * (b - sqrt(b*b - 4.d0*a*c))
-    end if
-
-    r1 = q / a
-    if (q /= 0.d0) then
-       r2 = c / q
-    else
-       r2 = 1.e36
-    end if
-
-  end subroutine quadratic
 
   !-----------------------------------------------------------------------
   subroutine tridiag (a, b, c, r, u, n)
