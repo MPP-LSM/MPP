@@ -45,6 +45,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: GE_CANOPY_AIR_VAPOR               = 207
   PetscInt, parameter, public :: GE_CANOPY_LEAF_TEMP               = 208
   PetscInt, parameter, public :: GE_LEAF_BND_LAYER                 = 209
+  PetscInt, parameter, public :: GE_PHOTOSYNTHESIS                 = 210
 
   ! mesh_itype
   PetscInt, parameter, public :: MESH_CLM_SOIL_COL                 = 301
@@ -138,6 +139,12 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_LEAF_BDN_LYR_COND_HEAT        = 650
   PetscInt, parameter, public :: VAR_LEAF_BDN_LYR_COND_H2O         = 651
   PetscInt, parameter, public :: VAR_LEAF_BDN_LYR_COND_CO2         = 652
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_MEDLYN   = 653
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_BBERRY   = 654
+  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C4     = 655
+  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C3     = 656
+
+
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
