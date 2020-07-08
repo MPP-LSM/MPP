@@ -88,6 +88,7 @@ module SystemOfEquationsBaseType
      procedure, public :: AddConditionInGovEqn         => SOEBaseAddConditionInGovEqn
      procedure, public :: CreateVectorsForGovEqn       => SOBCreateVectorsForGovEqn
      procedure, public :: AllocateAuxVars              => SOEBaseAllocateAuxVars
+     procedure, public :: ComputeNumInternalAuxVars    => SOEBaseComputeNumInternalAuxVars
   end type sysofeqns_base_type
 
   public :: SOEBaseInit
@@ -1219,6 +1220,31 @@ contains
    class(sysofeqns_base_type) :: this
 
  end subroutine SOEBaseAllocateAuxVars
+
+  !------------------------------------------------------------------------
+  subroutine SOEBaseComputeNumInternalAuxVars(this)
+   !
+   ! !DESCRIPTION:
+   ! Computes the total number of grid cells in all governing equations
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(sysofeqns_base_type) :: this
+   !
+   class(goveqn_base_type)    , pointer :: cur_goveq
+
+    cur_goveq => this%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       this%num_auxvars_in = this%num_auxvars_in + &
+            cur_goveq%mesh%ncells_all
+
+       cur_goveq => cur_goveq%next
+    enddo
+
+ end subroutine SOEBaseComputeNumInternalAuxVars
 
 #endif
 
