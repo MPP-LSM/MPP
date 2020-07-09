@@ -104,7 +104,6 @@ contains
     ! !LOCAL VARIABLES:
     PetscInt                        :: dm_id
     PetscInt                        :: nDM
-    PetscInt                        :: offset
     DM, pointer                     :: dms(:)
     Vec, pointer                    :: X_subvecs(:)
     Vec, pointer                    :: F_subvecs(:)
@@ -145,20 +144,16 @@ contains
             enddo
          enddo
 
-    ! 2) GE ---> GetFromSimAux()
-    ! Get pointers to governing-equations
-    offset = 0
+    ! 2) Update AuxVars
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
        select type(cur_goveq)
        class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
 
           call cur_goveq%UpdateAuxVarsIntrn()
           call cur_goveq%UpdateAuxVarsBC()
 
-          offset = offset + cur_goveq%mesh%ncells_local
        end select
 
        cur_goveq => cur_goveq%next
@@ -496,6 +491,7 @@ contains
           select type(cur_goveq)
              class is (goveqn_richards_ode_pressure_type)
 
+             call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
              call cur_goveq%GetFromSOEAuxVarsBC(this%aux_vars_bc)
              call cur_goveq%GetFromSOEAuxVarsSS(this%aux_vars_ss)
 
