@@ -496,7 +496,6 @@ contains
           select type(cur_goveq)
              class is (goveqn_richards_ode_pressure_type)
 
-             call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
              call cur_goveq%GetFromSOEAuxVarsBC(this%aux_vars_bc)
              call cur_goveq%GetFromSOEAuxVarsSS(this%aux_vars_ss)
 
