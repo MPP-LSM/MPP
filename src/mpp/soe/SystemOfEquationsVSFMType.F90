@@ -135,7 +135,17 @@ contains
     call DMCompositeGetAccessArray(this%solver%dm, F, nDM, PETSC_NULL_INTEGER, F_subvecs, &
          ierr); CHKERRQ(ierr)
 
-    ! 1) GE ---> GetFromSimAux()
+    ! 1  ) GE_1 <---> GE_2 exchange AuxVars()
+         do row = 1,nDM
+            do col = row+1,nDM
+               call this%SetPointerToIthGovEqn(row, cur_goveq_1)
+               call this%SetPointerToIthGovEqn(col, cur_goveq_2)
+               call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_1, cur_goveq_2)
+               call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
+            enddo
+         enddo
+
+    ! 2) GE ---> GetFromSimAux()
     ! Get pointers to governing-equations
     offset = 0
     cur_goveq => this%goveqns
@@ -152,16 +162,6 @@ contains
        end select
 
        cur_goveq => cur_goveq%next
-    enddo
-
-    ! 2  ) GE_1 <---> GE_2 exchange AuxVars()
-    do row = 1,nDM
-       do col = row+1,nDM
-          call this%SetPointerToIthGovEqn(row, cur_goveq_1)
-          call this%SetPointerToIthGovEqn(col, cur_goveq_2)
-          call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_1, cur_goveq_2)
-          call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
-       enddo
     enddo
 
     if (nDM > 1) then
