@@ -1,4 +1,4 @@
-module GoveqnPhotosynthesis
+module GoveqnPhotosynthesisType
 
 #ifdef USE_PETSC_LIB
 
@@ -25,11 +25,11 @@ module GoveqnPhotosynthesis
 
      procedure, public :: Setup                     => PhotosynthesisSetup
      procedure, public :: AllocateAuxVars           => PhotosynthesisAllocateAuxVars
-     procedure, public :: UpdateAuxVars => PhotosynthesisUpdateAuxVars
-     !procedure, public :: PreSolve                  => PhotosynthesisPreSolve
-     procedure, public :: ComputeResidual            => PhotosynthesisComputeResidual
-     !procedure, public :: ComputeOperatorsDiag      => PhotosynthesisComputeOperatorsDiag
-     !procedure, public :: GetRValues                => PhotosynthesisGetRValues
+     procedure, public :: UpdateAuxVars             => PhotosynthesisUpdateAuxVars
+     procedure, public :: ComputeResidual           => PhotosynthesisComputeResidual
+     !procedure, public :: ComputeOperatorsDiag     => PhotosynthesisComputeOperatorsDiag
+     !procedure, public :: GetRValues               => PhotosynthesisGetRValues
+     procedure, public :: SavePrimaryIndependentVar => PhotosynthesisSavePrmIndepVar
 
   end type goveqn_photosynthesis_type
 
@@ -73,9 +73,17 @@ contains
     ! !ARGUMENTS
     class(goveqn_photosynthesis_type) :: this
     !
+    PetscInt                          :: ghosted_id
 
     ! Allocate memory and initialize aux vars: For internal connections
     allocate(this%aux_vars_in(this%mesh%ncells_all))
+
+    ! Update aux vars for internal cells
+    do ghosted_id = 1, this%mesh%ncells_all
+      if (this%mesh%is_active(ghosted_id)) then
+         call this%aux_vars_in(ghosted_id)%Init()
+      end if
+   enddo
 
   end subroutine PhotosynthesisAllocateAuxVars
 
@@ -99,7 +107,7 @@ contains
     ! Update aux vars for internal cells
     do ghosted_id = 1, this%mesh%ncells_all
        if (this%mesh%is_active(ghosted_id)) then
-          !call this%aux_vars_in(ghosted_id)%AuxVarCompute()
+          call this%aux_vars_in(ghosted_id)%AuxVarCompute()
        end if
     enddo
 
@@ -143,6 +151,39 @@ contains
 
   end subroutine PhotosynthesisComputeResidual
 
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisSavePrmIndepVar (this, x)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_photosynthesis_type) :: this
+   Vec :: x
+   !
+   PetscScalar, pointer :: x_p(:)
+   PetscInt             :: ghosted_id, size
+   PetscErrorCode       :: ierr
+   
+   call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+   if (size /= this%mesh%ncells_local) then
+      call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+   end if
+
+   call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+   do ghosted_id = 1, this%mesh%ncells_local
+      this%aux_vars_in(ghosted_id)%ci = x_p(ghosted_id)
+   end do
+
+   call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
+
+ end subroutine PhotosynthesisSavePrmIndepVar
+
 #endif
 
-end module GoveqnPhotosynthesis
+end module GoveqnPhotosynthesisType
