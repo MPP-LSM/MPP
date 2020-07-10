@@ -625,10 +625,10 @@ contains
 
     end select
 
-    this%ac = min(this%ac, 0.d0)
-    this%aj = min(this%aj, 0.d0)
-    this%ap = min(this%ap, 0.d0)
-    this%ag = min(this%ag, 0.d0)
+    this%ac = max(this%ac, 0.d0)
+    this%aj = max(this%aj, 0.d0)
+    this%ap = max(this%ap, 0.d0)
+    this%ag = max(this%ag, 0.d0)
 
     this%an = this%ag - this%rd
 
@@ -663,6 +663,7 @@ contains
     else
        this%gs = this%g0
     end if
+
 
   end subroutine GsBallBerry
 
