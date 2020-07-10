@@ -34,7 +34,7 @@ module SystemOfEquationsPhotosynthesisType
      procedure, public :: AllocateAuxVars       => PhotosynthesisSoeAllocateAuxVars
      procedure, public :: PreSolve              => PhotosynthesisSoePreSolve
      procedure, public :: Residual              => PhotosynthesisSoeResidual
-     !procedure, public :: Jacobian              => PhotosynthesisSoeJacobian
+     procedure, public :: Jacobian              => PhotosynthesisSoeJacobian
 
   end type sysofeqns_photosynthesis_type
 
@@ -193,6 +193,156 @@ contains
     deallocate(F_subvecs)
 
   end subroutine PhotosynthesisSoeResidual
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisSoeJacobian(this, snes, X, A, B, ierr)
+    !
+    ! !DESCRIPTION:
+    ! Computes jacobian for the VSFM
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use MultiPhysicsProbConstants     , only : AUXVAR_INTERNAL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_photosynthesis_type)      :: this
+    SNES                            :: snes
+    Vec                             :: X
+    Mat                             :: A
+    Mat                             :: B
+    PetscErrorCode                  :: ierr
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                        :: row
+    PetscInt                        :: col
+    PetscInt                        :: nDM
+    PetscInt                        :: icell
+    PetscBool                       :: are_eqns_coupled
+
+    IS,pointer                      :: is(:)
+    DM, pointer                     :: dms(:)
+    Vec, pointer                    :: X_subvecs(:)
+    Mat, pointer                    :: B_submats(:,:)
+    class(goveqn_base_type),pointer :: cur_goveq_1
+    class(goveqn_base_type),pointer :: cur_goveq_2
+    PetscViewer                     :: viewer
+    character(len=256)              :: string
+
+    ! Find number of GEs packed within the SoE
+    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
+
+    ! Get DMs for each GE
+    allocate (dms(nDM))
+    call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
+
+    ! Allocate vectors for individual GEs
+    allocate(X_subvecs(    nDM))
+
+    ! Get vectors (X) for individual GEs
+    call DMCompositeGetAccessArray(this%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
+         X_subvecs, ierr); CHKERRQ(ierr)
+
+    ! Initialize the matrix
+    call MatZeroEntries(B, ierr); CHKERRQ(ierr)
+
+    ! Get submatrices
+    allocate(is(nDM))
+    allocate(B_submats(nDM,nDM))
+    call DMCompositeGetLocalISs(this%solver%dm, is, ierr); CHKERRQ(ierr)
+    do row = 1,nDM
+       do col = 1,nDM
+          call MatGetLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
+               ierr); CHKERRQ(ierr)
+       enddo
+    enddo
+
+    ! Jacobian and JacobianOffDiag
+    row = 0
+    cur_goveq_1 => this%goveqns
+    do
+       if (.not.associated(cur_goveq_1)) exit
+
+       row = row + 1
+
+       call cur_goveq_1%ComputeJacobian( &
+            X_subvecs(row),              &
+            B_submats(row,row),          &
+            B_submats(row,row),          &
+            ierr); CHKERRQ(ierr)
+
+       cur_goveq_2 => cur_goveq_1%next
+       col = row
+       do
+          if (.not.associated(cur_goveq_2)) exit
+
+          col = col + 1
+
+          call cur_goveq_1%IsCoupledToOtherEquation(cur_goveq_2%rank_in_soe_list, &
+               are_eqns_coupled)
+
+          if (are_eqns_coupled) then
+
+             ! J = dF_1/dx_2
+             call cur_goveq_1%ComputeOffDiagJacobian( &
+                  X_subvecs(row),                     &
+                  X_subvecs(col),                     &
+                  B_submats(row,col),                 &
+                  B_submats(row,col),                 &
+                  cur_goveq_2%itype,                  &
+                  cur_goveq_2%rank_in_soe_list,       &
+                  ierr); CHKERRQ(ierr)
+
+             ! J = dF_2/dx_1
+             call cur_goveq_2%ComputeOffDiagJacobian( &
+                  X_subvecs(col),                     &
+                  X_subvecs(row),                     &
+                  B_submats(col,row),                 &
+                  B_submats(col,row),                 &
+                  cur_goveq_1%itype,                  &
+                  cur_goveq_1%rank_in_soe_list,       &
+                  ierr); CHKERRQ(ierr)
+          end if
+
+          cur_goveq_2 => cur_goveq_2%next
+       enddo
+
+       cur_goveq_1 => cur_goveq_1%next
+    enddo
+
+    ! Restore vectors (X) for individual GEs
+    call DMCompositeRestoreAccessArray(this%solver%dm, X, nDM, PETSC_NULL_INTEGER, &
+         X_subvecs, ierr); CHKERRQ(ierr)
+
+    ! Restore submatrices
+    do row = 1,nDM
+       do col = 1,nDM
+          call MatRestoreLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
+               ierr); CHKERRQ(ierr)
+       enddo
+    enddo
+
+    ! Destroy IS
+    do row = 1,nDM
+       call ISDestroy(is(row), ierr); CHKERRQ(ierr)
+    enddo
+
+    ! Assemble matrix
+    call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+    call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+    if ( A /= B) then
+       call MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+       call MatAssemblyEnd(  A, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
+    endif
+
+    ! Free memory
+    deallocate(dms       )
+    deallocate(X_subvecs )
+    deallocate(is        )
+    deallocate(B_submats )
+
+  end subroutine PhotosynthesisSoeJacobian
 
 #endif
 
