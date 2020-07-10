@@ -26,6 +26,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: MPP_TH_SNES_CLM                   = 14
   PetscInt, parameter, public :: MPP_MLC_KSP                       = 15
   PetscInt, parameter, public :: MPP_LBL_KSP                       = 16
+  PetscInt, parameter, public :: MPP_PHOTOSYNTHESIS_SNES           = 17
 
   ! soe_itype
   PetscInt, parameter, public :: SOE_RE_ODE                        = 101
@@ -34,6 +35,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: SOE_TH                            = 104
   PetscInt, parameter, public :: SOE_MLC                           = 105
   PetscInt, parameter, public :: SOE_LBL                           = 106
+  PetscInt, parameter, public :: SOE_PHOTOSYNTHESIS                = 107
 
   ! ge_itype
   PetscInt, parameter, public :: GE_RE                             = 201

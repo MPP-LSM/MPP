@@ -975,11 +975,13 @@ contains
    use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
    use GoveqnRichardsODEPressureType   , only : goveqn_richards_ode_pressure_type
    use GoveqnLeafBoundaryLayer         , only : goveqn_leaf_bnd_lyr_type
+   use GoveqnPhotosynthesisType        , only : goveqn_photosynthesis_type
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_TEMP
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_VAPOR
    use MultiPhysicsProbConstants       , only : GE_CANOPY_LEAF_TEMP
    use MultiPhysicsProbConstants       , only : GE_RE
    use MultiPhysicsProbConstants       , only : GE_LEAF_BND_LAYER
+   use MultiPhysicsProbConstants       , only : GE_PHOTOSYNTHESIS
    !
    implicit none
    !
@@ -995,6 +997,7 @@ contains
     class (goveqn_cleaf_temp_type)            , pointer :: geq_leaf_temp
     class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
     class (goveqn_leaf_bnd_lyr_type)          , pointer :: goveq_lbl
+    class (goveqn_photosynthesis_type)        , pointer :: goveq_phtsyn
     integer                                             :: igoveqn
 
     cur_goveqn => this%goveqns
@@ -1076,6 +1079,19 @@ contains
             this%goveqns => goveq_lbl
          else
             cur_goveqn%next => goveq_lbl
+         endif
+
+      case (GE_PHOTOSYNTHESIS)
+         allocate(goveq_phtsyn)
+         call goveq_phtsyn%Setup()
+         goveq_phtsyn%name              = trim(name)
+         goveq_phtsyn%rank_in_soe_list  = this%ngoveqns
+         goveq_phtsyn%mesh_rank         = mesh_rank
+  
+         if (this%ngoveqns == 1) then
+            this%goveqns => goveq_phtsyn
+         else
+            cur_goveqn%next => goveq_phtsyn
          endif
 
       case default
