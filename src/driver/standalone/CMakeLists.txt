@@ -8,6 +8,7 @@ add_subdirectory(thermal-e)
 add_subdirectory(thermal)
 add_subdirectory(mlc)
 add_subdirectory(leafbndlyr)
+add_subdirectory(photosynthesis)
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/th)
