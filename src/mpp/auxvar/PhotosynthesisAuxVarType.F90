@@ -31,13 +31,13 @@ module PhotosynthesisAuxType
      PetscReal :: o2ref     ! atmospheric O2 at reference height (mmol/mol)
      PetscReal :: apar      ! leaf absorbed PAR (umol photon/m2 leaf/s)
 
-     PetscReal :: ceair     ! vapor pressure of air, constrained
-     PetscReal :: esat      ! saturation vapor pressure (Pa)
-     PetscReal :: desat     ! derivative of saturation vapor pressure w.r.t. leaf temperature (Pa/K)
-
      PetscInt  :: colim     ! Photosynthesis co-limitation: 0 = no. 1 = yes
      PetscInt  :: c3psn     ! photosynthetic pathway: 1. = c3 plant and 0. = c4 plant
      PetscInt  :: gstype    ! Stomatal conductance: 0 = Medlyn. 1 = Ball-Berry. 2 = WUE optimization
+
+     PetscReal :: ceair     ! vapor pressure of air, constrained
+     PetscReal :: esat      ! saturation vapor pressure (Pa)
+     PetscReal :: desat     ! derivative of saturation vapor pressure w.r.t. leaf temperature (Pa/K)
 
      PetscReal :: g0opt     ! Ball-Berry minimum leaf conductance, unstressed (mol H2O/m2/s)
      PetscReal :: g1opt     ! Ball-Berry slope of conductance-photosynthesis relationship, unstressed
@@ -103,6 +103,7 @@ module PhotosynthesisAuxType
      PetscReal :: cs        ! leaf surface CO2 (umol/mol)
      PetscReal :: gs        ! leaf stomatal conductance (mol H2O/m2 leaf/s)
 
+     PetscInt  :: pathway_and_stomatal_params_defined
    contains
 
      procedure, public :: Init          => PhotosynthesisInit
@@ -186,7 +187,7 @@ contains
   end function fth25
 
   !------------------------------------------------------------------------
-  subroutine PhotosynthesisInit(this, c3psn, gstype)
+  subroutine PhotosynthesisInit(this)
     !
     implicit none
     !
@@ -204,50 +205,10 @@ contains
     this%ceair   = 0.d0
     this%esat    = 0.d0
 
-    this%colim   = 1
-    this%c3psn   = c3psn
-    this%gstype  = gstype
-
-    select case (c3psn)
-    case (VAR_PHOTOSYNTHETIC_PATHWAY_C4) ! C4
-
-       this%vcmax25  = 40.d0;
-       this%jmax25   = 0.d0;
-       this%kp25     = 0.02d0 * this%vcmax25;
-       this%rd25     = 0.025d0 * this%vcmax25;
-
-       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY) then
-
-          this%g0opt = 0.04d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
-          this%g1opt = 4.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
-
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
-
-          this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
-          this%g1opt = 1.62d0;       ! Medlyn slope of conductance-photosynthesis relationship
-
-       end if
-
-    case (VAR_PHOTOSYNTHETIC_PATHWAY_C3) ! C3
-
-       this%vcmax25 = 57.7d0;
-       this%jmax25  = 1.67d0 * this%vcmax25;
-       this%kp25    = 0.d0;
-       this%rd25    = 0.015d0 * this%vcmax25;
-
-       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY) then
-
-          this%g0opt = 0.01d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
-          this%g1opt = 9.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
-
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
-
-          this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
-          this%g1opt = 4.45d0;       ! Medlyn slope of conductance-photosynthesis relationship
-
-       end if
-
-    end select
+    this%pathway_and_stomatal_params_defined = 0
+    this%colim  =  1
+    this%c3psn  = -1
+    this%gstype = -1
 
     ! --- Kc, Ko, Cp at 25C
     this%kc25 = 404.9d0;
@@ -275,9 +236,9 @@ contains
 
     ! Scaling factors for high temperature inhibition (25 C = 1.0).
     ! The factor "c" scales the deactivation to a value of 1.0 at 25C.
-    this%vcmaxc = fth25 (this%vcmaxhd, this%vcmaxse);
-    this%jmaxc  = fth25 (this%jmaxhd, this%jmaxse);
-    this%rdc    = fth25 (this%rdhd, this%rdse);
+    this%vcmaxc = fth25 (this%vcmaxhd , this%vcmaxse );
+    this%jmaxc  = fth25 (this%jmaxhd  , this%jmaxse  );
+    this%rdc    = fth25 (this%rdhd    , this%rdse    );
 
     this%phi_psii = 0.85d0;
     this%theta_j  = 0.90d0;
@@ -307,6 +268,93 @@ contains
   end subroutine PhotosynthesisInit
 
   !------------------------------------------------------------------------
+  subroutine SetPathwayParameters(this)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : TFRZ
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type) :: this
+    select case (this%c3psn)
+    case (VAR_PHOTOSYNTHETIC_PATHWAY_C4) ! C4
+
+       this%vcmax25  = 40.d0;
+       this%jmax25   = 0.d0;
+       this%kp25     = 0.02d0 * this%vcmax25;
+       this%rd25     = 0.025d0 * this%vcmax25;
+
+    case (VAR_PHOTOSYNTHETIC_PATHWAY_C3) ! C3
+
+       this%vcmax25 = 57.7d0;
+       this%jmax25  = 1.67d0 * this%vcmax25;
+       this%kp25    = 0.d0;
+       this%rd25    = 0.015d0 * this%vcmax25;
+
+    case default
+       write(iulog,*)'Unsupported photosynthesis pathway: ',this%c3psn
+       call exit(0)
+    end select
+
+  end subroutine SetPathwayParameters
+
+  !------------------------------------------------------------------------
+  subroutine SetStomatalConductanceParameters(this)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : TFRZ
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type) :: this
+
+    select case (this%c3psn)
+    case (VAR_PHOTOSYNTHETIC_PATHWAY_C4) ! C4
+
+       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY) then
+
+          this%g0opt = 0.04d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
+          this%g1opt = 4.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
+
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
+
+          this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
+          this%g1opt = 1.62d0;       ! Medlyn slope of conductance-photosynthesis relationship
+
+       else
+          write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
+          call exit(0)
+       end if
+
+    case (VAR_PHOTOSYNTHETIC_PATHWAY_C3) ! C3
+
+       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY) then
+
+          this%g0opt = 0.01d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
+          this%g1opt = 9.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
+
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
+
+          this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
+          this%g1opt = 4.45d0;       ! Medlyn slope of conductance-photosynthesis relationship
+
+       else
+          write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
+          call exit(0)
+       end if
+
+    end select
+  end subroutine SetStomatalConductanceParameters
+
+  !------------------------------------------------------------------------
   subroutine PhotosynthesisAuxVarCompute(this)
     !
     ! !DESCRIPTION:
@@ -315,6 +363,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants , only : TFRZ
+    use WaterVaporMod             , only : SatVap
     !
     implicit none
     !
@@ -323,6 +372,12 @@ contains
     !
     PetscReal :: t1, t2, t3
 
+    if (this%pathway_and_stomatal_params_defined  == 0) then
+       call SetPathwayParameters(this)
+       call SetStomatalConductanceParameters(this)
+       this%pathway_and_stomatal_params_defined = 1
+    end if
+
     if (this%dpai > 0.d0) then
 
        select case(this%c3psn)
@@ -330,12 +385,14 @@ contains
 
           call C4_Temperature_Response(this)
           call C4_Metabolic_Photosynthesis_Rate(this)
+          call C4_Net_Assimilation(this)
 
        case (VAR_PHOTOSYNTHETIC_PATHWAY_C3)
 
           call C3_Temperature_Response(this)
           call Compute_Electron_Transport_Rate(this)
           call C3_Metabolic_Photosynthesis_Rate(this)
+          call C3_Net_Assimilation(this)
 
        end select
 
@@ -386,7 +443,7 @@ contains
     this%vcmax = this%vcmax25 * t1 / (t2 * t3)
 
     t3         = 1.d0 + exp( 1.3d0*(this%tleaf - (TFRZ + 55.d0)))
-    this%rd    = this%rd * t1 / t3
+    this%rd    = this%rd25 * t1 / t3
 
     this%kp    = this%kp25 * t1
 
@@ -496,7 +553,9 @@ contains
   subroutine C4_Net_Assimilation(this)
     ! !USES:
     !
-    implicit none
+   use MathUtilsMod, only : quadratic
+   !
+   implicit none
     !
     ! !ARGUMENTS
     class(photosynthesis_auxvar_type) :: this
@@ -527,10 +586,10 @@ contains
 
     end select
     
-    this%ac = min(this%ac, 0.d0)
-    this%aj = min(this%aj, 0.d0)
-    this%ap = min(this%ap, 0.d0)
-    this%ag = min(this%ag, 0.d0)
+    this%ac = max(this%ac, 0.d0)
+    this%aj = max(this%aj, 0.d0)
+    this%ap = max(this%ap, 0.d0)
+    this%ag = max(this%ag, 0.d0)
 
     this%an = this%ag - this%rd
 
@@ -539,6 +598,8 @@ contains
   !------------------------------------------------------------------------
 
   subroutine C3_Net_Assimilation(this)
+    !
+    use MathUtilsMod, only : quadratic
     !
     implicit none
     !
@@ -577,6 +638,8 @@ contains
   subroutine GsBallBerry(this)
     ! !USES:
     !
+    use MathUtilsMod, only : quadratic
+    !
     implicit none
     !
     ! !ARGUMENTS
@@ -586,6 +649,7 @@ contains
     PetscReal :: root1, root2
 
     this%g0 = max( this%g0opt * this%btran, 1.d-06 )
+    this%g1 = this%g1opt
 
     if (this%an > 0.d0) then
 
@@ -606,6 +670,8 @@ contains
   subroutine GsMedlyn(this)
     ! !USES:
     !
+    use MathUtilsMod, only : quadratic
+    !
     implicit none
     !
     ! !ARGUMENTS
@@ -617,6 +683,7 @@ contains
     PetscReal :: vpd_term, term
 
     this%g0 = this%g0opt
+    this%g1 = this%g1opt
 
     if (this%an > 0.d0) then
 
