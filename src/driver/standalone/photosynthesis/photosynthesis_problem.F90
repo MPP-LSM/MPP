@@ -56,6 +56,8 @@ contains
     !
     type(mpp_photosynthesis_type) :: phtsyn_mpp
 
+    call read_command_line_options()
+
     call initialize_mpp(phtsyn_mpp)
 
     call setup_meshes(phtsyn_mpp)
@@ -73,6 +75,52 @@ contains
   end subroutine Init
 
   !------------------------------------------------------------------------
+  subroutine read_command_line_options()
+    !
+    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
+    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    !
+    implicit none
+    !
+    character(len=256) :: pathway
+    character(len=256) :: gs_model
+    PetscBool          :: flag
+    PetscErrorCode     :: ierr
+
+    c3psn = VAR_PHOTOSYNTHETIC_PATHWAY_C4
+    gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-photosynthesis_pathway', pathway, flag, ierr)
+    if (flag) then
+       select case(trim(pathway))
+       case ('c3')
+          c3psn = VAR_PHOTOSYNTHETIC_PATHWAY_C3
+       case ('c4')
+          c3psn = VAR_PHOTOSYNTHETIC_PATHWAY_C4
+       case default
+          write(iulog,*) 'Invalid value for -photosynthesis_pathway and valid values are: c3, c4'
+          call exit(0)
+       end select
+    endif
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-stomatal_conductance_model', gs_model, flag, ierr)
+    if (flag) then
+       select case(trim(gs_model))
+       case ('ball-berry')
+          gstype = VAR_STOMATAL_CONDUCTANCE_BBERRY
+       case ('medlyn')
+          gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+       case default
+          write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn'
+          call exit(0)
+       end select
+    endif
+
+  end subroutine read_command_line_options
+
+ !------------------------------------------------------------------------
   subroutine initialize_mpp(phtsyn_mpp)
     !
     use MultiPhysicsProbConstants , only : MPP_PHOTOSYNTHESIS_SNES

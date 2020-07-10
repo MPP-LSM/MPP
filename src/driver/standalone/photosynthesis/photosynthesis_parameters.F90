@@ -61,9 +61,9 @@ contains
           do k = 1, nz_cair+1
              icell = (icair-1)*(nz_cair+1) + k
 
-             cur_goveq%aux_vars_in(icell)%c3psn  = VAR_PHOTOSYNTHETIC_PATHWAY_C4
              cur_goveq%aux_vars_in(icell)%colim  = 1
-             cur_goveq%aux_vars_in(icell)%gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+             cur_goveq%aux_vars_in(icell)%c3psn  = c3psn
+             cur_goveq%aux_vars_in(icell)%gstype = gstype
 
              cur_goveq%aux_vars_in(icell)%cair  = 380.d0                       ! [mmol/mol]
              cur_goveq%aux_vars_in(icell)%o2ref = 0.209d0 * 1000.d0            ! [mmol/mol]

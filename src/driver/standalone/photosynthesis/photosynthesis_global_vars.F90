@@ -23,4 +23,7 @@ module photosynthesis_global_vars
   PetscInt :: PHTSYN_MESH
   PetscInt :: PHTSYN_GE
 
+  PetscInt :: c3psn
+  PetscInt :: gstype
+
 end module photosynthesis_global_vars
