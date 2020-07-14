@@ -48,6 +48,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: GE_CANOPY_LEAF_TEMP               = 208
   PetscInt, parameter, public :: GE_LEAF_BND_LAYER                 = 209
   PetscInt, parameter, public :: GE_PHOTOSYNTHESIS                 = 210
+  PetscInt, parameter, public :: GE_LONGWAVE_RAD                   = 211
 
   ! mesh_itype
   PetscInt, parameter, public :: MESH_CLM_SOIL_COL                 = 301
@@ -179,6 +180,7 @@ module MultiPhysicsProbConstants
   !PetscReal, parameter, public :: GRAVITY_CONSTANT                 = 9.8068d0      ! [m s^{-2}]
   PetscReal, parameter, public :: GRAVITY_CONSTANT                 = 9.80665d0      ! [m s^{-2}]
   PetscReal, parameter, public :: FMWH2O                           = 18.01534d0    ! [kg kmol^{-1}]
+  PetscReal, parameter, public :: STEFAN_BOLTZMAN_CONSTANT         = 5.67d-08
 
   PetscReal, parameter, public :: VKC                              = 0.4d0         ! von Karman constant [-]
   PetscReal, parameter, public :: TFRZ                             = 273.15d0      ! [K]
