@@ -104,7 +104,6 @@ contains
     ! !LOCAL VARIABLES:
     PetscInt                        :: dm_id
     PetscInt                        :: nDM
-    PetscInt                        :: offset
     DM, pointer                     :: dms(:)
     Vec, pointer                    :: X_subvecs(:)
     Vec, pointer                    :: F_subvecs(:)
@@ -135,33 +134,29 @@ contains
     call DMCompositeGetAccessArray(this%solver%dm, F, nDM, PETSC_NULL_INTEGER, F_subvecs, &
          ierr); CHKERRQ(ierr)
 
-    ! 1) GE ---> GetFromSimAux()
-    ! Get pointers to governing-equations
-    offset = 0
+    ! 1  ) GE_1 <---> GE_2 exchange AuxVars()
+         do row = 1,nDM
+            do col = row+1,nDM
+               call this%SetPointerToIthGovEqn(row, cur_goveq_1)
+               call this%SetPointerToIthGovEqn(col, cur_goveq_2)
+               call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_1, cur_goveq_2)
+               call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
+            enddo
+         enddo
+
+    ! 2) Update AuxVars
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
        select type(cur_goveq)
        class is (goveqn_richards_ode_pressure_type)
-          call cur_goveq%GetFromSOEAuxVarsIntrn(this%aux_vars_in, offset)
 
           call cur_goveq%UpdateAuxVarsIntrn()
           call cur_goveq%UpdateAuxVarsBC()
 
-          offset = offset + cur_goveq%mesh%ncells_local
        end select
 
        cur_goveq => cur_goveq%next
-    enddo
-
-    ! 2  ) GE_1 <---> GE_2 exchange AuxVars()
-    do row = 1,nDM
-       do col = row+1,nDM
-          call this%SetPointerToIthGovEqn(row, cur_goveq_1)
-          call this%SetPointerToIthGovEqn(col, cur_goveq_2)
-          call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_1, cur_goveq_2)
-          call VSFMSOEGovEqnExchangeAuxVars(cur_goveq_2, cur_goveq_1)
-       enddo
     enddo
 
     if (nDM > 1) then

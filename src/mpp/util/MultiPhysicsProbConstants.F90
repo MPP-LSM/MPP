@@ -25,6 +25,8 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: MPP_THERMAL_EBASED_SNES_CLM       = 13
   PetscInt, parameter, public :: MPP_TH_SNES_CLM                   = 14
   PetscInt, parameter, public :: MPP_MLC_KSP                       = 15
+  PetscInt, parameter, public :: MPP_LBL_KSP                       = 16
+  PetscInt, parameter, public :: MPP_PHOTOSYNTHESIS_SNES           = 17
 
   ! soe_itype
   PetscInt, parameter, public :: SOE_RE_ODE                        = 101
@@ -32,6 +34,8 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: SOE_THERMAL_EBASED                = 103
   PetscInt, parameter, public :: SOE_TH                            = 104
   PetscInt, parameter, public :: SOE_MLC                           = 105
+  PetscInt, parameter, public :: SOE_LBL                           = 106
+  PetscInt, parameter, public :: SOE_PHOTOSYNTHESIS                = 107
 
   ! ge_itype
   PetscInt, parameter, public :: GE_RE                             = 201
@@ -42,6 +46,8 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: GE_CANOPY_AIR_TEMP                = 206
   PetscInt, parameter, public :: GE_CANOPY_AIR_VAPOR               = 207
   PetscInt, parameter, public :: GE_CANOPY_LEAF_TEMP               = 208
+  PetscInt, parameter, public :: GE_LEAF_BND_LAYER                 = 209
+  PetscInt, parameter, public :: GE_PHOTOSYNTHESIS                 = 210
 
   ! mesh_itype
   PetscInt, parameter, public :: MESH_CLM_SOIL_COL                 = 301
@@ -131,9 +137,16 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_CONDUCTANCE_UP                = 646
   PetscInt, parameter, public :: VAR_CONDUCTANCE_DN                = 647
   PetscInt, parameter, public :: VAR_WATER_VAPOR                   = 648
-!  PetscInt, parameter, public :: VAR_SUNLIT_TEMPERATURE            = 649
-!  PetscInt, parameter, public :: VAR_SHADED_TEMPERATURE            = 650
-  PetscInt, parameter, public :: VAR_LEAF_TEMPERATURE              = 651
+  PetscInt, parameter, public :: VAR_LEAF_TEMPERATURE              = 649
+  PetscInt, parameter, public :: VAR_LEAF_BDN_LYR_COND_HEAT        = 650
+  PetscInt, parameter, public :: VAR_LEAF_BDN_LYR_COND_H2O         = 651
+  PetscInt, parameter, public :: VAR_LEAF_BDN_LYR_COND_CO2         = 652
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_MEDLYN   = 653
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_BBERRY   = 654
+  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C4     = 655
+  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C3     = 656
+
+
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
@@ -175,6 +188,10 @@ module MultiPhysicsProbConstants
   PetscReal, parameter, public :: CPD                              = 1005.d0       ! [J/kg/K]
   PetscReal, parameter, public :: CPW                              = 1846.d0       ! [J/kg/K]
   PetscReal, parameter, public :: RGAS                             = 8.31446d0     ! [J/K/mol]
+  PetscReal, parameter, public :: VISC_0C                          = 13.3d-06      ! [m^2/s]
+  PetscReal, parameter, public :: MOD_DIFF_HEAT_OC                 = 18.9d-6       ! [m^2/s]
+  PetscReal, parameter, public :: MOD_DIFF_H2O_OC                  = 21.8d-6       ! [m^2/s]
+  PetscReal, parameter, public :: MOD_DIFF_CO2_OC                  = 13.8d-6       ! [m^2/s]
 #endif
 
 

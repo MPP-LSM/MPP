@@ -3,6 +3,8 @@ set(MPP_GE_SOURCES
   GoveqnCanopyAirTemperatureType.F90
   GoveqnCanopyAirVaporType.F90
   GoveqnCanopyLeafTemperatureType.F90
+  GoveqnLeafBoundaryLayer.F90
+  GoveqnPhotosynthesis.F90
   GoveqnRichardsODEPressureType.F90
   GoveqnThermalEnthalpySoilType.F90
   GoveqnThermalKSPTemperatureSSWType.F90

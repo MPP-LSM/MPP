@@ -5,6 +5,8 @@ set(MPP_AUXVAR_SOURCES
   CanopyAirVaporConnAuxType.F90
   CanopyLeafTemperatureAuxType.F90
   CanopyTurbulenceAuxType.F90
+  LeafBoundaryLayerAuxType.F90
+  PhotosynthesisAuxVarType.F90
   RichardsODEPressureAuxType.F90
   RichardsODEPressureAuxMod.F90
   RichardsODEPressureConnAuxType.F90
