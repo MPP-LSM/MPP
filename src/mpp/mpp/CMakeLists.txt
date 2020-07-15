@@ -1,6 +1,7 @@
 set(MPP_MPP_SOURCES
   MultiPhysicsProbBaseType.F90
   MultiPhysicsProbLBL.F90
+  MultiPhysicsProbLongwaveRadiation.F90
   MultiPhysicsProbMLC.F90
   MultiPhysicsProbPhotosynthesis.F90
   MultiPhysicsProbTH.F90
