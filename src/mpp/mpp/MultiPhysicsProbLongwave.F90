@@ -1,4 +1,4 @@
-module MultiPhysicsProbLongwaveRadiation
+module MultiPhysicsProbLongwave
 
 #ifdef USE_PETSC_LIB
 
@@ -22,13 +22,13 @@ use petscdmda
 implicit none
 private
 
-type, public, extends(multiphysicsprob_base_type) :: mpp_longwave_rad_type
+type, public, extends(multiphysicsprob_base_type) :: mpp_longwave_type
    
 contains
   procedure, public :: Init            => MppLongwaveRadiationInit
   procedure, public :: AllocateAuxVars => MppLongwaveRadiationAllocateAuxVars
   procedure, public :: SetupProblem    => MppLongwaveRadiationSetupProblem
-end type mpp_longwave_rad_type
+end type mpp_longwave_type
 
 contains
 
@@ -44,7 +44,7 @@ subroutine MppLongwaveRadiationInit(this)
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_longwave_rad_type) :: this
+    class(mpp_longwave_type) :: this
     !
     class(sysofeqns_longwave_type), pointer :: sysofeqns
 
@@ -72,7 +72,7 @@ subroutine MppLongwaveRadiationInit(this)
    implicit none
    !
    ! !ARGUMENTS
-   class(mpp_longwave_rad_type) :: this
+   class(mpp_longwave_type) :: this
    !
    class(goveqn_base_type), pointer  :: cur_goveq
 
@@ -100,7 +100,7 @@ subroutine MppLongwaveRadiationSetupProblem(this)
     implicit none
     !
     ! !ARGUMENTS
-    class(mpp_longwave_rad_type) :: this
+    class(mpp_longwave_type) :: this
     
     call MPPSetupProblem(this)
 
@@ -108,4 +108,4 @@ subroutine MppLongwaveRadiationSetupProblem(this)
 
 #endif
 
-end module MultiPhysicsProbLongwaveRadiation
+end module MultiPhysicsProbLongwave
