@@ -1,4 +1,4 @@
-module SystemOfEquationsLongwaveRadAuxType
+module SystemOfEquationsLongwaveAuxType
 
 #ifdef USE_PETSC_LIB
 
@@ -43,4 +43,4 @@ contains
 
 #endif
 
-end module SystemOfEquationsLongwaveRadAuxType
+end module SystemOfEquationsLongwaveAuxType

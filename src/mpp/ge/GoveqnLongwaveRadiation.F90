@@ -10,7 +10,7 @@ module GoveqnLongwaveRadiationType
   use mpp_abortutils            , only : endrun
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use GoverningEquationBaseType , only : goveqn_base_type
-  use LongwaveRadAuxType        , only : longwave_auxvar_type
+  use LongwaveAuxType           , only : longwave_auxvar_type
   use petscvec
   use petscmat
   use petscsys

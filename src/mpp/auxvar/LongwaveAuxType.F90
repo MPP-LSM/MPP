@@ -1,4 +1,4 @@
-module LongwaveRadAuxType
+module LongwaveAuxType
 
 #ifdef USE_PETSC_LIB
 
@@ -39,15 +39,15 @@ module LongwaveRadAuxType
      PetscReal          :: rad_source
    contains
 
-     procedure, public :: Init          => LongwaveRadAuxVarInit
-     procedure, public :: AuxVarCompute => LongwaveRadAuxVarCompute
+     procedure, public :: Init          => LongwaveAuxVarInit
+     procedure, public :: AuxVarCompute => LongwaveAuxVarCompute
 
   end type longwave_auxvar_type
 
 contains
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadAuxVarInit(this, nleaf)
+  subroutine LongwaveAuxVarInit(this, nleaf)
     !
     ! !DESCRIPTION:
     !
@@ -83,10 +83,10 @@ contains
     this%e                   = 0.d0
     this%rad_source          = 0.d0
 
-  end subroutine LongwaveRadAuxVarInit
+  end subroutine LongwaveAuxVarInit
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadAuxVarCompute(this)
+  subroutine LongwaveAuxVarCompute(this)
     !
     ! !DESCRIPTION:
     !
@@ -131,8 +131,8 @@ contains
 
     end if
 
-  end subroutine LongwaveRadAuxVarCompute
+  end subroutine LongwaveAuxVarCompute
 
 #endif
 
-end module LongwaveRadAuxType
+end module LongwaveAuxType
