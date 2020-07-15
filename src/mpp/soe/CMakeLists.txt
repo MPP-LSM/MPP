@@ -6,6 +6,7 @@ set(MPP_SOE_SOURCES
   SystemOfEquationsLBLAuxType.F90
   SystemOfEquationsLBLType.F90
   SystemOfEquationsLongwaveRadiationAuxType.F90
+  SystemOfEquationsLongwaveRadiationType.F90
   SystemOfEquationsPhotosynthesisAuxType.F90
   SystemOfEquationsPhotosynthesisType.F90
   SystemOfEquationsThermalEnthalpyType.F90
