@@ -30,7 +30,7 @@ module GoveqnLongwaveRadiationType
 
      procedure, public :: Setup                     => LongwaveRadSetup
      procedure, public :: AllocateAuxVars           => LongwaveRadAllocateAuxVars
-     !procedure, public :: PreSolve                  => LongwaveRadPreSolve
+     procedure, public :: PreSolve                  => LongwaveRadPreSolve
      procedure, public :: UpdateAuxVars             => LongwaveRadUpdateAuxVars
      procedure, public :: SavePrimaryIndependentVar => LongwaveRadSavePrmIndepVar
      procedure, public :: ComputeRhs                => LongwaveRadComputeRhs
@@ -108,6 +108,21 @@ contains
        call this%aux_vars_bc(icond)%Init(0)
     enddo
   end subroutine LongwaveRadAllocateAuxVars
+
+  !------------------------------------------------------------------------
+  subroutine LongwaveRadPreSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Presolve
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_longwave_radiation_type) :: this
+
+    call this%UpdateAuxVars()
+
+  end subroutine LongwaveRadPreSolve
 
   !------------------------------------------------------------------------
   subroutine LongwaveRadSavePrmIndepVar (this, x)
