@@ -19,13 +19,13 @@ module SystemOfEquationsLongwaveAuxType
      PetscReal :: Idn
      PetscReal :: Iabs
    contains
-     procedure, public :: Init => LongwaveRadSOEAuxVarInit
+     procedure, public :: Init => LongwaveSOEAuxVarInit
   end type sysofeqns_longwave_auxvar_type
 
 contains
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSOEAuxVarInit(this)
+  subroutine LongwaveSOEAuxVarInit(this)
     !
     ! !DESCRIPTION:
     ! Initialize an auxiliary variable
@@ -39,7 +39,7 @@ contains
     this%Idn  = 0.d0
     this%Iabs = 0.d0
 
-  end subroutine LongwaveRadSOEAuxVarInit
+  end subroutine LongwaveSOEAuxVarInit
 
 #endif
 

@@ -8,7 +8,7 @@ use mpp_varctl                       , only : iulog
 use mpp_abortutils                   , only : endrun
 use mpp_shr_log_mod                  , only : errMsg => shr_log_errMsg
 use MultiPhysicsProbBaseType         , only : multiphysicsprob_base_type
-use SystemOfEquationsLongwaveRadiationType, only : sysofeqns_longwave_rad_type
+use SystemOfEquationsLongwaveType    , only : sysofeqns_longwave_type
 use SystemOfEquationsBasePointerType , only : sysofeqns_base_pointer_type
 use SystemOfEquationsBaseType        , only : sysofeqns_base_type
 use petscsys
@@ -46,7 +46,7 @@ subroutine MppLongwaveRadiationInit(this)
     ! !ARGUMENTS
     class(mpp_longwave_rad_type) :: this
     !
-    class(sysofeqns_longwave_rad_type), pointer :: sysofeqns
+    class(sysofeqns_longwave_type), pointer :: sysofeqns
 
     call MPPBaseInit(this)
 

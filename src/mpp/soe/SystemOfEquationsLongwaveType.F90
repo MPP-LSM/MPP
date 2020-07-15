@@ -29,18 +29,18 @@ module SystemOfEquationsLongwaveType
 
    contains
 
-     procedure, public :: Init                  => LongwaveRadSoeInit
-     procedure, public :: AllocateAuxVars       => LongwaveRadSoeAllocateAuxVars
-     procedure, public :: PreSolve              => LongwaveRadSoePreSolve
-     procedure, public :: ComputeRHS            => LongwaveRadSoeComputeRhs
-     procedure, public :: ComputeOperators      => LongwaveRadSoeComputeOperators
+     procedure, public :: Init                  => LongwaveSoeInit
+     procedure, public :: AllocateAuxVars       => LongwaveSoeAllocateAuxVars
+     procedure, public :: PreSolve              => LongwaveSoePreSolve
+     procedure, public :: ComputeRHS            => LongwaveSoeComputeRhs
+     procedure, public :: ComputeOperators      => LongwaveSoeComputeOperators
 
   end type sysofeqns_longwave_type
 
 contains
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSoeInit (this)
+  subroutine LongwaveSoeInit (this)
     !
     ! !DESCRIPTION:
     ! Initializes module variables and data structures
@@ -57,10 +57,10 @@ contains
 
     nullify(this%aux_vars_in)
 
-  end subroutine LongwaveRadSoeInit
+  end subroutine LongwaveSoeInit
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSoeAllocateAuxVars (this)
+  subroutine LongwaveSoeAllocateAuxVars (this)
     !
     ! !DESCRIPTION:
     !
@@ -87,10 +87,10 @@ contains
     ! Allocate memory
     allocate(this%aux_vars_in(this%num_auxvars_in))
 
-  end subroutine LongwaveRadSoeAllocateAuxVars
+  end subroutine LongwaveSoeAllocateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSoePreSolve (this)
+  subroutine LongwaveSoePreSolve (this)
     !
     ! !DESCRIPTION:
     ! Initializes module variables and data structures
@@ -114,10 +114,10 @@ contains
        cur_goveq => cur_goveq%next
     enddo
 
-  end subroutine LongwaveRadSoePreSolve
+  end subroutine LongwaveSoePreSolve
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSoeComputeRhs(this, ksp, B, ierr)
+  subroutine LongwaveSoeComputeRhs(this, ksp, B, ierr)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation to system-of-equations
@@ -175,10 +175,10 @@ contains
     deallocate(dms)
     deallocate(B_subvecs)
 
-  end subroutine LongwaveRadSoeComputeRhs
+  end subroutine LongwaveSoeComputeRhs
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSoeComputeOperators(this, ksp, A, B, ierr)
+  subroutine LongwaveSoeComputeOperators(this, ksp, A, B, ierr)
     !
     ! !DESCRIPTION:
     ! Adds a governing equation to system-of-equations
@@ -266,7 +266,7 @@ contains
     deallocate(is          )
     deallocate(B_submats   )
 
-  end subroutine LongwaveRadSoeComputeOperators
+  end subroutine LongwaveSoeComputeOperators
 
 #endif
 
