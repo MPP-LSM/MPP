@@ -28,19 +28,19 @@ module GoveqnLongwaveType
 
    contains
 
-     procedure, public :: Setup                     => LongwaveRadSetup
-     procedure, public :: AllocateAuxVars           => LongwaveRadAllocateAuxVars
-     procedure, public :: PreSolve                  => LongwaveRadPreSolve
-     procedure, public :: UpdateAuxVars             => LongwaveRadUpdateAuxVars
-     procedure, public :: SavePrimaryIndependentVar => LongwaveRadSavePrmIndepVar
-     procedure, public :: ComputeRhs                => LongwaveRadComputeRhs
-     procedure, public :: ComputeOperatorsDiag      => LongwaveRadComputeOperatorsDiag
+     procedure, public :: Setup                     => LongwaveSetup
+     procedure, public :: AllocateAuxVars           => LongwaveAllocateAuxVars
+     procedure, public :: PreSolve                  => LongwavePreSolve
+     procedure, public :: UpdateAuxVars             => LongwaveUpdateAuxVars
+     procedure, public :: SavePrimaryIndependentVar => LongwaveSavePrmIndepVar
+     procedure, public :: ComputeRhs                => LongwaveComputeRhs
+     procedure, public :: ComputeOperatorsDiag      => LongwaveComputeOperatorsDiag
 
   end type goveqn_longwave_type
 
 contains
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSetup(this)
+  subroutine LongwaveSetup(this)
     !
     ! !DESCRIPTION:
     ! Default setup of governing equation
@@ -64,10 +64,10 @@ contains
 
     this%nLeaf = 1
 
-  end subroutine LongwaveRadSetup
+  end subroutine LongwaveSetup
 
   !---------------------------------------------------------------------
-  subroutine LongwaveRadAllocateAuxVars(this)
+  subroutine LongwaveAllocateAuxVars(this)
     !
     ! !DESCRIPTION:
     ! Allocates memory for storing auxiliary variables associated with:
@@ -107,10 +107,10 @@ contains
     do icond = 1,ncells_cond
        call this%aux_vars_bc(icond)%Init(0)
     enddo
-  end subroutine LongwaveRadAllocateAuxVars
+  end subroutine LongwaveAllocateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadPreSolve(this)
+  subroutine LongwavePreSolve(this)
     !
     ! !DESCRIPTION:
     ! Presolve
@@ -122,10 +122,10 @@ contains
 
     call this%UpdateAuxVars()
 
-  end subroutine LongwaveRadPreSolve
+  end subroutine LongwavePreSolve
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadSavePrmIndepVar (this, x)
+  subroutine LongwaveSavePrmIndepVar (this, x)
     !
     ! !DESCRIPTION:
     !
@@ -155,11 +155,11 @@ contains
 
     call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)
 
-  end subroutine LongwaveRadSavePrmIndepVar
+  end subroutine LongwaveSavePrmIndepVar
 
   !------------------------------------------------------------------------
 
-  subroutine LongwaveRadUpdateAuxVars(this)
+  subroutine LongwaveUpdateAuxVars(this)
     !
     ! !DESCRIPTION:
     ! Updates auxiliary variable associated with internal control volumes
@@ -181,10 +181,10 @@ contains
        end if
     enddo
 
-  end subroutine LongwaveRadUpdateAuxVars
+  end subroutine LongwaveUpdateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine LongwaveRadComputeRhs(this, B, ierr)
+  subroutine LongwaveComputeRhs(this, B, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -280,7 +280,7 @@ contains
 
     call VecRestoreArrayF90(B, b_p, ierr)
 
-  end subroutine LongwaveRadComputeRhs
+  end subroutine LongwaveComputeRhs
 
 
   !------------------------------------------------------------------------
@@ -305,7 +305,7 @@ contains
 
   !------------------------------------------------------------------------
 
-  subroutine LongwaveRadComputeOperatorsDiag(this, A, B, ierr)
+  subroutine LongwaveComputeOperatorsDiag(this, A, B, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -430,7 +430,7 @@ contains
     call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
 
-  end subroutine LongwaveRadComputeOperatorsDiag
+  end subroutine LongwaveComputeOperatorsDiag
 #endif
 
 end module GoveqnLongwaveType
