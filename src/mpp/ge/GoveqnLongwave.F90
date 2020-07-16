@@ -46,7 +46,7 @@ contains
     ! Default setup of governing equation
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GE_LONGWAVE_RAD
+    use MultiPhysicsProbConstants, only : GE_LONGWAVE
     !
     implicit none
     !
@@ -56,7 +56,7 @@ contains
     call this%Create()
 
     this%name  = ""
-    this%itype = GE_LONGWAVE_RAD
+    this%itype = GE_LONGWAVE
     this%dof   = 3
 
     nullify(this%aux_vars_in)
@@ -245,7 +245,7 @@ contains
           cell_id_up = cur_conn_set%conn(sum_conn)%GetIDUp()
           cell_id_dn = cur_conn_set%conn(sum_conn)%GetIDDn()
 
-          call DetermineCellsIDsTopAndBottom(this, cell_id_up, cell_id_dn, cell_i, cell_i_plus_1);
+          call DetermineCellIDsTopAndBottom(this, cell_id_up, cell_id_dn, cell_i, cell_i_plus_1);
 
           ! Downward flux: d_i = (1 - b_i    ) * (...)
           !                    = (1 - e_{i+1}) * (...)
@@ -341,7 +341,7 @@ contains
           row = (icell-1)*this%dof + idof - 1;
           col = row
           value = 1.d0
-          call MatSetValuesLocal(B, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
        end do
 
        if (avars(icell)%is_soil) then
@@ -349,23 +349,23 @@ contains
           value = avars(icell)%f
           row = (icell-1)*this%dof
           col = row + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
 
           value = 1.d0
           row = (icell-1)*this%dof + 2
           col = (icell-1)*this%dof
-          call MatSetValuesLocal(B, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
 
           value = -1.d0
           row = (icell-1)*this%dof + 2
           col = (icell-1)*this%dof + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
 
        else
           value = -avars(icell)%leaf_emiss * (1.d0 - avars(icell)%trans)
           row = (icell-1)*this%dof + 2
           col = row - 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
        end if
     end do
 
@@ -380,7 +380,7 @@ contains
           cell_id_up = cur_conn_set%conn(sum_conn)%GetIDUp()
           cell_id_dn = cur_conn_set%conn(sum_conn)%GetIDDn()
 
-          call DetermineCellsIDsTopAndBottom(this, cell_id_up, cell_id_dn, cell_i, cell_i_plus_1);
+          call DetermineCellIDsTopAndBottom(this, cell_id_up, cell_id_dn, cell_i, cell_i_plus_1);
 
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! Insert a_i     for the i-th     downward flux
@@ -391,11 +391,12 @@ contains
 
           row = (cell_i - 1)*this%dof + 1
           col = (cell_i - 1)*this%dof
-          call MatSetValues(B, 1, row, 1, col, value, INSERT_VALUES, ierr);
+          row = 0; col = 0; value = 0.d0
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           row = (cell_i_plus_1 - 1)*this%dof
           col = (cell_i_plus_1 - 1)*this%dof + 1
-          call MatSetValues(B, 1, row, 1, col, value, INSERT_VALUES, ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -407,11 +408,11 @@ contains
 
           row = (cell_i        - 1)*this%dof + 1
           col = (cell_i_plus_1 - 1)*this%dof
-          call MatSetValues(B, 1, row, 1, col, value, INSERT_VALUES, ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           row = (cell_i_plus_1 - 1)*this%dof
           col = (cell_i        - 1)*this%dof + 1
-          call MatSetValues(B, 1, row, 1, col, value, INSERT_VALUES, ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -419,7 +420,7 @@ contains
           value = -avars(cell_i_plus_1)%leaf_emiss * (1.d0 - avars(cell_i_plus_1)%trans)
           row = (cell_i_plus_1 - 1)*this%dof + 2
           col = (cell_i        - 1)*this%dof
-          call MatSetValues(B, 1, row, 1, col, value, INSERT_VALUES, ierr);
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
        enddo

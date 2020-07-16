@@ -55,7 +55,7 @@ contains
     !
     ! !ARGUMENTS
     class(longwave_auxvar_type) :: this
-    PetscInt                     :: nleaf
+    PetscInt                    :: nleaf
 
     allocate(this%leaf_temperature(nleaf));
     allocate(this%leaf_fraction(   nleaf));

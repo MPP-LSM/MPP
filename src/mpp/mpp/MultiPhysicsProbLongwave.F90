@@ -39,7 +39,7 @@ subroutine MppLongwaveRadiationInit(this)
     ! Initialize the MLC MPP
     !
     use MultiPhysicsProbBaseType , only : MPPBaseInit
-    use MultiPhysicsProbConstants , only : SOE_LONGWAVE_RAD
+    use MultiPhysicsProbConstants , only : SOE_LONGWAVE
     !
     implicit none
     !
@@ -54,7 +54,7 @@ subroutine MppLongwaveRadiationInit(this)
     call sysofeqns%Init()
 
     this%soe => sysofeqns
-    this%soe%itype = SOE_LONGWAVE_RAD
+    this%soe%itype = SOE_LONGWAVE
 
     allocate(this%soe_ptr)
     nullify(this%soe_ptr%ptr)

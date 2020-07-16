@@ -190,6 +190,7 @@ contains
     use MultiPhysicsProbConstants, only : MPP_MLC_KSP
     use MultiPhysicsProbConstants, only : MPP_LBL_KSP
     use MultiPhysicsProbConstants, only : MPP_PHOTOSYNTHESIS_SNES
+    use MultiPhysicsProbConstants, only : MPP_LONGWAVE_KSP
     use MultiPhysicsProbConstants, only : PETSC_SNES
     use MultiPhysicsProbConstants, only : PETSC_KSP
     use MultiPhysicsProbConstants, only : SOE_RE_ODE
@@ -206,7 +207,7 @@ contains
        this%id                    = id
        this%solver_type           = PETSC_SNES
 
-    case (MPP_THERMAL_TBASED_KSP_CLM,MPP_MLC_KSP,MPP_LBL_KSP)
+    case (MPP_THERMAL_TBASED_KSP_CLM,MPP_MLC_KSP,MPP_LBL_KSP,MPP_LONGWAVE_KSP)
        this%id                    = id
        this%solver_type           = PETSC_KSP
 

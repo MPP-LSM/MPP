@@ -976,12 +976,14 @@ contains
    use GoveqnRichardsODEPressureType   , only : goveqn_richards_ode_pressure_type
    use GoveqnLeafBoundaryLayer         , only : goveqn_leaf_bnd_lyr_type
    use GoveqnPhotosynthesisType        , only : goveqn_photosynthesis_type
+   use GoveqnLongwaveType              , only : goveqn_longwave_type
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_TEMP
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_VAPOR
    use MultiPhysicsProbConstants       , only : GE_CANOPY_LEAF_TEMP
    use MultiPhysicsProbConstants       , only : GE_RE
    use MultiPhysicsProbConstants       , only : GE_LEAF_BND_LAYER
    use MultiPhysicsProbConstants       , only : GE_PHOTOSYNTHESIS
+   use MultiPhysicsProbConstants       , only : GE_LONGWAVE
    !
    implicit none
    !
@@ -998,6 +1000,7 @@ contains
     class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
     class (goveqn_leaf_bnd_lyr_type)          , pointer :: goveq_lbl
     class (goveqn_photosynthesis_type)        , pointer :: goveq_phtsyn
+    class (goveqn_longwave_type)        , pointer :: goveq_longwave
     integer                                             :: igoveqn
 
     cur_goveqn => this%goveqns
@@ -1092,6 +1095,19 @@ contains
             this%goveqns => goveq_phtsyn
          else
             cur_goveqn%next => goveq_phtsyn
+         endif
+
+      case (GE_LONGWAVE)
+         allocate(goveq_longwave)
+         call goveq_longwave%Setup()
+         goveq_longwave%name              = trim(name)
+         goveq_longwave%rank_in_soe_list  = this%ngoveqns
+         goveq_longwave%mesh_rank         = mesh_rank
+  
+         if (this%ngoveqns == 1) then
+            this%goveqns => goveq_longwave
+         else
+            cur_goveqn%next => goveq_longwave
          endif
 
       case default
