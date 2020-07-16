@@ -1,4 +1,5 @@
 set(MPP_DTYPES_SOURCES
+  AuxVarType.F90
   ConditionType.F90
   ConnectionSetType.F90
   CouplingVariableType.F90
