@@ -27,6 +27,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: MPP_MLC_KSP                       = 15
   PetscInt, parameter, public :: MPP_LBL_KSP                       = 16
   PetscInt, parameter, public :: MPP_PHOTOSYNTHESIS_SNES           = 17
+  PetscInt, parameter, public :: MPP_LONGWAVE_KSP                  = 18
 
   ! soe_itype
   PetscInt, parameter, public :: SOE_RE_ODE                        = 101
@@ -36,6 +37,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: SOE_MLC                           = 105
   PetscInt, parameter, public :: SOE_LBL                           = 106
   PetscInt, parameter, public :: SOE_PHOTOSYNTHESIS                = 107
+  PetscInt, parameter, public :: SOE_LONGWAVE                      = 108
 
   ! ge_itype
   PetscInt, parameter, public :: GE_RE                             = 201
@@ -48,6 +50,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: GE_CANOPY_LEAF_TEMP               = 208
   PetscInt, parameter, public :: GE_LEAF_BND_LAYER                 = 209
   PetscInt, parameter, public :: GE_PHOTOSYNTHESIS                 = 210
+  PetscInt, parameter, public :: GE_LONGWAVE                       = 211
 
   ! mesh_itype
   PetscInt, parameter, public :: MESH_CLM_SOIL_COL                 = 301
@@ -179,6 +182,7 @@ module MultiPhysicsProbConstants
   !PetscReal, parameter, public :: GRAVITY_CONSTANT                 = 9.8068d0      ! [m s^{-2}]
   PetscReal, parameter, public :: GRAVITY_CONSTANT                 = 9.80665d0      ! [m s^{-2}]
   PetscReal, parameter, public :: FMWH2O                           = 18.01534d0    ! [kg kmol^{-1}]
+  PetscReal, parameter, public :: STEFAN_BOLTZMAN_CONSTANT         = 5.67d-08
 
   PetscReal, parameter, public :: VKC                              = 0.4d0         ! von Karman constant [-]
   PetscReal, parameter, public :: TFRZ                             = 273.15d0      ! [K]
