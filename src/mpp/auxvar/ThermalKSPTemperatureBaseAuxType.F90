@@ -6,12 +6,14 @@ module ThermalKSPTemperatureBaseAuxType
 
   !
   ! !PUBLIC TYPES:
+  use AuxVarType          , only : auxvar_base_type
   use petscsys
 
   implicit none
 
   private
 
+  !type, public, extends(auxvar_base_type) :: therm_ksp_temp_base_auxvar_type
   type, public :: therm_ksp_temp_base_auxvar_type
 
      ! primary unknown independent variable

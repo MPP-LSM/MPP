@@ -8,11 +8,12 @@ module LeafBoundaryLayerAuxType
   use mpp_varctl      , only : iulog
   use mpp_abortutils  , only : endrun
   use mpp_shr_log_mod , only : errMsg => shr_log_errMsg
+  use AuxVarType      , only : auxvar_base_type
 
   implicit none
   private
 
-  type, public :: leaf_bnd_lyr_auxvar_type
+  type, public, extends(auxvar_base_type) :: leaf_bnd_lyr_auxvar_type
 
      ! Primary indepedent variables
      PetscReal :: gbh    ! boundary layer conductance for heat (mol/m2 leaf/s)      

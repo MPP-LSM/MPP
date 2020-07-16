@@ -8,10 +8,12 @@ module CanopyTurbulenceAuxType
   use mpp_varctl      , only : iulog
   use mpp_abortutils  , only : endrun
   use mpp_shr_log_mod , only : errMsg => shr_log_errMsg
+  use AuxVarType          , only : auxvar_base_type
 
   implicit none
   private
 
+!  type, public, extends(auxvar_base_type) :: canopy_turbulence_auxvar_type
   type, public :: canopy_turbulence_auxvar_type
 
      PetscInt :: ncair

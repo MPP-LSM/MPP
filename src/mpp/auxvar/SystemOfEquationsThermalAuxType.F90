@@ -8,13 +8,14 @@ module SystemOfEquationsThermalAuxType
   ! !USES:
   use mpp_abortutils         , only : endrun
   use mpp_shr_log_mod        , only : errMsg => shr_log_errMsg
+  use AuxVarType          , only : auxvar_base_type
   use petscsys
   !
   ! !PUBLIC TYPES:
   implicit none
   private
 
-  type, public :: sysofeqns_thermal_auxvar_type
+  type, public, extends(auxvar_base_type) :: sysofeqns_thermal_auxvar_type
 
      PetscReal :: temperature     ! [K]
 

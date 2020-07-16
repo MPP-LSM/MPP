@@ -12,12 +12,13 @@ module PhotosynthesisAuxType
   use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+  use AuxVarType                , only : auxvar_base_type
 
   implicit none
 
   private
 
-  type, public :: photosynthesis_auxvar_type
+  type, public, extends(auxvar_base_type) :: photosynthesis_auxvar_type
 
      ! Primary indepedent variables
      PetscReal :: ci        ! leaf intercellular CO2 (umol/mol)

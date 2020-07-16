@@ -9,13 +9,14 @@ module SystemOfEquationsVSFMAuxType
   use mpp_varctl         , only : iulog
   use mpp_abortutils         , only : endrun
   use mpp_shr_log_mod        , only : errMsg => shr_log_errMsg
+  use AuxVarType          , only : auxvar_base_type
   use petscsys
   !
   ! !PUBLIC TYPES:
   implicit none
   private
 
-  type, public :: sysofeqns_vsfm_auxvar_type
+  type, public, extends(auxvar_base_type) :: sysofeqns_vsfm_auxvar_type
 
      PetscReal :: pressure               ! [Pa]
      PetscReal :: dxi_dtime              ! [kg m^{-3} s^{-1}]
@@ -100,9 +101,9 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(sysofeqns_vsfm_auxvar_type) :: this
+    class(sysofeqns_vsfm_auxvar_type), intent(inout) :: this
     PetscInt, intent(in)              :: var_type
-    PetscReal                         :: variable_value
+    PetscReal, intent(in)             :: variable_value
 
     select case(var_type)
     case (VAR_PRESSURE)

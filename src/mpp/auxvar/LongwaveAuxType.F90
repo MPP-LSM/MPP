@@ -5,12 +5,14 @@ module LongwaveAuxType
 #include <petsc/finclude/petsc.h>
 
   ! !USES:
+  use AuxVarType          , only : auxvar_base_type
   use petscsys
   !
   implicit none
 
   private
 
+  !type, public, extends(auxvar_base_type) :: longwave_auxvar_type
   type, public :: longwave_auxvar_type
 
      ! Primary indepedent variables

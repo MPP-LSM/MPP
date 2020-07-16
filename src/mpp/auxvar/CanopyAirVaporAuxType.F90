@@ -6,6 +6,7 @@ module CanopyAirVaporAuxType
   use mpp_varctl          , only : iulog
   use mpp_abortutils      , only : endrun
   use mpp_shr_log_mod     , only : errMsg => shr_log_errMsg
+  use AuxVarType          , only : auxvar_base_type
   use petscsys
   !
   ! !PUBLIC TYPES:
@@ -14,6 +15,7 @@ module CanopyAirVaporAuxType
 
 #include <petsc/finclude/petsc.h>
 
+!  type, public, extends(auxvar_base_type) :: cair_vapor_auxvar_type
   type, public :: cair_vapor_auxvar_type
 
      ! primary unknown independent variable

@@ -11,6 +11,7 @@ module ThermalEnthalpySoilAuxType
   use PorosityFunctionMod , only : porosity_params_type
   use SaturationFunction  , only : saturation_params_type
   use RichardsODEPressureAuxType, only : rich_ode_pres_auxvar_type
+  use AuxVarType          , only : auxvar_base_type
   !
   implicit none
   !

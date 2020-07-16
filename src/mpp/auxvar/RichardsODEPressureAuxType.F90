@@ -8,6 +8,7 @@ module RichardsODEPressureAuxType
   use mpp_shr_log_mod     , only : errMsg => shr_log_errMsg
   use PorosityFunctionMod , only : porosity_params_type
   use SaturationFunction  , only : saturation_params_type
+  use AuxVarType          , only : auxvar_base_type
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -15,7 +16,7 @@ module RichardsODEPressureAuxType
 
 #include <petsc/finclude/petsc.h>
 
-  type, public :: rich_ode_pres_auxvar_type
+  type, public, extends(auxvar_base_type) :: rich_ode_pres_auxvar_type
 
      ! primary unknown independent variable
      PetscReal :: pressure               ! [Pa]
