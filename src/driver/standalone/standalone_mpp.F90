@@ -43,6 +43,7 @@ program standalone_mpp
   use thermal_mms_problem         , only : output_regression_th_mms_problem
   use mlc_problem                 , only : run_mlc_problem, output_regression_mlc_problem
   use leafbndlyr_problem          , only : run_leafbndlyr_problem, output_regression_leafbndlyr_problem
+  use longwave_problem            , only : run_longwave_problem, output_regression_longwave_problem
   
   use petscsys
   !
@@ -176,6 +177,13 @@ program standalone_mpp
  
       if (write_regression_output) then
          call output_regression_leafbndlyr_problem(filename_base, num_cells)
+      endif
+
+    else if(trim(problem_type) == 'longwave') then
+      call run_longwave_problem(namelist_filename)
+ 
+      if (write_regression_output) then
+         call output_regression_longwave_problem(filename_base, num_cells)
       endif
 
    else
