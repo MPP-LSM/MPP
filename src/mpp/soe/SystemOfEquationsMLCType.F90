@@ -10,7 +10,6 @@ module SystemOfEquationsMlcType
   use mpp_abortutils                  , only : endrun
   use mpp_shr_log_mod                 , only : errMsg => shr_log_errMsg
   use SystemOfEquationsBaseType       , only : sysofeqns_base_type
-  use SystemOfEquationsMlcAuxType     , only : sysofeqns_mlc_auxvar_type
   use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
   use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
   use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
@@ -29,10 +28,6 @@ module SystemOfEquationsMlcType
   private
 
   type, public, extends(sysofeqns_base_type) :: sysofeqns_mlc_type
-
-     !type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_in(:) ! Internal state.
-     !type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_bc(:) ! Boundary conditions.
-     !type (sysofeqns_mlc_auxvar_type), pointer :: aux_vars_ss(:) ! Source-sink.
 
      type (canopy_turbulence_auxvar_type) :: cturb
      PetscInt :: ncair
@@ -65,10 +60,6 @@ contains
     class(sysofeqns_mlc_type) :: this
 
     call SOEBaseInit(this)
-
-    !nullify(this%aux_vars_in)
-    !nullify(this%aux_vars_bc)
-    !nullify(this%aux_vars_ss)
 
     this%ncair = 0
 

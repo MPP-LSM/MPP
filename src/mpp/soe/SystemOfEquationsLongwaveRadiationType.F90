@@ -9,7 +9,6 @@ module SystemOfEquationsLongwaveType
   use mpp_abortutils                      , only : endrun
   use mpp_shr_log_mod                     , only : errMsg => shr_log_errMsg
   use SystemOfEquationsBaseType           , only : sysofeqns_base_type
-  use SystemOfEquationsLongwaveAuxType , only : sysofeqns_longwave_auxvar_type
   use GoverningEquationBaseType
   use SystemOfEquationsBaseType
   use petscsys
@@ -25,12 +24,8 @@ module SystemOfEquationsLongwaveType
 
   type, public, extends(sysofeqns_base_type) :: sysofeqns_longwave_type
 
-     type (sysofeqns_longwave_auxvar_type), pointer :: aux_vars_in(:) ! Internal state.
-
    contains
 
-     procedure, public :: Init                  => LongwaveRadSoeInit
-     procedure, public :: AllocateAuxVars       => LongwaveRadSoeAllocateAuxVars
      procedure, public :: PreSolve              => LongwaveRadSoePreSolve
      procedure, public :: ComputeRHS            => LongwaveRadSoeComputeRhs
      procedure, public :: ComputeOperators      => LongwaveRadSoeComputeOperators
@@ -38,56 +33,6 @@ module SystemOfEquationsLongwaveType
   end type sysofeqns_longwave_type
 
 contains
-
-  !------------------------------------------------------------------------
-  subroutine LongwaveRadSoeInit (this)
-    !
-    ! !DESCRIPTION:
-    ! Initializes module variables and data structures
-    !
-    ! !USES:
-    use SystemOfEquationsBaseType, only : SOEBaseInit
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_longwave_type) :: this
-
-    call SOEBaseInit(this)
-
-    nullify(this%aux_vars_in)
-
-  end subroutine LongwaveRadSoeInit
-
-  !------------------------------------------------------------------------
-  subroutine LongwaveRadSoeAllocateAuxVars (this)
-    !
-    ! !DESCRIPTION:
-    !
-    ! !USES:
-    use GoverningEquationBaseType           , only : goveqn_base_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_longwave_type) :: this
-    !
-    class(goveqn_base_type)    , pointer :: cur_goveq
-
-    cur_goveq => this%goveqns
-    do
-       if (.not.associated(cur_goveq)) exit
-
-       this%num_auxvars_in = this%num_auxvars_in + &
-            cur_goveq%mesh%ncells_all
-
-       cur_goveq => cur_goveq%next
-    enddo
-
-    ! Allocate memory
-    allocate(this%aux_vars_in(this%num_auxvars_in))
-
-  end subroutine LongwaveRadSoeAllocateAuxVars
 
   !------------------------------------------------------------------------
   subroutine LongwaveRadSoePreSolve (this)

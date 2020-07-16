@@ -9,7 +9,6 @@ module SystemOfEquationsPhotosynthesisType
   use mpp_abortutils                            , only : endrun
   use mpp_shr_log_mod                           , only : errMsg => shr_log_errMsg
   use SystemOfEquationsBaseType                 , only : sysofeqns_base_type
-  use SystemOfEquationsPhotosynthesisAuxType , only : sysofeqns_photosynthesis_auxvar_type
   use GoverningEquationBaseType
   use SystemOfEquationsBaseType
   use petscsys
@@ -26,12 +25,8 @@ module SystemOfEquationsPhotosynthesisType
 
   type, public, extends(sysofeqns_base_type) :: sysofeqns_photosynthesis_type
 
-     type (sysofeqns_photosynthesis_auxvar_type), pointer :: aux_vars_in(:) ! Internal state.
-
    contains
 
-     procedure, public :: Init                  => PhotosynthesisSoeInit
-     procedure, public :: AllocateAuxVars       => PhotosynthesisSoeAllocateAuxVars
      procedure, public :: PreSolve              => PhotosynthesisSoePreSolve
      procedure, public :: Residual              => PhotosynthesisSoeResidual
      procedure, public :: Jacobian              => PhotosynthesisSoeJacobian
@@ -40,47 +35,6 @@ module SystemOfEquationsPhotosynthesisType
 
 contains
 
-  !------------------------------------------------------------------------
-  subroutine PhotosynthesisSoeInit (this)
-    !
-    ! !DESCRIPTION:
-    ! Initializes module variables and data structures
-    !
-    ! !USES:
-    use SystemOfEquationsBaseType, only : SOEBaseInit
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_photosynthesis_type) :: this
-
-    call SOEBaseInit(this)
-
-    nullify(this%aux_vars_in)
-
-  end subroutine PhotosynthesisSoeInit
-
-
-  !------------------------------------------------------------------------
-  subroutine PhotosynthesisSoeAllocateAuxVars (this)
-    !
-    ! !DESCRIPTION:
-    !
-    ! !USES:
-    use GoverningEquationBaseType, only : goveqn_base_type
-    !
-    implicit none
-    !
-    ! !ARGUMENTS
-    class(sysofeqns_photosynthesis_type) :: this
-    !
-    class(goveqn_base_type)    , pointer :: cur_goveq
-
-    call this%ComputeNumInternalAuxVars()
-
-    allocate(this%aux_vars_in(this%num_auxvars_in))
-
-  end subroutine PhotosynthesisSoeAllocateAuxVars
 
   !------------------------------------------------------------------------
   subroutine PhotosynthesisSoePreSolve (this)
