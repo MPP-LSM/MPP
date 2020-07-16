@@ -102,7 +102,10 @@ contains
 
     if (this%is_soil) then
 
-       this%e = 0.d0
+       aa = this%trans + (1 - this%trans) * this%leaf_tau
+       bb = (1.d0 - this%trans) * this%leaf_rho
+       this%e = aa/bb
+
        this%f = 1.d0 - this%soil_emiss
        this%rad_source = STEFAN_BOLTZMAN_CONSTANT * this%soil_emiss * (this%soil_temperature ** 4.d0)
 
@@ -124,7 +127,7 @@ contains
                (1.d0 - this%trans)          * &
                STEFAN_BOLTZMAN_CONSTANT     * &
                this%leaf_emiss              * &
-               this%leaf_temperature(ileaf)
+               this%leaf_temperature(ileaf)**4.d0
 
           this%rad_source = this%rad_source + cc
        end do

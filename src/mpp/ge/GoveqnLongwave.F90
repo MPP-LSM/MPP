@@ -294,11 +294,11 @@ contains
     PetscInt :: icell_top, icell_bot
 
     if (this%mesh%z(icell_1) > this%mesh%z(icell_2)) then
-       icell_top = icell_2
-       icell_bot = icell_1
-    else
        icell_top = icell_1
        icell_bot = icell_2
+    else
+       icell_top = icell_2
+       icell_bot = icell_1
     end if
 
   end subroutine DetermineCellIDsTopAndBottom
@@ -391,7 +391,6 @@ contains
 
           row = (cell_i - 1)*this%dof + 1
           col = (cell_i - 1)*this%dof
-          row = 0; col = 0; value = 0.d0
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           row = (cell_i_plus_1 - 1)*this%dof
