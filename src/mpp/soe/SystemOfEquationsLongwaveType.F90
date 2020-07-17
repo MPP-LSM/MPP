@@ -32,6 +32,7 @@ module SystemOfEquationsLongwaveType
      procedure, public :: Init                  => LongwaveSoeInit
      procedure, public :: AllocateAuxVars       => LongwaveSoeAllocateAuxVars
      procedure, public :: PreSolve              => LongwaveSoePreSolve
+     procedure, public :: PostSolve             => LongwaveSoePostSolve
      procedure, public :: ComputeRHS            => LongwaveSoeComputeRhs
      procedure, public :: ComputeOperators      => LongwaveSoeComputeOperators
 
@@ -115,6 +116,40 @@ contains
     enddo
 
   end subroutine LongwaveSoePreSolve
+
+  !------------------------------------------------------------------------
+  subroutine LongwaveSoePostSolve (this)
+    !
+    ! !DESCRIPTION:
+    ! Initializes module variables and data structures
+    !
+    ! !USES:
+    use GoveqnLongwaveType, only : goveqn_longwave_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_longwave_type) :: this
+    !
+    class(goveqn_base_type) , pointer :: cur_goveq
+    PetscErrorCode :: ierr
+
+    call VecCopy(this%solver%soln, this%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call this%SavePrimaryIndependentVar(this%solver%soln)
+
+    cur_goveq => this%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       select type(cur_goveq)
+       class is (goveqn_longwave_type)
+          call cur_goveq%PostSolve()
+       end select
+
+       cur_goveq => cur_goveq%next
+    enddo
+
+  end subroutine LongwaveSoePostSolve
 
   !------------------------------------------------------------------------
   subroutine LongwaveSoeComputeRhs(this, ksp, B, ierr)

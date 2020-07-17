@@ -24,6 +24,13 @@ module GoveqnLongwaveType
      type(longwave_auxvar_type)      , pointer :: aux_vars_in(:)
      type(longwave_auxvar_type)      , pointer :: aux_vars_bc(:)
 
+     ! For post-processing data to compute absorbed radiation as:
+     ! Iabs = Mat * Iupdn + RHS
+     Vec :: flux_up_dn
+     Vec :: flux_absorbed_rhs
+     Vec :: flux_absorbed
+     Mat :: flux_absorbed_mat
+
      PetscInt                                   :: nLeaf, nleafGE
 
    contains
@@ -31,6 +38,7 @@ module GoveqnLongwaveType
      procedure, public :: Setup                     => LongwaveSetup
      procedure, public :: AllocateAuxVars           => LongwaveAllocateAuxVars
      procedure, public :: PreSolve                  => LongwavePreSolve
+     procedure, public :: PostSolve                 => LongwavePostSolve
      procedure, public :: UpdateAuxVars             => LongwaveUpdateAuxVars
      procedure, public :: SavePrimaryIndependentVar => LongwaveSavePrmIndepVar
      procedure, public :: ComputeRhs                => LongwaveComputeRhs
@@ -57,7 +65,7 @@ contains
 
     this%name  = ""
     this%itype = GE_LONGWAVE
-    this%dof   = 3
+    this%dof   = 2
 
     nullify(this%aux_vars_in)
     nullify(this%aux_vars_bc)
@@ -79,10 +87,12 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_longwave_type)    :: this
     !
-    type(condition_type)         , pointer :: cur_cond
-    PetscInt                          :: ghosted_id, ncells_cond, icond
+    type(condition_type) , pointer :: cur_cond
+    PetscInt                       :: ghosted_id, ncells_cond, icond
+    PetscInt                       :: nrow, ncol
+    PetscErrorCode                 :: ierr
 
     ! Allocate memory and initialize aux vars: For internal cells
     allocate(this%aux_vars_in(this%mesh%ncells_all))
@@ -107,6 +117,17 @@ contains
     do icond = 1,ncells_cond
        call this%aux_vars_bc(icond)%Init(0)
     enddo
+
+    nrow = this%mesh%ncells_all
+    ncol = 2*nrow
+    call MatCreateSeqAIJ(PETSC_COMM_SELF, nrow, ncol, &
+         3, PETSC_NULL_INTEGER, this%flux_absorbed_mat, ierr); CHKERRQ(ierr)
+
+    call VecCreateSeq(PETSC_COMM_SELF, nrow, this%flux_absorbed, ierr); CHKERRQ(ierr)
+    call VecDuplicate(this%flux_absorbed, this%flux_absorbed_rhs, ierr); CHKERRQ(ierr);
+
+    call VecCreateSeq(PETSC_COMM_SELF, ncol, this%flux_up_dn, ierr); CHKERRQ(ierr)
+
   end subroutine LongwaveAllocateAuxVars
 
   !------------------------------------------------------------------------
@@ -121,8 +142,104 @@ contains
     class(goveqn_longwave_type) :: this
 
     call this%UpdateAuxVars()
+    call LongwaveSetupAbsorbedFluxMatAndVec(this)
 
   end subroutine LongwavePreSolve
+
+  !------------------------------------------------------------------------
+  subroutine LongwavePostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Presolve
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_longwave_type) :: this
+    !
+    PetscInt             :: ghosted_id
+    PetscScalar, pointer :: f_p(:)
+    PetscErrorCode       :: ierr
+
+    call VecGetArrayF90(this%flux_up_dn, f_p, ierr); CHKERRQ(ierr)
+
+    do ghosted_id = 1, this%mesh%ncells_local
+       f_p((ghosted_id-1)*2 + 1) = this%aux_vars_in(ghosted_id)%Iup
+       f_p((ghosted_id-1)*2 + 2) = this%aux_vars_in(ghosted_id)%Idn
+    end do
+
+    call VecRestoreArrayF90(this%flux_up_dn, f_p, ierr); CHKERRQ(ierr)
+
+    call MatMultAdd(this%flux_absorbed_mat, this%flux_up_dn, this%flux_absorbed_rhs, this%flux_absorbed, ierr); CHKERRQ(ierr)
+
+    call VecGetArrayF90(this%flux_absorbed, f_p, ierr); CHKERRQ(ierr)
+    do ghosted_id = 1, this%mesh%ncells_local
+       this%aux_vars_in(ghosted_id)%Iabs = f_p(ghosted_id)
+    end do
+    call VecRestoreArrayF90(this%flux_absorbed, f_p, ierr); CHKERRQ(ierr)
+
+  end subroutine LongwavePostSolve
+
+ !------------------------------------------------------------------------
+  subroutine LongwaveSetupAbsorbedFluxMatAndVec(this)
+    !
+    ! !DESCRIPTION:
+    !
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : STEFAN_BOLTZMAN_CONSTANT
+    use ConnectionSetType         , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_longwave_type) :: this
+    Vec                                   :: B
+    PetscErrorCode                        :: ierr
+    !
+    type(longwave_auxvar_type) , pointer  :: avars(:)
+    class(connection_set_type) , pointer  :: cur_conn_set
+    class(condition_type)      , pointer  :: cur_cond
+    PetscScalar                , pointer  :: r_p(:)
+    PetscInt                              :: icell, row, col
+    PetscReal                             :: value
+
+    avars => this%aux_vars_in
+
+    call VecGetArrayF90(this%flux_absorbed_rhs, r_p, ierr)
+
+    ! Set RHS for upwind and absorbed radiation
+    do icell = 1, this%mesh%ncells_local
+
+       if (avars(icell)%is_soil) then
+          r_p((icell-1)*this%dof) = 0
+
+          value = -1.d0; row = icell-1; col = 2*row;
+          call MatSetValues(this%flux_absorbed_mat, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
+
+          value = 1.d0; row = icell-1; col = 2*row + 1
+          call MatSetValues(this%flux_absorbed_mat, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
+       else
+          ! Absorbed flux: -2 * (1-tau_{d,i}) * emiss * sigma * T^4
+          r_p(icell) = -2.d0 * avars(icell)%rad_source
+
+          value = avars(icell)%leaf_emiss * (1.d0 - avars(icell)%trans)
+          row = icell-1; col = 2*row-2;
+          call MatSetValues(this%flux_absorbed_mat, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
+
+          row = icell-1; col = 2*row+1;
+          call MatSetValues(this%flux_absorbed_mat, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
+       end if
+
+    end do
+
+    call VecRestoreArrayF90(this%flux_absorbed_rhs, r_p, ierr)
+
+    call MatAssemblyBegin(this%flux_absorbed_mat, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(  this%flux_absorbed_mat, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
+
+  end subroutine LongwaveSetupAbsorbedFluxMatAndVec
 
   !------------------------------------------------------------------------
   subroutine LongwaveSavePrmIndepVar (this, x)
@@ -150,7 +267,7 @@ contains
     do ghosted_id = 1, this%mesh%ncells_local
        this%aux_vars_in(ghosted_id)%Iup  = x_p((ghosted_id-1)*this%dof + 1)
        this%aux_vars_in(ghosted_id)%Idn  = x_p((ghosted_id-1)*this%dof + 2)
-       this%aux_vars_in(ghosted_id)%Iabs = x_p((ghosted_id-1)*this%dof + 3)
+       !this%aux_vars_in(ghosted_id)%Iabs = x_p((ghosted_id-1)*this%dof + 3)
     end do
 
     call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)
@@ -221,7 +338,7 @@ contains
        if (avars(icell)%is_soil) then
 
           b_p((icell-1)*this%dof + 1) = avars(icell)%rad_source ! upward
-          b_p((icell-1)*this%dof + 3) = 0                       ! absorbed
+          !b_p((icell-1)*this%dof + 3) = 0.d0                    ! absorbed
 
        else
           !
@@ -229,7 +346,7 @@ contains
           b_p((icell-1)*this%dof + 1) = (1.d0 - avars(icell)%e ) * avars(icell)%rad_source ! upward
 
           ! Absorbed flux: -2 * (1-tau_{d,i}) * emiss * sigma * T^4
-          b_p((icell-1)*this%dof + 3) = -2.d0                    * avars(icell)%rad_source ! absorbed
+          !b_p((icell-1)*this%dof + 3) = -2.d0                    * avars(icell)%rad_source ! absorbed
        end if
     end do
 
@@ -351,21 +468,6 @@ contains
           col = row + 1
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
 
-          value = 1.d0
-          row = (icell-1)*this%dof + 2
-          col = (icell-1)*this%dof
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
-
-          value = -1.d0
-          row = (icell-1)*this%dof + 2
-          col = (icell-1)*this%dof + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
-
-       else
-          value = -avars(icell)%leaf_emiss * (1.d0 - avars(icell)%trans)
-          row = (icell-1)*this%dof + 2
-          col = row - 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
        end if
     end do
 
@@ -411,14 +513,6 @@ contains
 
           row = (cell_i_plus_1 - 1)*this%dof
           col = (cell_i        - 1)*this%dof + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          ! Insert -emis * (1 - tau)
-          value = -avars(cell_i_plus_1)%leaf_emiss * (1.d0 - avars(cell_i_plus_1)%trans)
-          row = (cell_i_plus_1 - 1)*this%dof + 2
-          col = (cell_i        - 1)*this%dof
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
