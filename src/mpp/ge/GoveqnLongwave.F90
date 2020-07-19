@@ -24,7 +24,7 @@ module GoveqnLongwaveType
      type(longwave_auxvar_type)      , pointer :: aux_vars_in(:)
      type(longwave_auxvar_type)      , pointer :: aux_vars_bc(:)
 
-     PetscInt                                   :: nLeaf, nleafGE
+     PetscInt                                   :: nLeaf
 
    contains
 
