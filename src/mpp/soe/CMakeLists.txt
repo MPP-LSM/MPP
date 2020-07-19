@@ -9,6 +9,7 @@ set(MPP_SOE_SOURCES
   SystemOfEquationsLongwaveType.F90
   SystemOfEquationsPhotosynthesisAuxType.F90
   SystemOfEquationsPhotosynthesisType.F90
+  SystemOfEquationsShortwaveType.F90
   SystemOfEquationsThermalEnthalpyType.F90
   SystemOfEquationsThermalAuxMod.F90
   SystemOfEquationsThermalType.F90
