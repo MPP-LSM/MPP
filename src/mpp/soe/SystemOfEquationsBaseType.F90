@@ -977,6 +977,7 @@ contains
    use GoveqnLeafBoundaryLayer         , only : goveqn_leaf_bnd_lyr_type
    use GoveqnPhotosynthesisType        , only : goveqn_photosynthesis_type
    use GoveqnLongwaveType              , only : goveqn_longwave_type
+   use GoveqnShortwaveType             , only : goveqn_shortwave_type
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_TEMP
    use MultiPhysicsProbConstants       , only : GE_CANOPY_AIR_VAPOR
    use MultiPhysicsProbConstants       , only : GE_CANOPY_LEAF_TEMP
@@ -984,6 +985,7 @@ contains
    use MultiPhysicsProbConstants       , only : GE_LEAF_BND_LAYER
    use MultiPhysicsProbConstants       , only : GE_PHOTOSYNTHESIS
    use MultiPhysicsProbConstants       , only : GE_LONGWAVE
+   use MultiPhysicsProbConstants       , only : GE_SHORTWAVE
    !
    implicit none
    !
@@ -1000,7 +1002,8 @@ contains
     class (goveqn_richards_ode_pressure_type) , pointer :: goveq_richards
     class (goveqn_leaf_bnd_lyr_type)          , pointer :: goveq_lbl
     class (goveqn_photosynthesis_type)        , pointer :: goveq_phtsyn
-    class (goveqn_longwave_type)        , pointer :: goveq_longwave
+    class (goveqn_longwave_type)              , pointer :: goveq_longwave
+    class (goveqn_shortwave_type)             , pointer :: goveq_shortwave
     integer                                             :: igoveqn
 
     cur_goveqn => this%goveqns
@@ -1110,13 +1113,23 @@ contains
             cur_goveqn%next => goveq_longwave
          endif
 
+      case (GE_SHORTWAVE)
+         allocate(goveq_shortwave)
+         call goveq_shortwave%Setup()
+         goveq_shortwave%name              = trim(name)
+         goveq_shortwave%rank_in_soe_list  = this%ngoveqns
+         goveq_shortwave%mesh_rank         = mesh_rank
+
+         if (this%ngoveqns == 1) then
+            this%goveqns => goveq_shortwave
+         else
+            cur_goveqn%next => goveq_shortwave
+         endif
+
       case default
        write(iulog,*) 'Unknown governing equation type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
-    
-    !write(iulog,*) 'SOEBaseAddGovEqnWithMeshRank must be extended'
-    !call endrun(msg=errMsg(__FILE__, __LINE__))
 
   end subroutine SOEBaseAddGovEqnWithMeshRank
 
