@@ -28,6 +28,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: MPP_LBL_KSP                       = 16
   PetscInt, parameter, public :: MPP_PHOTOSYNTHESIS_SNES           = 17
   PetscInt, parameter, public :: MPP_LONGWAVE_KSP                  = 18
+  PetscInt, parameter, public :: MPP_SHORTWAVE_KSP                 = 19
 
   ! soe_itype
   PetscInt, parameter, public :: SOE_RE_ODE                        = 101
@@ -38,6 +39,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: SOE_LBL                           = 106
   PetscInt, parameter, public :: SOE_PHOTOSYNTHESIS                = 107
   PetscInt, parameter, public :: SOE_LONGWAVE                      = 108
+  PetscInt, parameter, public :: SOE_SHORTWAVE                     = 109
 
   ! ge_itype
   PetscInt, parameter, public :: GE_RE                             = 201
@@ -51,6 +53,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: GE_LEAF_BND_LAYER                 = 209
   PetscInt, parameter, public :: GE_PHOTOSYNTHESIS                 = 210
   PetscInt, parameter, public :: GE_LONGWAVE                       = 211
+  PetscInt, parameter, public :: GE_SHORTWAVE                      = 212
 
   ! mesh_itype
   PetscInt, parameter, public :: MESH_CLM_SOIL_COL                 = 301
