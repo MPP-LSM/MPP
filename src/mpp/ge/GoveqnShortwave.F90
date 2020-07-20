@@ -33,8 +33,8 @@ module GoveqnShortwaveType
      procedure, public :: PreSolve                  => ShortwavePreSolve
      procedure, public :: UpdateAuxVars             => ShortwaveUpdateAuxVars
      procedure, public :: SavePrimaryIndependentVar => ShortwaveSavePrmIndepVar
-     !procedure, public :: ComputeRhs                => ShortwaveComputeRhs
-     !procedure, public :: ComputeOperatorsDiag      => ShortwaveComputeOperatorsDiag
+     procedure, public :: ComputeRhs                => ShortwaveComputeRhs
+     procedure, public :: ComputeOperatorsDiag      => ShortwaveComputeOperatorsDiag
 
   end type goveqn_shortwave_type
 
@@ -57,7 +57,7 @@ contains
 
     this%name  = ""
     this%itype = GE_SHORTWAVE
-    this%dof   = 2
+    this%dof   = 4
 
     nullify(this%aux_vars_in)
     nullify(this%aux_vars_bc)
@@ -183,7 +183,7 @@ contains
   end subroutine ShortwaveUpdateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine ShortwaveComputeRhs(this, R, ierr)
+  subroutine ShortwaveComputeRhs(this, B, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -197,22 +197,22 @@ contains
     !
     ! !ARGUMENTS
     class(goveqn_shortwave_type) :: this
-    Vec                                   :: R
+    Vec                                   :: B
     PetscErrorCode                        :: ierr
     !
     type(shortwave_auxvar_type) , pointer :: avars(:)
     class(connection_set_type) , pointer  :: cur_conn_set
     class(condition_type)      , pointer  :: cur_cond
-    PetscScalar                , pointer  :: r_p(:)
+    PetscScalar                , pointer  :: b_p(:)
     PetscInt                              :: icell, iband, iconn, idx
     PetscInt                              :: sum_conn
     PetscInt                              :: cell_id_up, cell_id_dn
     PetscInt                              :: cell_i, cell_i_plus_1
-    PetscReal                             :: rho, tau, b, e
+    PetscReal                             :: rho, tau, bb, e
 
     avars => this%aux_vars_in
 
-    call VecGetArrayF90(R, r_p, ierr)
+    call VecGetArrayF90(B, b_p, ierr)
 
     ! Set RHS for upward
     do icell = 1, this%mesh%ncells_local
@@ -222,7 +222,7 @@ contains
           do iband = 1, avars(icell)%nband
              idx = (icell-1)*this%dof + (iband-1)*avars(icell)%nband + 1
              !c = rho_{g,h} * I_{sky,b} * T_{b,0}
-             r_p(idx) = avars(icell)%rad_source(iband)
+             b_p(idx) = avars(icell)%rad_source(iband)
           end do
 
        else
@@ -236,7 +236,7 @@ contains
              tau = avars(icell)%leaf_tau(iband)
              e   = avars(icell)%e(iband)
 
-             r_p(idx) = avars(icell)%rad_source(iband) * (rho - tau * e)
+             b_p(idx) = avars(icell)%rad_source(iband) * (rho - tau * e)
           end do
        end if
     end do
@@ -264,8 +264,8 @@ contains
 
              tau = avars(cell_i_plus_1)%leaf_tau(iband)
              rho = avars(cell_i_plus_1)%leaf_rho(iband)
-             b   = avars(cell_i_plus_1)%e(iband)
-             r_p(idx) = avars(cell_i_plus_1)%rad_source(iband) * (tau - rho * b)
+             bb   = avars(cell_i_plus_1)%e(iband)
+             b_p(idx) = avars(cell_i_plus_1)%rad_source(iband) * (tau - rho * bb)
           end do
 
        enddo
@@ -290,14 +290,14 @@ contains
 
           do iband = 1, avars(icell)%nband
              idx = (icell-1)*this%dof + (iband-1)*avars(icell)%nband + 2
-             r_p(idx) = this%aux_vars_bc(sum_conn)%Iskyd(iband)             
+             b_p(idx) = this%aux_vars_bc(sum_conn)%Iskyd(iband)
           end do
 
        enddo
        cur_cond => cur_cond%next
     enddo
 
-    call VecRestoreArrayF90(R, r_p, ierr)
+    call VecRestoreArrayF90(B, b_p, ierr)
 
   end subroutine ShortwaveComputeRhs
 
