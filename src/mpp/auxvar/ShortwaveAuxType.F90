@@ -14,8 +14,8 @@ module ShortwaveAuxType
   type, public :: shortwave_auxvar_type
 
      ! Primary indepedent variables
-     PetscReal          :: Iup                  ! upward longwave flux above layer
-     PetscReal          :: Idn                  ! downward longwave flux onto layer
+     PetscReal, pointer :: Iup(:)               ! upward longwave flux above layer (size = nband)
+     PetscReal, pointer :: Idn(:)               ! downward longwave flux onto layer (size = nband)
 
      PetscInt           :: nband
 
@@ -70,6 +70,9 @@ contains
     PetscInt                     :: nband
 
     nband = 2
+    allocate(this%Iup               (nband       ))
+    allocate(this%Idn               (nband       ))
+
     allocate(this%Iskyb             (nband       ))
     allocate(this%Iskyd             (nband       ))
 
@@ -90,8 +93,8 @@ contains
     allocate(this%Iabs_soil         (nband       ))
 
 
-    this%Idn                  = 0.d0
-    this%Idn                  = 0.d0
+    this%Iup(:)               = 0.d0
+    this%Idn(:)               = 0.d0
 
     this%nband                = nband
     this%nleaf                = nleaf
