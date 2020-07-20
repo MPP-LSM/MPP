@@ -29,12 +29,12 @@ module ShortwaveAuxType
      PetscReal          :: leaf_td              ! exponential transmittances of diffuse radiation through a single leaf
      PetscReal          :: leaf_tb              ! exponential transmittances of direct radiation through a single leaf
      PetscReal          :: leaf_tbcum           ! cumulative exponential transmittance of direct beam onto a canopy layer
-     PetscReal, pointer :: leaf_dlai(:)         ! layer leaf area index (m^2/m^2) (size = nleaf)
+     PetscReal          :: leaf_dlai            ! layer leaf area index (m^2/m^2) (size = nleaf)
      PetscReal, pointer :: leaf_fraction(:)     ! fraction of leaf(size = nleaf)
      
 
      PetscBool          :: is_soil              ! TRUE if the grid cell is a soil grid cell
-     PetscReal, pointer :: soil_albedo(:)       ! ground albedo (size = nband)
+     PetscReal, pointer :: soil_albedo(:)       ! ground albedo (size = nleaf*nband)
 
      ! entries of the matrix to setup the matrix and rhs of the linear system
      PetscReal, pointer :: f(:)                 ! (size = nband)
@@ -70,13 +70,15 @@ contains
     PetscInt                     :: nband
 
     nband = 2
+    allocate(this%Iskyb             (nband       ))
+    allocate(this%Iskyd             (nband       ))
+
     allocate(this%leaf_rho          (nband       ))
     allocate(this%leaf_tau          (nband       ))
     allocate(this%leaf_omega        (nband       ))
     allocate(this%leaf_fraction     (nleaf       ))
-    allocate(this%leaf_dlai         (nleaf       ))
 
-    allocate(this%soil_albedo       (nband       ))
+    allocate(this%soil_albedo       (nleaf*nband ))
 
     allocate(this%f                 (nband       ))
     allocate(this%e                 (nband       ))
@@ -100,7 +102,7 @@ contains
     this%leaf_tb              = 0.d0
     this%leaf_td              = 0.d0
     this%leaf_tbcum           = 0.d0
-    this%leaf_dlai(:)         = 0.d0
+    this%leaf_dlai            = 0.d0
     this%leaf_fraction(:)     = 0.d0
 
     this%is_soil              = PETSC_FALSE
