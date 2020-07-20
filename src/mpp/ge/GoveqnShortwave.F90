@@ -136,7 +136,7 @@ contains
     Vec :: x
     !
     PetscScalar, pointer :: x_p(:)
-    PetscInt             :: ghosted_id, size
+    PetscInt             :: ghosted_id, size, nband, iband
     PetscErrorCode       :: ierr
 
     call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
@@ -147,9 +147,12 @@ contains
 
     call VecGetArrayF90(x, x_p, ierr); CHKERRQ(ierr)
 
+    nband = this%aux_vars_in(1)%nband
     do ghosted_id = 1, this%mesh%ncells_local
-       this%aux_vars_in(ghosted_id)%Iup  = x_p((ghosted_id-1)*this%dof + 1)
-       this%aux_vars_in(ghosted_id)%Idn  = x_p((ghosted_id-1)*this%dof + 2)
+       do iband = 1, nband
+          this%aux_vars_in(ghosted_id)%Iup(iband)  = x_p((ghosted_id-1)*this%dof + (iband-1)*nband + 1)
+          this%aux_vars_in(ghosted_id)%Idn(iband)  = x_p((ghosted_id-1)*this%dof + (iband-1)*nband + 2)
+       end do
     end do
 
     call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)

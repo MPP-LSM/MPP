@@ -637,6 +637,7 @@ contains
     PetscErrorCode             :: ierr
 
     call VecCopy(this%solver%soln, this%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call this%SavePrimaryIndependentVar(this%solver%soln)
 
   end subroutine SOEBasePostSolve
 
