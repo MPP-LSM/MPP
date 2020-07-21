@@ -11,6 +11,7 @@ set(MPP_AUXVAR_SOURCES
   RichardsODEPressureAuxType.F90
   RichardsODEPressureAuxMod.F90
   RichardsODEPressureConnAuxType.F90
+  ShortwaveAuxType.F90
   SystemOfEquationsVSFMAuxType.F90
   SystemOfEquationsThermalEnthalpyAuxType.F90
   SystemOfEquationsThermalAuxType.F90

@@ -7,6 +7,7 @@ set(MPP_GE_SOURCES
   GoveqnLongwave.F90
   GoveqnPhotosynthesis.F90
   GoveqnRichardsODEPressureType.F90
+  GoveqnShortwave.F90
   GoveqnThermalEnthalpySoilType.F90
   GoveqnThermalKSPTemperatureSSWType.F90
   GoveqnThermalKSPTemperatureSnowType.F90

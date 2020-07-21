@@ -1,4 +1,4 @@
-module GoveqnLongwaveType
+module GoveqnShortwaveType
 
 #ifdef USE_PETSC_LIB
   !#define USE_BONAN_FORMULATION
@@ -10,7 +10,7 @@ module GoveqnLongwaveType
   use mpp_abortutils            , only : endrun
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use GoverningEquationBaseType , only : goveqn_base_type
-  use LongwaveAuxType           , only : longwave_auxvar_type
+  use ShortwaveAuxType           , only : shortwave_auxvar_type
   use petscvec
   use petscmat
   use petscsys
@@ -19,55 +19,55 @@ module GoveqnLongwaveType
   implicit none
   private
 
-  type, public, extends(goveqn_base_type) :: goveqn_longwave_type
+  type, public, extends(goveqn_base_type) :: goveqn_shortwave_type
 
-     type(longwave_auxvar_type)      , pointer :: aux_vars_in(:)
-     type(longwave_auxvar_type)      , pointer :: aux_vars_bc(:)
+     type(shortwave_auxvar_type)      , pointer :: aux_vars_in(:)
+     type(shortwave_auxvar_type)      , pointer :: aux_vars_bc(:)
 
      PetscInt                                   :: nLeaf
 
    contains
 
-     procedure, public :: Setup                     => LongwaveSetup
-     procedure, public :: AllocateAuxVars           => LongwaveAllocateAuxVars
-     procedure, public :: PreSolve                  => LongwavePreSolve
-     procedure, public :: UpdateAuxVars             => LongwaveUpdateAuxVars
-     procedure, public :: SavePrimaryIndependentVar => LongwaveSavePrmIndepVar
-     procedure, public :: ComputeRhs                => LongwaveComputeRhs
-     procedure, public :: ComputeOperatorsDiag      => LongwaveComputeOperatorsDiag
+     procedure, public :: Setup                     => ShortwaveSetup
+     procedure, public :: AllocateAuxVars           => ShortwaveAllocateAuxVars
+     procedure, public :: PreSolve                  => ShortwavePreSolve
+     procedure, public :: UpdateAuxVars             => ShortwaveUpdateAuxVars
+     procedure, public :: SavePrimaryIndependentVar => ShortwaveSavePrmIndepVar
+     !procedure, public :: ComputeRhs                => ShortwaveComputeRhs
+     !procedure, public :: ComputeOperatorsDiag      => ShortwaveComputeOperatorsDiag
 
-  end type goveqn_longwave_type
+  end type goveqn_shortwave_type
 
 contains
   !------------------------------------------------------------------------
-  subroutine LongwaveSetup(this)
+  subroutine ShortwaveSetup(this)
     !
     ! !DESCRIPTION:
     ! Default setup of governing equation
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GE_LONGWAVE
+    use MultiPhysicsProbConstants, only : GE_SHORTWAVE
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_shortwave_type) :: this
 
     call this%Create()
 
     this%name  = ""
-    this%itype = GE_LONGWAVE
-    this%dof   = 3
+    this%itype = GE_SHORTWAVE
+    this%dof   = 2
 
     nullify(this%aux_vars_in)
     nullify(this%aux_vars_bc)
 
     this%nLeaf = 1
 
-  end subroutine LongwaveSetup
+  end subroutine ShortwaveSetup
 
   !---------------------------------------------------------------------
-  subroutine LongwaveAllocateAuxVars(this)
+  subroutine ShortwaveAllocateAuxVars(this)
     !
     ! !DESCRIPTION:
     ! Allocates memory for storing auxiliary variables associated with:
@@ -79,10 +79,10 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_shortwave_type)   :: this
     !
-    type(condition_type)         , pointer :: cur_cond
-    PetscInt                          :: ghosted_id, ncells_cond, icond
+    type(condition_type) , pointer :: cur_cond
+    PetscInt                       :: ghosted_id, ncells_cond, icond
 
     ! Allocate memory and initialize aux vars: For internal cells
     allocate(this%aux_vars_in(this%mesh%ncells_all))
@@ -107,10 +107,10 @@ contains
     do icond = 1,ncells_cond
        call this%aux_vars_bc(icond)%Init(0)
     enddo
-  end subroutine LongwaveAllocateAuxVars
+  end subroutine ShortwaveAllocateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine LongwavePreSolve(this)
+  subroutine ShortwavePreSolve(this)
     !
     ! !DESCRIPTION:
     ! Presolve
@@ -118,21 +118,21 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_shortwave_type) :: this
 
     call this%UpdateAuxVars()
 
-  end subroutine LongwavePreSolve
+  end subroutine ShortwavePreSolve
 
   !------------------------------------------------------------------------
-  subroutine LongwaveSavePrmIndepVar (this, x)
+  subroutine ShortwaveSavePrmIndepVar (this, x)
     !
     ! !DESCRIPTION:
     !
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_shortwave_type) :: this
     Vec :: x
     !
     PetscScalar, pointer :: x_p(:)
@@ -150,16 +150,15 @@ contains
     do ghosted_id = 1, this%mesh%ncells_local
        this%aux_vars_in(ghosted_id)%Iup  = x_p((ghosted_id-1)*this%dof + 1)
        this%aux_vars_in(ghosted_id)%Idn  = x_p((ghosted_id-1)*this%dof + 2)
-       this%aux_vars_in(ghosted_id)%Iabs = x_p((ghosted_id-1)*this%dof + 3)
     end do
 
     call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)
 
-  end subroutine LongwaveSavePrmIndepVar
+  end subroutine ShortwaveSavePrmIndepVar
 
   !------------------------------------------------------------------------
 
-  subroutine LongwaveUpdateAuxVars(this)
+  subroutine ShortwaveUpdateAuxVars(this)
     !
     ! !DESCRIPTION:
     ! Updates auxiliary variable associated with internal control volumes
@@ -167,7 +166,7 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_shortwave_type) :: this
     !
     ! !LOCAL VARIABLES
     PetscInt                            :: ghosted_id
@@ -181,10 +180,10 @@ contains
        end if
     enddo
 
-  end subroutine LongwaveUpdateAuxVars
+  end subroutine ShortwaveUpdateAuxVars
 
   !------------------------------------------------------------------------
-  subroutine LongwaveComputeRhs(this, B, ierr)
+  subroutine ShortwaveComputeRhs(this, R, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -197,39 +196,48 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
-    Vec                                   :: B
+    class(goveqn_shortwave_type) :: this
+    Vec                                   :: R
     PetscErrorCode                        :: ierr
     !
-    type(longwave_auxvar_type) , pointer  :: avars(:)
+    type(shortwave_auxvar_type) , pointer :: avars(:)
     class(connection_set_type) , pointer  :: cur_conn_set
     class(condition_type)      , pointer  :: cur_cond
-    PetscScalar                , pointer  :: b_p(:)
-    PetscInt                              :: icell    , ileaf, iconn
+    PetscScalar                , pointer  :: r_p(:)
+    PetscInt                              :: icell, iband, iconn, idx
     PetscInt                              :: sum_conn
     PetscInt                              :: cell_id_up, cell_id_dn
     PetscInt                              :: cell_i, cell_i_plus_1
-    PetscReal                             :: b_i, e_i
+    PetscReal                             :: rho, tau, b, e
 
     avars => this%aux_vars_in
 
-    call VecGetArrayF90(B, b_p, ierr)
+    call VecGetArrayF90(R, r_p, ierr)
 
-    ! Set RHS for upwind and absorbed radiation
+    ! Set RHS for upward
     do icell = 1, this%mesh%ncells_local
 
        if (avars(icell)%is_soil) then
 
-          b_p((icell-1)*this%dof + 1) = avars(icell)%rad_source ! upward
-          b_p((icell-1)*this%dof + 3) = 0                       ! absorbed
+          do iband = 1, avars(icell)%nband
+             idx = (icell-1)*this%dof + (iband-1)*avars(icell)%nband + 1
+             !c = rho_{g,h} * I_{sky,b} * T_{b,0}
+             r_p(idx) = avars(icell)%rad_source(iband)
+          end do
 
        else
-          !
-          ! Upward flux: c = (1-e_i) * (1-tau_{d,i}) * emiss * sigma * T^4
-          b_p((icell-1)*this%dof + 1) = (1.d0 - avars(icell)%e ) * avars(icell)%rad_source ! upward
+          do iband = 1, avars(icell)%nband
+             idx = (icell-1)*this%dof + (iband-1)*avars(icell)%nband + 1
 
-          ! Absorbed flux: -2 * (1-tau_{d,i}) * emiss * sigma * T^4
-          b_p((icell-1)*this%dof + 3) = -2.d0                    * avars(icell)%rad_source ! absorbed
+             !c_i = I_{sky,b} * (1 - tau_{b,i}) * (rho_{l,i} - tau_{leaf,i} * e_i)
+             !    = rad_source_{b,i})           * (rho_{l,i} - tau_{leaf,i} * e_i)
+
+             rho = avars(icell)%leaf_rho(iband)
+             tau = avars(icell)%leaf_tau(iband)
+             e   = avars(icell)%e(iband)
+
+             r_p(idx) = avars(icell)%rad_source(iband) * (rho - tau * e)
+          end do
        end if
     end do
 
@@ -247,10 +255,18 @@ contains
 
           call DetermineCellIDsTopAndBottom(this, cell_id_up, cell_id_dn, cell_i, cell_i_plus_1);
 
-          ! Downward flux: d_i = (1 - b_i    ) * (...)
-          !                    = (1 - e_{i+1}) * (...)
           icell = cell_i
-          b_p((icell-1)*this%dof + 2) = (1.d0 - avars(cell_i_plus_1)%e) * avars(cell_i_plus_1)%rad_source
+          do iband = 1, avars(cell_id_up)%nband
+             idx = (icell-1)*this%dof + (iband-1)*avars(icell)%nband + 2
+
+             ! Downward flux: d_i = I_{sky,b} * (1 - tau_{b,i+1}) * (tau_{leaf,i+1} - rho_{leaf,i+1}*b_i)
+             !                    = rad_source(i+1)               * (tau_{leaf,i+1} - rho_{leaf,1+1}*b_i)
+
+             tau = avars(cell_i_plus_1)%leaf_tau(iband)
+             rho = avars(cell_i_plus_1)%leaf_rho(iband)
+             b   = avars(cell_i_plus_1)%e(iband)
+             r_p(idx) = avars(cell_i_plus_1)%rad_source(iband) * (tau - rho * b)
+          end do
 
        enddo
 
@@ -272,15 +288,18 @@ contains
 
           if ( (.not. this%mesh%is_active(icell))) cycle
 
-          b_p((icell-1)*this%dof + 2) = this%aux_vars_bc(sum_conn)%Idn ! downward
+          do iband = 1, avars(icell)%nband
+             idx = (icell-1)*this%dof + (iband-1)*avars(icell)%nband + 2
+             r_p(idx) = this%aux_vars_bc(sum_conn)%Iskyd(iband)             
+          end do
 
        enddo
        cur_cond => cur_cond%next
     enddo
 
-    call VecRestoreArrayF90(B, b_p, ierr)
+    call VecRestoreArrayF90(R, r_p, ierr)
 
-  end subroutine LongwaveComputeRhs
+  end subroutine ShortwaveComputeRhs
 
 
   !------------------------------------------------------------------------
@@ -289,7 +308,7 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_shortwave_type) :: this
     PetscInt :: icell_1, icell_2
     PetscInt :: icell_top, icell_bot
 
@@ -305,7 +324,7 @@ contains
 
   !------------------------------------------------------------------------
 
-  subroutine LongwaveComputeOperatorsDiag(this, A, B, ierr)
+  subroutine ShortwaveComputeOperatorsDiag(this, A, B, ierr)
     !
     ! !DESCRIPTION:
     !
@@ -316,24 +335,25 @@ contains
     implicit none
     !
     ! !ARGUMENTS
-    class(goveqn_longwave_type) :: this
+    class(goveqn_shortwave_type) :: this
     Mat                          :: A
     Mat                          :: B
     PetscErrorCode               :: ierr
     !
     ! !LOCAL VARIABLES
-    class(connection_set_type) , pointer :: cur_conn_set
-    type(condition_type)       , pointer :: cur_cond
-    type(longwave_auxvar_type) , pointer :: avars(:)
-    PetscInt                             :: icell, ileaf, iconn, idof, sum_conn
-    PetscInt                             :: cell_id, cell_id_up, cell_id_dn
+    class(connection_set_type)  , pointer :: cur_conn_set
+    type(condition_type)        , pointer :: cur_cond
+    type(shortwave_auxvar_type) , pointer :: avars(:)
+    PetscInt                              :: icell, iband, nband, iconn, idof, sum_conn
+    PetscInt                              :: cell_id, cell_id_up, cell_id_dn
     PetscInt                              :: cell_i, cell_i_plus_1
-    PetscInt                             :: row, col
-    PetscReal                            :: value, ga, dist, gsw, gsa, gs0
-    PetscReal                            :: qsat, si, lambda
-    PetscBool                            :: found
+    PetscInt                              :: row, col
+    PetscReal                             :: value, ga, dist, gsw, gsa, gs0
+    PetscReal                             :: qsat, si, lambda
+    PetscBool                             :: found
 
     avars => this%aux_vars_in
+    nband = avars(1)%nband
 
     do icell = 1, this%mesh%ncells_local
 
@@ -346,26 +366,14 @@ contains
 
        if (avars(icell)%is_soil) then
 
-          value = avars(icell)%f
-          row = (icell-1)*this%dof
-          col = row + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
+          do iband = 1, nband
+             value = -avars(icell)%f(iband)
 
-          value = 1.d0
-          row = (icell-1)*this%dof + 2
-          col = (icell-1)*this%dof
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
+             row = (icell-1)*this%dof + (iband-1)*nband
+             col = row + 1
+             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
+          end do
 
-          value = -1.d0
-          row = (icell-1)*this%dof + 2
-          col = (icell-1)*this%dof + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
-
-       else
-          value = -avars(icell)%leaf_emiss * (1.d0 - avars(icell)%trans)
-          row = (icell-1)*this%dof + 2
-          col = row - 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
        end if
     end do
 
@@ -382,45 +390,39 @@ contains
 
           call DetermineCellIDsTopAndBottom(this, cell_id_up, cell_id_dn, cell_i, cell_i_plus_1);
 
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          ! Insert a_i     for the i-th     downward flux
-          ! Insert f_{i+1} for the {i+1}-th upward flux
-          !
-          ! Note: a_i = f_{i+1}
-          value = -avars(cell_i_plus_1)%f
+          do iband = 1, nband
+             ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+             ! Insert a_i     for the i-th     downward flux
+             ! Insert f_{i+1} for the {i+1}-th upward flux
+             !
+             ! Note: a_i = f_{i+1}
+             value = -avars(cell_i_plus_1)%f(iband)
 
-          row = (cell_i - 1)*this%dof + 1
-          col = (cell_i - 1)*this%dof
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             row = (cell_i - 1)*this%dof + (iband-1)*nband + 1
+             col = row - 1
+             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-          row = (cell_i_plus_1 - 1)*this%dof
-          col = (cell_i_plus_1 - 1)*this%dof + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+             row = (cell_i_plus_1 - 1)*this%dof + (iband-1)*nband
+             col = row + 1
+             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          ! Insert b_i     for the i-th     downward flux
-          ! Insert e_{i+1} for the {i+1}-th upward flux
-          !
-          ! Note: b_i = e_{i+1}
-          value = -avars(cell_i_plus_1)%e
+             ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+             ! Insert b_i     for the i-th     downward flux
+             ! Insert e_{i+1} for the {i+1}-th upward flux
+             !
+             ! Note: b_i = e_{i+1}
+             value = -avars(cell_i_plus_1)%e(iband)
 
-          row = (cell_i        - 1)*this%dof + 1
-          col = (cell_i_plus_1 - 1)*this%dof
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             row = (cell_i        - 1)*this%dof + (iband-1)*nband + 1
+             col = (cell_i_plus_1 - 1)*this%dof + (iband-1)*nband
+             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-          row = (cell_i_plus_1 - 1)*this%dof
-          col = (cell_i        - 1)*this%dof + 1
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          ! Insert -emis * (1 - tau)
-          value = -avars(cell_i_plus_1)%leaf_emiss * (1.d0 - avars(cell_i_plus_1)%trans)
-          row = (cell_i_plus_1 - 1)*this%dof + 2
-          col = (cell_i        - 1)*this%dof
-          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+             row = (cell_i_plus_1 - 1)*this%dof + (iband-1)*nband
+             col = (cell_i        - 1)*this%dof + (iband-1)*nband + 1
+             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+          enddo
 
        enddo
 
@@ -430,7 +432,8 @@ contains
     call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
 
-  end subroutine LongwaveComputeOperatorsDiag
+  end subroutine ShortwaveComputeOperatorsDiag
+
 #endif
 
-end module GoveqnLongwaveType
+end module GoveqnShortwaveType
