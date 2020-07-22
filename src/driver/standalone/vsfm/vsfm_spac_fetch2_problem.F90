@@ -19,7 +19,7 @@ module vsfm_spac_fetch2_problem
 
   PetscInt  , parameter :: nx       = 1             ! -
   PetscInt  , parameter :: ny       = 1             ! -
-  PetscReal , parameter :: dx       = 1.d0          ! m
+  PetscReal , parameter :: dx       = 75650.d0          ! m
   PetscReal , parameter :: dy       = 1.d0          ! m
   PetscReal , parameter :: dz_xylem = 0.2d0         ! m
   PetscReal , parameter :: dz_soil  = 0.1d0         ! m
@@ -27,7 +27,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: porosity = 0.45d0        ! [-]
 
   PetscInt  , parameter :: oak_nz       = 59        ! -
-  PetscReal , parameter :: oak_Asapwood = 0.0177d0  ! m^2
+  PetscReal , parameter :: oak_Asapwood = 795.d0  ! m^2
   PetscReal , parameter :: oak_phis50_def   = -0.80d6   ! Pa
   PetscReal , parameter :: oak_phi50_def    = -2.5d6    ! Pa
   PetscReal , parameter :: oak_phi88_def    = -0.5d6    ! Pa
@@ -35,9 +35,10 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: oak_c2_def       = 3.0d0     ! -
   PetscReal , parameter :: oak_c3_def       = 12.3d0    ! -
   PetscReal , parameter :: oak_kmax_def     = 6.65d-6    ! s
+  PetscInt  , parameter :: oak_ntree        = 81
 
   PetscInt  , parameter :: pine_nz       = 85       ! -
-  PetscReal , parameter :: pine_Asapwood = 0.00166d0 ! m^2
+  PetscReal , parameter :: pine_Asapwood = 7658d0 ! m^2
   PetscReal , parameter :: pine_phis50_def   = -1.00d6  ! Pa
   PetscReal , parameter :: pine_phi50_def    = -2.2d6   ! Pa
   PetscReal , parameter :: pine_phi88_def    = -0.5d6   ! Pa
@@ -45,9 +46,10 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_c2_def       = 5.0d0    ! -
   PetscReal , parameter :: pine_c3_def       = 10.3d0   ! -
   PetscReal , parameter :: pine_kmax_def     = 2.75d-6   ! s
+  PetscInt  , parameter :: pine_ntree        = 2809
 
   PetscInt  , parameter :: maple_nz       = 85       ! -
-  PetscReal , parameter :: maple_Asapwood = 0.0159d0 ! m^2
+  PetscReal , parameter :: maple_Asapwood = 1977.d0 ! m^2
   PetscReal , parameter :: maple_phis50_def   = -1.50d6  ! Pa
   PetscReal , parameter :: maple_phi50_def    = -2.2d6   ! Pa
   PetscReal , parameter :: maple_phi88_def    = -0.5d6   ! Pa
@@ -55,9 +57,10 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: maple_c2_def       = 5.0d0    ! -
   PetscReal , parameter :: maple_c3_def       = 10.3d0   ! -
   PetscReal , parameter :: maple_kmax_def     = 2.75d-6   ! s
+  PetscInt  , parameter :: maple_ntree        = 436
 
   PetscInt  , parameter :: es_nz       = 85       ! -
-  PetscReal , parameter :: es_Asapwood = 0.0198d0 ! m^2
+  PetscReal , parameter :: es_Asapwood = 4426.d0 ! m^2
   PetscReal , parameter :: es_phis50_def   = -2.50d6  ! Pa
   PetscReal , parameter :: es_phi50_def    = -2.2d6   ! Pa
   PetscReal , parameter :: es_phi88_def    = -0.5d6   ! Pa
@@ -65,6 +68,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: es_c2_def       = 5.0d0    ! -
   PetscReal , parameter :: es_c3_def       = 10.3d0   ! -
   PetscReal , parameter :: es_kmax_def     = 0.275d-6   ! s
+  PetscInt  , parameter :: es_ntree        = 3342
 
   ! Parameters for root length density = length-of-root/volume-of-soil  [m_root/m^3_soil]
   PetscInt , parameter :: oak_root_nz        = 60
@@ -4116,7 +4120,7 @@ end subroutine SetUpTreeProperties
     PetscReal, pointer :: et_p(:)
     PetscErrorCode     :: ierr
     PetscInt           :: soe_auxvar_id
-    PetscInt           :: kk, ss_idx, IDX, ieqn
+    PetscInt           :: kk, ss_idx, IDX, ieqn, ntree
 
     ! Set source sink
     call VecGetArrayF90(ET, et_p, ierr)
@@ -4127,13 +4131,13 @@ end subroutine SetUpTreeProperties
     do ii = 1,4
        select case(ii)
        case (1)
-          IDX = E_IDX; ieqn = GE_e_xylm;
+          IDX = E_IDX; ieqn = GE_e_xylm; ntree = es_ntree;
        case (2)
-          IDX = M_IDX; ieqn = GE_m_xylm;
+          IDX = M_IDX; ieqn = GE_m_xylm; ntree = maple_ntree;
        case (3)
-          IDX = O_IDX; ieqn = GE_o_xylm;
+          IDX = O_IDX; ieqn = GE_o_xylm; ntree = oak_ntree;
        case (4)
-          IDX = P_IDX; ieqn = GE_p_xylm;
+          IDX = P_IDX; ieqn = GE_p_xylm; ntree = pine_ntree;
        end select
 
        if (ieqn==0) cycle
@@ -4143,18 +4147,7 @@ end subroutine SetUpTreeProperties
        ! Save PET data for xylem
        do kk = 1, nz(IDX)
           ss_idx = ss_idx + 1
-          if (ii==1) then
-          ss_value(kk) = -et_p(ss_idx)*dz_xylem!*2.0d0
-          endif
-          if (ii==2) then
-          ss_value(kk) = -et_p(ss_idx)*dz_xylem
-          endif
-          if (ii==3) then
-          ss_value(kk) = -et_p(ss_idx)*dz_xylem
-          endif
-          if (ii==4) then
-          ss_value(kk) = -et_p(ss_idx)*dz_xylem!*2.0d0
-          endif
+          ss_value(kk) = -et_p(ss_idx)*dz_xylem*ntree
        end do
 
        ! Set PET for xylem
