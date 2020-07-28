@@ -27,7 +27,7 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: porosity = 0.45d0        ! [-]
 
   PetscInt  , parameter :: oak_nz       = 59        ! -
-  PetscReal , parameter :: oak_Asapwood = 795.d0  ! m^2
+  PetscReal , parameter :: oak_Asapwood = 14.0686d0  ! m^2
   PetscReal , parameter :: oak_phis50_def   = -0.80d6   ! Pa
   PetscReal , parameter :: oak_phi50_def    = -2.5d6    ! Pa
   PetscReal , parameter :: oak_phi88_def    = -0.5d6    ! Pa
@@ -38,7 +38,7 @@ module vsfm_spac_fetch2_problem
   PetscInt  , parameter :: oak_ntree        = 81
 
   PetscInt  , parameter :: pine_nz       = 85       ! -
-  PetscReal , parameter :: pine_Asapwood = 7658d0 ! m^2
+  PetscReal , parameter :: pine_Asapwood = 12.7130d0 ! m^2
   PetscReal , parameter :: pine_phis50_def   = -1.00d6  ! Pa
   PetscReal , parameter :: pine_phi50_def    = -2.2d6   ! Pa
   PetscReal , parameter :: pine_phi88_def    = -0.5d6   ! Pa
@@ -49,7 +49,7 @@ module vsfm_spac_fetch2_problem
   PetscInt  , parameter :: pine_ntree        = 2809
 
   PetscInt  , parameter :: maple_nz       = 85       ! -
-  PetscReal , parameter :: maple_Asapwood = 1977.d0 ! m^2
+  PetscReal , parameter :: maple_Asapwood = 31.4334d0 ! m^2
   PetscReal , parameter :: maple_phis50_def   = -1.50d6  ! Pa
   PetscReal , parameter :: maple_phi50_def    = -2.2d6   ! Pa
   PetscReal , parameter :: maple_phi88_def    = -0.5d6   ! Pa
@@ -60,7 +60,7 @@ module vsfm_spac_fetch2_problem
   PetscInt  , parameter :: maple_ntree        = 436
 
   PetscInt  , parameter :: es_nz       = 85       ! -
-  PetscReal , parameter :: es_Asapwood = 4426.d0 ! m^2
+  PetscReal , parameter :: es_Asapwood = 87.6282d0 ! m^2
   PetscReal , parameter :: es_phis50_def   = -2.50d6  ! Pa
   PetscReal , parameter :: es_phi50_def    = -2.2d6   ! Pa
   PetscReal , parameter :: es_phi88_def    = -0.5d6   ! Pa
