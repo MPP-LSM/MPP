@@ -15,8 +15,10 @@ module ml_model_global_vars
 
   PetscReal , parameter :: hc       = 21.d0
 
-  PetscInt, parameter :: nbot = 6
+  PetscInt :: nbot
   PetscInt, parameter :: ntop = 42
+
+  PetscReal, pointer :: dpai(:), fssh(:)
 
   PetscInt  :: ncair
   PetscInt  :: ntree

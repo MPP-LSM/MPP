@@ -15,10 +15,10 @@ module ml_model_problem
 
   implicit none
 
-  type(mpp_shortwave_type)      :: shortwave_mpp
-  type(mpp_longwave_type)       :: longwave_mpp
+  type(mpp_shortwave_type)      :: swv_mpp
+  type(mpp_longwave_type)       :: lwv_mpp
   type(mpp_lbl_type)            :: lbl_mpp
-  type(mpp_photosynthesis_type) :: phtsyn_mpp
+  type(mpp_photosynthesis_type) :: psy_mpp
   type(mpp_mlc_type)            :: mlc_mpp
 
 #include <petsc/finclude/petsc.h>
@@ -80,6 +80,21 @@ contains
   end subroutine read_command_options
 
   !------------------------------------------------------------------------
+  subroutine init_mpps()
+    !
+    use swv, only : init_swv
+    !
+    implicit none
+
+    call init_swv(swv_mpp)
+    !call init_lwv(lwv_mpp)
+    !call init_lbl(lbl_mpp)
+    !call init_psy(psy_mpp)
+    !call init_mlc(mlc_mpp)
+
+  end subroutine init_mpps
+
+  !------------------------------------------------------------------------
   subroutine run_ml_model_problem(namelist_filename)
     !
     implicit none
@@ -95,6 +110,8 @@ contains
 
     call read_command_options()
     call read_namelist_file(namelist_filename)
+
+    call init_mpps()
 
   end subroutine run_ml_model_problem
 
