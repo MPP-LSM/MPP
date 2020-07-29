@@ -29,6 +29,7 @@ module GoveqnLeafBoundaryLayer
      procedure, public :: ComputeRHS                => LeafBndLyrComputeRHS
      procedure, public :: ComputeOperatorsDiag      => LeafBndLyrComputeOperatorsDiag
      procedure, public :: GetRValues                => LeafBndLyrGetRValues
+     procedure, public :: SavePrimaryIndependentVar => LeafBndLyrSavePrmIndepVar
 
   end type goveqn_leaf_bnd_lyr_type
 
@@ -101,6 +102,42 @@ contains
         avars(icell)%rhomol = avars(icell)%patm / (RGAS * avars(icell)%tair)
     enddo
   end subroutine LeafBndLyrPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine LeafBndLyrSavePrmIndepVar (this, x)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use CanopyTurbulenceAuxType, only : canopy_turbulence_auxvar_type 
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_leaf_bnd_lyr_type) :: this
+    Vec :: x
+    !
+    PetscScalar, pointer :: x_p(:)
+    PetscInt             :: ghosted_id, size
+    PetscErrorCode       :: ierr
+    
+    call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
+
+    if (size /= this%mesh%ncells_local*this%dof) then
+       call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    end if
+
+    call VecGetArrayF90(x, x_p, ierr); CHKERRQ(ierr)
+
+    do ghosted_id = 1, this%mesh%ncells_local
+       this%aux_vars_in(ghosted_id)%gbh = x_p((ghosted_id-1)*3 + 1)
+       this%aux_vars_in(ghosted_id)%gbv = x_p((ghosted_id-1)*3 + 2)
+       this%aux_vars_in(ghosted_id)%gbc = x_p((ghosted_id-1)*3 + 3)
+   end do
+
+    call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)
+
+  end subroutine LeafBndLyrSavePrmIndepVar
 
   !------------------------------------------------------------------------
   subroutine LeafBndLyrComputeRHS(this, B, ierr)
