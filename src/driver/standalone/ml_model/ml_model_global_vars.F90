@@ -29,6 +29,9 @@ module ml_model_global_vars
   PetscInt :: LONGWAVE_MESH
   PetscInt :: LONGWAVE_GE
 
+  PetscInt :: LBL_MESH
+  PetscInt :: LBL_GE
+
   PetscInt :: CAIR_MESH
   PetscInt :: CLEF_MESH
   PetscInt :: SOIL_MESH
