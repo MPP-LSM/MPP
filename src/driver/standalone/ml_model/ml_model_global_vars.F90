@@ -15,8 +15,8 @@ module ml_model_global_vars
   PetscReal , parameter :: hc       = 21.d0
   PetscInt  , parameter :: nveg     = 42
 
-  PetscInt :: nbot
-  PetscInt :: ntop
+  PetscInt :: nbot, ntop
+  PetscInt :: c3psn, gstype
 
   PetscReal, pointer :: dpai(:), cumlai(:), fssh(:)
 
@@ -31,6 +31,9 @@ module ml_model_global_vars
 
   PetscInt :: LBL_MESH
   PetscInt :: LBL_GE
+
+  PetscInt :: PHOTOSYNTHESIS_MESH
+  PetscInt :: PHOTOSYNTHESIS_GE
 
   PetscInt :: CAIR_MESH
   PetscInt :: CLEF_MESH

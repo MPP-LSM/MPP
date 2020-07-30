@@ -82,10 +82,11 @@ contains
   !------------------------------------------------------------------------
   subroutine init_mpps()
     !
-    use ml_model_utils , only: compute_dpai_fssh
+    use ml_model_utils , only : compute_dpai_fssh
     use swv            , only : init_swv
     use lwv            , only : init_lwv
     use lbl            , only : init_lbl
+    use photosynthesis , only : init_photosynthesis
     !
     implicit none
 
@@ -94,7 +95,7 @@ contains
     call init_swv(swv_mpp)
     call init_lwv(lwv_mpp)
     call init_lbl(lbl_mpp)
-    !call init_psy(psy_mpp)
+    call init_photosynthesis(psy_mpp)
     !call init_mlc(mlc_mpp)
 
   end subroutine init_mpps
