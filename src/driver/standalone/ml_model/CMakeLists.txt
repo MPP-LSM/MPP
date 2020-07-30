@@ -1,6 +1,8 @@
 set(ML_MODEL_PROBLEM_SOURCES
   ml_model_problem.F90
   ml_model_global_vars.F90
+  ml_model_meshes.F90
+  ml_model_utils.F90
   swv.F90
   )
 

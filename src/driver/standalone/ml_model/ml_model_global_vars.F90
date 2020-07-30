@@ -8,20 +8,26 @@ module ml_model_global_vars
   PetscInt  , parameter :: ny       = 1
   PetscReal , parameter :: x        = 1.d0
   PetscReal , parameter :: y        = 1.d0
+  PetscReal , parameter :: dz_cair  = 0.5d0
   PetscReal , parameter :: z_cair   = 46.d0
-  PetscReal , parameter :: z_cleaf  = 46.d0
   PetscInt  , parameter :: nz_cair  = 92
-  PetscInt  , parameter :: nz_cleaf = 92
 
   PetscReal , parameter :: hc       = 21.d0
+  PetscInt  , parameter :: nveg     = 42
 
   PetscInt :: nbot
-  PetscInt, parameter :: ntop = 42
+  PetscInt :: ntop
 
-  PetscReal, pointer :: dpai(:), fssh(:)
+  PetscReal, pointer :: dpai(:), cumlai(:), fssh(:)
 
   PetscInt  :: ncair
   PetscInt  :: ntree
+
+  PetscInt :: SHORTWAVE_MESH
+  PetscInt :: SHORTWAVE_GE
+
+  PetscInt :: LONGWAVE_MESH
+  PetscInt :: LONGWAVE_GE
 
   PetscInt :: CAIR_MESH
   PetscInt :: CLEF_MESH

@@ -11,6 +11,7 @@ module swv
 #include <petsc/finclude/petsc.h>
 
   public :: init_swv
+  public :: set_time_varianet_conditions
 
 contains
 
@@ -21,7 +22,7 @@ contains
     !
     implicit none
 
-    type(mpp_shortwave_type) :: swv_mpp
+    class(mpp_shortwave_type) :: swv_mpp
 
     PetscInt       :: iam
     PetscErrorCode :: ierr
@@ -39,20 +40,246 @@ contains
   end subroutine initialize
 
   !------------------------------------------------------------------------
+  subroutine setup_meshes(swv_mpp)
+    !
+    use MeshType             , only : mesh_type
+    use ml_model_meshes      , only : create_canopy_and_soil_mesh
+    use ml_model_global_vars , only : SHORTWAVE_MESH
+    !
+    implicit none
+
+    class(mpp_shortwave_type) :: swv_mpp
+
+    class(mesh_type), pointer :: mesh
+
+    SHORTWAVE_MESH = 1
+    call create_canopy_and_soil_mesh(mesh)
+    call swv_mpp%AddMesh(SHORTWAVE_MESH, mesh)
+
+    deallocate(mesh)
+
+  end subroutine setup_meshes
+
+  !------------------------------------------------------------------------
+  subroutine add_goveqns(swv_mpp)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : GE_SHORTWAVE
+    use ml_model_global_vars      , only : SHORTWAVE_MESH, SHORTWAVE_GE
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_shortwave_type) :: swv_mpp
+
+    SHORTWAVE_GE = 1
+    call swv_mpp%AddGovEqnWithMeshRank(GE_SHORTWAVE, 'Shortwave radiation model', SHORTWAVE_MESH)
+    call swv_mpp%SetMeshesOfGoveqnsByMeshRank()
+
+  end subroutine add_goveqns
+
+  !------------------------------------------------------------------------
+  subroutine add_conditions_to_goveqns(swv_mpp)
+    !
+    ! !DESCRIPTION:
+    !
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : GE_SHORTWAVE
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_DIRICHLET
+    use ml_model_global_vars      , only : SHORTWAVE_MESH, SHORTWAVE_GE
+    use ConnectionSetType         , only : connection_set_type
+    use ml_model_meshes           , only : create_connection_set_to_canopy_and_soil_mesh
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_shortwave_type)            :: swv_mpp
+    class(connection_set_type) , pointer :: conn_set    
+
+    call create_connection_set_to_canopy_and_soil_mesh(swv_mpp%meshes(SHORTWAVE_MESH), conn_set)
+
+    call swv_mpp%soe%AddConditionInGovEqn( &
+         SHORTWAVE_GE                 , &
+         ss_or_bc_type = COND_BC      , &
+         name = 'Atmospheric forcing' , &
+         unit = 'K'                   , &
+         cond_type = COND_DIRICHLET   , &
+         conn_set = conn_set)
+    
+  end subroutine add_conditions_to_goveqns
+
+  !------------------------------------------------------------------------
+  subroutine set_parameters(swv_mpp)
+
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType      , only : sysofeqns_base_type
+    use SystemOfEquationsShortwaveType , only : sysofeqns_shortwave_type
+    use GoverningEquationBaseType      , only : goveqn_base_type
+    use GoveqnShortwaveType            , only : goveqn_shortwave_type
+    use ConditionType                  , only : condition_type
+    use ConnectionSetType              , only : connection_set_type
+    use ml_model_global_vars           , only : SHORTWAVE_MESH, SHORTWAVE_GE
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    type(mpp_shortwave_type)               :: swv_mpp
+    !
+    class(goveqn_base_type)    , pointer   :: cur_goveq
+    class(connection_set_type) , pointer   :: cur_conn_set
+    class(condition_type)      , pointer   :: cur_cond
+    PetscInt                               :: k, icol, icell, ileaf, iconn, sum_conn, nz, ncol
+
+    PetscReal                  , parameter :: clumpfac  = 1.d0
+    PetscReal                  , parameter :: Kb        = 0.577350269189626d0
+    PetscReal                  , parameter :: td        = 0.913235689378651d0
+
+    call swv_mpp%soe%SetPointerToIthGovEqn(SHORTWAVE_GE, cur_goveq)
+
+    select type(cur_goveq)
+    class is (goveqn_shortwave_type)
+
+       ncol = ncair * ntree
+       nz   = (ntop-nbot+1) + 1
+
+       icell = 0
+       do icol = 1, ncol
+          do k = 1, nz
+             icell = icell + 1
+
+             if (k == 1) then
+                cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
+                cur_goveq%aux_vars_in(icell)%soil_albedo(1) = 0.1d0 ! vis + direct
+                cur_goveq%aux_vars_in(icell)%soil_albedo(2) = 0.1d0 ! vis + diffuse
+
+                cur_goveq%aux_vars_in(icell)%soil_albedo(3) = 0.2d0 ! nir + diffuse
+                cur_goveq%aux_vars_in(icell)%soil_albedo(4) = 0.2d0 ! nir + diffuse
+             else
+                cur_goveq%aux_vars_in(icell)%leaf_rho(1)   = 0.10d0
+                cur_goveq%aux_vars_in(icell)%leaf_rho(2)   = 0.45d0
+
+                cur_goveq%aux_vars_in(icell)%leaf_tau(1)   = 0.05d0
+                cur_goveq%aux_vars_in(icell)%leaf_tau(2)   = 0.25d0
+
+                cur_goveq%aux_vars_in(icell)%leaf_omega(1) = 0.55d0
+                cur_goveq%aux_vars_in(icell)%leaf_omega(2) = 0.30d0
+
+                cur_goveq%aux_vars_in(icell)%leaf_dlai        = dpai(k)
+                cur_goveq%aux_vars_in(icell)%leaf_fraction(1) = fssh(k)
+                cur_goveq%aux_vars_in(icell)%leaf_fraction(2) = 1.d0 - fssh(k)
+
+                cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * dpai(k)   * clumpfac)
+                cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(k) * clumpfac)
+                cur_goveq%aux_vars_in(icell)%leaf_td    = td
+             end if
+          end do
+       end do
+
+    end select
+
+  end subroutine set_parameters
+
+  !------------------------------------------------------------------------
+  subroutine set_time_varianet_conditions(swv_mpp, Iskyb_vis, Iskyd_vis, Iskyb_nir, Iskyd_nir)
+
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType      , only : sysofeqns_base_type
+    use SystemOfEquationsShortwaveType , only : sysofeqns_shortwave_type
+    use GoverningEquationBaseType      , only : goveqn_base_type
+    use GoveqnShortwaveType            , only : goveqn_shortwave_type
+    use ConditionType                  , only : condition_type
+    use ConnectionSetType              , only : connection_set_type
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    type(mpp_shortwave_type)             :: swv_mpp
+    PetscReal                            :: Iskyb_vis
+    PetscReal                            :: Iskyd_vis
+    PetscReal                            :: Iskyb_nir
+    PetscReal                            :: Iskyd_nir
+    !
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    class(connection_set_type) , pointer :: cur_conn_set
+    class(condition_type)      , pointer :: cur_cond
+    PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol
+
+    call swv_mpp%soe%SetPointerToIthGovEqn(SHORTWAVE_GE, cur_goveq)
+
+    select type(cur_goveq)
+    class is (goveqn_shortwave_type)
+
+       ncol = ncair * ntree
+       nz   = (ntop-nbot+1) + 1
+
+       icell = 0
+       do icol = 1, ncol
+          do k = 1, nz
+             icell = icell + 1
+             if (k > 1) then
+                cur_goveq%aux_vars_in(icell)%Iskyb(1) = Iskyb_vis
+                cur_goveq%aux_vars_in(icell)%Iskyb(2) = Iskyb_nir
+                cur_goveq%aux_vars_in(icell)%Iskyd(1) = Iskyd_vis
+                cur_goveq%aux_vars_in(icell)%Iskyd(2) = Iskyd_nir
+
+             end if
+          end do
+       end do
+
+       sum_conn = 0
+       cur_cond => cur_goveq%boundary_conditions%first
+       do
+          if (.not.associated(cur_cond)) exit
+
+          cur_conn_set => cur_cond%conn_set
+
+          do iconn = 1, cur_conn_set%num_connections
+             sum_conn = sum_conn + 1
+
+             icell = cur_conn_set%conn(iconn)%GetIDDn()
+
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = Iskyb_vis
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = Iskyb_nir
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(1) = Iskyd_vis
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(2) = Iskyd_nir
+
+          enddo
+          cur_cond => cur_cond%next
+       enddo
+
+    end select
+
+  end subroutine set_time_varianet_conditions
+
+  !------------------------------------------------------------------------
   subroutine init_swv(swv_mpp)
     !
     implicit none
     !
-    type (mpp_shortwave_type) :: swv_mpp
+    class(mpp_shortwave_type) :: swv_mpp
 
     call initialize(swv_mpp)
-    !call setup_meshes(swv_mpp)
-    !call add_goveqn(swv_mpp)
-    !call add_conditions_to_goveqns(swv_mpp)
 
-    !call swv_mpp%AllocateAuxVars()
-    !call swv_mpp%SetupProblem()
-    !call set_parameters(swv_mpp)
+    call setup_meshes(swv_mpp)
+
+    call add_goveqns(swv_mpp)
+
+    call add_conditions_to_goveqns(swv_mpp)
+
+    call swv_mpp%AllocateAuxVars()
+
+    call swv_mpp%SetupProblem()
+
+    call set_parameters(swv_mpp)
 
   end subroutine init_swv
 

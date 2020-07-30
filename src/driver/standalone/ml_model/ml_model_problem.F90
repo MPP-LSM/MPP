@@ -82,9 +82,12 @@ contains
   !------------------------------------------------------------------------
   subroutine init_mpps()
     !
-    use swv, only : init_swv
+    use ml_model_utils , only: compute_dpai_fssh
+    use swv            , only : init_swv
     !
     implicit none
+
+    call compute_dpai_fssh()
 
     call init_swv(swv_mpp)
     !call init_lwv(lwv_mpp)
