@@ -366,6 +366,10 @@ contains
        itype(iconn)      = CONN_VERTICAL
     end do
 
+    allocate(conn_set)
+    call MeshCreateConnectionSet(mesh, &
+         nconn, id_up, id_dn, dist_up, dist_dn, area, itype, unit_vec, conn_set)
+
   end subroutine create_connection_set
 
   end module ml_model_meshes
