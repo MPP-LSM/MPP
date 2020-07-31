@@ -107,7 +107,7 @@ contains
 
     Kb = 1.762817445019839d0;
     do k = ntop, nbot, -1
-       if (k == ntop+1) then
+       if (k == ntop) then
           sumpai = 0.5d0 * dpai(k);
        else
           sumpai = sumpai + &
