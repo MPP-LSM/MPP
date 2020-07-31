@@ -166,9 +166,9 @@ contains
 
     call setup_meshes(mlc_mpp)
 
-    call setup_leaf2cair_map(mlc_mpp)
-
     call add_goveqns(mlc_mpp)
+
+    call setup_leaf2cair_map(mlc_mpp)
 
     call mlc_add_conditions_to_goveqns(mlc_mpp)
 
