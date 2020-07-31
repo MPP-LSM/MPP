@@ -43,8 +43,6 @@ module ml_model_global_vars
   PetscInt :: CAIR_VAPR_GE
   PetscInt :: CLEF_TEMP_SUN_GE
   PetscInt :: CLEF_TEMP_SHD_GE
-  PetscInt :: SOIL_TEMP_GE
-  PetscInt :: SOIL_VAPR_GE
 
   PetscInt :: CLEF_REGION_IN_CAIR_MESH
   PetscInt :: CAIR_REGION_IN_CLEF_MESH

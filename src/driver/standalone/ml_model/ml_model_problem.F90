@@ -87,6 +87,7 @@ contains
     use lwv            , only : init_lwv
     use lbl            , only : init_lbl
     use photosynthesis , only : init_photosynthesis
+    use mlc            , only : init_mlc
     !
     implicit none
 
@@ -96,7 +97,7 @@ contains
     call init_lwv(lwv_mpp)
     call init_lbl(lbl_mpp)
     call init_photosynthesis(psy_mpp)
-    !call init_mlc(mlc_mpp)
+    call init_mlc(mlc_mpp)
 
   end subroutine init_mpps
 
