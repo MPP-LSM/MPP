@@ -788,8 +788,8 @@ contains
     PetscBool                       :: found
 
     if (igoveqn > this%ngoveqns) then
-       write(iulog,*) 'Attempting to add condition for governing equation ' // &
-            'that is not in the list'
+       write(iulog,*) 'Attempting to get pointer to the governing equation ' // &
+            'that exceeds the number of equations in the list'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     endif
 
