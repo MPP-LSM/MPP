@@ -55,6 +55,7 @@ contains
 
     PHOTOSYNTHESIS_MESH = 1
     call create_canopy_and_soil_mesh(mesh)
+    call psy_mpp%SetNumMeshes(1)
     call psy_mpp%AddMesh(PHOTOSYNTHESIS_MESH, mesh)
 
     deallocate(mesh)

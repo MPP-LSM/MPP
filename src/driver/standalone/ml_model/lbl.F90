@@ -55,6 +55,7 @@ contains
 
     LBL_MESH = 1
     call create_canopy_mesh(mesh)
+    call lbl_mpp%SetNumMeshes(1)
     call lbl_mpp%AddMesh(LBL_MESH, mesh)
 
     deallocate(mesh)

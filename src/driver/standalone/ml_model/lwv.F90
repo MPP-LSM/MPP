@@ -55,6 +55,7 @@ contains
 
     LONGWAVE_MESH = 1
     call create_canopy_and_soil_mesh(mesh)
+    call lwv_mpp%SetNumMeshes(1)
     call lwv_mpp%AddMesh(LONGWAVE_MESH, mesh)
 
     deallocate(mesh)
