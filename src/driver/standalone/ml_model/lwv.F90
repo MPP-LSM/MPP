@@ -254,6 +254,33 @@ contains
   end subroutine lwv_set_boundary_conditions
 
   !------------------------------------------------------------------------
+  subroutine set_number_of_leaves(lwv_mpp, nleaves)
+    !
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use GoveqnLongwaveType        , only : goveqn_longwave_type
+    !
+    implicit none
+    !
+    class(mpp_longwave_type)         :: lwv_mpp
+    PetscInt                         :: nleaves
+    !
+    class(goveqn_base_type), pointer :: cur_goveq
+
+    cur_goveq => lwv_mpp%soe%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       select type(cur_goveq)
+       class is (goveqn_longwave_type)
+          cur_goveq%nleaf = nleaves
+       end select
+
+       cur_goveq => cur_goveq%next
+    end do
+
+  end subroutine set_number_of_leaves
+
+  !------------------------------------------------------------------------
   subroutine init_lwv(lwv_mpp)
     !
     implicit none
@@ -267,6 +294,8 @@ contains
     call add_goveqns(lwv_mpp)
 
     call add_conditions_to_goveqns(lwv_mpp)
+
+    call set_number_of_leaves(lwv_mpp, 2)
 
     call lwv_mpp%AllocateAuxVars()
 
