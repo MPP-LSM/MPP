@@ -12,6 +12,7 @@ module swv
 
   public :: init_swv
   public :: swv_set_boundary_conditions
+  public :: solve_swv
 
 contains
 
@@ -54,6 +55,7 @@ contains
 
     SHORTWAVE_MESH = 1
     call create_canopy_and_soil_mesh(mesh)
+    call swv_mpp%SetNumMeshes(1)
     call swv_mpp%AddMesh(SHORTWAVE_MESH, mesh)
 
     deallocate(mesh)
@@ -187,7 +189,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine swv_set_boundary_conditions(swv_mpp, Iskyb_vis, Iskyd_vis, Iskyb_nir, Iskyd_nir)
+  subroutine swv_set_boundary_conditions(swv_mpp)
 
     ! !DESCRIPTION:
     !
@@ -203,10 +205,6 @@ contains
     implicit none
     !
     type(mpp_shortwave_type)             :: swv_mpp
-    PetscReal                            :: Iskyb_vis
-    PetscReal                            :: Iskyd_vis
-    PetscReal                            :: Iskyb_nir
-    PetscReal                            :: Iskyd_nir
     !
     class(goveqn_base_type)    , pointer :: cur_goveq
     class(connection_set_type) , pointer :: cur_conn_set
@@ -226,10 +224,10 @@ contains
           do k = 1, nz
              icell = icell + 1
              if (k > 1) then
-                cur_goveq%aux_vars_in(icell)%Iskyb(1) = Iskyb_vis
-                cur_goveq%aux_vars_in(icell)%Iskyb(2) = Iskyb_nir
-                cur_goveq%aux_vars_in(icell)%Iskyd(1) = Iskyd_vis
-                cur_goveq%aux_vars_in(icell)%Iskyd(2) = Iskyd_nir
+                cur_goveq%aux_vars_in(icell)%Iskyb(1) = Iskyb_vis(icol)
+                cur_goveq%aux_vars_in(icell)%Iskyb(2) = Iskyb_nir(icol)
+                cur_goveq%aux_vars_in(icell)%Iskyd(1) = Iskyd_vis(icol)
+                cur_goveq%aux_vars_in(icell)%Iskyd(2) = Iskyd_nir(icol)
 
              end if
           end do
@@ -247,10 +245,10 @@ contains
 
              icell = cur_conn_set%conn(iconn)%GetIDDn()
 
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = Iskyb_vis
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = Iskyb_nir
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(1) = Iskyd_vis
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(2) = Iskyd_nir
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = Iskyb_vis(sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = Iskyb_nir(sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(1) = Iskyd_vis(sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(2) = Iskyd_nir(sum_conn)
 
           enddo
           cur_cond => cur_cond%next
@@ -282,5 +280,25 @@ contains
     call set_parameters(swv_mpp)
 
   end subroutine init_swv
+
+ !------------------------------------------------------------------------
+  subroutine solve_swv(swv_mpp, istep, dt)
+    !
+    implicit none
+    !
+    class(mpp_shortwave_type) :: swv_mpp
+    PetscInt                  :: istep
+    PetscReal                 :: dt
+    !
+    PetscBool                 :: converged
+    PetscInt                  :: converged_reason
+    PetscBool                 :: flg
+    PetscErrorCode            :: ierr
+
+    call swv_set_boundary_conditions(swv_mpp)
+
+    call swv_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
+
+  end subroutine solve_swv
 
 end module swv

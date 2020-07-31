@@ -102,15 +102,38 @@ contains
   end subroutine init_mpps
 
   !------------------------------------------------------------------------
-  subroutine run_ml_model_problem(namelist_filename)
+  subroutine allocate_memory()
     !
     implicit none
+
+    allocate(Iskyb_vis(ncair))
+    allocate(Iskyd_vis(ncair))
+    allocate(Iskyb_nir(ncair))
+    allocate(Iskyd_nir(ncair))
+
+    allocate(Irsky(ncair))
+
+    allocate(Pref(ncair))
+    allocate(Uref(ncair))
+    allocate(Tref(ncair))
+    allocate(Rhref(ncair))
+
+  end subroutine allocate_memory
+
+  !------------------------------------------------------------------------
+  subroutine run_ml_model_problem(namelist_filename)
+    !
+    use ml_model_boundary_conditions , only : read_boundary_conditions
+    use swv                          , only : solve_swv
+    !
+    implicit none
+    !
+    character(len=256), optional :: namelist_filename
     !
     PetscReal                    :: dt
     PetscBool                    :: converged
     PetscInt                     :: istep
     PetscInt                     :: converged_reason
-    character(len=256), optional :: namelist_filename
 
     ncair = 1;
     ntree = 1;
@@ -118,7 +141,15 @@ contains
     call read_command_options()
     call read_namelist_file(namelist_filename)
 
+    call allocate_memory()
     call init_mpps()
+
+    do istep = 1, 1
+       call read_boundary_conditions(istep)
+
+       dt = 30.d0 * 60.d0 ! [sec]
+       call solve_swv(swv_mpp, istep, dt)
+    end do
 
   end subroutine run_ml_model_problem
 
