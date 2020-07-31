@@ -12,7 +12,7 @@ module lwv
 #include <petsc/finclude/petsc.h>
 
   public :: init_lwv
-  public :: set_time_varianet_conditions
+  public :: lwv_set_boundary_conditions
 
 contains
 
@@ -180,7 +180,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine set_time_varianet_conditions(lwv_mpp, Tsoil, Tleaf_sun, Tleaf_shd, Irsky)
+  subroutine lwv_set_boundary_conditions(lwv_mpp, Tsoil, Tleaf_sun, Tleaf_shd, Irsky)
 
     ! !DESCRIPTION:
     !
@@ -250,7 +250,7 @@ contains
 
     end select
 
-  end subroutine set_time_varianet_conditions
+  end subroutine lwv_set_boundary_conditions
 
   !------------------------------------------------------------------------
   subroutine init_lwv(lwv_mpp)

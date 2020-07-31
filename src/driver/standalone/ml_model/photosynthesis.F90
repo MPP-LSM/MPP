@@ -12,7 +12,7 @@ module photosynthesis
 #include <petsc/finclude/petsc.h>
 
   public :: init_photosynthesis
-  public :: set_time_varianet_conditions
+  public :: photosynthesis_set_boundary_conditions
 
 contains
 
@@ -141,7 +141,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine set_time_varianet_conditions(psy_mpp, Tair, Tleaf, relhum, gbv, gbc)
+  subroutine photosynthesis_set_boundary_conditions(psy_mpp, Tair, Tleaf, relhum, gbv, gbc)
 
     ! !DESCRIPTION:
     !
@@ -209,7 +209,7 @@ contains
 
     end select
 
-  end subroutine set_time_varianet_conditions
+  end subroutine photosynthesis_set_boundary_conditions
 
   !------------------------------------------------------------------------
   subroutine init_photosynthesis(psy_mpp)

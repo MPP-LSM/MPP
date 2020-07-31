@@ -12,7 +12,7 @@ module lbl
 #include <petsc/finclude/petsc.h>
 
   public :: init_lbl
-  public :: set_time_varianet_conditions
+  public :: lbl_set_boundary_conditions
 
 contains
 
@@ -130,7 +130,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine set_time_varianet_conditions(lbl_mpp, Tair, Tleaf)
+  subroutine lbl_set_boundary_conditions(lbl_mpp, Tair, Tleaf)
 
     ! !DESCRIPTION:
     !
@@ -174,7 +174,7 @@ contains
 
     end select
 
-  end subroutine set_time_varianet_conditions
+  end subroutine lbl_set_boundary_conditions
 
   !------------------------------------------------------------------------
   subroutine init_lbl(lbl_mpp)

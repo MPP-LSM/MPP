@@ -11,7 +11,7 @@ module swv
 #include <petsc/finclude/petsc.h>
 
   public :: init_swv
-  public :: set_time_varianet_conditions
+  public :: swv_set_boundary_conditions
 
 contains
 
@@ -187,7 +187,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine set_time_varianet_conditions(swv_mpp, Iskyb_vis, Iskyd_vis, Iskyb_nir, Iskyd_nir)
+  subroutine swv_set_boundary_conditions(swv_mpp, Iskyb_vis, Iskyd_vis, Iskyb_nir, Iskyd_nir)
 
     ! !DESCRIPTION:
     !
@@ -258,7 +258,7 @@ contains
 
     end select
 
-  end subroutine set_time_varianet_conditions
+  end subroutine swv_set_boundary_conditions
 
   !------------------------------------------------------------------------
   subroutine init_swv(swv_mpp)
