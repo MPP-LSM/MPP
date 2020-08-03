@@ -66,7 +66,18 @@ contains
 
              cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = 0.1d0 ! vis + diffuse
              cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = 0.2d0 ! nir + diffuse
-          else
+
+             cur_goveq%aux_vars_in(icell)%Iskyb(1) = Iskyb_vis
+             cur_goveq%aux_vars_in(icell)%Iskyb(2) = Iskyb_nir
+             cur_goveq%aux_vars_in(icell)%Iskyd(1) = Iskyd_vis
+             cur_goveq%aux_vars_in(icell)%Iskyd(2) = Iskyd_nir
+
+             cumlai = 6.d0 - (k-1)*lai_inc
+             cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * lai_inc * clumpfac)
+             cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai  * clumpfac)
+             cur_goveq%aux_vars_in(icell)%leaf_td    = td
+
+         else
              cur_goveq%aux_vars_in(icell)%Iskyb(1) = Iskyb_vis
              cur_goveq%aux_vars_in(icell)%Iskyb(2) = Iskyb_nir
              cur_goveq%aux_vars_in(icell)%Iskyd(1) = Iskyd_vis
@@ -80,14 +91,18 @@ contains
              cur_goveq%aux_vars_in(icell)%leaf_omega(2) = 0.30d0
 
              sumlai = 6.d0 - (k-1)*lai_inc + lai_inc/2.d0
-             cumlai = 6.d0 - (k-2)*lai_inc
+             cumlai = 6.d0 - (k-1)*lai_inc
 
              cur_goveq%aux_vars_in(icell)%leaf_dlai        = lai_inc
              cur_goveq%aux_vars_in(icell)%leaf_fraction(1) = clumpfac * exp(-Kb * sumlai * clumpfac)
              cur_goveq%aux_vars_in(icell)%leaf_fraction(2) = 1.d0 - clumpfac * exp(-Kb * sumlai * clumpfac) 
 
              cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * lai_inc * clumpfac)
-             cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai  * clumpfac)
+             if (k == nz_cair + 1 ) then
+                cur_goveq%aux_vars_in(icell)%leaf_tbcum = 1.d0
+             else
+               cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai  * clumpfac)
+            end if
              cur_goveq%aux_vars_in(icell)%leaf_td    = td
           end if
        end do

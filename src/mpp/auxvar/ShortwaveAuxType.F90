@@ -146,7 +146,7 @@ contains
           this%e(iband) = 0.d0
 
           this%f(iband)   = this%soil_albedo_b(iband)
-          this%rad_source = this%Iskyb(iband) * this%leaf_tbcum * this%soil_albedo_d(iband)
+          this%rad_source(iband) = this%Iskyb(iband) * this%leaf_tbcum * this%soil_albedo_d(iband)
        end do
 
     else
