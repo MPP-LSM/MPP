@@ -164,6 +164,10 @@ contains
 
                 cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = 0.1d0 ! vis + diffuse
                 cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = 0.2d0 ! nir + diffuse
+
+                cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * dpai(nbot)   * clumpfac)
+                cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(nbot) * clumpfac)
+                cur_goveq%aux_vars_in(icell)%leaf_td    = td
              else
                 cur_goveq%aux_vars_in(icell)%leaf_rho(1)   = 0.10d0
                 cur_goveq%aux_vars_in(icell)%leaf_rho(2)   = 0.45d0
@@ -179,7 +183,11 @@ contains
                 cur_goveq%aux_vars_in(icell)%leaf_fraction(2) = 1.d0 - fssh(k)
 
                 cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * dpai(k)   * clumpfac)
-                cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(k) * clumpfac)
+                if (k == ntop) then
+                   cur_goveq%aux_vars_in(icell)%leaf_tbcum = 1.d0
+               else
+                   cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(k+1) * clumpfac)
+               endif
                 cur_goveq%aux_vars_in(icell)%leaf_td    = td
              end if
           end do
@@ -225,13 +233,11 @@ contains
        do icol = 1, ncol
           do k = 1, nz
              icell = icell + 1
-             if (k > 1) then
-                cur_goveq%aux_vars_in(icell)%Iskyb(1) = get_value_from_condition(Iskyb_vis, icol)
-                cur_goveq%aux_vars_in(icell)%Iskyb(2) = get_value_from_condition(Iskyb_nir, icol)
-                cur_goveq%aux_vars_in(icell)%Iskyd(1) = get_value_from_condition(Iskyd_vis, icol)
-                cur_goveq%aux_vars_in(icell)%Iskyd(2) = get_value_from_condition(Iskyd_nir, icol)
+             cur_goveq%aux_vars_in(icell)%Iskyb(1) = get_value_from_condition(Iskyb_vis, icol)
+             cur_goveq%aux_vars_in(icell)%Iskyb(2) = get_value_from_condition(Iskyb_nir, icol)
+             cur_goveq%aux_vars_in(icell)%Iskyd(1) = get_value_from_condition(Iskyd_vis, icol)
+             cur_goveq%aux_vars_in(icell)%Iskyd(2) = get_value_from_condition(Iskyd_nir, icol)
 
-             end if
           end do
        end do
 
