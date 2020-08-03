@@ -4,6 +4,11 @@ module ml_model_global_vars
 
 #include <petsc/finclude/petsc.h>
 
+  type, public :: condition_type
+     PetscInt :: ndata
+     PetscReal, pointer :: data(:)
+  end type condition_type
+  
   ! Mesh attributes
   PetscInt  , parameter :: nx       = 1
   PetscInt  , parameter :: ny       = 1
@@ -24,9 +29,13 @@ module ml_model_global_vars
   PetscInt  :: ntree
 
   ! Boundary conditions
-  PetscReal, pointer :: Iskyb_vis(:),  Iskyd_vis(:), Iskyb_nir(:),  Iskyd_nir(:)
-  PetscReal, pointer :: Irsky(:)
-  PetscReal, pointer :: Pref(:), Uref(:), Tref(:), Rhref(:)
+  type(condition_type) :: Iskyb_vis,  Iskyd_vis, Iskyb_nir,  Iskyd_nir
+  type(condition_type) :: Irsky
+  type(condition_type) :: Pref, Uref, Tref, Rhref
+  type(condition_type) :: Tleaf_sun, Tleaf_shd, Tsoil, Tcan
+  type(condition_type) :: rn_sun, rn_shd, rn_soil
+  type(condition_type) :: gs_sun, gs_shd
+  type(condition_type) :: gbh, gbv, gbc
 
   ! Shortwave model
   PetscInt :: SHORTWAVE_MESH

@@ -82,7 +82,6 @@ contains
   !------------------------------------------------------------------------
   subroutine init_mpps()
     !
-    use ml_model_utils , only : compute_dpai_fssh
     use swv            , only : init_swv
     use lwv            , only : init_lwv
     use lbl            , only : init_lbl
@@ -90,8 +89,6 @@ contains
     use mlc            , only : init_mlc
     !
     implicit none
-
-    call compute_dpai_fssh()
 
     call init_swv(swv_mpp)
     call init_lwv(lwv_mpp)
@@ -102,21 +99,50 @@ contains
   end subroutine init_mpps
 
   !------------------------------------------------------------------------
-  subroutine allocate_memory()
+  subroutine set_initial_conditions()
+    !
+    use ml_model_utils , only : compute_dpai_fssh
+    use mlc            , only : mlc_set_initial_conditions
     !
     implicit none
 
-    allocate(Iskyb_vis(ncair))
-    allocate(Iskyd_vis(ncair))
-    allocate(Iskyb_nir(ncair))
-    allocate(Iskyd_nir(ncair))
+    call mlc_set_initial_conditions(mlc_mpp)
 
-    allocate(Irsky(ncair))
+  end subroutine set_initial_conditions
 
-    allocate(Pref(ncair))
-    allocate(Uref(ncair))
-    allocate(Tref(ncair))
-    allocate(Rhref(ncair))
+  !------------------------------------------------------------------------
+  subroutine allocate_memory()
+    !
+    use ml_model_global_vars, only : condition_type
+    use ml_model_utils      , only : allocate_memory_for_condition
+    !
+    implicit none
+
+    call allocate_memory_for_condition(Iskyb_vis , ncair)
+    call allocate_memory_for_condition(Iskyd_vis , ncair)
+    call allocate_memory_for_condition(Iskyb_nir , ncair)
+    call allocate_memory_for_condition(Iskyd_nir , ncair)
+    call allocate_memory_for_condition(Irsky     , ncair)
+
+    call allocate_memory_for_condition(Pref  , ncair)
+    call allocate_memory_for_condition(Uref  , ncair)
+    call allocate_memory_for_condition(Tref  , ncair)
+    call allocate_memory_for_condition(Rhref , ncair)
+
+    call allocate_memory_for_condition(gbh , ncair)
+    call allocate_memory_for_condition(gbv , ncair)
+    call allocate_memory_for_condition(gbc , ncair)
+
+    call allocate_memory_for_condition(Tcan      , ncair)
+    call allocate_memory_for_condition(Tleaf_sun , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Tleaf_shd , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(rn_sun    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(rn_shd    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(gs_sun    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(gs_shd    , ncair*(ntop-nbot+1) )
+    
+    call allocate_memory_for_condition(Tsoil  , ncair)
+    call allocate_memory_for_condition(rn_soil, ncair)
 
   end subroutine allocate_memory
 
@@ -124,7 +150,10 @@ contains
   subroutine run_ml_model_problem(namelist_filename)
     !
     use ml_model_boundary_conditions , only : read_boundary_conditions
+    use ml_model_utils               , only : compute_dpai_fssh
+    use ml_model_utils               , only : save_temperatures_from_mlc
     use swv                          , only : solve_swv
+    use lwv                          , only : solve_lwv
     !
     implicit none
     !
@@ -141,14 +170,21 @@ contains
     call read_command_options()
     call read_namelist_file(namelist_filename)
 
+    call compute_dpai_fssh()
+
     call allocate_memory()
     call init_mpps()
+
+    call set_initial_conditions()
 
     do istep = 1, 1
        call read_boundary_conditions(istep)
 
        dt = 30.d0 * 60.d0 ! [sec]
        call solve_swv(swv_mpp, istep, dt)
+
+       call save_temperatures_from_mlc(mlc_mpp)
+       call solve_lwv(lwv_mpp, istep, dt)
     end do
 
   end subroutine run_ml_model_problem

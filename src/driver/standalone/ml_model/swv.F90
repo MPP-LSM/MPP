@@ -158,11 +158,12 @@ contains
 
              if (k == 1) then
                 cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-                cur_goveq%aux_vars_in(icell)%soil_albedo(1) = 0.1d0 ! vis + direct
-                cur_goveq%aux_vars_in(icell)%soil_albedo(2) = 0.1d0 ! vis + diffuse
 
-                cur_goveq%aux_vars_in(icell)%soil_albedo(3) = 0.2d0 ! nir + diffuse
-                cur_goveq%aux_vars_in(icell)%soil_albedo(4) = 0.2d0 ! nir + diffuse
+                cur_goveq%aux_vars_in(icell)%soil_albedo_b(1) = 0.1d0 ! vis + direct
+                cur_goveq%aux_vars_in(icell)%soil_albedo_b(2) = 0.2d0 ! nir + direct
+
+                cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = 0.1d0 ! vis + diffuse
+                cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = 0.2d0 ! nir + diffuse
              else
                 cur_goveq%aux_vars_in(icell)%leaf_rho(1)   = 0.10d0
                 cur_goveq%aux_vars_in(icell)%leaf_rho(2)   = 0.45d0
@@ -200,6 +201,7 @@ contains
     use GoveqnShortwaveType            , only : goveqn_shortwave_type
     use ConditionType                  , only : condition_type
     use ConnectionSetType              , only : connection_set_type
+    use ml_model_utils                 , only : get_value_from_condition
     !
     ! !ARGUMENTS
     implicit none
@@ -224,10 +226,10 @@ contains
           do k = 1, nz
              icell = icell + 1
              if (k > 1) then
-                cur_goveq%aux_vars_in(icell)%Iskyb(1) = Iskyb_vis(icol)
-                cur_goveq%aux_vars_in(icell)%Iskyb(2) = Iskyb_nir(icol)
-                cur_goveq%aux_vars_in(icell)%Iskyd(1) = Iskyd_vis(icol)
-                cur_goveq%aux_vars_in(icell)%Iskyd(2) = Iskyd_nir(icol)
+                cur_goveq%aux_vars_in(icell)%Iskyb(1) = get_value_from_condition(Iskyb_vis, icol)
+                cur_goveq%aux_vars_in(icell)%Iskyb(2) = get_value_from_condition(Iskyb_nir, icol)
+                cur_goveq%aux_vars_in(icell)%Iskyd(1) = get_value_from_condition(Iskyd_vis, icol)
+                cur_goveq%aux_vars_in(icell)%Iskyd(2) = get_value_from_condition(Iskyd_nir, icol)
 
              end if
           end do
@@ -245,10 +247,10 @@ contains
 
              icell = cur_conn_set%conn(iconn)%GetIDDn()
 
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = Iskyb_vis(sum_conn)
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = Iskyb_nir(sum_conn)
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(1) = Iskyd_vis(sum_conn)
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(2) = Iskyd_nir(sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = get_value_from_condition(Iskyb_vis, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = get_value_from_condition(Iskyb_nir, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(1) = get_value_from_condition(Iskyd_vis, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(2) = get_value_from_condition(Iskyd_nir, sum_conn)
 
           enddo
           cur_cond => cur_cond%next
@@ -257,6 +259,33 @@ contains
     end select
 
   end subroutine swv_set_boundary_conditions
+
+  !------------------------------------------------------------------------
+  subroutine set_number_of_leaves(swv_mpp, nleaves)
+    !
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use GoveqnShortwaveType       , only : goveqn_shortwave_type
+    !
+    implicit none
+    !
+    class(mpp_shortwave_type)        :: swv_mpp
+    PetscInt                         :: nleaves
+    !
+    class(goveqn_base_type), pointer :: cur_goveq
+
+    cur_goveq => swv_mpp%soe%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       select type(cur_goveq)
+       class is (goveqn_shortwave_type)
+          cur_goveq%nleaf = nleaves
+       end select
+
+       cur_goveq => cur_goveq%next
+    end do
+
+  end subroutine set_number_of_leaves
 
   !------------------------------------------------------------------------
   subroutine init_swv(swv_mpp)
@@ -272,6 +301,8 @@ contains
     call add_goveqns(swv_mpp)
 
     call add_conditions_to_goveqns(swv_mpp)
+
+    call set_number_of_leaves(swv_mpp, 2)
 
     call swv_mpp%AllocateAuxVars()
 

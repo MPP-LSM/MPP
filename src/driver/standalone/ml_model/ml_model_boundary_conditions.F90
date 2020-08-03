@@ -16,6 +16,8 @@ contains
   !------------------------------------------------------------------------
   subroutine read_boundary_conditions(istep)
     !
+    use ml_model_utils, only : set_value_in_condition
+    !
     implicit none
     !
     PetscInt :: istep
@@ -24,17 +26,17 @@ contains
 
     do icair = 1, ncair
 
-       Iskyb_vis(icair) = 0.8d0
-       Iskyd_vis(icair) = 0.2d0
-       Iskyb_nir(icair) = 0.8d0
-       Iskyd_nir(icair) = 0.2d0
+       call set_value_in_condition(Iskyb_vis, icair, 0.8d0)
+       call set_value_in_condition(Iskyd_vis, icair, 0.2d0)
+       call set_value_in_condition(Iskyb_nir, icair, 0.8d0)
+       call set_value_in_condition(Iskyd_nir, icair, 0.2d0)
 
-       Irsky(icair)     = 400.d0
+       call set_value_in_condition(Irsky, icair     , 400.d0)
 
-       Pref(icair)      = 98620.d0
-       Uref(icair)      = 5.d0
-       Tref(icair)      = 295.d0
-       Rhref(icair)     = 80.d0
+       call set_value_in_condition(Pref, icair      , 98620.d0)
+       call set_value_in_condition(Uref, icair      , 5.d0)
+       call set_value_in_condition(Tref, icair     , 295.d0)
+       call set_value_in_condition(Rhref, icair    , 80.d0)
 
     end do
 

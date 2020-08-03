@@ -6,12 +6,15 @@ module mlc
   use MultiPhysicsProbMLC , only : mpp_mlc_type
   use ml_model_global_vars
   use petscsys
+  use petscdm
+  use petscdmda
 
   implicit none
 
 #include <petsc/finclude/petsc.h>
 
   public :: init_mlc
+  public :: mlc_set_initial_conditions
 
 contains
 
@@ -179,5 +182,97 @@ contains
     call mlc_set_parameters(mlc_mpp)
 
   end subroutine init_mlc
+
+  !------------------------------------------------------------------------
+  subroutine mlc_set_initial_conditions(mlc_mpp)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType  , only : sysofeqns_mlc_type
+    use ml_model_utils            , only : get_value_from_condition
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    type(mpp_mlc_type) :: mlc_mpp
+    !
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
+    PetscReal                            :: relhum, eref, esat, desatdt
+    PetscInt                             :: p
+    PetscInt                             :: nDM
+    DM                         , pointer :: dms(:)
+    Vec                        , pointer :: soln_subvecs(:)
+    PetscReal                  , pointer :: v_p(:)
+    PetscInt                             :: ii
+    PetscViewer                          :: viewer
+    PetscInt                             :: soe_auxvar_id
+    PetscErrorCode                       :: ierr
+
+    base_soe => mlc_mpp%soe
+
+    select type(base_soe)
+    class is (sysofeqns_mlc_type)
+       soe => base_soe
+    class default
+       write(iulog,*) 'Unsupported class type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    do p = 1, ncair
+       soe%cturb%pref(p) = 98620.d0 !get_value_from_condition(Pref, p)
+       soe%cturb%uref(p) = 5.d0     !get_value_from_condition(Uref, p)
+       soe%cturb%tref(p) = 295.d0   !get_value_from_condition(Tref, p)
+       soe%cturb%rhref(p)= 80.d0    !get_value_from_condition(Rhref, p)
+
+       call soe%cturb%ComputeDerivedAtmInputs(p)
+
+       soe%cturb%vcan(p) = soe%cturb%vref(p)
+       soe%cturb%tcan(p) = soe%cturb%tref(p)
+    end do
+
+    ! Find number of GEs packed within the SoE
+    call DMCompositeGetNumberDM(mlc_mpp%soe%solver%dm, nDM, ierr)
+
+    ! Get DMs for each GE
+    allocate (dms(nDM))
+    call DMCompositeGetEntriesArray(mlc_mpp%soe%solver%dm, dms, ierr)
+
+    ! Allocate vectors for individual GEs
+    allocate(soln_subvecs(nDM))
+
+    ! Get solution vectors for individual GEs
+    call DMCompositeGetAccessArray(mlc_mpp%soe%solver%dm, &
+         mlc_mpp%soe%solver%soln, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    do ii = 1, nDM
+       call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
+
+       if (ii == CAIR_TEMP_GE .or. ii == CLEF_TEMP_SUN_GE .or. ii == CLEF_TEMP_SHD_GE) then
+          v_p(:) = soe%cturb%tref(1)
+
+       else if (ii == CAIR_VAPR_GE) then
+          v_p(:) = soe%cturb%vref(1)
+       endif
+
+       call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
+    enddo
+
+    ! Restore solution vectors for individual GEs
+    call DMCompositeRestoreAccessArray(mlc_mpp%soe%solver%dm, &
+         mlc_mpp%soe%solver%soln, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    deallocate(dms)
+
+    call VecCopy(mlc_mpp%soe%solver%soln, mlc_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(mlc_mpp%soe%solver%soln, mlc_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+
+    call mlc_mpp%soe%PreSolve()
+
+  end subroutine mlc_set_initial_conditions
 
 end module mlc

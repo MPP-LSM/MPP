@@ -34,7 +34,8 @@ module ShortwaveAuxType
      
 
      PetscBool          :: is_soil              ! TRUE if the grid cell is a soil grid cell
-     PetscReal, pointer :: soil_albedo(:)       ! ground albedo (size = nleaf*nband)
+     PetscReal, pointer :: soil_albedo_b(:)     ! beam ground albedo (size = nleaf*nband)
+     PetscReal, pointer :: soil_albedo_d(:)     ! diffuse ground albedo (size = nleaf*nband)
 
      ! entries of the matrix to setup the matrix and rhs of the linear system
      PetscReal, pointer :: f(:)                 ! (size = nband)
@@ -81,7 +82,8 @@ contains
     allocate(this%leaf_omega        (nband       ))
     allocate(this%leaf_fraction     (nleaf       ))
 
-    allocate(this%soil_albedo       (nleaf*nband ))
+    allocate(this%soil_albedo_b     (nleaf*nband ))
+    allocate(this%soil_albedo_d     (nleaf*nband ))
 
     allocate(this%f                 (nband       ))
     allocate(this%e                 (nband       ))
@@ -109,7 +111,8 @@ contains
     this%leaf_fraction(:)     = 0.d0
 
     this%is_soil              = PETSC_FALSE
-    this%soil_albedo(:)       = 0.d0
+    this%soil_albedo_b(:)     = 0.d0
+    this%soil_albedo_d(:)     = 0.d0
 
     this%f(:)                 = 0.d0
     this%e(:)                 = 0.d0
@@ -142,8 +145,8 @@ contains
        do iband = 1, this%nband
           this%e(iband) = 0.d0
 
-          this%f(iband)   = this%soil_albedo(iband)
-          this%rad_source = this%Iskyb(iband) * this%leaf_tbcum * this%soil_albedo(iband)
+          this%f(iband)   = this%soil_albedo_b(iband)
+          this%rad_source = this%Iskyb(iband) * this%leaf_tbcum * this%soil_albedo_d(iband)
        end do
 
     else

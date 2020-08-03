@@ -61,10 +61,11 @@ contains
 
           if (k == 1) then
              cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-             cur_goveq%aux_vars_in(icell)%soil_albedo(1) = 0.1d0 ! vis + direct
-             cur_goveq%aux_vars_in(icell)%soil_albedo(2) = 0.1d0 ! vis + diffuse
-             cur_goveq%aux_vars_in(icell)%soil_albedo(3) = 0.2d0 ! nir + diffuse
-             cur_goveq%aux_vars_in(icell)%soil_albedo(4) = 0.2d0 ! nir + diffuse
+             cur_goveq%aux_vars_in(icell)%soil_albedo_b(1) = 0.1d0 ! vis + direct
+             cur_goveq%aux_vars_in(icell)%soil_albedo_b(2) = 0.2d0 ! nir + direct
+
+             cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = 0.1d0 ! vis + diffuse
+             cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = 0.2d0 ! nir + diffuse
           else
              cur_goveq%aux_vars_in(icell)%Iskyb(1) = Iskyb_vis
              cur_goveq%aux_vars_in(icell)%Iskyb(2) = Iskyb_nir

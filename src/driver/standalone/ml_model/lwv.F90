@@ -181,7 +181,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine lwv_set_boundary_conditions(lwv_mpp, Tsoil, Tleaf_sun, Tleaf_shd, Irsky)
+  subroutine lwv_set_boundary_conditions(lwv_mpp)
 
     ! !DESCRIPTION:
     !
@@ -192,15 +192,12 @@ contains
     use GoveqnLongwaveType            , only : goveqn_longwave_type
     use ConditionType                 , only : condition_type
     use ConnectionSetType             , only : connection_set_type
+    use ml_model_utils                , only : get_value_from_condition
     !
     ! !ARGUMENTS
     implicit none
     !
     type(mpp_longwave_type)              :: lwv_mpp
-    PetscReal                  , pointer :: Tsoil(:)
-    PetscReal                  , pointer :: Tleaf_sun(:)
-    PetscReal                  , pointer :: Tleaf_shd(:)
-    PetscReal                            :: Irsky
     !
     class(goveqn_base_type)    , pointer :: cur_goveq
     class(connection_set_type) , pointer :: cur_conn_set
@@ -222,11 +219,11 @@ contains
              icell = icell + 1
 
              if (k == 1) then
-                cur_goveq%aux_vars_in(icell)%soil_temperature = Tsoil(icol) + 20.d0             
+                cur_goveq%aux_vars_in(icell)%soil_temperature = get_value_from_condition(Tsoil, icol)
              else
                 leaf_count = leaf_count + 1
-                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = Tleaf_sun(leaf_count) + 25.d0
-                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = Tleaf_shd(leaf_count) + 25.d0
+                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_sun, leaf_count)
+                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_shd, leaf_count)
              end if
           end do
        end do
@@ -243,7 +240,7 @@ contains
 
              icell = cur_conn_set%conn(iconn)%GetIDDn()
 
-             cur_goveq%aux_vars_bc(sum_conn)%Idn = Irsky
+             cur_goveq%aux_vars_bc(sum_conn)%Idn = get_value_from_condition(Irsky, sum_conn)
 
           enddo
           cur_cond => cur_cond%next
@@ -304,5 +301,25 @@ contains
     call set_parameters(lwv_mpp)
 
   end subroutine init_lwv
+
+ !------------------------------------------------------------------------
+  subroutine solve_lwv(lwv_mpp, istep, dt)
+    !
+    implicit none
+    !
+    class(mpp_longwave_type) :: lwv_mpp
+    PetscInt                 :: istep
+    PetscReal                :: dt
+    !
+    PetscBool                :: converged
+    PetscInt                 :: converged_reason
+    PetscBool                :: flg
+    PetscErrorCode           :: ierr
+
+    call lwv_set_boundary_conditions(lwv_mpp)
+
+    call lwv_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
+
+  end subroutine solve_lwv
 
 end module lwv

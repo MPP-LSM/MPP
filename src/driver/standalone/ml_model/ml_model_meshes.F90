@@ -107,7 +107,7 @@ contains
 
     case (CANOPY_MESH)
        nz   = (ntop-nbot+1)
-       ncol = ncair * ntree
+       ncol = ncair * ntree * 2
 
     case (CANOPY_AND_SOIL_MESH)
        nz   = (ntop-nbot+1) + 1
@@ -151,20 +151,20 @@ contains
     case (CANOPY_MESH)
        nz = (ntop-nbot+1)
 
-       write(*,*)'CANOPY_MESH:'
+       !write(*,*)'CANOPY_MESH:'
        icell = 0
        do icol = 1, ncol
           do k = 1, nz
              icell = icell + 1
              zc(icell) = (nbot + k - 1)* dz_cair + dz_cair/2.d0
-             write(*,*) icell,zc(icell)
+             !write(*,*) icell,zc(icell)
           end do
        end do
 
     case (CANOPY_AND_SOIL_MESH)
        nz = (ntop-nbot+1) + 1
 
-       write(*,*)'CANOPY_AND_SOIL_MESH: '
+       !write(*,*)'CANOPY_AND_SOIL_MESH: '
        icell = 0
        do icol = 1, ncol
           do k = 1, nz
@@ -174,7 +174,7 @@ contains
              else
                 zc(icell) = (nbot + k - 2)* dz_cair + dz_cair/2.d0
              end if
-             write(*,*) icell,zc(icell)
+             !write(*,*) icell,zc(icell)
                 
           end do
        end do

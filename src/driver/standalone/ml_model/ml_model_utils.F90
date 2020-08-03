@@ -12,6 +12,9 @@ module ml_model_utils
   PetscInt, parameter :: CANOPY_AND_SOIL_MESH = 3
 
   public :: compute_dpai_fssh
+  public :: save_temperatures_from_mlc
+  public :: set_value_in_condition
+  public :: get_value_from_condition
 
 contains
 
@@ -118,5 +121,152 @@ contains
     end do
 
   end subroutine compute_dpai_fssh
+
+  !------------------------------------------------------------------------
+  subroutine allocate_memory_for_condition(cond, ndata)
+    !
+    use ml_model_global_vars, only : condition_type
+    !
+    implicit none
+    !
+    type(condition_type) :: cond
+    PetscInt             :: ndata
+
+    cond%ndata = ndata
+    allocate(cond%data(ndata))
+    cond%data(:) = -999.d0
+
+  end subroutine allocate_memory_for_condition  
+
+  !------------------------------------------------------------------------
+  subroutine set_value_in_condition(cond, idata, value)
+    !
+    use ml_model_global_vars, only : condition_type
+    !
+    implicit none
+    !
+    type(condition_type) :: cond
+    PetscInt             :: idata
+    PetscReal            :: value
+
+    if (idata > cond%ndata) then
+       call endrun(msg=' ERROR: Attempting to set data for a index that exceeds size'//&
+            errMsg(__FILE__, __LINE__))
+    end if
+
+    cond%data(idata) = value
+
+  end subroutine set_value_in_condition
+
+  !------------------------------------------------------------------------
+  function get_value_from_condition(cond, idata) result (value)
+    !
+    use ml_model_global_vars, only : condition_type
+    !
+    implicit none
+    !
+    type(condition_type) :: cond
+    PetscInt             :: idata
+    !
+    PetscReal            :: value
+
+    if (idata > cond%ndata) then
+       call endrun(msg=' ERROR: Attempting to get data for a index that exceeds size'//&
+            errMsg(__FILE__, __LINE__))
+    end if
+
+    value = cond%data(idata)
+
+  end function get_value_from_condition
+
+  !------------------------------------------------------------------------
+  subroutine save_temperatures_from_mlc(mlc_mpp)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType       , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
+    use MultiPhysicsProbMLC             , only : mpp_mlc_type
+    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, Tsoil
+    use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE
+    use GoverningEquationBaseType       , only : goveqn_base_type
+    use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+    use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+    use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
+    use petscvec
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_mlc_type)  :: mlc_mpp
+    !
+    PetscScalar, pointer :: soln_p(:)
+    PetscInt             :: idx_leaf, idx_data, idx_soil
+    PetscInt             :: ileaf, icair, itree, k, ieqn
+    PetscInt             :: ncells
+    PetscReal,  pointer  :: data(:)
+    class(goveqn_base_type) , pointer :: goveq
+    PetscErrorCode       :: ierr
+
+    ncells = ncair*ntree*(nz_cair+1)
+    allocate(data(ncells))
+
+    do ileaf = 1, 2
+       ncells = ncair*ntree*(ntop-nbot+1)
+       if (ileaf == 1) then
+          ieqn = CLEF_TEMP_SUN_GE
+       else
+          ieqn = CLEF_TEMP_SHD_GE
+       end if
+
+       call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
+       select type(goveq)
+       class is (goveqn_cleaf_temp_type)
+          call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_TEMPERATURE, ncells, data)
+       end select
+
+       idx_leaf = 0
+       idx_data = 0
+       do icair = 1, ncair
+          do itree = 1, ntree
+             do k = 1, nz_cair+1
+                idx_data = idx_data + 1
+                if (k>=nbot .and. k<=ntop) then
+                   idx_leaf = idx_leaf + 1
+                   if (ileaf == 1) then
+                      call set_value_in_condition(Tleaf_sun, idx_leaf, data(idx_data))
+                   else
+                      call set_value_in_condition(Tleaf_shd, idx_leaf, data(idx_data))
+                   endif
+                end if
+             end do
+          end do
+       end do
+    end do
+
+    call mlc_mpp%soe%SetPointerToIthGovEqn(CAIR_TEMP_GE, goveq)
+    ncells = ncair*(nz_cair+1)
+    select type(goveq)
+    class is (goveqn_cair_temp_type)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
+    end select
+
+    idx_soil = 0
+    idx_data = 0
+    do icair = 1, ncair
+       do k = 1, nz_cair+1
+          idx_data = idx_data + 1
+          if (k == 1) then
+             idx_soil = idx_soil + 1
+             call set_value_in_condition(Tsoil, idx_soil, data(idx_data))
+          end if
+       end do
+    end do
+
+  end subroutine save_temperatures_from_mlc
 
 end module ml_model_utils
