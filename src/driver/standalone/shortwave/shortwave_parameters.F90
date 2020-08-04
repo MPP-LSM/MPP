@@ -87,8 +87,8 @@ contains
              cur_goveq%aux_vars_in(icell)%leaf_rho(2)   = 0.45d0
              cur_goveq%aux_vars_in(icell)%leaf_tau(1)   = 0.05d0
              cur_goveq%aux_vars_in(icell)%leaf_tau(2)   = 0.25d0
-             cur_goveq%aux_vars_in(icell)%leaf_omega(1) = 0.55d0
-             cur_goveq%aux_vars_in(icell)%leaf_omega(2) = 0.30d0
+             cur_goveq%aux_vars_in(icell)%leaf_omega(1) = 0.15d0
+             cur_goveq%aux_vars_in(icell)%leaf_omega(2) = 0.70d0
 
              sumlai = 6.d0 - (k-1)*lai_inc + lai_inc/2.d0
              cumlai = 6.d0 - (k-1)*lai_inc

@@ -29,6 +29,7 @@ module SystemOfEquationsShortwaveType
      procedure, public :: Init                  => ShortwaveSoeInit
      !procedure, public :: AllocateAuxVars       => ShortwaveSoeAllocateAuxVars
      procedure, public :: PreSolve              => ShortwaveSoePreSolve
+     procedure, public :: PostSolve             => ShortwaveSoePostSolve
      procedure, public :: ComputeRHS            => ShortwaveSoeComputeRhs
      procedure, public :: ComputeOperators      => ShortwaveSoeComputeOperators
 
@@ -249,6 +250,37 @@ contains
     deallocate(B_submats   )
 
   end subroutine ShortwaveSoeComputeOperators
+
+  !------------------------------------------------------------------------
+  subroutine ShortwaveSoePostSolve (this)
+    !
+    ! !DESCRIPTION:
+    ! Initializes module variables and data structures
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType, only : SOEBaseInit
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_shortwave_type) :: this
+    !
+    class(goveqn_base_type) , pointer :: cur_goveq
+    PetscErrorCode                    :: ierr
+
+    call VecCopy(this%solver%soln, this%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call this%SavePrimaryIndependentVar(this%solver%soln)
+
+    cur_goveq => this%goveqns
+    do
+       if (.not.associated(cur_goveq)) exit
+
+       call cur_goveq%PostSolve()
+
+       cur_goveq => cur_goveq%next
+    enddo
+
+  end subroutine ShortwaveSoePostSolve
 
 #endif
 
