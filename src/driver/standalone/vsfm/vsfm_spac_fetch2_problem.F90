@@ -626,7 +626,7 @@ end subroutine SetUpTreeProperties
        es_c1     = es_c1_def;
        es_c2     = es_c2_def;
        es_c3     = es_c3_def;
-       es_kmax   = es_kmax;
+       es_kmax   = es_kmax_def;
 
        maple_phis50 = es_phis50_def;
        maple_phi50  = es_phi50_def;
@@ -634,7 +634,7 @@ end subroutine SetUpTreeProperties
        maple_c1     = es_c1_def;
        maple_c2     = es_c2_def;
        maple_c3     = es_c3_def;
-       maple_kmax   = es_kmax;
+       maple_kmax   = es_kmax_def;
 
        oak_phis50 = es_phis50_def;
        oak_phi50  = es_phi50_def;
@@ -642,7 +642,7 @@ end subroutine SetUpTreeProperties
        oak_c1     = es_c1_def;
        oak_c2     = es_c2_def;
        oak_c3     = es_c3_def;
-       oak_kmax   = es_kmax;
+       oak_kmax   = es_kmax_def;
 
        pine_phis50 = pine_phis50_def;
        pine_phi50  = pine_phi50_def;
@@ -650,7 +650,7 @@ end subroutine SetUpTreeProperties
        pine_c1     = pine_c1_def;
        pine_c2     = pine_c2_def;
        pine_c3     = pine_c3_def;
-       pine_kmax   = pine_kmax;
+       pine_kmax   = pine_kmax_def;
     endif
 
     !
@@ -1555,7 +1555,7 @@ end subroutine SetUpTreeProperties
     PetscReal        , pointer :: dx_1d(:), dy_1d(:), dz_1d(:)
     PetscReal        , pointer :: area(:), vol(:)
     PetscInt         , pointer :: filter(:)
-    PetscInt                   :: nconn
+    PetscInt                   :: nconn, ntree
     PetscInt         , pointer :: conn_id_up(:)
     PetscInt         , pointer :: conn_id_dn(:)
     PetscReal        , pointer :: conn_dist_up(:)
@@ -1572,6 +1572,7 @@ end subroutine SetUpTreeProperties
        dd     = oak_root_d
        rld0   = oak_root_rld0
        radius = oak_root_radius
+       ntree  = 1;
 
     case ('pine')
        nz     = pine_root_nz
@@ -1579,6 +1580,7 @@ end subroutine SetUpTreeProperties
        dd     = pine_root_d
        rld0   = pine_root_rld0
        radius = pine_root_radius
+       ntree  = 1;
 
     case ('e')
        IDX    = E_IDX
@@ -1588,6 +1590,7 @@ end subroutine SetUpTreeProperties
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
        local_Asapwood = Asapwood(IDX)
+       ntree = es_ntree;
 
     case ('m')
        IDX    = M_IDX
@@ -1597,6 +1600,7 @@ end subroutine SetUpTreeProperties
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
        local_Asapwood = Asapwood(IDX)
+       ntree = maple_ntree;
 
     case ('o')
        IDX    = O_IDX
@@ -1606,6 +1610,7 @@ end subroutine SetUpTreeProperties
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
        local_Asapwood = Asapwood(IDX)
+       ntree = oak_ntree;
 
     case ('p')
        IDX    = P_IDX
@@ -1615,6 +1620,7 @@ end subroutine SetUpTreeProperties
        rld0   = root_rld0(IDX)
        radius = root_radius(IDX)
        local_Asapwood = Asapwood(IDX)
+       ntree = pine_ntree;
 
     case default
        write(*,*)'Unable to set root mesh for tree_name = '//trim(tree_name)
@@ -1641,8 +1647,8 @@ end subroutine SetUpTreeProperties
        root_len     = root_len_den * & ! [m/m^3]
                       (dx*dy*dz_soil)       ! [m^3]
 
-       vol(kk)      = PI*(radius**2.d0)*root_len
-       area(kk)     = 2.d0*PI*radius*root_len
+       vol(kk)      = PI*(radius**2.d0)*root_len*ntree
+       area(kk)     = 2.d0*PI*radius*root_len*ntree
 
        xc_1d(kk)    = 0.d0!radius
        yc_1d(kk)    = 0.d0!root_len
@@ -1835,7 +1841,7 @@ end subroutine SetUpTreeProperties
     dx_1d  (:) = dx
     dy_1d  (:) = dy
     dz_1d  (:) = dz_soil
-    area   (:) = dy*dz_soil
+    area   (:) = dx*dz_soil
     volume (:) = dx*dy*dz_soil
 
     allocate(mesh)
