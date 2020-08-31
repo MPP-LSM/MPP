@@ -342,11 +342,13 @@ end subroutine SetUpTreeProperties
     PetscBool          :: save_internal_mass_flux
     PetscBool          :: save_boundary_mass_flux
     PetscBool          :: save_coupling_mass_flux
+    PetscBool          :: save_pressure_bc
     character(len=256) :: string
     character(len=256) :: pet_file
     character(len=256) :: soil_bc_file
     character(len=256) :: soil_ss_file
     character(len=256) :: sm_bc_file
+    character(len=256) :: pressure_bc_file
     character(len=256) :: actual_et_file
     character(len=256) :: et_factor_file
     character(len=256) :: sat_file
@@ -520,6 +522,10 @@ end subroutine SetUpTreeProperties
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-sm_bc_file',sm_bc_file,flg,ierr)
     if (flg) sm_bc_specified = PETSC_TRUE
+
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-pressure_bc_file',pressure_bc_file,flg,ierr)
+    if (flg) save_pressure_bc = PETSC_TRUE
 
     if ( trim(problem_type) == 'oak'          .or. &
          trim(problem_type) == 'pine'         .or. &
@@ -720,6 +726,9 @@ end subroutine SetUpTreeProperties
        call VecLoad(SoilBC, viewer, ierr); CHKERRQ(ierr)
        call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
        call VecGetSize(SoilBC, vec_size, ierr); CHKERRQ(ierr)
+       if (save_pressure_bc) then
+         call VecDuplicate(SoilMoistureBC,SoilBC, ierr); CHKERRQ(ierr) 
+       end if
 
        ntimes = vec_size
        if (nstep > ntimes) then
@@ -739,6 +748,9 @@ end subroutine SetUpTreeProperties
        call VecLoad(SoilMoistureBC, viewer, ierr); CHKERRQ(ierr)
        call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
        call VecGetSize(SoilMoistureBC, vec_size, ierr); CHKERRQ(ierr)
+       if (save_pressure_bc) then
+         call VecDuplicate(SoilMoistureBC,SoilBC, ierr); CHKERRQ(ierr) 
+       end if
 
        ntimes = vec_size
        if (nstep > ntimes) then
@@ -872,7 +884,7 @@ end subroutine SetUpTreeProperties
           call set_source_sink_for_emop(nET, istep, ET)
           if (soil_ss_specified) call set_source_sink_for_soil(istep, SoilSS)
           if (soil_bc_specified) call set_boundary_conditions_for_single_tree(istep, SoilBC)
-          if (sm_bc_specified) call set_soil_moisture_boundary_conditions_for_single_tree(istep, SoilMoistureBC)
+          if (sm_bc_specified) call set_soil_moisture_boundary_conditions_for_single_tree(istep, SoilMoistureBC, SoilBC)
 
        case default
           write(*,*)'Unable to set BC for problem_type = ' // trim(problem_type)
@@ -1012,6 +1024,12 @@ end subroutine SetUpTreeProperties
        call VecDestroy(Coupling_Mass_Flux, ierr); CHKERRQ(ierr)
     end if
 
+    if (save_pressure_bc) then
+       call PetscViewerBinaryOpen(PETSC_COMM_SELF,pressure_bc_file,FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
+       call VecView(SoilBC,viewer,ierr);CHKERRQ(ierr)
+       call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+       call VecDestroy(SoilBC, ierr); CHKERRQ(ierr)
+    end if
   end subroutine run_vsfm_spac_fetch2_problem
   
   !------------------------------------------------------------------------
@@ -3968,7 +3986,7 @@ end subroutine SetUpTreeProperties
   end subroutine set_boundary_conditions_for_single_tree
 
   !------------------------------------------------------------------------
-  subroutine set_soil_moisture_boundary_conditions_for_single_tree(istep, SoilMoistureBC)
+  subroutine set_soil_moisture_boundary_conditions_for_single_tree(istep, SoilMoistureBC, SoilBC)
     !
     ! !DESCRIPTION:
     !
@@ -3981,15 +3999,16 @@ end subroutine SetUpTreeProperties
     implicit none
     !
     PetscInt           :: istep
-    Vec                :: SoilMoistureBC
+    Vec                :: SoilMoistureBC, SoilBC
     !
     PetscReal, pointer :: bc_value(:)
-    PetscReal, pointer :: smbc_p(:)
+    PetscReal, pointer :: smbc_p(:),sbc_p(:)
     PetscErrorCode     :: ierr
     PetscInt           :: soe_auxvar_id
     PetscReal          :: Se, n, Psoil, Pc
 
     call VecGetArrayF90(SoilMoistureBC, smbc_p, ierr)
+    call VecGetArrayF90(SoilBC, sbc_p, ierr)
     allocate(bc_value(1))
 
     n = 1.d0/(1.d0-soil_vg_m)
@@ -3997,6 +4016,7 @@ end subroutine SetUpTreeProperties
     Pc    = -((Se**(-1.d0/soil_vg_m) - 1.d0)**(1.d0/n))/soil_alpha;
     Psoil = 101325 + Pc
     bc_value(1) = Psoil
+    sbc_p(istep) = Psoil
 
     soe_auxvar_id = 1
 
@@ -4005,6 +4025,7 @@ end subroutine SetUpTreeProperties
 
     deallocate(bc_value)
     call VecRestoreArrayF90(SoilMoistureBC, smbc_p, ierr)
+    call VecRestoreArrayF90(SoilBC, sbc_p, ierr)
 
   end subroutine set_soil_moisture_boundary_conditions_for_single_tree
 
