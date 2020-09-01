@@ -37,6 +37,9 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: oak_kmax_def     = 6.65d-6    ! s
   PetscInt  , parameter :: oak_ntree        = 81
 
+  PetscReal , parameter :: RAI           = 3.d0 ! root area index [m^2_root / m^2_soil]
+  PetscReal , parameter :: RLD           = 1.d4 ! root length density [m_root / m^3_soil]
+
   PetscInt  , parameter :: pine_nz       = 85       ! -
   PetscReal , parameter :: pine_Asapwood = 12.7130d0 ! m^2
   PetscReal , parameter :: pine_phis50_def   = -1.00d6  ! Pa
@@ -146,15 +149,17 @@ module vsfm_spac_fetch2_problem
 
   PetscInt , parameter :: soil_nz         = 60
   PetscReal, parameter :: soil_perm       = 6.83d-08      ! [m^2]
-  PetscReal, parameter :: soil_perm_bot   = 6.83d-08      ! [m^2]
+  PetscReal, parameter :: soil_perm_mid   = 6.83d-08      ! [m^2]
+  PetscReal, parameter :: soil_perm_bot   = 6.83d-11      ! [m^2]
   PetscReal, parameter :: soil_sat_res    = 0.02d0        ! [-]
   !PetscReal, parameter :: soil_alpha      = 0.00005d0     ! [Pa^{-1}]
   PetscReal, parameter :: soil_alpha      = 0.00035d0     ! [Pa^{-1}]
   !PetscReal, parameter :: soil_alpha      = 0.001d0     ! [Pa^{-1}]
   !PetscReal, parameter :: soil_alpha      = 0.0052d0     ! [Pa^{-1}]
   PetscReal, parameter :: soil_vg_m       = 0.40d0        ! [-]
-  PetscReal, parameter :: soil_por        = 0.50d0         ! [-]
-  PetscReal, parameter :: soil_por_bot    = 0.50d0         ! [-]
+  PetscReal, parameter :: soil_por        = 0.45d0         ! [-]
+  PetscReal, parameter :: soil_por_mid    = 0.30d0         ! [-]
+  PetscReal, parameter :: soil_por_bot    = 0.12d0         ! [-]
 
   ! Index for various trees
   PetscInt   :: E_IDX ! Early Successional
@@ -545,7 +550,7 @@ end subroutine SetUpTreeProperties
 
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-soil_ss_file',soil_ss_file,flg,ierr)
-    if (flg) soil_ss_specified = PETSC_TRUE
+    !if (flg) soil_ss_specified = PETSC_TRUE
 
     if ( trim(problem_type) == 'oak_spac'      .or. &
          trim(problem_type) == 'pine_spac'     .or. &
@@ -557,10 +562,10 @@ end subroutine SetUpTreeProperties
          !trim(problem_type) == 'o_spac'        .or. &
          !trim(problem_type) == 'p_spac'             &
          ) then
-       if (.not.flg) then
-          write(*,*)'ERROR: Specify the soil source-sink condition filename via -soil_ss_file <filename>'
-          error_in_cmd_options = PETSC_TRUE
-       end if
+       !if (.not.flg) then
+       !   write(*,*)'ERROR: Specify the soil source-sink condition filename via -soil_ss_file <filename>'
+       !   error_in_cmd_options = PETSC_TRUE
+       !end if
     end if
 
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
@@ -879,6 +884,7 @@ end subroutine SetUpTreeProperties
        case ('soil')
           if (soil_ss_specified) call set_source_sink_for_soil(istep, SoilSS)
           if (soil_bc_specified) call set_boundary_conditions_for_single_tree(istep, SoilBC)
+          if (sm_bc_specified) call set_soil_moisture_boundary_conditions_for_single_tree(istep, SoilMoistureBC, SoilBC)
 
        case ('emop_spac','e_spac','m_spac','o_spac','p_spac')
           call set_source_sink_for_emop(nET, istep, ET)
@@ -1660,13 +1666,15 @@ end subroutine SetUpTreeProperties
 
        zc_1d(kk)    = -(kk-1)*dz_soil - dz_soil/2.0
 
-       root_len_den = rld0 * (1.d0 - abs(zc_1d(kk))/dd)*exp(-qz*abs(zc_1d(kk))/dd)
-       root_len_den = rld0 * exp(-qz*abs(zc_1d(kk))/dd)
+       !root_len_den = rld0 * (1.d0 - abs(zc_1d(kk))/dd)*exp(-qz*abs(zc_1d(kk))/dd)
+       !root_len_den = rld0 * exp(-qz*abs(zc_1d(kk))/dd)
+       root_len_den = RLD
        root_len     = root_len_den * & ! [m/m^3]
                       (dx*dy*dz_soil)       ! [m^3]
 
-       vol(kk)      = PI*(radius**2.d0)*root_len*ntree
-       area(kk)     = 2.d0*PI*radius*root_len*ntree
+       vol(kk)      = PI*(radius**2.d0)*root_len
+       !area(kk)     = 2.d0*PI*radius*root_len!*ntree
+       area(kk)     = RAI *dx*dy
 
        xc_1d(kk)    = 0.d0!radius
        yc_1d(kk)    = 0.d0!root_len
@@ -2018,6 +2026,7 @@ end subroutine SetUpTreeProperties
     case ('soil')
        if (soil_ss_specified) call add_ss_for_soil(GE_soil)
        if (soil_bc_specified) call add_top_bc_to_soil_goveqn(GE_soil)
+       if (sm_bc_specified) call add_top_bc_to_soil_goveqn(GE_soil)
 
     case ('emop_spac')
        call add_ss_to_goveqns_for_single_tree(GE_e_xylm)
@@ -2906,7 +2915,11 @@ end subroutine SetUpTreeProperties
     
     por(:)          = soil_por
     perm(:)         = soil_perm
-    do k=10,ncells
+    do k=8,15
+       por(k)   = soil_por_mid
+       perm(k)  = soil_perm_mid
+    end do
+    do k=16,ncells
        por(k)   = soil_por_bot
        perm(k)  = soil_perm_bot
     end do
@@ -3151,6 +3164,7 @@ end subroutine SetUpTreeProperties
                 dn_conductance(nconns) = soil_perm_bot/droot
              end if
              dn_conductance(nconns) = (kmax*vis/rho)/droot
+             dn_conductance(nconns) = 3.d-11
 
              dn_alpha        (nconns) = phi88
              dn_lambda       (nconns) = phi50
@@ -3374,6 +3388,7 @@ end subroutine SetUpTreeProperties
        droot = (PI*root_len_den)**(-0.5d0)
 
        dn_conductance(kk+nxylem_conns) = (kmax*vis/rho)/droot
+       dn_conductance(kk+nxylem_conns) = 3.d-11
     end do
 
     ! Set downwind values
@@ -4012,7 +4027,7 @@ end subroutine SetUpTreeProperties
     allocate(bc_value(1))
 
     n = 1.d0/(1.d0-soil_vg_m)
-    Se    = (smbc_p(istep) - soil_sat_res)/(1.d0 - soil_sat_res)
+    Se    = (smbc_p(istep)/soil_por - soil_sat_res)/(1.d0 - soil_sat_res)
     Pc    = -((Se**(-1.d0/soil_vg_m) - 1.d0)**(1.d0/n))/soil_alpha;
     Psoil = 101325 + Pc
     bc_value(1) = Psoil
