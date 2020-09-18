@@ -107,7 +107,7 @@ contains
 
     case (CANOPY_MESH)
        nz   = (ntop-nbot+1)
-       ncol = ncair * ntree * 2
+       ncol = ncair * ntree
 
     case (CANOPY_AND_SOIL_MESH)
        nz   = (ntop-nbot+1) + 1
