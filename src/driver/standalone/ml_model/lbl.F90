@@ -12,7 +12,7 @@ module lbl
 #include <petsc/finclude/petsc.h>
 
   public :: init_lbl
-  public :: lbl_set_boundary_conditions
+  public :: solve_lbl
 
 contains
 
@@ -131,7 +131,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine lbl_set_boundary_conditions(lbl_mpp, Tair, Tleaf)
+  subroutine lbl_set_boundary_conditions(lbl_mpp)
 
     ! !DESCRIPTION:
     !
@@ -142,36 +142,49 @@ contains
     use GoveqnLeafBoundaryLayer   , only : goveqn_leaf_bnd_lyr_type
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
-    use MultiPhysicsProbConstants , only : TFRZ
+    use ml_model_global_vars      , only : Tleaf_sun, Tleaf_shd, Tair
+    use ml_model_utils            , only : get_value_from_condition
     !
     ! !ARGUMENTS
     implicit none
     !
     type(mpp_lbl_type)                   :: lbl_mpp
-    PetscReal                  , pointer :: Tair(:)
-    PetscReal                  , pointer :: Tleaf(:)
     !
     class(goveqn_base_type)    , pointer :: cur_goveq
     class(connection_set_type) , pointer :: cur_conn_set
     class(condition_type)      , pointer :: cur_cond
-    PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol
+    PetscInt                             :: k, icol, icell, ileaf, icair, idx_data, sum_conn, nz, ncol
 
     call lbl_mpp%soe%SetPointerToIthGovEqn(LBL_GE, cur_goveq)
 
     select type(cur_goveq)
     class is (goveqn_leaf_bnd_lyr_type)
 
-       ncol = ncair * ntree
-       nz   = (ntop-nbot+1) + 1
+       ncol = ntree
+       nz   = (ntop-nbot+1)
 
        icell = 0
+       ileaf = 0
        do icol = 1, ncol
           do k = 1, nz
              icell = icell + 1
-             cur_goveq%aux_vars_in(icell)%tair  = TFRZ + Tair(icell)  ! [K]
-             cur_goveq%aux_vars_in(icell)%tleaf = TFRZ + Tleaf(icell) ! [K]
+             ileaf = ileaf + 1
+             cur_goveq%aux_vars_in(icell           )%tleaf = get_value_from_condition(Tleaf_sun, ileaf) ! [K]
+             cur_goveq%aux_vars_in(icell + ncol*nz )%tleaf = get_value_from_condition(Tleaf_shd, ileaf) ! [K]
           end do
        end do
+
+       icell = 0
+       idx_data = 0
+       do icair = 1, ncair
+          do k = 1, nz_cair
+              idx_data = idx_data + 1
+              if (k >= nbot .and. k<=ntop) then
+                 icell = icell + 1
+                 cur_goveq%aux_vars_in(icell)%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
+              endif
+            enddo
+       enddo
 
     end select
 
@@ -197,5 +210,25 @@ contains
     call set_parameters(lbl_mpp)
 
   end subroutine init_lbl
+
+ !------------------------------------------------------------------------
+  subroutine solve_lbl(lbl_mpp, istep, dt)
+    !
+    implicit none
+    !
+    class(mpp_lbl_type) :: lbl_mpp
+    PetscInt                 :: istep
+    PetscReal                :: dt
+    !
+    PetscBool                :: converged
+    PetscInt                 :: converged_reason
+    PetscBool                :: flg
+    PetscErrorCode           :: ierr
+
+    call lbl_set_boundary_conditions(lbl_mpp)
+
+    call lbl_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
+
+  end subroutine solve_lbl
 
 end module lbl

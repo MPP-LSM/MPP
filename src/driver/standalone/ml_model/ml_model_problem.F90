@@ -158,6 +158,7 @@ contains
     use ml_model_utils               , only : extract_data_from_mlc
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
+    use lbl                          , only : solve_lbl
     !
     implicit none
     !
@@ -189,7 +190,10 @@ contains
 
        call extract_data_from_mlc(mlc_mpp)
        call solve_lwv(lwv_mpp, istep, dt)
-    end do
+
+       call solve_lbl(lbl_mpp, istep, dt)
+
+      end do
 
   end subroutine run_ml_model_problem
 
