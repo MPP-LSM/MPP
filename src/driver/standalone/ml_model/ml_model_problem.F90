@@ -155,7 +155,7 @@ contains
     !
     use ml_model_boundary_conditions , only : read_boundary_conditions
     use ml_model_utils               , only : compute_dpai_fssh
-    use ml_model_utils               , only : save_temperatures_from_mlc
+    use ml_model_utils               , only : extract_data_from_mlc
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
     !
@@ -187,7 +187,7 @@ contains
        dt = 30.d0 * 60.d0 ! [sec]
        call solve_swv(swv_mpp, istep, dt)
 
-       call save_temperatures_from_mlc(mlc_mpp)
+       call extract_data_from_mlc(mlc_mpp)
        call solve_lwv(lwv_mpp, istep, dt)
     end do
 

@@ -12,7 +12,7 @@ module ml_model_utils
   PetscInt, parameter :: CANOPY_AND_SOIL_MESH = 3
 
   public :: compute_dpai_fssh
-  public :: save_temperatures_from_mlc
+  public :: extract_data_from_mlc
   public :: set_value_in_condition
   public :: get_value_from_condition
 
@@ -181,7 +181,7 @@ contains
   end function get_value_from_condition
 
   !------------------------------------------------------------------------
-  subroutine save_temperatures_from_mlc(mlc_mpp)
+  subroutine extract_data_from_mlc(mlc_mpp)
     !
     ! !DESCRIPTION:
     !
@@ -268,7 +268,7 @@ contains
     end do
     write(*,*)'setting Tair done'
 
-  end subroutine save_temperatures_from_mlc
+  end subroutine extract_data_from_mlc
 
 
   !------------------------------------------------------------------------
