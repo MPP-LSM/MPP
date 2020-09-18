@@ -266,7 +266,6 @@ contains
           end if
        end do
     end do
-    write(*,*)'setting Tair done'
 
   end subroutine extract_data_from_mlc
 
