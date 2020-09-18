@@ -33,6 +33,7 @@ module ml_model_global_vars
   type(condition_type) :: Irsky
   type(condition_type) :: Pref, Uref, Tref, Rhref
   type(condition_type) :: Tleaf_sun, Tleaf_shd, Tsoil, Tcan
+  type(condition_type) :: Tair, eair
   type(condition_type) :: rn_sun, rn_shd, rn_soil
   type(condition_type) :: gs_sun, gs_shd
   type(condition_type) :: gbh, gbv, gbc

@@ -150,6 +150,7 @@ contains
     PetscReal            :: value
 
     if (idata > cond%ndata) then
+       write(*,*)'idata = ',idata,'cond%ndata = ',cond%ndata
        call endrun(msg=' ERROR: Attempting to set data for a index that exceeds size'//&
             errMsg(__FILE__, __LINE__))
     end if
@@ -189,10 +190,11 @@ contains
     use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
     use MultiPhysicsProbMLC             , only : mpp_mlc_type
     use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
-    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, Tsoil
-    use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE
+    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, Tsoil, Tair, eair
+    use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
     use GoverningEquationBaseType       , only : goveqn_base_type
     use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+    use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
     use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
     use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
@@ -205,15 +207,16 @@ contains
     class(mpp_mlc_type)  :: mlc_mpp
     !
     PetscScalar, pointer :: soln_p(:)
-    PetscInt             :: idx_leaf, idx_data, idx_soil
+    PetscInt             :: idx_leaf, idx_data, idx_soil, idx_air
     PetscInt             :: ileaf, icair, itree, k, ieqn
     PetscInt             :: ncells
-    PetscReal,  pointer  :: data(:)
-    class(goveqn_base_type) , pointer :: goveq
+    PetscReal,  pointer  :: tleaf_data(:), tair_data(:), eair_data(:)
     PetscErrorCode       :: ierr
 
     ncells = ncair*ntree*(nz_cair+1)
-    allocate(data(ncells))
+    allocate(tleaf_data(ncells))
+    allocate(tair_data(ncells))
+    allocate(eair_data(ncells))
 
     do ileaf = 1, 2
        ncells = ncair*ntree*(ntop-nbot+1)
@@ -223,11 +226,7 @@ contains
           ieqn = CLEF_TEMP_SHD_GE
        end if
 
-       call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
-       select type(goveq)
-       class is (goveqn_cleaf_temp_type)
-          call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_TEMPERATURE, ncells, data)
-       end select
+       call get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, tleaf_data)
 
        idx_leaf = 0
        idx_data = 0
@@ -238,9 +237,9 @@ contains
                    idx_leaf = idx_leaf + 1
                    idx_data = idx_data + 1
                    if (ileaf == 1) then
-                      call set_value_in_condition(Tleaf_sun, idx_leaf, data(idx_data))
+                      call set_value_in_condition(Tleaf_sun, idx_leaf, tleaf_data(idx_data))
                    else
-                      call set_value_in_condition(Tleaf_shd, idx_leaf, data(idx_data))
+                      call set_value_in_condition(Tleaf_shd, idx_leaf, tleaf_data(idx_data))
                    endif
                 end if
              end do
@@ -248,25 +247,70 @@ contains
        end do
     end do
 
-    call mlc_mpp%soe%SetPointerToIthGovEqn(CAIR_TEMP_GE, goveq)
-    ncells = ncair*(nz_cair+1)
-    select type(goveq)
-    class is (goveqn_cair_temp_type)
-       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
-    end select
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, ncells, eair_data)
 
     idx_soil = 0
     idx_data = 0
+    idx_air = 0
     do icair = 1, ncair
        do k = 1, nz_cair+1
           idx_data = idx_data + 1
           if (k == 1) then
              idx_soil = idx_soil + 1
-             call set_value_in_condition(Tsoil, idx_soil, data(idx_data))
+             call set_value_in_condition(Tsoil, idx_soil, tair_data(idx_data))
+          else
+             idx_air = idx_air + 1
+             call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
+             call set_value_in_condition(eair, idx_air, eair_data(idx_data))
           end if
        end do
     end do
+    write(*,*)'setting Tair done'
 
   end subroutine save_temperatures_from_mlc
+
+
+  !------------------------------------------------------------------------
+  subroutine get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, data)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   use SystemOfEquationsBaseType       , only : sysofeqns_base_type
+   use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
+   use MultiPhysicsProbMLC             , only : mpp_mlc_type
+   use GoverningEquationBaseType       , only : goveqn_base_type
+   use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+   use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
+   use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+   use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
+   use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
+   use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
+   use MultiPhysicsProbConstants       , only : VAR_WATER_VAPOR
+    !
+    ! !ARGUMENTS
+   implicit none
+   !
+   class(mpp_mlc_type)  :: mlc_mpp
+   PetscInt             :: ieqn
+   PetscInt             :: ncells
+   PetscReal,  pointer  :: data(:)
+   !
+   class(goveqn_base_type) , pointer :: goveq
+   PetscErrorCode       :: ierr
+
+   call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
+
+   select type(goveq)
+   class is (goveqn_cair_temp_type)
+      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
+   class is (goveqn_cair_vapor_type)
+      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_WATER_VAPOR, ncells, data)
+   class is (goveqn_cleaf_temp_type)
+      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_TEMPERATURE, ncells, data)
+   end select
+
+   end subroutine get_data_from_mlc_eqn
 
 end module ml_model_utils
