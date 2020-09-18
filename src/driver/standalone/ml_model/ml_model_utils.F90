@@ -247,6 +247,7 @@ contains
        end do
     end do
 
+    ncells = ncair*(nz_cair+1)
     call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
     call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, ncells, eair_data)
 
