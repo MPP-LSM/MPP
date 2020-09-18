@@ -234,9 +234,9 @@ contains
        do icair = 1, ncair
           do itree = 1, ntree
              do k = 1, nz_cair+1
-                idx_data = idx_data + 1
                 if (k>=nbot .and. k<=ntop) then
                    idx_leaf = idx_leaf + 1
+                   idx_data = idx_data + 1
                    if (ileaf == 1) then
                       call set_value_in_condition(Tleaf_sun, idx_leaf, data(idx_data))
                    else
