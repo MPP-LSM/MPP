@@ -26,50 +26,8 @@ module vsfm_spac_fetch2_problem
 
   PetscReal , parameter :: porosity = 0.45d0        ! [-]
 
-  PetscInt  , parameter :: oak_nz       = 59        ! -
-  PetscReal , parameter :: oak_Asapwood = 14.0686d0  ! m^2
-  PetscReal , parameter :: oak_phis50_def   = -0.80d6   ! Pa
-  PetscReal , parameter :: oak_phi50_def    = -2.5d6    ! Pa
-  PetscReal , parameter :: oak_phi88_def    = -0.5d6    ! Pa
-  PetscReal , parameter :: oak_c1_def       = 1.7d6     ! Pa
-  PetscReal , parameter :: oak_c2_def       = 3.0d0     ! -
-  PetscReal , parameter :: oak_c3_def       = 12.3d0    ! -
-  PetscReal , parameter :: oak_kmax_def     = 6.65d-6    ! s
-  PetscReal , parameter :: oak_chang_phi0   = -5.74d8   ! Pa
-  PetscReal , parameter :: oak_chang_p      = 20.d0     ! -
-  PetscReal , parameter :: oak_taper_top    = 0.2d0     ! -
-  PetscInt  , parameter :: oak_ntree        = 81
-
   PetscReal , parameter :: RAI           = 3.d0 ! root area index [m^2_root / m^2_soil]
   PetscReal , parameter :: RLD           = 1.d4 ! root length density [m_root / m^3_soil]
-
-  PetscInt  , parameter :: pine_nz       = 85       ! -
-  PetscReal , parameter :: pine_Asapwood = 12.7130d0 ! m^2
-  PetscReal , parameter :: pine_phis50_def   = -1.00d6  ! Pa
-  PetscReal , parameter :: pine_phi50_def    = -2.2d6   ! Pa
-  PetscReal , parameter :: pine_phi88_def    = -0.5d6   ! Pa
-  PetscReal , parameter :: pine_c1_def       = 1.2d6    ! Pa
-  PetscReal , parameter :: pine_c2_def       = 5.0d0    ! -
-  PetscReal , parameter :: pine_c3_def       = 10.3d0   ! -
-  PetscReal , parameter :: pine_kmax_def     = 2.75d-6   ! s
-  PetscReal , parameter :: pine_chang_phi0   = -5.74d8   ! Pa
-  PetscReal , parameter :: pine_chang_p      = 20.d0        ! -
-  PetscReal , parameter :: pine_taper_top    = 0.4d0     ! -
-  PetscInt  , parameter :: pine_ntree        = 2809
-
-  PetscInt  , parameter :: maple_nz       = 85       ! -
-  PetscReal , parameter :: maple_Asapwood = 31.4334d0 ! m^2
-  PetscReal , parameter :: maple_phis50_def   = -1.50d6  ! Pa
-  PetscReal , parameter :: maple_phi50_def    = -2.2d6   ! Pa
-  PetscReal , parameter :: maple_phi88_def    = -0.5d6   ! Pa
-  PetscReal , parameter :: maple_c1_def       = 1.2d6    ! Pa
-  PetscReal , parameter :: maple_c2_def       = 5.0d0    ! -
-  PetscReal , parameter :: maple_c3_def       = 10.3d0   ! -
-  PetscReal , parameter :: maple_kmax_def     = 2.75d-6   ! s
-  PetscReal , parameter :: maple_chang_phi0   = -5.74d8   ! Pa
-  PetscReal , parameter :: maple_chang_p      = 20.d0     ! -
-  PetscReal , parameter :: maple_taper_top    = 0.6d0     ! -
-  PetscInt  , parameter :: maple_ntree        = 436
 
   PetscInt  , parameter :: es_nz       = 85       ! -
   PetscReal , parameter :: es_Asapwood = 87.6282d0 ! m^2
@@ -85,7 +43,86 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: es_taper_top    = 0.2d0     ! -
   PetscInt  , parameter :: es_ntree        = 3342
 
+  PetscInt  , parameter :: maple_nz       = 85       ! -
+  PetscReal , parameter :: maple_Asapwood = 31.4334d0 ! m^2
+  PetscReal , parameter :: maple_phis50_def   = -1.50d6  ! Pa
+  PetscReal , parameter :: maple_phi50_def    = -2.2d6   ! Pa
+  PetscReal , parameter :: maple_phi88_def    = -0.5d6   ! Pa
+  PetscReal , parameter :: maple_c1_def       = 1.2d6    ! Pa
+  PetscReal , parameter :: maple_c2_def       = 5.0d0    ! -
+  PetscReal , parameter :: maple_c3_def       = 10.3d0   ! -
+  PetscReal , parameter :: maple_kmax_def     = 2.75d-6   ! s
+  PetscReal , parameter :: maple_chang_phi0   = -5.74d8   ! Pa
+  PetscReal , parameter :: maple_chang_p      = 20.d0     ! -
+  PetscReal , parameter :: maple_taper_top    = 0.6d0     ! -
+  PetscInt  , parameter :: maple_ntree        = 436
+
+  PetscInt  , parameter :: oak_nz       = 59        ! -
+  PetscReal , parameter :: oak_Asapwood = 14.0686d0  ! m^2
+  PetscReal , parameter :: oak_phis50_def   = -0.80d6   ! Pa
+  PetscReal , parameter :: oak_phi50_def    = -2.5d6    ! Pa
+  PetscReal , parameter :: oak_phi88_def    = -0.5d6    ! Pa
+  PetscReal , parameter :: oak_c1_def       = 1.7d6     ! Pa
+  PetscReal , parameter :: oak_c2_def       = 3.0d0     ! -
+  PetscReal , parameter :: oak_c3_def       = 12.3d0    ! -
+  PetscReal , parameter :: oak_kmax_def     = 6.65d-6    ! s
+  PetscReal , parameter :: oak_chang_phi0   = -5.74d8   ! Pa
+  PetscReal , parameter :: oak_chang_p      = 20.d0     ! -
+  PetscReal , parameter :: oak_taper_top    = 0.2d0     ! -
+  PetscInt  , parameter :: oak_ntree        = 81
+
+  PetscInt  , parameter :: pine_nz       = 85       ! -
+  PetscReal , parameter :: pine_Asapwood = 12.7130d0 ! m^2
+  PetscReal , parameter :: pine_phis50_def   = -1.00d6  ! Pa
+  PetscReal , parameter :: pine_phi50_def    = -2.2d6   ! Pa
+  PetscReal , parameter :: pine_phi88_def    = -0.5d6   ! Pa
+  PetscReal , parameter :: pine_c1_def       = 1.2d6    ! Pa
+  PetscReal , parameter :: pine_c2_def       = 5.0d0    ! -
+  PetscReal , parameter :: pine_c3_def       = 10.3d0   ! -
+  PetscReal , parameter :: pine_kmax_def     = 2.75d-6   ! s
+  PetscReal , parameter :: pine_chang_phi0   = -5.74d8   ! Pa
+  PetscReal , parameter :: pine_chang_p      = 20.d0        ! -
+  PetscReal , parameter :: pine_taper_top    = 0.4d0     ! -
+  PetscInt  , parameter :: pine_ntree        = 2809
+
+
   ! Parameters for root length density = length-of-root/volume-of-soil  [m_root/m^3_soil]
+  PetscInt , parameter :: es_root_nz        = 60
+  PetscReal, parameter :: es_root_qz        = 3.d0         ! [-]
+  PetscReal, parameter :: es_root_d         = 7.d0         ! [m]
+  PetscReal, parameter :: es_root_rld0      = 4.d4         ! [m/m^3]
+  PetscReal, parameter :: es_root_radius    = 2.d-2        ! [m]
+
+  PetscReal , parameter :: es_rad_root_kmax = 0.55d-6   !
+  PetscReal , parameter :: es_rad_root_phi50= -2.2d6   !
+  PetscReal , parameter :: es_rad_root_phi88= -0.5d6   !
+  PetscReal , parameter :: es_rad_root_c1   = 1.2d6    !
+  PetscReal , parameter :: es_rad_root_c2   = 5.0d0    ! -
+
+  PetscReal , parameter :: es_axi_root_kmax = 0.55d-6   !
+  PetscReal , parameter :: es_axi_root_phi50= -2.2d6   !
+  PetscReal , parameter :: es_axi_root_phi88= -0.5d6   !
+  PetscReal , parameter :: es_axi_root_c1   = 1.2d6    !
+  PetscReal , parameter :: es_axi_root_c2   = 5.0d0    ! -
+
+  PetscInt , parameter :: maple_root_nz        = 30
+  PetscReal, parameter :: maple_root_qz        = 3.d0         ! [-]
+  PetscReal, parameter :: maple_root_d         = 7.d0         ! [m]
+  PetscReal, parameter :: maple_root_rld0      = 4.d4         ! [m/m^3]
+  PetscReal, parameter :: maple_root_radius    = 2.d-2        ! [m]
+
+  PetscReal , parameter :: maple_rad_root_kmax = 0.55d-6   !
+  PetscReal , parameter :: maple_rad_root_phi50= -2.2d6   !
+  PetscReal , parameter :: maple_rad_root_phi88= -0.5d6   !
+  PetscReal , parameter :: maple_rad_root_c1   = 1.2d6    !
+  PetscReal , parameter :: maple_rad_root_c2   = 5.0d0    ! -
+
+  PetscReal , parameter :: maple_axi_root_kmax = 0.55d-6   !
+  PetscReal , parameter :: maple_axi_root_phi50= -2.2d6   !
+  PetscReal , parameter :: maple_axi_root_phi88= -0.5d6   !
+  PetscReal , parameter :: maple_axi_root_c1   = 1.2d6    !
+  PetscReal , parameter :: maple_axi_root_c2   = 5.0d0    ! -
+
   PetscInt , parameter :: oak_root_nz        = 60
   PetscReal, parameter :: oak_root_qz        = 3.d0         ! [-]
   !PetscReal, parameter :: oaK_root_d         = 3.d0         ! [m]
@@ -122,42 +159,6 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_axi_root_phi88= -0.5d6   !
   PetscReal , parameter :: pine_axi_root_c1   = 1.7d6    !
   PetscReal , parameter :: pine_axi_root_c2   = 3.0d0    ! -
-
-  PetscInt , parameter :: maple_root_nz        = 30
-  PetscReal, parameter :: maple_root_qz        = 3.d0         ! [-]
-  PetscReal, parameter :: maple_root_d         = 7.d0         ! [m]
-  PetscReal, parameter :: maple_root_rld0      = 4.d4         ! [m/m^3]
-  PetscReal, parameter :: maple_root_radius    = 2.d-2        ! [m]
-
-  PetscReal , parameter :: maple_rad_root_kmax = 0.55d-6   !
-  PetscReal , parameter :: maple_rad_root_phi50= -2.2d6   !
-  PetscReal , parameter :: maple_rad_root_phi88= -0.5d6   !
-  PetscReal , parameter :: maple_rad_root_c1   = 1.2d6    !
-  PetscReal , parameter :: maple_rad_root_c2   = 5.0d0    ! -
-
-  PetscReal , parameter :: maple_axi_root_kmax = 0.55d-6   !
-  PetscReal , parameter :: maple_axi_root_phi50= -2.2d6   !
-  PetscReal , parameter :: maple_axi_root_phi88= -0.5d6   !
-  PetscReal , parameter :: maple_axi_root_c1   = 1.2d6    !
-  PetscReal , parameter :: maple_axi_root_c2   = 5.0d0    ! -
-
-  PetscInt , parameter :: es_root_nz        = 60
-  PetscReal, parameter :: es_root_qz        = 3.d0         ! [-]
-  PetscReal, parameter :: es_root_d         = 7.d0         ! [m]
-  PetscReal, parameter :: es_root_rld0      = 4.d4         ! [m/m^3]
-  PetscReal, parameter :: es_root_radius    = 2.d-2        ! [m]
-
-  PetscReal , parameter :: es_rad_root_kmax = 0.55d-6   !
-  PetscReal , parameter :: es_rad_root_phi50= -2.2d6   !
-  PetscReal , parameter :: es_rad_root_phi88= -0.5d6   !
-  PetscReal , parameter :: es_rad_root_c1   = 1.2d6    !
-  PetscReal , parameter :: es_rad_root_c2   = 5.0d0    ! -
-
-  PetscReal , parameter :: es_axi_root_kmax = 0.55d-6   !
-  PetscReal , parameter :: es_axi_root_phi50= -2.2d6   !
-  PetscReal , parameter :: es_axi_root_phi88= -0.5d6   !
-  PetscReal , parameter :: es_axi_root_c1   = 1.2d6    !
-  PetscReal , parameter :: es_axi_root_c2   = 5.0d0    ! -
 
   PetscInt , parameter :: soil_nz         = 60
   PetscReal, parameter :: soil_perm       = 6.83d-08      ! [m^2]
