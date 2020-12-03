@@ -35,6 +35,9 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: oak_c2_def       = 3.0d0     ! -
   PetscReal , parameter :: oak_c3_def       = 12.3d0    ! -
   PetscReal , parameter :: oak_kmax_def     = 6.65d-6    ! s
+  PetscReal , parameter :: oak_chang_phi0   = -5.74d8   ! Pa
+  PetscReal , parameter :: oak_chang_p      = 20.d0     ! -
+  PetscReal , parameter :: oak_taper_top    = 0.2d0     ! -
   PetscInt  , parameter :: oak_ntree        = 81
 
   PetscReal , parameter :: RAI           = 3.d0 ! root area index [m^2_root / m^2_soil]
@@ -49,6 +52,9 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_c2_def       = 5.0d0    ! -
   PetscReal , parameter :: pine_c3_def       = 10.3d0   ! -
   PetscReal , parameter :: pine_kmax_def     = 2.75d-6   ! s
+  PetscReal , parameter :: pine_chang_phi0   = -5.74d8   ! Pa
+  PetscReal , parameter :: pine_chang_p      = 20.d0        ! -
+  PetscReal , parameter :: pine_taper_top    = 0.4d0     ! -
   PetscInt  , parameter :: pine_ntree        = 2809
 
   PetscInt  , parameter :: maple_nz       = 85       ! -
@@ -60,6 +66,9 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: maple_c2_def       = 5.0d0    ! -
   PetscReal , parameter :: maple_c3_def       = 10.3d0   ! -
   PetscReal , parameter :: maple_kmax_def     = 2.75d-6   ! s
+  PetscReal , parameter :: maple_chang_phi0   = -5.74d8   ! Pa
+  PetscReal , parameter :: maple_chang_p      = 20.d0     ! -
+  PetscReal , parameter :: maple_taper_top    = 0.6d0     ! -
   PetscInt  , parameter :: maple_ntree        = 436
 
   PetscInt  , parameter :: es_nz       = 85       ! -
@@ -71,6 +80,9 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: es_c2_def       = 5.0d0    ! -
   PetscReal , parameter :: es_c3_def       = 10.3d0   ! -
   PetscReal , parameter :: es_kmax_def     = 0.275d-6   ! s
+  PetscReal , parameter :: es_chang_phi0   = -5.74d8   ! Pa
+  PetscReal , parameter :: es_chang_p      = 20.d0     ! -
+  PetscReal , parameter :: es_taper_top    = 0.2d0     ! -
   PetscInt  , parameter :: es_ntree        = 3342
 
   ! Parameters for root length density = length-of-root/volume-of-soil  [m_root/m^3_soil]
