@@ -29,61 +29,61 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: RAI           = 3.d0 ! root area index [m^2_root / m^2_soil]
   PetscReal , parameter :: RLD           = 1.d4 ! root length density [m_root / m^3_soil]
 
-  PetscInt  , parameter :: es_nz       = 85       ! -
-  PetscReal , parameter :: es_Asapwood = 87.6282d0 ! m^2
-  PetscReal , parameter :: es_phis50_def   = -2.50d6  ! Pa
-  PetscReal , parameter :: es_phi50_def    = -2.2d6   ! Pa
-  PetscReal , parameter :: es_phi88_def    = -0.5d6   ! Pa
-  PetscReal , parameter :: es_c1_def       = 1.2d6    ! Pa
-  PetscReal , parameter :: es_c2_def       = 5.0d0    ! -
-  PetscReal , parameter :: es_c3_def       = 10.3d0   ! -
-  PetscReal , parameter :: es_kmax_def     = 0.275d-6   ! s
-  PetscReal , parameter :: es_chang_phi0   = -5.74d8   ! Pa
-  PetscReal , parameter :: es_chang_p      = 20.d0     ! -
-  PetscReal , parameter :: es_taper_top    = 0.2d0     ! -
-  PetscInt  , parameter :: es_ntree        = 3342
+  PetscInt  , parameter :: es_nz                = 85        ! -
+  PetscReal , parameter :: es_Asapwood          = 87.6282d0 ! m^2
+  PetscReal , parameter :: es_phis50_def        = -2.50d6   ! Pa
+  PetscReal , parameter :: es_phi50_def         = -2.2d6    ! Pa
+  PetscReal , parameter :: es_phi88_def         = -0.5d6    ! Pa
+  PetscReal , parameter :: es_c1_def            = 1.2d6     ! Pa
+  PetscReal , parameter :: es_c2_def            = 5.0d0     ! -
+  PetscReal , parameter :: es_c3_def            = 10.3d0    ! -
+  PetscReal , parameter :: es_kmax_def          = 0.275d-6  ! s
+  PetscReal , parameter :: es_chang_phi0_def    = -5.74d8   ! Pa
+  PetscReal , parameter :: es_chang_p_def       = 20.d0     ! -
+  PetscReal , parameter :: es_taper_top         = 0.2d0     ! -
+  PetscInt  , parameter :: es_ntree             = 3342
 
-  PetscInt  , parameter :: maple_nz       = 85       ! -
-  PetscReal , parameter :: maple_Asapwood = 31.4334d0 ! m^2
-  PetscReal , parameter :: maple_phis50_def   = -1.50d6  ! Pa
-  PetscReal , parameter :: maple_phi50_def    = -2.2d6   ! Pa
-  PetscReal , parameter :: maple_phi88_def    = -0.5d6   ! Pa
-  PetscReal , parameter :: maple_c1_def       = 1.2d6    ! Pa
-  PetscReal , parameter :: maple_c2_def       = 5.0d0    ! -
-  PetscReal , parameter :: maple_c3_def       = 10.3d0   ! -
-  PetscReal , parameter :: maple_kmax_def     = 2.75d-6   ! s
-  PetscReal , parameter :: maple_chang_phi0   = -5.74d8   ! Pa
-  PetscReal , parameter :: maple_chang_p      = 20.d0     ! -
-  PetscReal , parameter :: maple_taper_top    = 0.6d0     ! -
-  PetscInt  , parameter :: maple_ntree        = 436
+  PetscInt  , parameter :: maple_nz             = 85        ! -
+  PetscReal , parameter :: maple_Asapwood       = 31.4334d0 ! m^2
+  PetscReal , parameter :: maple_phis50_def     = -1.50d6   ! Pa
+  PetscReal , parameter :: maple_phi50_def      = -2.2d6    ! Pa
+  PetscReal , parameter :: maple_phi88_def      = -0.5d6    ! Pa
+  PetscReal , parameter :: maple_c1_def         = 1.2d6     ! Pa
+  PetscReal , parameter :: maple_c2_def         = 5.0d0     ! -
+  PetscReal , parameter :: maple_c3_def         = 10.3d0    ! -
+  PetscReal , parameter :: maple_kmax_def       = 2.75d-6   ! s
+  PetscReal , parameter :: maple_chang_phi0_def = -5.74d8   ! Pa
+  PetscReal , parameter :: maple_chang_p_def    = 20.d0     ! -
+  PetscReal , parameter :: maple_taper_top      = 0.6d0     ! -
+  PetscInt  , parameter :: maple_ntree          = 436
 
-  PetscInt  , parameter :: oak_nz       = 59        ! -
-  PetscReal , parameter :: oak_Asapwood = 14.0686d0  ! m^2
-  PetscReal , parameter :: oak_phis50_def   = -0.80d6   ! Pa
-  PetscReal , parameter :: oak_phi50_def    = -2.5d6    ! Pa
-  PetscReal , parameter :: oak_phi88_def    = -0.5d6    ! Pa
-  PetscReal , parameter :: oak_c1_def       = 1.7d6     ! Pa
-  PetscReal , parameter :: oak_c2_def       = 3.0d0     ! -
-  PetscReal , parameter :: oak_c3_def       = 12.3d0    ! -
-  PetscReal , parameter :: oak_kmax_def     = 6.65d-6    ! s
-  PetscReal , parameter :: oak_chang_phi0   = -5.74d8   ! Pa
-  PetscReal , parameter :: oak_chang_p      = 20.d0     ! -
-  PetscReal , parameter :: oak_taper_top    = 0.2d0     ! -
-  PetscInt  , parameter :: oak_ntree        = 81
+  PetscInt  , parameter :: oak_nz               = 59        ! -
+  PetscReal , parameter :: oak_Asapwood         = 14.0686d0 ! m^2
+  PetscReal , parameter :: oak_phis50_def       = -0.80d6   ! Pa
+  PetscReal , parameter :: oak_phi50_def        = -2.5d6    ! Pa
+  PetscReal , parameter :: oak_phi88_def        = -0.5d6    ! Pa
+  PetscReal , parameter :: oak_c1_def           = 1.7d6     ! Pa
+  PetscReal , parameter :: oak_c2_def           = 3.0d0     ! -
+  PetscReal , parameter :: oak_c3_def           = 12.3d0    ! -
+  PetscReal , parameter :: oak_kmax_def         = 6.65d-6   ! s
+  PetscReal , parameter :: oak_chang_phi0_def   = -5.74d8   ! Pa
+  PetscReal , parameter :: oak_chang_p_def      = 20.d0     ! -
+  PetscReal , parameter :: oak_taper_top        = 0.2d0     ! -
+  PetscInt  , parameter :: oak_ntree            = 81
 
-  PetscInt  , parameter :: pine_nz       = 85       ! -
-  PetscReal , parameter :: pine_Asapwood = 12.7130d0 ! m^2
-  PetscReal , parameter :: pine_phis50_def   = -1.00d6  ! Pa
-  PetscReal , parameter :: pine_phi50_def    = -2.2d6   ! Pa
-  PetscReal , parameter :: pine_phi88_def    = -0.5d6   ! Pa
-  PetscReal , parameter :: pine_c1_def       = 1.2d6    ! Pa
-  PetscReal , parameter :: pine_c2_def       = 5.0d0    ! -
-  PetscReal , parameter :: pine_c3_def       = 10.3d0   ! -
-  PetscReal , parameter :: pine_kmax_def     = 2.75d-6   ! s
-  PetscReal , parameter :: pine_chang_phi0   = -5.74d8   ! Pa
-  PetscReal , parameter :: pine_chang_p      = 20.d0        ! -
-  PetscReal , parameter :: pine_taper_top    = 0.4d0     ! -
-  PetscInt  , parameter :: pine_ntree        = 2809
+  PetscInt  , parameter :: pine_nz              = 85        ! -
+  PetscReal , parameter :: pine_Asapwood        = 12.7130d0 ! m^2
+  PetscReal , parameter :: pine_phis50_def      = -1.00d6   ! Pa
+  PetscReal , parameter :: pine_phi50_def       = -2.2d6    ! Pa
+  PetscReal , parameter :: pine_phi88_def       = -0.5d6    ! Pa
+  PetscReal , parameter :: pine_c1_def          = 1.2d6     ! Pa
+  PetscReal , parameter :: pine_c2_def          = 5.0d0     ! -
+  PetscReal , parameter :: pine_c3_def          = 10.3d0    ! -
+  PetscReal , parameter :: pine_kmax_def        = 2.75d-6   ! s
+  PetscReal , parameter :: pine_chang_phi0_def  = -5.74d8   ! Pa
+  PetscReal , parameter :: pine_chang_p_def     = 20.d0     ! -
+  PetscReal , parameter :: pine_taper_top       = 0.4d0     ! -
+  PetscInt  , parameter :: pine_ntree           = 2809
 
 
   ! Parameters for root length density = length-of-root/volume-of-soil  [m_root/m^3_soil]
@@ -191,6 +191,8 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: c2(4)
   PetscReal  :: c3(4)
   PetscReal  :: kmax(4)
+  PetscReal  :: chang_phi0(4)
+  PetscReal  :: chang_p(4)
 
   PetscInt  :: root_nz(4)
   PetscReal :: root_qz(4)
@@ -243,11 +245,13 @@ module vsfm_spac_fetch2_problem
   PetscInt :: GE_p_root
   PetscInt :: GE_soil
 
-  PetscBool          :: soil_bc_specified
-  PetscBool          :: sm_bc_specified
-  PetscBool          :: soil_ss_specified
-  PetscBool          :: radial_root_system
-  PetscBool          :: no_capacitance
+  PetscBool :: soil_bc_specified
+  PetscBool :: sm_bc_specified
+  PetscBool :: soil_ss_specified
+  PetscBool :: radial_root_system
+  PetscBool :: no_capacitance
+  PetscBool :: use_chang_satfun
+  PetscBool :: use_taper
 
   Vec :: parameters
 
@@ -258,6 +262,8 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: oak_c2
   PetscReal  :: oak_c3
   PetscReal  :: oak_kmax
+  PetscReal  :: oak_chang_phi0
+  PetscReal  :: oak_chang_p
 
   PetscReal  :: pine_phis50
   PetscReal  :: pine_phi50
@@ -266,6 +272,8 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: pine_c2
   PetscReal  :: pine_c3
   PetscReal  :: pine_kmax
+  PetscReal  :: pine_chang_phi0
+  PetscReal  :: pine_chang_p
 
   PetscReal  :: maple_phis50
   PetscReal  :: maple_phi50
@@ -274,6 +282,8 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: maple_c2
   PetscReal  :: maple_c3
   PetscReal  :: maple_kmax
+  PetscReal  :: maple_chang_phi0
+  PetscReal  :: maple_chang_p
 
   PetscReal  :: es_phis50
   PetscReal  :: es_phi50
@@ -282,6 +292,8 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: es_c2
   PetscReal  :: es_c3
   PetscReal  :: es_kmax
+  PetscReal  :: es_chang_phi0
+  PetscReal  :: es_chang_p
 
   public :: run_vsfm_spac_fetch2_problem
   
@@ -313,6 +325,9 @@ contains
     c2             (E_IDX) = es_c2             ; c2             (M_IDX) = maple_c2             ; c2             (O_IDX) = oak_c2             ; c2             (P_IDX) = pine_c2             ;
     c3             (E_IDX) = es_c3             ; c3             (M_IDX) = maple_c3             ; c3             (O_IDX) = oak_c3             ; c3             (P_IDX) = pine_c3             ;
     kmax           (E_IDX) = es_kmax           ; kmax           (M_IDX) = maple_kmax           ; kmax           (O_IDX) = oak_kmax           ; kmax           (P_IDX) = pine_kmax           ;
+    chang_phi0     (E_IDX) = es_chang_phi0     ; chang_phi0     (M_IDX) = maple_chang_phi0     ; chang_phi0     (O_IDX) = oak_chang_phi0     ; chang_phi0     (P_IDX) = pine_chang_phi0     ;
+    chang_p        (E_IDX) = es_chang_p        ; chang_p        (M_IDX) = maple_chang_p        ; chang_p        (O_IDX) = oak_chang_p        ; chang_p        (P_IDX) = pine_chang_p        ;
+    
     root_nz        (E_IDX) = es_root_nz        ; root_nz        (M_IDX) = maple_root_nz        ; root_nz        (O_IDX) = oak_root_nz        ; root_nz        (P_IDX) = pine_root_nz        ;
     root_qz        (E_IDX) = es_root_qz        ; root_qz        (M_IDX) = maple_root_qz        ; root_qz        (O_IDX) = oak_root_qz        ; root_qz        (P_IDX) = pine_root_qz        ;
     root_d         (E_IDX) = es_root_d         ; root_d         (M_IDX) = maple_root_d         ; root_d         (O_IDX) = oak_root_d         ; root_d         (P_IDX) = pine_root_d         ;
@@ -430,6 +445,8 @@ end subroutine SetUpTreeProperties
     sm_bc_specified        = PETSC_FALSE
     radial_root_system     = PETSC_FALSE
     no_capacitance         = PETSC_FALSE
+    use_chang_satfun       = PETSC_FALSE
+    use_taper              = PETSC_FALSE
 
     ! Get some command line options
 
@@ -500,6 +517,12 @@ end subroutine SetUpTreeProperties
 
     call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-no_capacitance', no_capacitance, flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-use_chang_satfun', use_chang_satfun, flg, ierr)
+
+    call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
+         '-use_taper', use_taper, flg, ierr)
 
     if (flg) then
        select case(trim(problem_type))
@@ -612,69 +635,113 @@ end subroutine SetUpTreeProperties
 
        es_phis50 = param_p(01);
        es_c3     = param_p(02);
-       es_phi50  = param_p(03);
-       es_phi88  = param_p(04);
+       if (.not. use_chang_satfun) then
+          es_phi50      = param_p(03);
+          es_phi88      = param_p(04);
+          es_chang_phi0 = es_chang_phi0_def
+          es_chang_p    = es_chang_p_def
+       else
+          es_phi50      = es_phi50_def
+          es_phi88      = es_phi88_def
+          es_chang_phi0 = param_p(03);
+          es_chang_p    = param_p(04);
+       endif
        es_c1     = param_p(05);
        es_c2     = param_p(06);
        es_kmax   = param_p(07);
 
        maple_phis50 = param_p(08);
        maple_c3     = param_p(09);
-       maple_phi50  = param_p(10);
-       maple_phi88  = param_p(11);
+       if (.not. use_chang_satfun) then
+          maple_phi50      = param_p(10);
+          maple_phi88      = param_p(11);
+          maple_chang_phi0 = maple_chang_phi0_def
+          maple_chang_p    = maple_chang_p_def
+       else
+          maple_phi50      = maple_phi50_def
+          maple_phi88      = maple_phi88_def
+          maple_chang_phi0 = param_p(10);
+          maple_chang_p    = param_p(11);
+       endif
        maple_c1     = param_p(12);
        maple_c2     = param_p(13);
        maple_kmax   = param_p(14);
 
        oak_phis50 = param_p(15);
        oak_c3     = param_p(16);
-       oak_phi50  = param_p(17);
-       oak_phi88  = param_p(18);
+       if (.not. use_chang_satfun) then
+          oak_phi50      = param_p(17);
+          oak_phi88      = param_p(18);
+          oak_chang_phi0 = oak_chang_phi0_def
+          oak_chang_p    = oak_chang_p_def
+       else
+          oak_phi50      = oak_phi50_def
+          oak_phi88      = oak_phi88_def
+          oak_chang_phi0 = param_p(17);
+          oak_chang_p    = param_p(18);
+       endif
        oak_c1     = param_p(19);
        oak_c2     = param_p(20);
        oak_kmax   = param_p(21);
 
        pine_phis50 = param_p(22);
        pine_c3     = param_p(23);
-       pine_phi50  = param_p(24);
-       pine_phi88  = param_p(25);
+       if (.not. use_chang_satfun) then
+          pine_phi50      = param_p(24);
+          pine_phi88      = param_p(25);
+          pine_chang_phi0 = pine_chang_phi0_def
+          pine_chang_p    = pine_chang_p_def
+       else
+          pine_phi50      = pine_phi50_def
+          pine_phi88      = pine_phi88_def
+          pine_chang_phi0 = param_p(24);
+          pine_chang_p    = param_p(25);
+       endif
        pine_c1     = param_p(26);
        pine_c2     = param_p(27);
        pine_kmax   = param_p(28);
 
        call VecRestoreArrayF90(parameters, param_p, ierr)
     else
-       es_phis50 = es_phis50_def;
-       es_phi50  = es_phi50_def;
-       es_phi88  = es_phi88_def;
-       es_c1     = es_c1_def;
-       es_c2     = es_c2_def;
-       es_c3     = es_c3_def;
-       es_kmax   = es_kmax_def;
+       es_phis50        = es_phis50_def;
+       es_phi50         = es_phi50_def;
+       es_phi88         = es_phi88_def;
+       es_c1            = es_c1_def;
+       es_c2            = es_c2_def;
+       es_c3            = es_c3_def;
+       es_kmax          = es_kmax_def;
+       es_chang_phi0    = es_chang_phi0;
+       es_chang_phi0    = es_chang_phi0;
 
-       maple_phis50 = es_phis50_def;
-       maple_phi50  = es_phi50_def;
-       maple_phi88  = es_phi88_def;
-       maple_c1     = es_c1_def;
-       maple_c2     = es_c2_def;
-       maple_c3     = es_c3_def;
-       maple_kmax   = es_kmax_def;
+       maple_phis50     = es_phis50_def;
+       maple_phi50      = es_phi50_def;
+       maple_phi88      = es_phi88_def;
+       maple_c1         = es_c1_def;
+       maple_c2         = es_c2_def;
+       maple_c3         = es_c3_def;
+       maple_kmax       = es_kmax_def;
+       maple_chang_phi0 = maple_chang_phi0;
+       maple_chang_phi0 = maple_chang_phi0;
 
-       oak_phis50 = es_phis50_def;
-       oak_phi50  = es_phi50_def;
-       oak_phi88  = es_phi88_def;
-       oak_c1     = es_c1_def;
-       oak_c2     = es_c2_def;
-       oak_c3     = es_c3_def;
-       oak_kmax   = es_kmax_def;
+       oak_phis50       = es_phis50_def;
+       oak_phi50        = es_phi50_def;
+       oak_phi88        = es_phi88_def;
+       oak_c1           = es_c1_def;
+       oak_c2           = es_c2_def;
+       oak_c3           = es_c3_def;
+       oak_kmax         = es_kmax_def;
+       oak_chang_phi0   = oak_chang_phi0;
+       oak_chang_phi0   = oak_chang_phi0;
 
-       pine_phis50 = pine_phis50_def;
-       pine_phi50  = pine_phi50_def;
-       pine_phi88  = pine_phi88_def;
-       pine_c1     = pine_c1_def;
-       pine_c2     = pine_c2_def;
-       pine_c3     = pine_c3_def;
-       pine_kmax   = pine_kmax_def;
+       pine_phis50      = pine_phis50_def;
+       pine_phi50       = pine_phi50_def;
+       pine_phi88       = pine_phi88_def;
+       pine_c1          = pine_c1_def;
+       pine_c2          = pine_c2_def;
+       pine_c3          = pine_c3_def;
+       pine_kmax        = pine_kmax_def;
+       pine_chang_phi0  = pine_chang_phi0;
+       pine_chang_phi0  = pine_chang_phi0;
     endif
 
     !
