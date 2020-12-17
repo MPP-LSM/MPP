@@ -187,7 +187,7 @@ contains
     enddo
 
     call DMCompositeRestoreAccessArray(this%solver%dm, &
-         this%solver%soln, nDM, &
+         B, nDM, &
          PETSC_NULL_INTEGER, B_subvecs, ierr)
 
     deallocate(dms)
