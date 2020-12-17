@@ -10,10 +10,14 @@ module ml_model_meshes
   PetscInt, parameter :: CANOPY_AIR_MESH      = 1
   PetscInt, parameter :: CANOPY_MESH          = 2
   PetscInt, parameter :: CANOPY_AND_SOIL_MESH = 3
+  PetscInt, parameter :: CANOPY_MESH_FOR_LEAF = 4
+
+  PetscInt, parameter :: nleaf = 2
 
   public :: create_canopy_airspace_mesh
   public :: create_canopy_mesh
   public :: create_canopy_and_soil_mesh
+  public :: create_canopy_mesh_for_leaf
   public :: create_connection_set_to_canopy_airspace_mesh
   public :: create_connection_set_to_canopy_and_soil_mesh
 
@@ -65,6 +69,21 @@ contains
   end subroutine create_canopy_and_soil_mesh
 
   !------------------------------------------------------------------------
+  subroutine create_canopy_mesh_for_leaf(mesh)
+    !
+    use MeshType , only : mesh_type
+    !
+    implicit none
+    !
+    class(mesh_type) , pointer :: mesh
+
+    call create_mesh(mesh, CANOPY_MESH_FOR_LEAF)
+
+    call mesh%SetName('Canopy for leaves')
+
+  end subroutine create_canopy_mesh_for_leaf
+
+  !------------------------------------------------------------------------
   subroutine create_mesh(mesh, mesh_id)
     !
     use MultiPhysicsProbConstants , only : CONN_IN_Z_DIR
@@ -97,7 +116,7 @@ contains
     PetscReal        , pointer :: vert_conn_area(:)    !
     PetscInt         , pointer :: vert_conn_type(:)    !
     PetscInt                   :: k, ncells
-    PetscInt                   :: icol, itree, icell
+    PetscInt                   :: icol, itree, icell, ileaf
     PetscInt                   :: nz, ncol
 
     select case(mesh_id)
@@ -111,6 +130,10 @@ contains
 
     case (CANOPY_AND_SOIL_MESH)
        nz   = (ntop-nbot+1) + 1
+       ncol = ncair * ntree
+
+    case (CANOPY_MESH_FOR_LEAF)
+       nz   = (ntop-nbot+1)*nleaf
        ncol = ncair * ntree
 
     end select
@@ -149,7 +172,7 @@ contains
        end do
 
     case (CANOPY_MESH)
-       nz = (ntop-nbot+1)
+       !nz = (ntop-nbot+1)
 
        !write(*,*)'CANOPY_MESH:'
        icell = 0
@@ -162,7 +185,6 @@ contains
        end do
 
     case (CANOPY_AND_SOIL_MESH)
-       nz = (ntop-nbot+1) + 1
 
        !write(*,*)'CANOPY_AND_SOIL_MESH: '
        icell = 0
@@ -179,6 +201,17 @@ contains
           end do
        end do
 
+    case (CANOPY_MESH_FOR_LEAF)
+
+       icell = 0
+       do ileaf = 1,nleaf
+          do icol = 1, ncol
+             do k = 1, nz/2
+                icell = icell + 1
+                zc(icell) = (nbot + k - 1)* dz_cair + dz_cair/2.d0
+             end do
+          end do
+       end do
     end select
 
     call SetupVerticalConnection( &
