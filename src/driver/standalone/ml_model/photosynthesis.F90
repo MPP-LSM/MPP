@@ -44,7 +44,7 @@ contains
   subroutine setup_meshes(psy_mpp)
     !
     use MeshType             , only : mesh_type
-    use ml_model_meshes      , only : create_canopy_and_soil_mesh
+    use ml_model_meshes      , only : create_canopy_mesh_for_leaf
     use ml_model_global_vars , only : PHOTOSYNTHESIS_MESH
     !
     implicit none
@@ -54,7 +54,7 @@ contains
     class(mesh_type), pointer :: mesh
 
     PHOTOSYNTHESIS_MESH = 1
-    call create_canopy_and_soil_mesh(mesh)
+    call create_canopy_mesh_for_leaf(mesh)
     call psy_mpp%SetNumMeshes(1)
     call psy_mpp%AddMesh(PHOTOSYNTHESIS_MESH, mesh)
 
@@ -117,7 +117,7 @@ contains
     class is (goveqn_photosynthesis_type)
 
        ncol = ncair * ntree
-       nz   = (ntop-nbot+1) + 1
+       nz   = (ntop-nbot+1)
 
        icell = 0
        do icol = 1, ncol
@@ -142,7 +142,7 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine photosynthesis_set_boundary_conditions(psy_mpp, Tair, Tleaf, relhum, gbv, gbc)
+  subroutine photosynthesis_set_boundary_conditions(psy_mpp)
 
     ! !DESCRIPTION:
     !
@@ -156,56 +156,83 @@ contains
     use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants           , only : TFRZ
+    use ml_model_global_vars                , only : Tleaf_sun, Tleaf_shd, Tair
     use WaterVaporMod                       , only : SatVap
+    use ml_model_utils                      , only : get_value_from_condition
+    use ml_model_meshes                     , only : nleaf
     !
     ! !ARGUMENTS
     implicit none
     !
     type(mpp_photosynthesis_type)        :: psy_mpp
-    PetscReal                  , pointer :: gbv(:)
-    PetscReal                  , pointer :: gbc(:)
-    PetscReal                  , pointer :: Tleaf(:)
-    PetscReal                  , pointer :: Tair(:)
-    PetscReal                  , pointer :: relhum(:)
     !
     class(goveqn_base_type)    , pointer :: cur_goveq
     class(connection_set_type) , pointer :: cur_conn_set
     class(condition_type)      , pointer :: cur_cond
-    PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf
+    PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf, idx_data, icair
     PetscReal                            :: eair, vpd_tleaf
     PetscReal                            :: esat_tair, desat_tair
     PetscReal                            :: esat_tleaf, desat_tleaf
+    PetscReal                  , pointer :: gbv(:), tair_local(:), tleaf_local(:)
+    PetscReal                  , pointer :: gbc(:)
+    PetscReal                            :: relhum
+
+    relhum = 80.d0
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 
     select type(cur_goveq)
     class is (goveqn_photosynthesis_type)
 
-       ncol = ncair * ntree
+       ncol = ncair
        nz   = (ntop-nbot+1) + 1
 
+       allocate(tair_local (ncol * nz * 2))
+       allocate(tleaf_local(ncol * nz * 2))
+
        icell = 0
-       leaf_count = 0
+       ileaf = 0
        do icol = 1, ncol
           do k = 1, nz
              icell = icell + 1
+             ileaf = ileaf + 1
+             tleaf_local(ileaf           ) = get_value_from_condition(Tleaf_sun, ileaf) ! [K]
+             tleaf_local(ileaf + ncol*nz ) = get_value_from_condition(Tleaf_shd, ileaf) ! [K]
+          end do
+       end do
 
-             call SatVap (TFRZ + Tair(icell) , esat_tair , desat_tair)
-             call SatVap (TFRZ + Tleaf(icell), esat_tleaf, desat_tleaf)
-             eair = esat_tair * relhum(icol) /100.d0
-             vpd_tleaf = esat_tair - eair
+       icell = 0
+       idx_data = 0
+       do icair = 1, ncair
+          do k = 1, nz_cair
+              idx_data = idx_data + 1
+              if (k >= nbot .and. k<=ntop) then
+                 icell = icell + 1
+                 tair_local(icell           )  = get_value_from_condition(Tair, idx_data)  ! [K]
+                 tair_local(icell + ncol*nz )  = get_value_from_condition(Tair, idx_data)  ! [K]
+              endif
+            enddo
+       enddo
 
-             cur_goveq%aux_vars_in(icell)%tleaf = TFRZ + Tleaf(icell)
-             cur_goveq%aux_vars_in(icell)%gbv   = gbv(icell)
-             cur_goveq%aux_vars_in(icell)%gbc   = gbc(icell)
+       icell = 0
+       ileaf = 0
+       do icell = 1, ncol*nz*nleaf
+
+          call SatVap (tair_local( icell) , esat_tair, desat_tair )
+          call SatVap (tleaf_local(icell), esat_tleaf, desat_tleaf)
+          eair = esat_tair * relhum /100.d0
+          vpd_tleaf = esat_tair - eair
+
+           cur_goveq%aux_vars_in(icell)%tleaf = tleaf_local(icell)
+           cur_goveq%aux_vars_in(icell)%gbv   = gbv(icell)
+           cur_goveq%aux_vars_in(icell)%gbc   = gbc(icell)
 
              if (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
                 cur_goveq%aux_vars_in(icell)%eair = esat_tleaf - vpd_tleaf
              else
-                cur_goveq%aux_vars_in(icell)%eair = esat_tleaf * relhum(icol)/100.d0
+                cur_goveq%aux_vars_in(icell)%eair = esat_tleaf * relhum/100.d0
              end if
 
-          end do
        end do
 
     end select
