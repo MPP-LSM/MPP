@@ -44,7 +44,7 @@ contains
   subroutine setup_meshes(lbl_mpp)
     !
     use MeshType             , only : mesh_type
-    use ml_model_meshes      , only : create_canopy_mesh
+    use ml_model_meshes      , only : create_canopy_mesh_for_leaf
     use ml_model_global_vars , only : LBL_MESH
     !
     implicit none
@@ -54,7 +54,7 @@ contains
     class(mesh_type), pointer :: mesh
 
     LBL_MESH = 1
-    call create_canopy_mesh(mesh)
+    call create_canopy_mesh_for_leaf(mesh)
     call lbl_mpp%SetNumMeshes(1)
     call lbl_mpp%AddMesh(LBL_MESH, mesh)
 
@@ -96,6 +96,7 @@ contains
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
     use ml_model_global_vars      , only : LBL_MESH, LBL_GE
+    use ml_model_meshes           , only : nleaf
     !
     ! !ARGUMENTS
     implicit none
@@ -113,16 +114,18 @@ contains
     class is (goveqn_leaf_bnd_lyr_type)
 
        ncol = ncair * ntree
-       nz   = (ntop-nbot+1) + 1
+       nz   = (ntop-nbot+1)
 
        icell = 0
-       do icol = 1, ncol
-          do k = 1, nz
-             icell = icell + 1
+       do ileaf = 1, nleaf
+          do icol = 1, ncol
+             do k = 1, nz
+                icell = icell + 1
 
-             cur_goveq%aux_vars_in(icell)%patm  = 101325.d0 ! [Pa]
-             cur_goveq%aux_vars_in(icell)%wind  = 5.d0      ! [m/s]
-             cur_goveq%aux_vars_in(icell)%dleaf = 0.05d0    ! [m]
+                cur_goveq%aux_vars_in(icell)%patm  = 101325.d0 ! [Pa]
+                cur_goveq%aux_vars_in(icell)%wind  = 5.d0      ! [m/s]
+                cur_goveq%aux_vars_in(icell)%dleaf = 0.05d0    ! [m]
+             end do
           end do
        end do
 
@@ -181,7 +184,8 @@ contains
               idx_data = idx_data + 1
               if (k >= nbot .and. k<=ntop) then
                  icell = icell + 1
-                 cur_goveq%aux_vars_in(icell)%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
+                 cur_goveq%aux_vars_in(icell           )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
               endif
             enddo
        enddo

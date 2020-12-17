@@ -3,6 +3,7 @@ module ml_model_utils
   use mpp_varctl           , only : iulog
   use mpp_abortutils       , only : endrun
   use mpp_shr_log_mod      , only : errMsg => shr_log_errMsg
+  use MultiPhysicsProbLBL  , only : mpp_lbl_type
   !
   implicit none
   !
@@ -270,8 +271,61 @@ contains
 
   end subroutine extract_data_from_mlc
 
-
   !------------------------------------------------------------------------
+  subroutine extract_data_from_lbl(lbl_mpp)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   use SystemOfEquationsBaseType       , only : sysofeqns_base_type
+   use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
+   use MultiPhysicsProbMLC             , only : mpp_mlc_type
+   use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
+   use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, Tsoil, Tair, eair
+   use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
+   use GoverningEquationBaseType       , only : goveqn_base_type
+   use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+   use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
+   use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+   use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
+   use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
+   use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
+   use petscvec
+   !
+   ! !ARGUMENTS
+   implicit none
+   !
+   class(mpp_lbl_type)  :: lbl_mpp
+   !
+   PetscScalar, pointer :: soln_p(:)
+   PetscInt             :: idx_leaf, idx_data, idx_soil, idx_air
+   PetscInt             :: ileaf, icair, itree, k, ieqn
+   PetscInt             :: ncells
+   PetscReal,  pointer  :: tleaf_data(:), tair_data(:), eair_data(:)
+   PetscErrorCode       :: ierr
+
+   ncells = ncair*ntree*(nz_cair+1)
+   allocate(tleaf_data(ncells))
+   allocate(tair_data(ncells))
+   allocate(eair_data(ncells))
+
+   ncells = ncair*(nz_cair+1)
+   !call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
+
+   idx_soil = 0
+   idx_data = 0
+   idx_air = 0
+   do icair = 1, ncair
+      do k = 1, nz_cair+1
+         idx_data = idx_data + 1
+         idx_air = idx_air + 1
+         !call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
+      end do
+   end do
+
+ end subroutine extract_data_from_lbl
+ 
+ !------------------------------------------------------------------------
   subroutine get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, data)
    !
    ! !DESCRIPTION:
