@@ -129,9 +129,9 @@ contains
     call allocate_memory_for_condition(Tref  , ncair)
     call allocate_memory_for_condition(Rhref , ncair)
 
-    call allocate_memory_for_condition(gbh , ncair)
-    call allocate_memory_for_condition(gbv , ncair)
-    call allocate_memory_for_condition(gbc , ncair)
+    call allocate_memory_for_condition(gbh , ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(gbv , ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(gbc , ncair*ntree*(ntop-nbot+1))
 
     call allocate_memory_for_condition(Tcan      , ncair)
 
@@ -186,11 +186,14 @@ contains
        call read_boundary_conditions(istep)
 
        dt = 30.d0 * 60.d0 ! [sec]
+       write(*,*)'Solving shortwave radiation'
        call solve_swv(swv_mpp, istep, dt)
 
        call extract_data_from_mlc(mlc_mpp)
+       write(*,*)'Solving longwave radiation'
        call solve_lwv(lwv_mpp, istep, dt)
 
+       write(*,*)'Solving leaf boundary layer'
        call solve_lbl(lbl_mpp, istep, dt)
 
       end do
