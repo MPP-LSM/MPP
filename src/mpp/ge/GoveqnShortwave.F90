@@ -576,14 +576,14 @@ contains
           else
 
              do iband = 1, nband
-                diffuse = v_p((ghosted_id-1)*nband + iband)
-                direct  = avars(ghosted_id)%Iskyb(iband) * avars(ghosted_id)%leaf_tbcum * (1.d0 - avars(ghosted_id)%leaf_tb) * (1.d0 - avars(ghosted_id)%leaf_omega(iband))
+                diffuse = v_p((ghosted_id-1)*nband + iband) ! equation 14.47
+                direct  = avars(ghosted_id)%Iskyb(iband) * avars(ghosted_id)%leaf_tbcum * (1.d0 - avars(ghosted_id)%leaf_tb) * (1.d0 - avars(ghosted_id)%leaf_omega(iband)) ! equation 14.48
 
                 sun   = diffuse * avars(ghosted_id)%leaf_fraction(1) + direct
                 shade = diffuse * avars(ghosted_id)%leaf_fraction(2)
 
-                avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = sun  /(avars(ghosted_id)%leaf_fraction(1)*avars(ghosted_id)%leaf_dlai)
-                avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = shade/(avars(ghosted_id)%leaf_fraction(2)*avars(ghosted_id)%leaf_dlai)
+                avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = sun  /(avars(ghosted_id)%leaf_fraction(1)*avars(ghosted_id)%leaf_dlai) ! equation 14.53*
+                avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = shade/(avars(ghosted_id)%leaf_fraction(2)*avars(ghosted_id)%leaf_dlai) ! equation 14.52*
              end do
 
           end if
