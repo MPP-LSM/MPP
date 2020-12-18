@@ -185,6 +185,12 @@ contains
   subroutine extract_data_from_mlc(mlc_mpp)
     !
     ! !DESCRIPTION:
+    !   Extracts following variables from the MLC model:
+    !     - Tleaf_sun
+    !     - Tleaf_shd
+    !     - Tsoil
+    !     - Tair
+    !     - eair
     !
     ! !USES:
     use SystemOfEquationsBaseType       , only : sysofeqns_base_type
@@ -273,57 +279,64 @@ contains
 
   !------------------------------------------------------------------------
   subroutine extract_data_from_lbl(lbl_mpp)
-   !
-   ! !DESCRIPTION:
-   !
-   ! !USES:
-   use SystemOfEquationsBaseType       , only : sysofeqns_base_type
-   use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
-   use MultiPhysicsProbMLC             , only : mpp_mlc_type
-   use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
-   use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, Tsoil, Tair, eair
-   use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
-   use GoverningEquationBaseType       , only : goveqn_base_type
-   use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
-   use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
-   use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
-   use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
-   use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
-   use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
-   use petscvec
-   !
-   ! !ARGUMENTS
-   implicit none
-   !
-   class(mpp_lbl_type)  :: lbl_mpp
-   !
-   PetscScalar, pointer :: soln_p(:)
-   PetscInt             :: idx_leaf, idx_data, idx_soil, idx_air
-   PetscInt             :: ileaf, icair, itree, k, ieqn
-   PetscInt             :: ncells
-   PetscReal,  pointer  :: tleaf_data(:), tair_data(:), eair_data(:)
-   PetscErrorCode       :: ierr
+    !
+    ! !DESCRIPTION:
+    !   Extracts following variables from the LBL model:
+    !     - gbh
+    !     - gbv
+    !     - gbc
+    !
+    ! !USES:
+    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars            , only : gbh, gbv, gbc
+    use ml_model_meshes                 , only : nleaf
+    use GoverningEquationBaseType       , only : goveqn_base_type
+    use GoveqnLeafBoundaryLayer         , only : goveqn_leaf_bnd_lyr_type
+    use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_BDN_LYR_COND_HEAT
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_BDN_LYR_COND_H2O
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_BDN_LYR_COND_CO2
+    use petscvec
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_lbl_type)               :: lbl_mpp
+    !
+    PetscScalar             , pointer :: soln_p(:)
+    PetscInt                          :: idx_leaf, idx_data, idx_soil, idx_air
+    PetscInt                          :: ileaf, icair, itree, k, ieqn, icell
+    PetscInt                          :: ncells
+    PetscReal               , pointer :: gbh_data(:), gbv_data(:), gbc_data(:)
+    class(goveqn_base_type) , pointer :: goveq
+    PetscErrorCode                    :: ierr
 
-   ncells = ncair*ntree*(nz_cair+1)
-   allocate(tleaf_data(ncells))
-   allocate(tair_data(ncells))
-   allocate(eair_data(ncells))
+    ncells = ncair * ntree * (ntop - nbot + 1) * nleaf
 
-   ncells = ncair*(nz_cair+1)
-   !call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
+    allocate(gbh_data(ncells))
+    allocate(gbv_data(ncells))
+    allocate(gbc_data(ncells))
 
-   idx_soil = 0
-   idx_data = 0
-   idx_air = 0
-   do icair = 1, ncair
-      do k = 1, nz_cair+1
-         idx_data = idx_data + 1
-         idx_air = idx_air + 1
-         !call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
-      end do
-   end do
+    call lbl_mpp%soe%SetPointerToIthGovEqn(1, goveq)
 
- end subroutine extract_data_from_lbl
+    select type(goveq)
+    class is (goveqn_leaf_bnd_lyr_type)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_HEAT, ncells, gbh_data)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_H2O , ncells, gbv_data)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_CO2 , ncells, gbc_data)
+    end select
+
+    do icell = 1, ncells
+       call set_value_in_condition(gbh, icell, gbh_data(icell))
+       call set_value_in_condition(gbv, icell, gbv_data(icell))
+       call set_value_in_condition(gbc, icell, gbc_data(icell))
+    end do
+
+    deallocate(gbh_data)
+    deallocate(gbv_data)
+    deallocate(gbc_data)
+
+  end subroutine extract_data_from_lbl
  
  !------------------------------------------------------------------------
   subroutine get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, data)
