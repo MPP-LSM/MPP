@@ -115,6 +115,7 @@ contains
     !
     use ml_model_global_vars, only : condition_type
     use ml_model_utils      , only : allocate_memory_for_condition
+    use ml_model_meshes     , only : nleaf
     !
     implicit none
 
@@ -129,9 +130,9 @@ contains
     call allocate_memory_for_condition(Tref  , ncair)
     call allocate_memory_for_condition(Rhref , ncair)
 
-    call allocate_memory_for_condition(gbh , ncair*ntree*(ntop-nbot+1))
-    call allocate_memory_for_condition(gbv , ncair*ntree*(ntop-nbot+1))
-    call allocate_memory_for_condition(gbc , ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
 
     call allocate_memory_for_condition(Tcan      , ncair)
 
@@ -163,6 +164,7 @@ contains
     use ml_model_utils               , only : compute_dpai_fssh
     use ml_model_utils               , only : extract_data_from_mlc
     use ml_model_utils               , only : extract_data_from_swv
+    use ml_model_utils               , only : extract_data_from_lbl
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
@@ -203,6 +205,7 @@ contains
 
        write(*,*)'Solving leaf boundary layer'
        call solve_lbl(lbl_mpp, istep, dt)
+       call extract_data_from_lbl(lbl_mpp)
 
       end do
 

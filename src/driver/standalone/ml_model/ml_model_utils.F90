@@ -277,6 +277,10 @@ contains
        end do
     end do
 
+    deallocate(tleaf_data)
+    deallocate(tair_data)
+    deallocate(eair_data)
+
   end subroutine extract_data_from_mlc
 
  !------------------------------------------------------------------------
@@ -430,9 +434,10 @@ contains
     select type(goveq)
     class is (goveqn_shortwave_type)
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SHRTWAVE_ABSORBED_RAD_LEAF, nctz, Iabs_leaf)
-       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SHRTWAVE_ABSORBED_RAD_SOIL, nctz, Iabs_soil)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SHRTWAVE_ABSORBED_RAD_SOIL, ncair, Iabs_soil)
     end select
 
+    count = 0
     do icell = 1, ncair * ntree * (ntop - nbot + 1)
        count = count + 1; call set_value_in_condition(Ileaf_sun_vis, icell, Iabs_leaf(count))
        count = count + 1; call set_value_in_condition(Ileaf_shd_vis, icell, Iabs_leaf(count))
@@ -440,7 +445,8 @@ contains
        count = count + 1; call set_value_in_condition(Ileaf_shd_nir, icell, Iabs_leaf(count))
     end do
 
-    do icell = 1, ncair * nband
+    count = 0
+    do icell = 1, ncair
        count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
        count = count + 1; call set_value_in_condition(Isoil_nir, icell, Iabs_soil(count))
     end do
