@@ -144,9 +144,15 @@ contains
     call allocate_memory_for_condition(rn_shd    , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(gs_sun    , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(gs_shd    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_sun_vis    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_shd_vis    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_sun_nir    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_shd_nir    , ncair*(ntop-nbot+1) )
     
     call allocate_memory_for_condition(Tsoil  , ncair)
     call allocate_memory_for_condition(rn_soil, ncair)
+    call allocate_memory_for_condition(Isoil_vis, ncair)
+    call allocate_memory_for_condition(Isoil_nir, ncair)
 
   end subroutine allocate_memory
 
@@ -156,6 +162,7 @@ contains
     use ml_model_boundary_conditions , only : read_boundary_conditions
     use ml_model_utils               , only : compute_dpai_fssh
     use ml_model_utils               , only : extract_data_from_mlc
+    use ml_model_utils               , only : extract_data_from_swv
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
@@ -188,6 +195,7 @@ contains
        dt = 30.d0 * 60.d0 ! [sec]
        write(*,*)'Solving shortwave radiation'
        call solve_swv(swv_mpp, istep, dt)
+       call extract_data_from_swv(swv_mpp)
 
        call extract_data_from_mlc(mlc_mpp)
        write(*,*)'Solving longwave radiation'
