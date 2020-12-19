@@ -279,6 +279,48 @@ contains
 
   end subroutine extract_data_from_mlc
 
+ !------------------------------------------------------------------------
+  subroutine get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, data)
+   !
+   ! !DESCRIPTION:
+   !
+   ! !USES:
+   use SystemOfEquationsBaseType       , only : sysofeqns_base_type
+   use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
+   use MultiPhysicsProbMLC             , only : mpp_mlc_type
+   use GoverningEquationBaseType       , only : goveqn_base_type
+   use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+   use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
+   use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+   use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
+   use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
+   use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
+   use MultiPhysicsProbConstants       , only : VAR_WATER_VAPOR
+    !
+    ! !ARGUMENTS
+   implicit none
+   !
+   class(mpp_mlc_type)  :: mlc_mpp
+   PetscInt             :: ieqn
+   PetscInt             :: ncells
+   PetscReal,  pointer  :: data(:)
+   !
+   class(goveqn_base_type) , pointer :: goveq
+   PetscErrorCode       :: ierr
+
+   call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
+
+   select type(goveq)
+   class is (goveqn_cair_temp_type)
+      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
+   class is (goveqn_cair_vapor_type)
+      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_WATER_VAPOR, ncells, data)
+   class is (goveqn_cleaf_temp_type)
+      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_TEMPERATURE, ncells, data)
+   end select
+
+   end subroutine get_data_from_mlc_eqn
+
   !------------------------------------------------------------------------
   subroutine extract_data_from_lbl(lbl_mpp)
     !
@@ -340,48 +382,6 @@ contains
 
   end subroutine extract_data_from_lbl
  
- !------------------------------------------------------------------------
-  subroutine get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, data)
-   !
-   ! !DESCRIPTION:
-   !
-   ! !USES:
-   use SystemOfEquationsBaseType       , only : sysofeqns_base_type
-   use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
-   use MultiPhysicsProbMLC             , only : mpp_mlc_type
-   use GoverningEquationBaseType       , only : goveqn_base_type
-   use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
-   use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
-   use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
-   use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
-   use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
-   use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
-   use MultiPhysicsProbConstants       , only : VAR_WATER_VAPOR
-    !
-    ! !ARGUMENTS
-   implicit none
-   !
-   class(mpp_mlc_type)  :: mlc_mpp
-   PetscInt             :: ieqn
-   PetscInt             :: ncells
-   PetscReal,  pointer  :: data(:)
-   !
-   class(goveqn_base_type) , pointer :: goveq
-   PetscErrorCode       :: ierr
-
-   call mlc_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
-
-   select type(goveq)
-   class is (goveqn_cair_temp_type)
-      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
-   class is (goveqn_cair_vapor_type)
-      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_WATER_VAPOR, ncells, data)
-   class is (goveqn_cleaf_temp_type)
-      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_TEMPERATURE, ncells, data)
-   end select
-
-   end subroutine get_data_from_mlc_eqn
-
   !------------------------------------------------------------------------
   subroutine extract_data_from_swv(swv_mpp)
     !
