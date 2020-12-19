@@ -43,6 +43,7 @@ module GoveqnShortwaveType
      procedure, public :: SavePrimaryIndependentVar => ShortwaveSavePrmIndepVar
      procedure, public :: ComputeRhs                => ShortwaveComputeRhs
      procedure, public :: ComputeOperatorsDiag      => ShortwaveComputeOperatorsDiag
+     procedure, public :: GetRValues                => ShortwaveGetRValues
 
   end type goveqn_shortwave_type
 
@@ -593,6 +594,94 @@ contains
     call VecRestoreArrayF90(this%I_absorbed_d, v_p, ierr)
 
   end subroutine ShortwavePostSolve
+
+  !------------------------------------------------------------------------
+  subroutine ShortwaveGetRValues (this, auxvar_type, var_type, nauxvar, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    !
+    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants, only : AUXVAR_BC
+    use MultiPhysicsProbConstants, only : AUXVAR_SS
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_shortwave_type) :: this
+    PetscInt                     :: auxvar_type
+    PetscInt                     :: var_type
+    PetscInt                     :: nauxvar
+    PetscReal, pointer           :: var_values(:)
+
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
+    select case(auxvar_type)
+    case(AUXVAR_INTERNAL)
+       call ShortwaveGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
+    case default
+       write(*,*)'Unknown auxvar_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
+  end subroutine ShortwaveGetRValues
+
+  !------------------------------------------------------------------------
+  subroutine ShortwaveGetRValuesFromAuxVars (aux_var, var_type, ncells, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_SHRTWAVE_ABSORBED_RAD_LEAF
+    use MultiPhysicsProbConstants, only : VAR_SHRTWAVE_ABSORBED_RAD_SOIL
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(shortwave_auxvar_type) , pointer :: aux_var(:)
+    PetscInt                              :: var_type
+    PetscInt                              :: ncells
+    PetscReal                   , pointer :: var_values(:)
+    !
+    PetscInt :: ghosted_id, iband, count, nband
+
+    nband = aux_var(1)%nband
+
+    select case(var_type)
+    case(VAR_SHRTWAVE_ABSORBED_RAD_LEAF)
+       count = 0
+       do ghosted_id = 1, ncells
+          do iband = 1, nband ! VIS and NIR
+
+             ! sunlit
+             count = count + 1
+             var_values(count) = aux_var(ghosted_id)%Iabs_leaf((iband-1)*aux_var(ghosted_id)%nleaf + 1)
+
+             ! shaded
+             count = count + 1
+             var_values(count) = aux_var(ghosted_id)%Iabs_leaf((iband-1)*aux_var(ghosted_id)%nleaf + 2)
+          end do
+       end do
+
+    case(VAR_SHRTWAVE_ABSORBED_RAD_SOIL)
+
+       count = 0
+       do ghosted_id = 1, ncells
+          do iband = 1, nband
+
+             count = count + 1
+             var_values(count) = aux_var(ghosted_id)%Iabs_soil(iband)
+          end do
+       end do
+
+    case default
+       write(iulog,*) 'CLeafTempGetRValuesFromAuxVars: Unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine ShortwaveGetRValuesFromAuxVars
 
 #endif
 
