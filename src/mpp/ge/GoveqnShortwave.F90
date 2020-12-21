@@ -548,7 +548,7 @@ contains
     type(shortwave_auxvar_type) , pointer  :: avars(:)
     PetscInt                     :: ghosted_id, iband, nband
     PetscScalar, pointer         :: v_p(:)
-    PetscReal                    :: diffuse, direct, sun, shade
+    PetscReal                    :: diffuse, direct, sun, shade, denom
     PetscErrorCode               :: ierr
     PetscViewer :: viewer
 
@@ -583,8 +583,19 @@ contains
                 sun   = diffuse * avars(ghosted_id)%leaf_fraction(1) + direct
                 shade = diffuse * avars(ghosted_id)%leaf_fraction(2)
 
-                avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = sun  /(avars(ghosted_id)%leaf_fraction(1)*avars(ghosted_id)%leaf_dlai) ! equation 14.53*
-                avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = shade/(avars(ghosted_id)%leaf_fraction(2)*avars(ghosted_id)%leaf_dlai) ! equation 14.52*
+                denom = avars(ghosted_id)%leaf_fraction(1)*avars(ghosted_id)%leaf_dlai
+                if (denom > 0.d0) then
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = sun/denom ! equation 14.53*
+                else
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = 0.d0
+                end if
+
+                denom = avars(ghosted_id)%leaf_fraction(2)*avars(ghosted_id)%leaf_dlai
+                if (denom > 0.d0) then
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = shade/denom ! equation 14.52*
+                else
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = 0.d0
+                end if
              end do
 
           end if
