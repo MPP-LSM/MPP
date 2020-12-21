@@ -168,6 +168,7 @@ contains
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
+    use photosynthesis               , only : solve_photosynthesis
     !
     implicit none
     !
@@ -207,7 +208,9 @@ contains
        call solve_lbl(lbl_mpp, istep, dt)
        call extract_data_from_lbl(lbl_mpp)
 
-      end do
+       write(*,*)'Solving photosynthesis'
+       call solve_photosynthesis(psy_mpp, istep, dt)
+    end do
 
   end subroutine run_ml_model_problem
 
