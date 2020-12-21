@@ -178,15 +178,15 @@ contains
                 cur_goveq%aux_vars_in(icell)%leaf_omega(1) = 0.55d0
                 cur_goveq%aux_vars_in(icell)%leaf_omega(2) = 0.30d0
 
-                cur_goveq%aux_vars_in(icell)%leaf_dlai        = dpai(k)
-                cur_goveq%aux_vars_in(icell)%leaf_fraction(1) = fssh(k)
-                cur_goveq%aux_vars_in(icell)%leaf_fraction(2) = 1.d0 - fssh(k)
+                cur_goveq%aux_vars_in(icell)%leaf_dlai        = dpai(k + nbot - 2)
+                cur_goveq%aux_vars_in(icell)%leaf_fraction(1) = fssh(k + nbot - 2)
+                cur_goveq%aux_vars_in(icell)%leaf_fraction(2) = 1.d0 - fssh(k + nbot - 2)
 
-                cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * dpai(k)   * clumpfac)
+                cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * dpai(k + nbot - 2)   * clumpfac)
                 if (k == ntop) then
                    cur_goveq%aux_vars_in(icell)%leaf_tbcum = 1.d0
                else
-                   cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(k+1) * clumpfac)
+                   cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(k + nbot - 2 + 1) * clumpfac)
                endif
                 cur_goveq%aux_vars_in(icell)%leaf_td    = td
              end if
