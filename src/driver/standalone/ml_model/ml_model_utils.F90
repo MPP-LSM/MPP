@@ -51,7 +51,7 @@ contains
     qbeta   = 2.d0;               ! Parameter for beta distribution
     pai     = 5.051612734794617d0
 
-    nbot = 1 + 1     ! 1st layer is soil layer
+    nbot = 6 + 1     ! 1st layer is soil layer
     ntop = nveg + 1  ! 
 
     do k = nbot, ntop
@@ -415,18 +415,18 @@ contains
     class(mpp_shortwave_type)           :: swv_mpp
     !
     PetscInt                            :: idx_leaf, idx_data, idx_soil, idx_air
-    PetscInt                            :: ileaf, icair, itree, k, ieqn, icell
+    PetscInt                            :: ileaf, icair, itree, k, ieqn, icell, iband
     PetscInt                            :: ncells, nctz, count
     PetscReal               , pointer   :: Iabs_leaf(:), Iabs_soil(:)
     class(goveqn_base_type) , pointer   :: goveq
     PetscInt                , parameter :: nband = 2      ! Visible + NIR
     PetscErrorCode                      :: ierr
 
-    nctz   = ncair * ntree * (ntop - nbot + 1) ! num of canopy airspace x num. of tree x num. of levels
+    nctz   = ncair * ntree * (ntop - nbot + 1 + 1) ! num of canopy airspace x num. of tree x num. of levels
     ncells = nctz  * nleaf * nband
     allocate(Iabs_leaf(ncells))
 
-    ncells = ncair * nband
+    ncells = nctz * nband
     allocate(Iabs_soil(ncells))
 
     call swv_mpp%soe%SetPointerToIthGovEqn(1, goveq)
@@ -434,21 +434,42 @@ contains
     select type(goveq)
     class is (goveqn_shortwave_type)
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SHRTWAVE_ABSORBED_RAD_LEAF, nctz, Iabs_leaf)
-       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SHRTWAVE_ABSORBED_RAD_SOIL, ncair, Iabs_soil)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SHRTWAVE_ABSORBED_RAD_SOIL, nctz, Iabs_soil)
     end select
 
     count = 0
-    do icell = 1, ncair * ntree * (ntop - nbot + 1)
-       count = count + 1; call set_value_in_condition(Ileaf_sun_vis, icell, Iabs_leaf(count))
-       count = count + 1; call set_value_in_condition(Ileaf_shd_vis, icell, Iabs_leaf(count))
-       count = count + 1; call set_value_in_condition(Ileaf_sun_nir, icell, Iabs_leaf(count))
-       count = count + 1; call set_value_in_condition(Ileaf_shd_nir, icell, Iabs_leaf(count))
+    icell = 0
+    do icair = 1, ncair
+       do itree = 1, ntree
+          do k = 1, ntop - nbot + 1 + 1
+             if (k > 1) then
+                icell = icell + 1
+                count = count + 1; call set_value_in_condition(Ileaf_sun_vis, icell, Iabs_leaf(count))
+                count = count + 1; call set_value_in_condition(Ileaf_shd_vis, icell, Iabs_leaf(count))
+                count = count + 1; call set_value_in_condition(Ileaf_sun_nir, icell, Iabs_leaf(count))
+                count = count + 1; call set_value_in_condition(Ileaf_shd_nir, icell, Iabs_leaf(count))
+             else
+                count = count + 4
+             end if
+          end do
+       end do
     end do
 
     count = 0
-    do icell = 1, ncair
-       count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
-       count = count + 1; call set_value_in_condition(Isoil_nir, icell, Iabs_soil(count))
+    icell = 0
+    do icair = 1, ncair
+       do itree = 1, ntree
+          do k = 1, ntop - nbot + 1 + 1
+                if (k == 1) then
+                   icell = icell + 1;
+
+                   count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
+                   count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
+                else
+                   count = count + 2
+                end if
+          end do
+       end do
     end do
 
     deallocate(Iabs_leaf)
