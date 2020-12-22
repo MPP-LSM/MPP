@@ -391,9 +391,14 @@ contains
     !
     ! !DESCRIPTION:
     !   Extracts following variables from the LBL model:
-    !     - gbh
-    !     - gbv
-    !     - gbc
+    !     - Iabs_leaf:
+    !         - sunlit + VIS
+    !         - sunlit + NIR
+    !         - shaded + VIS
+    !         - shaded + NIR
+    !     - Iabs_soil
+    !         - VIS
+    !         - NIR
     !
     ! !USES:
     use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
