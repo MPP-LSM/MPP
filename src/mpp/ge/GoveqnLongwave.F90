@@ -472,7 +472,8 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : VAR_LONGWAVE_ABSORBED_RAD
+    use MultiPhysicsProbConstants, only : VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI
+    use MultiPhysicsProbConstants, only : VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND
     !
     implicit none
     !
@@ -482,13 +483,27 @@ contains
     PetscInt                              :: ncells
     PetscReal                   , pointer :: var_values(:)
     !
-    PetscInt :: ghosted_id, count
+    PetscInt :: ghosted_id, ileaf
+
+    var_values(:) = 0.d0
 
     select case(var_type)
-    case(VAR_LONGWAVE_ABSORBED_RAD)
-       count = 0
+    case(VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI)
+
+       ileaf = 1
        do ghosted_id = 1, ncells
-          var_values(ghosted_id) = aux_var(ghosted_id)%Iabs
+          if (.not. aux_var(ghosted_id)%is_soil) then
+             if (aux_var(ghosted_id)%leaf_dlai(ileaf) > 0.d0) then
+                var_values(ghosted_id) = aux_var(ghosted_id)%Iabs/aux_var(ghosted_id)%leaf_dlai(ileaf)
+             end if
+          end if
+       end do
+
+    case(VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND)
+       do ghosted_id = 1, ncells
+          if (aux_var(ghosted_id)%is_soil) then
+             var_values(ghosted_id) = aux_var(ghosted_id)%Iabs
+          end if
        end do
 
     case default

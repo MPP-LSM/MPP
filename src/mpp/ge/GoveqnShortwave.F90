@@ -645,8 +645,8 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : VAR_SHRTWAVE_ABSORBED_RAD_LEAF
-    use MultiPhysicsProbConstants, only : VAR_SHRTWAVE_ABSORBED_RAD_SOIL
+    use MultiPhysicsProbConstants, only : VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI
+    use MultiPhysicsProbConstants, only : VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND
     !
     implicit none
     !
@@ -661,7 +661,7 @@ contains
     nband = aux_var(1)%nband
 
     select case(var_type)
-    case(VAR_SHRTWAVE_ABSORBED_RAD_LEAF)
+    case(VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI)
        count = 0
        do ghosted_id = 1, ncells
           do iband = 1, nband ! VIS and NIR
@@ -676,12 +676,11 @@ contains
           end do
        end do
 
-    case(VAR_SHRTWAVE_ABSORBED_RAD_SOIL)
+    case(VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND)
 
        count = 0
        do ghosted_id = 1, ncells
           do iband = 1, nband
-
              count = count + 1
              var_values(count) = aux_var(ghosted_id)%Iabs_soil(iband)
           end do

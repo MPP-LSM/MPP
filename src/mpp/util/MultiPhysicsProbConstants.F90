@@ -151,10 +151,11 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_BBERRY   = 654
   PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C4     = 655
   PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C3     = 656
-  PetscInt, parameter, public :: VAR_SHRTWAVE_ABSORBED_RAD_LEAF    = 657
-  PetscInt, parameter, public :: VAR_SHRTWAVE_ABSORBED_RAD_SOIL    = 658
-  PetscInt, parameter, public :: VAR_LONGWAVE_ABSORBED_RAD         = 659
-  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE          = 660
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE          = 657
+  PetscInt, parameter, public :: VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI    = 658
+  PetscInt, parameter, public :: VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND = 659
+  PetscInt, parameter, public :: VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI     = 660
+  PetscInt, parameter, public :: VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND  = 661
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
