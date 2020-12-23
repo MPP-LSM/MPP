@@ -26,7 +26,7 @@ module LongwaveAuxType
      PetscReal          :: leaf_emiss          ! leaf emissivity
      PetscReal, pointer :: leaf_temperature(:) ! leaf temperature
      PetscReal, pointer :: leaf_fraction(:)    ! fraction of leaf
-     PetscReal, pointer :: leaf_lai(:)         ! leaf area index
+     PetscReal, pointer :: leaf_dlai(:)        ! leaf area index
      
 
      PetscBool          :: is_soil             ! PETSC_TRUE if the grid cell is a soil grid cell
@@ -59,7 +59,7 @@ contains
 
     allocate(this%leaf_temperature(nleaf));
     allocate(this%leaf_fraction(   nleaf));
-    allocate(this%leaf_lai(        nleaf));
+    allocate(this%leaf_dlai(       nleaf));
 
     this%Idn                 = 0.d0
     this%Idn                 = 0.d0
@@ -73,7 +73,7 @@ contains
     this%leaf_emiss          = 0.d0
     this%leaf_temperature(:) = 0.d0
     this%leaf_fraction(:)    = 0.d0
-    this%leaf_lai(:)         = 0.d0
+    this%leaf_dlai(:)        = 0.d0
 
     this%is_soil             = PETSC_FALSE
     this%soil_temperature    = 0.d0
