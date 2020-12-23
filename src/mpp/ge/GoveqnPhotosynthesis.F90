@@ -29,7 +29,7 @@ module GoveqnPhotosynthesisType
      procedure, public :: ComputeResidual           => PhotosynthesisComputeResidual
      procedure, public :: ComputeJacobian           => PhotosynthesisComputeJacobian
      !procedure, public :: ComputeOperatorsDiag     => PhotosynthesisComputeOperatorsDiag
-     !procedure, public :: GetRValues               => PhotosynthesisGetRValues
+     procedure, public :: GetRValues               => PhotosynthesisGetRValues
      procedure, public :: SavePrimaryIndependentVar => PhotosynthesisSavePrmIndepVar
 
   end type goveqn_photosynthesis_type
@@ -243,6 +243,71 @@ contains
    call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
 
  end subroutine PhotosynthesisSavePrmIndepVar
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisGetRValues (this, auxvar_type, var_type, nauxvar, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    !
+    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants, only : AUXVAR_BC
+    use MultiPhysicsProbConstants, only : AUXVAR_SS
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_photosynthesis_type) :: this
+    PetscInt                     :: auxvar_type
+    PetscInt                     :: var_type
+    PetscInt                     :: nauxvar
+    PetscReal, pointer           :: var_values(:)
+
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
+    select case(auxvar_type)
+    case(AUXVAR_INTERNAL)
+       call PhotosynthesisGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
+    case default
+       write(*,*)'Unknown auxvar_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
+  end subroutine PhotosynthesisGetRValues
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisGetRValuesFromAuxVars (aux_var, var_type, ncells, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(photosynthesis_auxvar_type) , pointer :: aux_var(:)
+    PetscInt                                   :: var_type
+    PetscInt                                   :: ncells
+    PetscReal                        , pointer :: var_values(:)
+    !
+    PetscInt                                   :: ghosted_id
+
+    select case(var_type)
+    case(VAR_STOMATAL_CONDUCTANCE)
+
+       do ghosted_id = 1, ncells
+          var_values(ghosted_id) = aux_var(ghosted_id)%gs
+       end do
+
+    case default
+       write(iulog,*) 'PhotosynthesisGetRValuesFromAuxVars: Unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine PhotosynthesisGetRValuesFromAuxVars
 
 #endif
 
