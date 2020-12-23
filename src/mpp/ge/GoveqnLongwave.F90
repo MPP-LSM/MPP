@@ -35,6 +35,7 @@ module GoveqnLongwaveType
      procedure, public :: SavePrimaryIndependentVar => LongwaveSavePrmIndepVar
      procedure, public :: ComputeRhs                => LongwaveComputeRhs
      procedure, public :: ComputeOperatorsDiag      => LongwaveComputeOperatorsDiag
+     procedure, public :: GetRValues                => LongwaveGetRValues
 
   end type goveqn_longwave_type
 
@@ -431,6 +432,72 @@ contains
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
 
   end subroutine LongwaveComputeOperatorsDiag
+
+  !------------------------------------------------------------------------
+  subroutine LongwaveGetRValues (this, auxvar_type, var_type, nauxvar, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    !
+    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants, only : AUXVAR_BC
+    use MultiPhysicsProbConstants, only : AUXVAR_SS
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_longwave_type) :: this
+    PetscInt                     :: auxvar_type
+    PetscInt                     :: var_type
+    PetscInt                     :: nauxvar
+    PetscReal, pointer           :: var_values(:)
+
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
+    select case(auxvar_type)
+    case(AUXVAR_INTERNAL)
+       call LongwaveGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
+    case default
+       write(*,*)'Unknown auxvar_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine LongwaveGetRValues
+
+  !------------------------------------------------------------------------
+  subroutine LongwaveGetRValuesFromAuxVars (aux_var, var_type, ncells, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_LONGWAVE_ABSORBED_RAD
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(longwave_auxvar_type) , pointer :: aux_var(:)
+    PetscInt                              :: var_type
+    PetscInt                              :: ncells
+    PetscReal                   , pointer :: var_values(:)
+    !
+    PetscInt :: ghosted_id, count
+
+    select case(var_type)
+    case(VAR_LONGWAVE_ABSORBED_RAD)
+       count = 0
+       do ghosted_id = 1, ncells
+          var_values(ghosted_id) = aux_var(ghosted_id)%Iabs
+       end do
+
+    case default
+       write(iulog,*) 'LongwaveGetRValuesFromAuxVars: Unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine LongwaveGetRValuesFromAuxVars
+
 #endif
 
 end module GoveqnLongwaveType
