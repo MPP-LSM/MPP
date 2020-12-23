@@ -16,6 +16,7 @@ module ml_model_utils
   public :: extract_data_from_mlc
   public :: extract_data_from_swv
   public :: extract_data_from_lbl
+  public :: extract_data_from_lwv
   public :: set_value_in_condition
   public :: get_value_from_condition
 
@@ -482,4 +483,66 @@ contains
 
   end subroutine extract_data_from_swv
  
+  !------------------------------------------------------------------------
+  subroutine extract_data_from_lwv(lwv_mpp)
+    !
+    ! !DESCRIPTION:
+    !   Extracts following variables from the longwave radiation model:
+    !     - Iabs_leaf:
+    !     - Iabs_soil
+    !
+    ! !USES:
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars      , only : Lleaf_abs, Lsoil_abs
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use GoveqnLongwaveType        , only : goveqn_longwave_type
+    use MultiPhysicsProbLongwave  , only : mpp_longwave_type
+    use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants , only : VAR_LONGWAVE_ABSORBED_RAD
+    use petscvec
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_longwave_type)           :: lwv_mpp
+    !
+    PetscInt                            :: idx_leaf, idx_data, idx_soil, idx_air
+    PetscInt                            :: icair, itree, k, leaf_icell, soil_icell
+    PetscInt                            :: ncells, count
+    PetscReal               , pointer   :: Iabs(:)
+    class(goveqn_base_type) , pointer   :: goveq
+    PetscErrorCode                      :: ierr
+
+    ncells = ncair * ntree * (ntop - nbot + 1 + 1) ! num of canopy airspace x num. of tree x num. of levels
+    allocate(Iabs(ncells))
+
+    call lwv_mpp%soe%SetPointerToIthGovEqn(1, goveq)
+
+    select type(goveq)
+    class is (goveqn_longwave_type)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LONGWAVE_ABSORBED_RAD, ncells, Iabs)
+    end select
+
+    count = 0
+    leaf_icell = 0
+    soil_icell = 0
+    do icair = 1, ncair
+       do itree = 1, ntree
+          do k = 1, ntop - nbot + 1 + 1
+             count = count + 1;
+             if (k == 1) then
+                soil_icell = soil_icell + 1
+                call set_value_in_condition(Lsoil_abs, soil_icell, Iabs(count))
+             else
+                leaf_icell = leaf_icell + 1
+                call set_value_in_condition(Lleaf_abs, leaf_icell, Iabs(count))
+            end if
+          end do
+       end do
+    end do
+
+    deallocate(Iabs)
+
+  end subroutine extract_data_from_lwv
+
 end module ml_model_utils

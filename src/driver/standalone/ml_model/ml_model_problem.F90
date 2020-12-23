@@ -155,6 +155,9 @@ contains
     call allocate_memory_for_condition(Isoil_vis, ncair)
     call allocate_memory_for_condition(Isoil_nir, ncair)
 
+    call allocate_memory_for_condition(Lleaf_abs, ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(Lsoil_abs, ncair)
+
   end subroutine allocate_memory
 
   !------------------------------------------------------------------------
@@ -165,6 +168,7 @@ contains
     use ml_model_utils               , only : extract_data_from_mlc
     use ml_model_utils               , only : extract_data_from_swv
     use ml_model_utils               , only : extract_data_from_lbl
+    use ml_model_utils               , only : extract_data_from_lwv
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
@@ -203,6 +207,7 @@ contains
        call extract_data_from_mlc(mlc_mpp)
        write(*,*)'Solving longwave radiation'
        call solve_lwv(lwv_mpp, istep, dt)
+       call extract_data_from_lwv(lwv_mpp)
 
        write(*,*)'Solving leaf boundary layer'
        call solve_lbl(lbl_mpp, istep, dt)

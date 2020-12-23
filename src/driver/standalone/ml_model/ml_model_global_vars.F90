@@ -34,6 +34,7 @@ module ml_model_global_vars
   type(condition_type) :: Ileaf_sun_vis, Ileaf_shd_vis
   type(condition_type) :: Ileaf_sun_nir, Ileaf_shd_nir
   type(condition_type) :: Isoil_vis, Isoil_nir
+  type(condition_type) :: Lleaf_abs, Lsoil_abs
   type(condition_type) :: Pref, Uref, Tref, Rhref
   type(condition_type) :: Tleaf_sun, Tleaf_shd, Tsoil, Tcan
   type(condition_type) :: Tair, eair
