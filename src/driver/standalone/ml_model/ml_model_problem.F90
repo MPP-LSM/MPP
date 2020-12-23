@@ -134,6 +134,9 @@ contains
     call allocate_memory_for_condition(gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
 
+    call allocate_memory_for_condition(gs_sun, ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(gs_shd, ncair*ntree*(ntop-nbot+1))
+
     call allocate_memory_for_condition(Tcan      , ncair)
 
     call allocate_memory_for_condition(Tair      , ncair*nz_cair)
@@ -141,9 +144,8 @@ contains
 
     call allocate_memory_for_condition(Tleaf_sun , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(Tleaf_shd , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(rn_sun    , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(rn_shd    , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(gs_sun    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Labs_leaf_sun, ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Labs_leaf_shd, ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(gs_shd    , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(Ileaf_sun_vis    , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(Ileaf_shd_vis    , ncair*(ntop-nbot+1) )
@@ -151,12 +153,9 @@ contains
     call allocate_memory_for_condition(Ileaf_shd_nir    , ncair*(ntop-nbot+1) )
     
     call allocate_memory_for_condition(Tsoil  , ncair)
-    call allocate_memory_for_condition(rn_soil, ncair)
+    call allocate_memory_for_condition(Labs_soil, ncair)
     call allocate_memory_for_condition(Isoil_vis, ncair)
     call allocate_memory_for_condition(Isoil_nir, ncair)
-
-    call allocate_memory_for_condition(Lleaf_abs, ncair*ntree*(ntop-nbot+1))
-    call allocate_memory_for_condition(Lsoil_abs, ncair)
 
   end subroutine allocate_memory
 
@@ -169,6 +168,7 @@ contains
     use ml_model_utils               , only : extract_data_from_swv
     use ml_model_utils               , only : extract_data_from_lbl
     use ml_model_utils               , only : extract_data_from_lwv
+    use ml_model_utils               , only : extract_data_from_photosynthesis
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
@@ -215,6 +215,7 @@ contains
 
        write(*,*)'Solving photosynthesis'
        call solve_photosynthesis(psy_mpp, istep, dt)
+       call extract_data_from_photosynthesis(psy_mpp)
     end do
 
   end subroutine run_ml_model_problem
