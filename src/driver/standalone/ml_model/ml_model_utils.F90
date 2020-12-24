@@ -13,7 +13,6 @@ module ml_model_utils
   PetscInt, parameter :: CANOPY_AND_SOIL_MESH = 3
 
   public :: compute_dpai_fssh
-  public :: extract_data_from_swv
   public :: extract_data_from_lwv
   public :: extract_data_from_photosynthesis
   public :: set_value_in_condition
@@ -183,102 +182,6 @@ contains
 
   end function get_value_from_condition
 
-  !------------------------------------------------------------------------
-  subroutine extract_data_from_swv(swv_mpp)
-    !
-    ! !DESCRIPTION:
-    !   Extracts following variables from the LBL model:
-    !     - Iabs_leaf:
-    !         - sunlit + VIS
-    !         - sunlit + NIR
-    !         - shaded + VIS
-    !         - shaded + NIR
-    !     - Iabs_soil
-    !         - VIS
-    !         - NIR
-    !
-    ! !USES:
-    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
-    use ml_model_global_vars      , only : Ileaf_sun_vis, Ileaf_shd_vis
-    use ml_model_global_vars      , only : Ileaf_sun_nir, Ileaf_shd_nir
-    use ml_model_global_vars      , only : Isoil_vis, Isoil_nir
-    use ml_model_meshes           , only : nleaf
-    use GoverningEquationBaseType , only : goveqn_base_type
-    use GoveqnShortwaveType       , only : goveqn_shortwave_type
-    use MultiPhysicsProbShortwave , only : mpp_shortwave_type
-    use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
-    use MultiPhysicsProbConstants , only : VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI
-    use MultiPhysicsProbConstants , only : VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND
-    use petscvec
-    !
-    ! !ARGUMENTS
-    implicit none
-    !
-    class(mpp_shortwave_type)           :: swv_mpp
-    !
-    PetscInt                            :: idx_leaf, idx_data, idx_soil, idx_air
-    PetscInt                            :: ileaf, icair, itree, k, ieqn, icell, iband
-    PetscInt                            :: ncells, nctz, count
-    PetscReal               , pointer   :: Iabs_leaf(:), Iabs_soil(:)
-    class(goveqn_base_type) , pointer   :: goveq
-    PetscInt                , parameter :: nband = 2      ! Visible + NIR
-    PetscErrorCode                      :: ierr
-
-    nctz   = ncair * ntree * (ntop - nbot + 1 + 1) ! num of canopy airspace x num. of tree x num. of levels
-    ncells = nctz  * nleaf * nband
-    allocate(Iabs_leaf(ncells))
-
-    ncells = nctz * nband
-    allocate(Iabs_soil(ncells))
-
-    call swv_mpp%soe%SetPointerToIthGovEqn(1, goveq)
-
-    select type(goveq)
-    class is (goveqn_shortwave_type)
-       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI, nctz, Iabs_leaf)
-       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND, nctz, Iabs_soil)
-    end select
-
-    count = 0
-    icell = 0
-    do icair = 1, ncair
-       do itree = 1, ntree
-          do k = 1, ntop - nbot + 1 + 1
-             if (k > 1) then
-                icell = icell + 1
-                count = count + 1; call set_value_in_condition(Ileaf_sun_vis, icell, Iabs_leaf(count))
-                count = count + 1; call set_value_in_condition(Ileaf_shd_vis, icell, Iabs_leaf(count))
-                count = count + 1; call set_value_in_condition(Ileaf_sun_nir, icell, Iabs_leaf(count))
-                count = count + 1; call set_value_in_condition(Ileaf_shd_nir, icell, Iabs_leaf(count))
-             else
-                count = count + 4
-             end if
-          end do
-       end do
-    end do
-
-    count = 0
-    icell = 0
-    do icair = 1, ncair
-       do itree = 1, ntree
-          do k = 1, ntop - nbot + 1 + 1
-                if (k == 1) then
-                   icell = icell + 1;
-
-                   count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
-                   count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
-                else
-                   count = count + 2
-                end if
-          end do
-       end do
-    end do
-
-    deallocate(Iabs_leaf)
-    deallocate(Iabs_soil)
-
-  end subroutine extract_data_from_swv
- 
   !------------------------------------------------------------------------
   subroutine extract_data_from_lwv(lwv_mpp)
     !
