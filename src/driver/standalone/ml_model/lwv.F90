@@ -13,6 +13,8 @@ module lwv
 
   public :: init_lwv
   public :: lwv_set_boundary_conditions
+  public :: solve_lwv
+  public :: extract_data_from_lwv
 
 contains
 
@@ -301,6 +303,74 @@ contains
     call set_parameters(lwv_mpp)
 
   end subroutine init_lwv
+
+  !------------------------------------------------------------------------
+  subroutine extract_data_from_lwv(lwv_mpp)
+    !
+    ! !DESCRIPTION:
+    !   Extracts following variables from the longwave radiation model:
+    !     - Iabs_leaf:
+    !     - Iabs_soil
+    !
+    ! !USES:
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars      , only : Labs_leaf_sun, Labs_leaf_shd, Labs_soil
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use GoveqnLongwaveType        , only : goveqn_longwave_type
+    use MultiPhysicsProbLongwave  , only : mpp_longwave_type
+    use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants , only : VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI
+    use MultiPhysicsProbConstants , only : VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND
+    use ml_model_utils            , only : set_value_in_condition
+    use petscvec
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_longwave_type)           :: lwv_mpp
+    !
+    PetscInt                            :: idx_leaf, idx_data, idx_soil, idx_air
+    PetscInt                            :: icair, itree, k, leaf_icell, soil_icell
+    PetscInt                            :: ncells, count
+    PetscReal               , pointer   :: Labs_leaf_data(:), Labs_soil_data(:)
+    class(goveqn_base_type) , pointer   :: goveq
+    PetscErrorCode                      :: ierr
+
+    ncells = ncair * ntree * (ntop - nbot + 1 + 1) ! num of canopy airspace x num. of tree x num. of levels
+    allocate(Labs_leaf_data(ncells))
+    allocate(Labs_soil_data(ncells))
+
+    call lwv_mpp%soe%SetPointerToIthGovEqn(1, goveq)
+
+    select type(goveq)
+    class is (goveqn_longwave_type)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI   , ncells, Labs_leaf_data)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND, ncells, Labs_soil_data)
+    end select
+
+    count = 0
+    leaf_icell = 0
+    soil_icell = 0
+    do icair = 1, ncair
+       do itree = 1, ntree
+          do k = 1, ntop - nbot + 1 + 1
+             count = count + 1;
+             if (k == 1) then
+                soil_icell = soil_icell + 1
+                call set_value_in_condition(Labs_soil, soil_icell, Labs_soil_data(count))
+             else
+                leaf_icell = leaf_icell + 1
+                call set_value_in_condition(Labs_leaf_sun, leaf_icell, Labs_leaf_data(count))
+                call set_value_in_condition(Labs_leaf_shd, leaf_icell, Labs_leaf_data(count))
+            end if
+          end do
+       end do
+    end do
+
+    deallocate(Labs_leaf_data)
+    deallocate(Labs_soil_data)
+
+  end subroutine extract_data_from_lwv
 
  !------------------------------------------------------------------------
   subroutine solve_lwv(lwv_mpp, istep, dt)

@@ -167,7 +167,7 @@ contains
     use mlc                          , only : extract_data_from_mlc
     use swv                          , only : extract_data_from_swv
     use lbl                          , only : extract_data_from_lbl
-    use ml_model_utils               , only : extract_data_from_lwv
+    use lwv                          , only : extract_data_from_lwv
     use ml_model_utils               , only : extract_data_from_photosynthesis
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
