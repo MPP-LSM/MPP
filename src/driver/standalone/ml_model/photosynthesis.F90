@@ -20,6 +20,7 @@ module photosynthesis
   public :: init_photosynthesis
   public :: photosynthesis_set_boundary_conditions
   public :: solve_photosynthesis
+  public :: extract_data_from_photosynthesis
 
 contains
 
@@ -361,6 +362,57 @@ contains
     call psy_mpp%soe%PreSolve()
 
   end subroutine set_initial_conditions
+
+  !------------------------------------------------------------------------
+  subroutine extract_data_from_photosynthesis(psy_mpp)
+    !
+    ! !DESCRIPTION:
+    !   Extracts following variables from the photsynthesis model
+    !     - gs
+    !
+    ! !USES:
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_meshes           , only : nleaf
+    use ml_model_global_vars      , only : gs_sun, gs_shd
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use GoveqnPhotosynthesisType  , only : goveqn_photosynthesis_type
+    use MultiPhysicsProbPhotosynthesis  , only : mpp_photosynthesis_type
+    use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE
+    use ml_model_utils            , only : set_value_in_condition
+    use petscvec
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_photosynthesis_type)      :: psy_mpp
+    !
+    PetscInt                            :: icell, offset
+    PetscInt                            :: ncells
+    PetscReal               , pointer   :: gs_data(:)
+    class(goveqn_base_type) , pointer   :: goveq
+    PetscErrorCode                      :: ierr
+
+    ncells = ncair * ntree * (ntop - nbot + 1) * nleaf
+
+    allocate(gs_data(ncells))
+
+    call psy_mpp%soe%SetPointerToIthGovEqn(1, goveq)
+
+    select type(goveq)
+    class is (goveqn_photosynthesis_type)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_STOMATAL_CONDUCTANCE, ncells, gs_data)
+    end select
+
+    offset = ncair * ntree * (ntop - nbot + 1)
+    do icell = 1, ncair * ntree * (ntop - nbot + 1)
+       call set_value_in_condition(gs_sun, icell, gs_data(icell         ))
+       call set_value_in_condition(gs_shd, icell, gs_data(icell + offset))
+    end do
+
+    deallocate(gs_data)
+
+  end subroutine extract_data_from_photosynthesis
 
   !------------------------------------------------------------------------
   subroutine solve_photosynthesis(psy_mpp, istep, dt)
