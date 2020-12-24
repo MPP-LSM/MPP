@@ -4,6 +4,7 @@ module mlc
   use mpp_abortutils           , only : endrun
   use mpp_shr_log_mod          , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbMLC , only : mpp_mlc_type
+    use ml_model_utils                 , only : get_value_from_condition
   use ml_model_global_vars
   use petscsys
   use petscdm
@@ -59,7 +60,7 @@ contains
     call mlc_mpp%SetNumMeshes(2)
 
     CAIR_MESH = 1; call create_canopy_airspace_mesh(mesh); call mlc_mpp%AddMesh(CAIR_MESH, mesh)
-    CLEF_MESH = 2; call create_canopy_mesh(mesh)         ; call mlc_mpp%AddMesh(CLEF_MESH, mesh)
+    CLEF_MESH = 2; call create_canopy_airspace_mesh(mesh); call mlc_mpp%AddMesh(CLEF_MESH, mesh)
 
     deallocate(mesh)
 
@@ -274,5 +275,228 @@ contains
     call mlc_mpp%soe%PreSolve()
 
   end subroutine mlc_set_initial_conditions
+
+ !------------------------------------------------------------------------
+  subroutine set_boundary_conditions(mlc_mpp)
+    !
+    implicit none
+    !
+    class(mpp_mlc_type) :: mlc_mpp
+
+    call set_air_temp_ge_parameters(mlc_mpp)
+    call set_air_vapor_ge_parameters(mlc_mpp)
+    call set_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SUN_GE)
+    call set_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SHD_GE)
+
+  end subroutine set_boundary_conditions
+
+  !------------------------------------------------------------------------
+  subroutine set_air_temp_ge_parameters(mlc_mpp)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType      , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType       , only : sysofeqns_mlc_type
+    use GoverningEquationBaseType      , only : goveqn_base_type
+    use GoveqnCanopyAirTemperatureType , only : goveqn_cair_temp_type
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    type(mpp_mlc_type) :: mlc_mpp
+    !
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscInt                             :: k, ileaf, icair, icell, gb_count
+
+    base_soe => mlc_mpp%soe
+
+    call base_soe%SetPointerToIthGovEqn(CAIR_TEMP_GE, cur_goveq)
+
+
+    select type(cur_goveq)
+    class is (goveqn_cair_temp_type)
+
+       if (ntree > 1) then
+          write(*,*)'set_air_temp_ge_parameters: Need to extend the code to support ntree > 1'
+       end if
+
+       gb_count = 0
+       do icair = 1, ncair
+         do k = 1, nz_cair + 1
+            if (k >= nbot .and. k<= ntop) then
+               gb_count = gb_count + 1
+               icell = (icair-1)*(nz_cair+1) + k
+
+               cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, gb_count)
+
+               do ileaf = 1, ntree
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(gs_shd, gb_count)
+               enddo
+            end if
+         end do ! k-loop
+
+         icell = (nz_cair+1)*(icair-1)+1
+         cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
+         cur_goveq%aux_vars_in(icell)%gbh     = 2.268731551029694d0
+
+      enddo
+
+    end select
+
+  end subroutine set_air_temp_ge_parameters
+
+  !------------------------------------------------------------------------
+  subroutine set_air_vapor_ge_parameters(mlc_mpp)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType       , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
+    use GoverningEquationBaseType       , only : goveqn_base_type
+    use GoveqnCanopyAirVaporType  , only : goveqn_cair_vapor_type
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    type(mpp_mlc_type) :: mlc_mpp
+    !
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscInt                             :: k, ileaf, icair, icell, gb_count
+
+    base_soe => mlc_mpp%soe
+
+    call base_soe%SetPointerToIthGovEqn(CAIR_VAPR_GE, cur_goveq)
+
+    select type(cur_goveq)
+    class is (goveqn_cair_vapor_type)
+
+       if (ntree > 1) then
+          write(*,*)'set_air_vapor_ge_parameters: Need to extend the code to support ntree > 1'
+       end if
+
+       gb_count = 0
+       do icair = 1, ncair
+         do k = 1, nz_cair + 1
+            if (k >= nbot .and. k <= ntop) then
+
+               gb_count = gb_count + 1
+               icell = (icair-1)*(nz_cair+1) + k
+
+               cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbh, gb_count)
+
+               do ileaf = 1, ntree
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(gs_shd, gb_count)
+               end do
+            end if
+         end do
+
+         icell = (nz_cair+1)*(icair-1)+1
+         cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
+         cur_goveq%aux_vars_in(icell)%gbv     = 2.496430918408511d0
+
+      end do
+   end select
+
+  end subroutine set_air_vapor_ge_parameters
+
+  !------------------------------------------------------------------------
+  subroutine set_canopy_leaf_parameters(mlc_mpp, ge_rank)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType       , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
+    use GoverningEquationBaseType       , only : goveqn_base_type
+    use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    type(mpp_mlc_type) :: mlc_mpp
+    PetscInt           :: ge_rank
+    !
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscInt                             :: k, i, num_int, icell, icair, itree, offset, count
+
+    base_soe => mlc_mpp%soe
+
+    call base_soe%SetPointerToIthGovEqn(ge_rank, cur_goveq)
+
+    select type(cur_goveq)
+    class is (goveqn_cleaf_temp_type)
+
+       offset = ncair * ntree * (ntop - nbot + 1)
+       
+       count = 0
+       icell = 0
+       do icair = 1, ncair
+          do itree = 1, ntree
+             do k = 1, nz_cair + 1
+
+                icell = icell + 1
+                if (k >= nbot .and. k <= ntop) then
+
+                   count = count + 1
+                   if (cur_goveq%rank_in_soe_list == CLEF_TEMP_SUN_GE) then
+                      cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, count)
+                      cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, count)
+                      cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(gs_sun  , count)
+
+                      cur_goveq%aux_vars_in(icell)%rn   = &
+                           get_value_from_condition(Ileaf_sun_vis, count) + &
+                           get_value_from_condition(Ileaf_sun_nir, count) + &
+                           get_value_from_condition(Labs_leaf_sun       , count)
+
+                   else
+                      cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, count + offset)
+                      cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, count + offset)
+                      cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(gs_shd, count)
+
+                      cur_goveq%aux_vars_in(icell)%rn   = &
+                           get_value_from_condition(Ileaf_shd_vis, count) + &
+                           get_value_from_condition(Ileaf_shd_nir, count) + &
+                           get_value_from_condition(Labs_leaf_shd       , count)
+                   end if
+                end if
+
+             end do
+          end do
+       end do
+
+    end select
+
+  end subroutine set_canopy_leaf_parameters
+
+  !------------------------------------------------------------------------
+  subroutine solve_mlc(mlc_mpp, istep, dt)
+    !
+    implicit none
+    !
+    class(mpp_mlc_type) :: mlc_mpp
+    PetscInt            :: istep
+    PetscReal           :: dt
+    !
+    PetscBool           :: converged
+    PetscInt            :: converged_reason
+    PetscBool           :: flg
+    PetscErrorCode      :: ierr
+
+    call set_boundary_conditions(mlc_mpp)
+
+    call mlc_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
+
+  end subroutine solve_mlc
+
 
 end module mlc

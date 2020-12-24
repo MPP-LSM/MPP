@@ -173,6 +173,7 @@ contains
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
     use photosynthesis               , only : solve_photosynthesis
+    use mlc                          , only : solve_mlc
     !
     implicit none
     !
@@ -216,6 +217,9 @@ contains
        write(*,*)'Solving photosynthesis'
        call solve_photosynthesis(psy_mpp, istep, dt)
        call extract_data_from_photosynthesis(psy_mpp)
+
+       write(*,*)'Solving MLC'
+       call solve_mlc(mlc_mpp, istep, dt)
     end do
 
   end subroutine run_ml_model_problem
