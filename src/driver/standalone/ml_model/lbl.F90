@@ -13,6 +13,7 @@ module lbl
 
   public :: init_lbl
   public :: solve_lbl
+  public :: extract_data_from_lbl
 
 contains
 
@@ -215,6 +216,68 @@ contains
 
   end subroutine init_lbl
 
+  !------------------------------------------------------------------------
+  subroutine extract_data_from_lbl(lbl_mpp)
+    !
+    ! !DESCRIPTION:
+    !   Extracts following variables from the LBL model:
+    !     - gbh
+    !     - gbv
+    !     - gbc
+    !
+    ! !USES:
+    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars            , only : gbh, gbv, gbc
+    use ml_model_meshes                 , only : nleaf
+    use GoverningEquationBaseType       , only : goveqn_base_type
+    use GoveqnLeafBoundaryLayer         , only : goveqn_leaf_bnd_lyr_type
+    use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_BDN_LYR_COND_HEAT
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_BDN_LYR_COND_H2O
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_BDN_LYR_COND_CO2
+    use ml_model_utils                  , only : set_value_in_condition
+    use petscvec
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    class(mpp_lbl_type)               :: lbl_mpp
+    !
+    PetscScalar             , pointer :: soln_p(:)
+    PetscInt                          :: idx_leaf, idx_data, idx_soil, idx_air
+    PetscInt                          :: ileaf, icair, itree, k, ieqn, icell
+    PetscInt                          :: ncells
+    PetscReal               , pointer :: gbh_data(:), gbv_data(:), gbc_data(:)
+    class(goveqn_base_type) , pointer :: goveq
+    PetscErrorCode                    :: ierr
+
+    ncells = ncair * ntree * (ntop - nbot + 1) * nleaf
+
+    allocate(gbh_data(ncells))
+    allocate(gbv_data(ncells))
+    allocate(gbc_data(ncells))
+
+    call lbl_mpp%soe%SetPointerToIthGovEqn(1, goveq)
+
+    select type(goveq)
+    class is (goveqn_leaf_bnd_lyr_type)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_HEAT, ncells, gbh_data)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_H2O , ncells, gbv_data)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_CO2 , ncells, gbc_data)
+    end select
+
+    do icell = 1, ncells
+       call set_value_in_condition(gbh, icell, gbh_data(icell))
+       call set_value_in_condition(gbv, icell, gbv_data(icell))
+       call set_value_in_condition(gbc, icell, gbc_data(icell))
+    end do
+
+    deallocate(gbh_data)
+    deallocate(gbv_data)
+    deallocate(gbc_data)
+
+  end subroutine extract_data_from_lbl
+ 
  !------------------------------------------------------------------------
   subroutine solve_lbl(lbl_mpp, istep, dt)
     !
