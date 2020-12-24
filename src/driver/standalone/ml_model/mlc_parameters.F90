@@ -29,6 +29,8 @@ contains
 
     call set_air_temp_ge_parameters(mlc_mpp)
     call set_air_vapor_ge_parameters(mlc_mpp)
+    call set_common_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SUN_GE)
+    call set_common_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SHD_GE)
     call set_turbulence_parameters(mlc_mpp)
     call set_soil_parameters(mlc_mpp)
 
