@@ -431,10 +431,6 @@ contains
 
     call photosynthesis_set_boundary_conditions(psy_mpp)
 
-    !call VecGetArrayF90(psy_mpp%soe%solver%soln, ci_p, ierr); CHKERRQ(ierr)
-    !ci_p(:) = 152.d0
-    !call VecRestoreArrayF90(psy_mpp%soe%solver%soln, ci_p, ierr); CHKERRQ(ierr)
-
     call psy_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
   end subroutine solve_photosynthesis
