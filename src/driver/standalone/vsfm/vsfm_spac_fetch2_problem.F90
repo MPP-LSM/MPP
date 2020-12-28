@@ -38,8 +38,8 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: es_c2_def            = 5.0d0     ! -
   PetscReal , parameter :: es_c3_def            = 10.3d0    ! -
   PetscReal , parameter :: es_kmax_def          = 0.275d-6  ! s
-  PetscReal , parameter :: es_chang_phi0_def    = -5.74d8   ! Pa
-  PetscReal , parameter :: es_chang_p_def       = 20.d0     ! -
+  PetscReal , parameter :: es_chuang_phi0_def   = -5.74d8   ! Pa
+  PetscReal , parameter :: es_chuang_p_def      = 20.d0     ! -
   PetscReal , parameter :: es_taper_top         = 0.2d0     ! -
   PetscInt  , parameter :: es_ntree             = 3342
 
@@ -52,8 +52,8 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: maple_c2_def         = 5.0d0     ! -
   PetscReal , parameter :: maple_c3_def         = 10.3d0    ! -
   PetscReal , parameter :: maple_kmax_def       = 2.75d-6   ! s
-  PetscReal , parameter :: maple_chang_phi0_def = -5.74d8   ! Pa
-  PetscReal , parameter :: maple_chang_p_def    = 20.d0     ! -
+  PetscReal , parameter :: maple_chuang_phi0_def= -5.74d8   ! Pa
+  PetscReal , parameter :: maple_chuang_p_def   = 20.d0     ! -
   PetscReal , parameter :: maple_taper_top      = 0.6d0     ! -
   PetscInt  , parameter :: maple_ntree          = 436
 
@@ -66,8 +66,8 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: oak_c2_def           = 3.0d0     ! -
   PetscReal , parameter :: oak_c3_def           = 12.3d0    ! -
   PetscReal , parameter :: oak_kmax_def         = 6.65d-6   ! s
-  PetscReal , parameter :: oak_chang_phi0_def   = -5.74d8   ! Pa
-  PetscReal , parameter :: oak_chang_p_def      = 20.d0     ! -
+  PetscReal , parameter :: oak_chuang_phi0_def  = -5.74d8   ! Pa
+  PetscReal , parameter :: oak_chuang_p_def     = 20.d0     ! -
   PetscReal , parameter :: oak_taper_top        = 0.2d0     ! -
   PetscInt  , parameter :: oak_ntree            = 81
 
@@ -80,8 +80,8 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: pine_c2_def          = 5.0d0     ! -
   PetscReal , parameter :: pine_c3_def          = 10.3d0    ! -
   PetscReal , parameter :: pine_kmax_def        = 2.75d-6   ! s
-  PetscReal , parameter :: pine_chang_phi0_def  = -5.74d8   ! Pa
-  PetscReal , parameter :: pine_chang_p_def     = 20.d0     ! -
+  PetscReal , parameter :: pine_chuang_phi0_def = -5.74d8   ! Pa
+  PetscReal , parameter :: pine_chuang_p_def    = 20.d0     ! -
   PetscReal , parameter :: pine_taper_top       = 0.4d0     ! -
   PetscInt  , parameter :: pine_ntree           = 2809
 
@@ -191,8 +191,9 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: c2(4)
   PetscReal  :: c3(4)
   PetscReal  :: kmax(4)
-  PetscReal  :: chang_phi0(4)
-  PetscReal  :: chang_p(4)
+  PetscReal  :: chuang_phi0(4)
+  PetscReal  :: chuang_p(4)
+  PetscReal  :: taper(4)
 
   PetscInt  :: root_nz(4)
   PetscReal :: root_qz(4)
@@ -250,7 +251,7 @@ module vsfm_spac_fetch2_problem
   PetscBool :: soil_ss_specified
   PetscBool :: radial_root_system
   PetscBool :: no_capacitance
-  PetscBool :: use_chang_satfun
+  PetscBool :: use_chuang_satfun
   PetscBool :: use_taper
 
   Vec :: parameters
@@ -262,8 +263,9 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: oak_c2
   PetscReal  :: oak_c3
   PetscReal  :: oak_kmax
-  PetscReal  :: oak_chang_phi0
-  PetscReal  :: oak_chang_p
+  PetscReal  :: oak_chuang_phi0
+  PetscReal  :: oak_chuang_p
+  PetscReal  :: oak_taper
 
   PetscReal  :: pine_phis50
   PetscReal  :: pine_phi50
@@ -272,8 +274,9 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: pine_c2
   PetscReal  :: pine_c3
   PetscReal  :: pine_kmax
-  PetscReal  :: pine_chang_phi0
-  PetscReal  :: pine_chang_p
+  PetscReal  :: pine_chuang_phi0
+  PetscReal  :: pine_chuang_p
+  PetscReal  :: pine_taper
 
   PetscReal  :: maple_phis50
   PetscReal  :: maple_phi50
@@ -282,8 +285,9 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: maple_c2
   PetscReal  :: maple_c3
   PetscReal  :: maple_kmax
-  PetscReal  :: maple_chang_phi0
-  PetscReal  :: maple_chang_p
+  PetscReal  :: maple_chuang_phi0
+  PetscReal  :: maple_chuang_p
+  PetscReal  :: maple_taper
 
   PetscReal  :: es_phis50
   PetscReal  :: es_phi50
@@ -292,8 +296,9 @@ module vsfm_spac_fetch2_problem
   PetscReal  :: es_c2
   PetscReal  :: es_c3
   PetscReal  :: es_kmax
-  PetscReal  :: es_chang_phi0
-  PetscReal  :: es_chang_p
+  PetscReal  :: es_chuang_phi0
+  PetscReal  :: es_chuang_p
+  PetscReal  :: es_taper
 
   public :: run_vsfm_spac_fetch2_problem
   
@@ -325,8 +330,9 @@ contains
     c2             (E_IDX) = es_c2             ; c2             (M_IDX) = maple_c2             ; c2             (O_IDX) = oak_c2             ; c2             (P_IDX) = pine_c2             ;
     c3             (E_IDX) = es_c3             ; c3             (M_IDX) = maple_c3             ; c3             (O_IDX) = oak_c3             ; c3             (P_IDX) = pine_c3             ;
     kmax           (E_IDX) = es_kmax           ; kmax           (M_IDX) = maple_kmax           ; kmax           (O_IDX) = oak_kmax           ; kmax           (P_IDX) = pine_kmax           ;
-    chang_phi0     (E_IDX) = es_chang_phi0     ; chang_phi0     (M_IDX) = maple_chang_phi0     ; chang_phi0     (O_IDX) = oak_chang_phi0     ; chang_phi0     (P_IDX) = pine_chang_phi0     ;
-    chang_p        (E_IDX) = es_chang_p        ; chang_p        (M_IDX) = maple_chang_p        ; chang_p        (O_IDX) = oak_chang_p        ; chang_p        (P_IDX) = pine_chang_p        ;
+    chuang_phi0    (E_IDX) = es_chuang_phi0    ; chuang_phi0    (M_IDX) = maple_chuang_phi0    ; chuang_phi0    (O_IDX) = oak_chuang_phi0    ; chuang_phi0    (P_IDX) = pine_chuang_phi0    ;
+    chuang_p       (E_IDX) = es_chuang_p       ; chuang_p       (M_IDX) = maple_chuang_p       ; chuang_p       (O_IDX) = oak_chuang_p       ; chuang_p       (P_IDX) = pine_chuang_p       ;
+    taper          (E_IDX) = es_taper          ; taper          (M_IDX) = maple_taper          ; taper          (O_IDX) = oak_taper          ; taper          (P_IDX) = pine_taper          ;
     
     root_nz        (E_IDX) = es_root_nz        ; root_nz        (M_IDX) = maple_root_nz        ; root_nz        (O_IDX) = oak_root_nz        ; root_nz        (P_IDX) = pine_root_nz        ;
     root_qz        (E_IDX) = es_root_qz        ; root_qz        (M_IDX) = maple_root_qz        ; root_qz        (O_IDX) = oak_root_qz        ; root_qz        (P_IDX) = pine_root_qz        ;
@@ -445,7 +451,7 @@ end subroutine SetUpTreeProperties
     sm_bc_specified        = PETSC_FALSE
     radial_root_system     = PETSC_FALSE
     no_capacitance         = PETSC_FALSE
-    use_chang_satfun       = PETSC_FALSE
+    use_chuang_satfun      = PETSC_FALSE
     use_taper              = PETSC_FALSE
 
     ! Get some command line options
@@ -519,7 +525,7 @@ end subroutine SetUpTreeProperties
          '-no_capacitance', no_capacitance, flg, ierr)
 
     call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
-         '-use_chang_satfun', use_chang_satfun, flg, ierr)
+         '-use_chuang_satfun', use_chuang_satfun, flg, ierr)
 
     call PetscOptionsGetBool (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-use_taper', use_taper, flg, ierr)
@@ -617,6 +623,29 @@ end subroutine SetUpTreeProperties
 
     if (error_in_cmd_options) stop
 
+    if (.not. use_taper) then
+       es_taper    = 1.d0
+       oak_taper   = 1.d0
+       maple_taper = 1.d0
+       pine_taper  = 1.d0
+    else
+       es_taper    = 0.2d0
+       oak_taper   = 0.6d0
+       maple_taper = 0.2d0
+       pine_taper  = 0.4d0
+    end if
+    
+    if (use_chuang_satfun) then
+       es_chuang_phi0    = es_chuang_phi0_def
+       es_chuang_p       = es_chuang_p_def
+       maple_chuang_phi0 = maple_chuang_phi0_def
+       maple_chuang_p    = maple_chuang_p_def
+       oak_chuang_phi0   = oak_chuang_phi0_def
+       oak_chuang_p      = oak_chuang_p_def
+       pine_chuang_phi0  = pine_chuang_phi0_def
+       pine_chuang_p     = pine_chuang_p_def
+    end if
+
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, &
          '-parameter_file', param_file, flg, ierr)
 
@@ -635,16 +664,16 @@ end subroutine SetUpTreeProperties
 
        es_phis50 = param_p(01);
        es_c3     = param_p(02);
-       if (.not. use_chang_satfun) then
+       if (.not. use_chuang_satfun) then
           es_phi50      = param_p(03);
           es_phi88      = param_p(04);
-          es_chang_phi0 = es_chang_phi0_def
-          es_chang_p    = es_chang_p_def
+          es_chuang_phi0 = es_chuang_phi0_def
+          es_chuang_p    = es_chuang_p_def
        else
           es_phi50      = es_phi50_def
           es_phi88      = es_phi88_def
-          es_chang_phi0 = param_p(03);
-          es_chang_p    = param_p(04);
+          es_chuang_phi0 = param_p(03);
+          es_chuang_p    = param_p(04);
        endif
        es_c1     = param_p(05);
        es_c2     = param_p(06);
@@ -652,16 +681,16 @@ end subroutine SetUpTreeProperties
 
        maple_phis50 = param_p(08);
        maple_c3     = param_p(09);
-       if (.not. use_chang_satfun) then
+       if (.not. use_chuang_satfun) then
           maple_phi50      = param_p(10);
           maple_phi88      = param_p(11);
-          maple_chang_phi0 = maple_chang_phi0_def
-          maple_chang_p    = maple_chang_p_def
+          maple_chuang_phi0 = maple_chuang_phi0_def
+          maple_chuang_p    = maple_chuang_p_def
        else
           maple_phi50      = maple_phi50_def
           maple_phi88      = maple_phi88_def
-          maple_chang_phi0 = param_p(10);
-          maple_chang_p    = param_p(11);
+          maple_chuang_phi0 = param_p(10);
+          maple_chuang_p    = param_p(11);
        endif
        maple_c1     = param_p(12);
        maple_c2     = param_p(13);
@@ -669,16 +698,16 @@ end subroutine SetUpTreeProperties
 
        oak_phis50 = param_p(15);
        oak_c3     = param_p(16);
-       if (.not. use_chang_satfun) then
+       if (.not. use_chuang_satfun) then
           oak_phi50      = param_p(17);
           oak_phi88      = param_p(18);
-          oak_chang_phi0 = oak_chang_phi0_def
-          oak_chang_p    = oak_chang_p_def
+          oak_chuang_phi0 = oak_chuang_phi0_def
+          oak_chuang_p    = oak_chuang_p_def
        else
           oak_phi50      = oak_phi50_def
           oak_phi88      = oak_phi88_def
-          oak_chang_phi0 = param_p(17);
-          oak_chang_p    = param_p(18);
+          oak_chuang_phi0 = param_p(17);
+          oak_chuang_p    = param_p(18);
        endif
        oak_c1     = param_p(19);
        oak_c2     = param_p(20);
@@ -686,16 +715,16 @@ end subroutine SetUpTreeProperties
 
        pine_phis50 = param_p(22);
        pine_c3     = param_p(23);
-       if (.not. use_chang_satfun) then
+       if (.not. use_chuang_satfun) then
           pine_phi50      = param_p(24);
           pine_phi88      = param_p(25);
-          pine_chang_phi0 = pine_chang_phi0_def
-          pine_chang_p    = pine_chang_p_def
+          pine_chuang_phi0 = pine_chuang_phi0_def
+          pine_chuang_p    = pine_chuang_p_def
        else
           pine_phi50      = pine_phi50_def
           pine_phi88      = pine_phi88_def
-          pine_chang_phi0 = param_p(24);
-          pine_chang_p    = param_p(25);
+          pine_chuang_phi0 = param_p(24);
+          pine_chuang_p    = param_p(25);
        endif
        pine_c1     = param_p(26);
        pine_c2     = param_p(27);
@@ -710,8 +739,8 @@ end subroutine SetUpTreeProperties
        es_c2            = es_c2_def;
        es_c3            = es_c3_def;
        es_kmax          = es_kmax_def;
-       es_chang_phi0    = es_chang_phi0;
-       es_chang_phi0    = es_chang_phi0;
+       es_chuang_phi0    = es_chuang_phi0;
+       es_chuang_phi0    = es_chuang_phi0;
 
        maple_phis50     = es_phis50_def;
        maple_phi50      = es_phi50_def;
@@ -720,8 +749,8 @@ end subroutine SetUpTreeProperties
        maple_c2         = es_c2_def;
        maple_c3         = es_c3_def;
        maple_kmax       = es_kmax_def;
-       maple_chang_phi0 = maple_chang_phi0;
-       maple_chang_phi0 = maple_chang_phi0;
+       maple_chuang_phi0 = maple_chuang_phi0;
+       maple_chuang_phi0 = maple_chuang_phi0;
 
        oak_phis50       = es_phis50_def;
        oak_phi50        = es_phi50_def;
@@ -730,8 +759,8 @@ end subroutine SetUpTreeProperties
        oak_c2           = es_c2_def;
        oak_c3           = es_c3_def;
        oak_kmax         = es_kmax_def;
-       oak_chang_phi0   = oak_chang_phi0;
-       oak_chang_phi0   = oak_chang_phi0;
+       oak_chuang_phi0   = oak_chuang_phi0;
+       oak_chuang_phi0   = oak_chuang_phi0;
 
        pine_phis50      = pine_phis50_def;
        pine_phi50       = pine_phi50_def;
@@ -740,8 +769,8 @@ end subroutine SetUpTreeProperties
        pine_c2          = pine_c2_def;
        pine_c3          = pine_c3_def;
        pine_kmax        = pine_kmax_def;
-       pine_chang_phi0  = pine_chang_phi0;
-       pine_chang_phi0  = pine_chang_phi0;
+       pine_chuang_phi0  = pine_chuang_phi0;
+       pine_chuang_phi0  = pine_chuang_phi0;
     endif
 
     !
@@ -1298,18 +1327,18 @@ end subroutine SetUpTreeProperties
 
     call vsfm_mpp%SetNumMeshes(neqns)
 
-    if (GE_oak_xylm      > 0) call add_xylem_mesh_for_single_tree(GE_oak_xylm, oak_nz, oak_Asapwood)
+    if (GE_oak_xylm      > 0) call add_xylem_mesh_for_single_tree(GE_oak_xylm, oak_nz, oak_Asapwood, oak_taper)
     if (GE_oak_root      > 0) call add_root_mesh_for_single_tree( GE_oak_root, 'oak')
-    if (GE_pine_xylm     > 0) call add_xylem_mesh_for_single_tree(GE_pine_xylm, pine_nz, pine_Asapwood)
+    if (GE_pine_xylm     > 0) call add_xylem_mesh_for_single_tree(GE_pine_xylm, pine_nz, pine_Asapwood, pine_taper)
     if (GE_pine_root     > 0) call add_root_mesh_for_single_tree( GE_pine_root, 'pine')
 
-    if (GE_e_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_e_xylm, nz(E_IDX), Asapwood(E_IDX))
+    if (GE_e_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_e_xylm, nz(E_IDX), Asapwood(E_IDX), taper(E_IDX))
     if (GE_e_root        > 0) call add_root_mesh_for_single_tree( GE_e_root, 'e')
-    if (GE_m_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_m_xylm, nz(M_IDX), Asapwood(M_IDX))
+    if (GE_m_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_m_xylm, nz(M_IDX), Asapwood(M_IDX), taper(M_IDX))
     if (GE_m_root        > 0) call add_root_mesh_for_single_tree( GE_m_root, 'm')
-    if (GE_o_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_o_xylm, nz(O_IDX), Asapwood(O_IDX))
+    if (GE_o_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_o_xylm, nz(O_IDX), Asapwood(O_IDX), taper(O_IDX))
     if (GE_o_root        > 0) call add_root_mesh_for_single_tree( GE_o_root, 'o')
-    if (GE_p_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_p_xylm, nz(P_IDX), Asapwood(P_IDX))
+    if (GE_p_xylm        > 0) call add_xylem_mesh_for_single_tree(GE_p_xylm, nz(P_IDX), Asapwood(P_IDX), taper(P_IDX))
     if (GE_p_root        > 0) call add_root_mesh_for_single_tree( GE_p_root, 'p')
 
     if (GE_soil          > 0) call add_soil_mesh(GE_soil)
@@ -1318,7 +1347,7 @@ end subroutine SetUpTreeProperties
   end subroutine add_meshes
 
   !------------------------------------------------------------------------
-  subroutine add_xylem_mesh_for_single_tree(imesh, local_nz, local_Asapwood)
+  subroutine add_xylem_mesh_for_single_tree(imesh, local_nz, local_Asapwood, local_taper)
     !
     use MeshType                  , only : mesh_type
     use MultiPhysicsProbVSFM      , only : vsfm_mpp
@@ -1332,6 +1361,7 @@ end subroutine SetUpTreeProperties
     PetscInt, intent(in):: imesh
     PetscInt            :: local_nz
     PetscReal           :: local_Asapwood
+    PetscReal           :: local_taper
 
     !
     class(mesh_type) , pointer :: mesh
@@ -2536,13 +2566,15 @@ end subroutine SetUpTreeProperties
        call set_material_properties_for_single_tree(   &
             GE_oak_xylm, &
             oak_nz, porosity, oak_phi88, oak_phi50,    &
-            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50)
+            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50, &
+            oak_chuang_phi0, oak_chuang_p, oak_taper)
 
     case ('pine')
        call set_material_properties_for_single_tree(   &
             GE_pine_xylm, &
             pine_nz, porosity, pine_phi88, pine_phi50, &
-            pine_kmax, pine_c1, pine_c2, pine_c3, pine_phis50)
+            pine_kmax, pine_c1, pine_c2, pine_c3, pine_phis50, &
+            pine_chuang_phi0, pine_chuang_p, pine_taper)
 
     case ('oak_and_pine')
        call set_material_properties_for_two_trees(GE_oak_pine_xylm)
@@ -2551,13 +2583,16 @@ end subroutine SetUpTreeProperties
        call set_material_properties_for_single_tree(   &
             GE_oak_xylm, &
             oak_nz, porosity, oak_phi88, oak_phi50,    &
-            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50)
+            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50, &
+            oak_chuang_phi0, oak_chuang_p, oak_taper)
 
        call set_material_properties_for_single_tree(   &
             GE_oak_root, oak_root_nz, porosity, &
             oak_axi_root_phi88, oak_axi_root_phi50, oak_axi_root_kmax, &
             oak_axi_root_c1, oak_axi_root_c2, oak_c3, &
-            oak_phis50, set_ss_values=.false.)
+            oak_phis50, &
+            oak_chuang_phi0, oak_chuang_p, oak_taper, &
+            set_ss_values=.false.)
 
        call set_material_properties_for_soil(GE_soil)
 
@@ -2574,7 +2609,9 @@ end subroutine SetUpTreeProperties
             GE_pine_root, pine_root_nz, porosity, &
             pine_axi_root_phi88, pine_axi_root_phi50, pine_axi_root_kmax, &
             pine_axi_root_c1, pine_axi_root_c2, pine_c3, &
-            pine_phis50, set_ss_values=.false.)
+            pine_phis50, &
+            pine_chuang_phi0, pine_chuang_p, pine_taper, &
+            set_ss_values=.false.)
 
        call set_material_properties_for_soil(GE_soil)
 
@@ -2585,24 +2622,30 @@ end subroutine SetUpTreeProperties
        call set_material_properties_for_single_tree(   &
             GE_oak_xylm, &
             oak_nz, porosity, oak_phi88, oak_phi50,    &
-            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50)
+            oak_kmax, oak_c1, oak_c2, oak_c3, oak_phis50, &
+            oak_chuang_phi0, oak_chuang_p, oak_taper)
 
        call set_material_properties_for_single_tree(   &
             GE_oak_root, oak_root_nz, porosity, &
             oak_axi_root_phi88, oak_axi_root_phi50, oak_axi_root_kmax, &
             oak_axi_root_c1, oak_axi_root_c2, oak_c3, &
-            oak_phis50, set_ss_values=.false.)
+            oak_phis50, &
+            oak_chuang_phi0, oak_chuang_p, oak_taper, &
+            set_ss_values=.false.)
 
        call set_material_properties_for_single_tree(   &
             GE_pine_xylm, &
             pine_nz, porosity, pine_phi88, pine_phi50, &
-            pine_kmax, pine_c1, pine_c2, pine_c3, pine_phis50)
+            pine_kmax, pine_c1, pine_c2, pine_c3, pine_phis50, &
+            pine_chuang_phi0, pine_chuang_p, pine_taper)
 
        call set_material_properties_for_single_tree(   &
             GE_pine_root, pine_root_nz, porosity, &
             pine_axi_root_phi88, pine_axi_root_phi50, pine_axi_root_kmax, &
             pine_axi_root_c1, pine_axi_root_c2, pine_c3, &
-            pine_phis50, set_ss_values=.false.)
+            pine_phis50, &
+            pine_chuang_phi0, pine_chuang_p, pine_taper, &
+            set_ss_values=.false.)
 
        call set_material_properties_for_soil(GE_soil)
 
@@ -2640,7 +2683,10 @@ end subroutine SetUpTreeProperties
                c1(IDX), &
                c2(IDX), &
                c3(IDX), &
-               phis50(IDX) &
+               phis50(IDX), &
+               chuang_phi0(IDX), &
+               chuang_p(IDX), &
+               taper(IDX) &
                )
        end do
 
@@ -2669,6 +2715,9 @@ end subroutine SetUpTreeProperties
                axi_root_c2(IDX), &
                c3(IDX), &
                phis50(IDX), &
+               chuang_phi0(IDX), &
+               chuang_p(IDX), &
+               1.d0, &
                set_ss_values=.false.)
        end do
 
@@ -2692,6 +2741,7 @@ end subroutine SetUpTreeProperties
   !------------------------------------------------------------------------
   subroutine set_material_properties_for_single_tree(igoveqn, local_nz, local_porosity, &
        local_phi88, local_phi50, local_kmax, local_c1, local_c2, local_c3, local_phis50, &
+       local_chuang_phi0, local_chuang_p, local_taper, &
        set_ss_values)
     !
     ! !DESCRIPTION:
@@ -2706,21 +2756,24 @@ end subroutine SetUpTreeProperties
     use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_PRESSURE
     use MultiPhysicsProbConstants , only : VAR_POT_MASS_SINK_EXPONENT
     use EOSWaterMod               , only : DENSITY_TGDPB01
-    use EOSWaterMod          , only : DENSITY_CONSTANT
+    use EOSWaterMod               , only : DENSITY_CONSTANT
     !
     implicit none
     !
-    PetscInt  :: igoveqn
-    PetscInt  :: local_nz
-    PetscReal :: local_porosity
-    PetscReal :: local_phi88
-    PetscReal :: local_phi50
-    PetscReal :: local_kmax
-    PetscReal :: local_c1
-    PetscReal :: local_c2
-    PetscReal :: local_c3
-    PetscReal :: local_phis50
-    PetscBool,optional :: set_ss_values
+    PetscInt             :: igoveqn
+    PetscInt             :: local_nz
+    PetscReal            :: local_porosity
+    PetscReal            :: local_phi88
+    PetscReal            :: local_phi50
+    PetscReal            :: local_kmax
+    PetscReal            :: local_c1
+    PetscReal            :: local_c2
+    PetscReal            :: local_c3
+    PetscReal            :: local_phis50
+    PetscReal , optional :: local_chuang_phi0
+    PetscReal , optional :: local_chuang_p
+    PetscReal , optional :: local_taper
+    PetscBool , optional :: set_ss_values
     !
     PetscReal , pointer   :: por(:)
     PetscReal , pointer   :: alpha(:)
@@ -2759,7 +2812,8 @@ end subroutine SetUpTreeProperties
     call set_xylem_material_properties(1, local_nz,       &
          local_porosity, local_phi88, local_phi50,        &
          local_kmax, local_c1, local_c2, local_c3,        &
-         local_phis50,                                    &
+         local_phis50, local_chuang_phi0, local_chuang_p, &
+         local_taper,                                     &
          por, satfunc_type, alpha, lambda, sat_res, perm, &
          relperm_type, weibull_d, weibull_c, ss_exponent, &
          ss_pressure)
@@ -2833,6 +2887,7 @@ end subroutine SetUpTreeProperties
     PetscReal , pointer   :: weibull_d(:)
     PetscReal , pointer   :: weibull_c(:)
     PetscInt              :: ieqn
+    PetscReal, parameter  :: taper = 1.d0
     !-----------------------------------------------------------------------
 
     nz = oak_nz + pine_nz
@@ -2855,7 +2910,8 @@ end subroutine SetUpTreeProperties
     call set_xylem_material_properties(1, oak_nz,         &
          porosity, oak_phi88, oak_phi50,                  &
          oak_kmax, oak_c1, oak_c2, oak_c3,                &
-         oak_phis50,                                      &
+         oak_phis50, oak_chuang_phi0, oak_chuang_p,       &
+         taper,                                           &
          por, satfunc_type, alpha, lambda, sat_res, perm, &
          relperm_type, weibull_d, weibull_c, ss_exponent, &
          ss_pressure)
@@ -2863,7 +2919,8 @@ end subroutine SetUpTreeProperties
     call set_xylem_material_properties(oak_nz+1, nz,      &
          porosity, pine_phi88, pine_phi50,                &
          pine_kmax, pine_c1, pine_c2, pine_c3,            &
-         pine_phis50,                                     &
+         pine_phis50, pine_chuang_phi0, pine_chuang_p,    &
+         taper,                                           &
          por, satfunc_type, alpha, lambda, sat_res, perm, &
          relperm_type, weibull_d, weibull_c, ss_exponent, &
          ss_pressure)
@@ -2902,12 +2959,14 @@ end subroutine SetUpTreeProperties
   subroutine set_xylem_material_properties(ibeg, iend,     &
          local_porosity, local_phi88, local_phi50,         &
          local_kmax, local_c1, local_c2, local_c3,         &
-         local_phis50,                                     &
+         local_phis50, local_chuang_phi0, local_chuang_p,  &
+         taper,                                            &
          por, satfunc_type, alpha, lambda, sat_res, perm,  &
          relperm_type, weibull_d, weibull_c, ss_exponent,  &
          ss_pressure)
 
     use SaturationFunction        , only : SAT_FUNC_FETCH2
+    use SaturationFunction        , only : SAT_FUNC_CHUANG
     use SaturationFunction        , only : RELPERM_FUNC_WEIBULL
 
     implicit none
@@ -2921,6 +2980,9 @@ end subroutine SetUpTreeProperties
     PetscReal           :: local_c2
     PetscReal           :: local_c3
     PetscReal           :: local_phis50
+    PetscReal           :: local_chuang_phi0
+    PetscReal           :: local_chuang_p
+    PetscReal           :: taper
     PetscReal , pointer :: por(:)
     PetscReal , pointer :: alpha(:)
     PetscReal , pointer :: lambda(:)
@@ -2933,12 +2995,28 @@ end subroutine SetUpTreeProperties
     PetscReal , pointer :: ss_pressure(:)
     PetscReal , pointer :: weibull_d(:)
     PetscReal , pointer :: weibull_c(:)
+    !
+    PetscInt :: i
+    PetscReal :: delta
 
     por          (ibeg:iend ) = local_porosity
+    if (taper < 1.d0) then
+       delta = (1.d0 - taper)/(iend - ibeg)
+       do i = ibeg, iend
+          por(i) = local_porosity * (1.d0 - (i-ibeg) * delta)
+       end do
+    end if
 
-    satfunc_type (ibeg:iend ) = SAT_FUNC_FETCH2
-    alpha        (ibeg:iend ) = local_phi88
-    lambda       (ibeg:iend ) = local_phi50
+    if (.not. use_chuang_satfun) then
+       satfunc_type (ibeg:iend ) = SAT_FUNC_FETCH2
+       alpha        (ibeg:iend ) = local_phi88
+       lambda       (ibeg:iend ) = local_phi50
+    else
+       satfunc_type (ibeg:iend ) = SAT_FUNC_CHUANG
+       alpha        (ibeg:iend ) = local_chuang_phi0
+       lambda       (ibeg:iend ) = local_chuang_p
+    end if
+
     sat_res      (ibeg:iend ) = 0.d0
 
     perm         (ibeg:iend ) = local_kmax  * vis / rho! * 1.125d0
