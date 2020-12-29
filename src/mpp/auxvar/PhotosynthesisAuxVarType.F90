@@ -103,6 +103,12 @@ module PhotosynthesisAuxType
      PetscReal :: cs        ! leaf surface CO2 (umol/mol)
      PetscReal :: gs        ! leaf stomatal conductance (mol H2O/m2 leaf/s)
 
+     PetscReal :: dac_dci   ! deriavate of leaf rubisco-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal :: daj_dci   ! deriavate of leaf RuBP-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal :: dap_dci   ! deriavate of leaf product-limited (C3), CO2-limited (C4) gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal :: dag_dci   ! deriavate of leaf gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal :: dan_dci   ! deriavate of leaf net photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+
      PetscInt  :: pathway_and_stomatal_params_defined
    contains
 
@@ -264,6 +270,12 @@ contains
     this%an      = 0.d0
     this%cs      = 0.d0
     this%gs      = 0.d0
+
+    this%dac_dci = 0.d0
+    this%daj_dci = 0.d0
+    this%dap_dci = 0.d0
+    this%dag_dci = 0.d0
+    this%dan_dci = 0.d0
 
   end subroutine PhotosynthesisInit
 
@@ -517,12 +529,17 @@ contains
 
     ! Rubisco-limited photosynthesis
     this%ac = this%vcmax
+    this%dac_dci = 0.d0
 
     ! RuBP-limited photosynthesis
     this%aj = this%qe_c4 * this%apar
+    this%daj_dci = 0.d0
 
     ! PEP carboxylase-limited (CO2-limited)
-    this%ap = this%kp * max(this%ci, 0.d0)
+    if (this%ci > 0.d0) then
+       this%ap      = this%kp * this%ci
+       this%dap_dci = this%kp
+    end if
 
   end subroutine C4_Metabolic_Photosynthesis_Rate
 
@@ -536,15 +553,36 @@ contains
     !
     ! !ARGUMENTS
     class(photosynthesis_auxvar_type) :: this
+    !
+    PetscReal :: a, b
 
-    ! Rubisco-limited photosynthesis
-    this%ac = this%vcmax * max(this%ci - this%cp, 0.d0)/(this%ci + this%kc*(1.d0 + this%o2ref/this%ko))
 
-    ! RuBP-limited photosynthesis
-    this%aj = this%je    * max(this%ci - this%cp, 0.d0)/(4.d0*this%ci + 8.d0*this%cp)
+    if (this%ci - this%cp > 0.d0) then
+
+       ! Rubisco-limited photosynthesis
+       a = this%vcmax
+       b = this%kc*(1.d0 + this%o2ref/this%ko)
+
+       this%ac      = a*(this%ci - this%cp)/(this%ci + b)
+       this%dac_dci = a*(b + this%cp)/((this%ci + b)**2.d0)
+
+       ! RuBP-limited photosynthesis
+       a = this%je/4.d0
+       b = 2*this%cp
+
+       this%aj      = a*(this%ci - this%cp)/(this%ci + b)
+       this%daj_dci = a*(b + this%cp)/((this%ci + b)**2.d0)
+
+    else
+       this%ac      = 0.d0
+       this%dac_dci = 0.d0
+       this%aj      = 0.d0
+       this%daj_dci = 0.d0
+    end if
 
     ! Product-limited photosynthesis
-    this%ap = 0.d0
+    this%ap      = 0.d0
+    this%dap_dci = 0.d0
 
   end subroutine C3_Metabolic_Photosynthesis_Rate
 
@@ -562,7 +600,7 @@ contains
     !
     PetscReal :: aquad, bquad, cquad
     PetscReal :: root1, root2
-    PetscReal :: ai
+    PetscReal :: ai, dai_dci, denom
 
     select case(this%colim)
     case (1)
@@ -572,6 +610,8 @@ contains
 
        call quadratic(aquad, bquad, cquad, root1, root2)
        ai = min(root1, root2)
+       denom   = this%ac + this%aj - 2.d0 * this%colim_c4a * ai
+       dai_dci = (this%dac_dci * (this%aj - ai) + this%daj_dci * (this%ac - ai)) / denom
 
        aquad = this%colim_c4b
        bquad = -(ai + this%ap)
@@ -580,18 +620,51 @@ contains
        call quadratic(aquad, bquad, cquad, root1, root2)
        this%ag = min(root1, root2)
 
+       if (this%ag > 0.d0) then
+          denom        = ai + this%ap - 2.d0 * this%colim_c4b * this%ag
+          this%dag_dci = (dai_dci * (this%ap - this%ag) + this%dap_dci * (ai - this%ag))/denom
+       else
+          this%dag_dci = 0.d0
+       end if
+
     case (0)
 
        this%ag = min(this%ac, this%aj, this%ap)
 
+       if (this%ac < this%aj .and. this%ac < this%ap) then
+          this%dag_dci = this%dac_dci
+
+       elseif (this%aj < this%ac .and. this%aj < this%ap) then
+          this%dag_dci = this%daj_dci
+
+       else
+          this%dag_dci = this%dap_dci
+       end if
+
     end select
     
-    this%ac = max(this%ac, 0.d0)
-    this%aj = max(this%aj, 0.d0)
-    this%ap = max(this%ap, 0.d0)
-    this%ag = max(this%ag, 0.d0)
+    if (this%ac < 0.d0) then
+       this%ac      = 0.d0
+       this%dac_dci = 0.d0
+    endif
 
-    this%an = this%ag - this%rd
+    if (this%aj < 0.d0) then
+       this%aj      = 0.d0
+       this%daj_dci = 0.d0
+    endif
+
+    if (this%ap < 0.d0) then
+       this%ap      = 0.d0
+       this%dap_dci = 0.d0
+    endif
+
+    if (this%ag < 0.d0) then
+       this%ag      = 0.d0
+       this%dag_dci = 0.d0
+    end if
+
+    this%an      = this%ag - this%rd
+    this%dan_dci = this%dag_dci
 
   end subroutine C4_Net_Assimilation
 
@@ -607,7 +680,7 @@ contains
     class(photosynthesis_auxvar_type) :: this
     !
     PetscReal :: aquad, bquad, cquad
-    PetscReal :: root1, root2
+    PetscReal :: root1, root2, denom
     
     select case(this%colim)
     case (1)
@@ -618,19 +691,46 @@ contains
        call quadratic(aquad, bquad, cquad, root1, root2)
 
        this%ag = min(root1, root2)
+       if (this%ag > 0.d0) then
+          denom        = this%ac + this%aj - 2.d0 * this%colim_c3 * this%ag
+          this%dag_dci = (this%dac_dci * (this%aj - this%ag) + this%daj_dci * (this%ac - this%ag)) / denom
+       else
+          this%dag_dci = 0.d0
+       endif
 
     case (0)
 
        this%ag = min(this%ac, this%aj)
+       if (this%ac < this%aj) then
+          this%dag_dci = this%dac_dci
+       else
+          this%dag_dci = this%daj_dci
+       end if
 
     end select
 
-    this%ac = max(this%ac, 0.d0)
-    this%aj = max(this%aj, 0.d0)
-    this%ap = max(this%ap, 0.d0)
-    this%ag = max(this%ag, 0.d0)
+    if (this%ac < 0.d0) then
+       this%ac      = 0.d0
+       this%dac_dci = 0.d0
+    endif
 
-    this%an = this%ag - this%rd
+    if (this%aj < 0.d0) then
+       this%aj      = 0.d0
+       this%daj_dci = 0.d0
+    endif
+
+    if (this%ap < 0.d0) then
+       this%ap      = 0.d0
+       this%dap_dci = 0.d0
+    endif
+
+    if (this%ag < 0.d0) then
+       this%ag      = 0.d0
+       this%dag_dci = 0.d0
+    end if
+
+    this%an      = this%ag - this%rd
+    this%dan_dci = this%dag_dci
 
   end subroutine C3_Net_Assimilation
 
