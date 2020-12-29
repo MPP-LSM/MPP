@@ -12,6 +12,7 @@ module PhotosynthesisAuxType
   use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+  use MultiPhysicsProbConstants , only : VAR_WUE
 
   implicit none
 
@@ -102,6 +103,10 @@ module PhotosynthesisAuxType
      PetscReal :: an        ! leaf net photosynthesis (umol CO2/m2 leaf/s)
      PetscReal :: cs        ! leaf surface CO2 (umol/mol)
      PetscReal :: gs        ! leaf stomatal conductance (mol H2O/m2 leaf/s)
+     PetscReal :: gleaf_c   ! leaf-to-air conductance to CO2 (mol CO2/m2 leaf/s)
+     PetscReal :: gleaf_w   ! leaf-to-air conductance to H2O (mol H2O/m2 leaf/s)
+
+     PetscReal :: iota      ! stomatal efficiency (umol CO2/ mol H2O)
 
      PetscReal :: dac_dci   ! deriavate of leaf rubisco-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
      PetscReal :: daj_dci   ! deriavate of leaf RuBP-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
@@ -270,6 +275,10 @@ contains
     this%an      = 0.d0
     this%cs      = 0.d0
     this%gs      = 0.d0
+    this%gleaf_c = 0.d0
+    this%gleaf_w = 0.d0
+
+    this%iota    = 0.d0
 
     this%dac_dci = 0.d0
     this%daj_dci = 0.d0
@@ -306,6 +315,8 @@ contains
        this%jmax25  = 1.67d0 * this%vcmax25;
        this%kp25    = 0.d0;
        this%rd25    = 0.015d0 * this%vcmax25;
+
+    case (VAR_WUE)
 
     case default
        write(iulog,*)'Unsupported photosynthesis pathway: ',this%c3psn
@@ -427,7 +438,23 @@ contains
 
           call GsMedlyn(this)
 
+       case (VAR_WUE)
+
+          if (this%an > 0.d0) then
+             this%gs = (this%cair - this%ci)/(1.6d0 * this%an) - this%gbc/1.6d0
+          else
+             this%gs = 0.d0
+          end if
+
        end select
+
+       if (this%gs > 0.d0) then
+          this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
+          this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
+       else
+          this%gleaf_c = 0.d0
+          this%gleaf_w = 0.d0
+       end if
 
     else
        write(iulog,*)'PhotosynthesisAuxVarCompute: Add code when dapi = 0.d0'
@@ -763,7 +790,6 @@ contains
     else
        this%gs = this%g0
     end if
-
 
   end subroutine GsBallBerry
 

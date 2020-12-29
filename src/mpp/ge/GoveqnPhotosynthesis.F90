@@ -131,7 +131,6 @@ contains
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
     PetscInt                                  :: icell
-    PetscReal                                 :: gleaf
     PetscReal, pointer                        :: f_p(:)
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
@@ -142,9 +141,7 @@ contains
 
     do icell = 1, this%mesh%ncells_local
     
-       gleaf = 1.d0 / (1.d0/avars(icell)%gbc + 1.6d0/avars(icell)%gs);
-
-       f_p(icell) = avars(icell)%an - gleaf * (avars(icell)%cair - avars(icell)%ci)
+       f_p(icell) = avars(icell)%an - avars(icell)%gleaf_c * (avars(icell)%cair - avars(icell)%ci)
 
     end do
 
