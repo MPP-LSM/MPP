@@ -317,10 +317,14 @@ contains
     !xylem_porosity (E_IDX) = porosity          ; xylem_porosity (M_IDX) = porosity             ; xylem_porosity (O_IDX) = porosity           ; xylem_porosity (P_IDX) = porosity            ;
     !root_porosity  (E_IDX) = porosity          ; root_porosity  (M_IDX) = porosity             ; root_porosity  (O_IDX) = porosity           ; root_porosity  (P_IDX) = porosity            ;
     if (no_capacitance) then
-      xylem_porosity (E_IDX) = 0.d0              ; xylem_porosity (M_IDX) = 0.d0                 ; xylem_porosity (O_IDX) = 0.d0               ; xylem_porosity (P_IDX) = 0.d0            ;
-      root_porosity  (E_IDX) = 0.d0              ; root_porosity  (M_IDX) = 0.d0                 ; root_porosity  (O_IDX) = 0.d0               ; root_porosity  (P_IDX) = 0.d0            ;
+       xylem_porosity (E_IDX) = 0.d0              ; xylem_porosity (M_IDX) = 0.d0                 ; xylem_porosity (O_IDX) = 0.d0               ; xylem_porosity (P_IDX) = 0.d0            ;
+       root_porosity  (E_IDX) = 0.d0              ; root_porosity  (M_IDX) = 0.d0                 ; root_porosity  (O_IDX) = 0.d0               ; root_porosity  (P_IDX) = 0.d0            ;
     else
-      xylem_porosity (E_IDX) = 1.d0              ; xylem_porosity (M_IDX) = 1.d0                 ; xylem_porosity (O_IDX) = 1.d0               ; xylem_porosity (P_IDX) = 1.d0            ;
+       if (use_chuang_satfun) then
+          xylem_porosity (E_IDX) = 0.573d0           ; xylem_porosity (M_IDX) = 0.573d0              ; xylem_porosity (O_IDX) = 0.573d0            ; xylem_porosity (P_IDX) = 0.6d0           ;
+       else
+          xylem_porosity (E_IDX) = 1.d0              ; xylem_porosity (M_IDX) = 1.d0                 ; xylem_porosity (O_IDX) = 1.d0               ; xylem_porosity (P_IDX) = 1.d0            ;
+       end if
       root_porosity  (E_IDX) = 1.d0              ; root_porosity  (M_IDX) = 1.d0                 ; root_porosity  (O_IDX) = 1.d0               ; root_porosity  (P_IDX) = 1.d0            ;
     endif
     phis50         (E_IDX) = es_phis50         ; phis50         (M_IDX) = maple_phis50         ; phis50         (O_IDX) = oak_phis50         ; phis50         (P_IDX) = pine_phis50         ;
