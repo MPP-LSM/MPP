@@ -149,13 +149,14 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_LEAF_BDN_LYR_COND_CO2         = 652
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_MEDLYN   = 653
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_BBERRY   = 654
-  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C4     = 655
-  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C3     = 656
-  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE          = 657
-  PetscInt, parameter, public :: VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI    = 658
-  PetscInt, parameter, public :: VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND = 659
-  PetscInt, parameter, public :: VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI     = 660
-  PetscInt, parameter, public :: VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND  = 661
+  PetscInt, parameter, public :: VAR_WUE                           = 655
+  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C4     = 656
+  PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C3     = 657
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE          = 658
+  PetscInt, parameter, public :: VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI    = 659
+  PetscInt, parameter, public :: VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND = 660
+  PetscInt, parameter, public :: VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI     = 661
+  PetscInt, parameter, public :: VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND  = 662
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
