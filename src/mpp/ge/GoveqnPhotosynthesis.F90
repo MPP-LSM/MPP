@@ -199,7 +199,7 @@ contains
     PetscReal                                 :: term1_2, term2_2, term3_2
     PetscReal                                 :: dterm1_dci, dterm2_dci, dterm3_dci
     PetscReal, pointer                        :: f_p(:)
-    PetscReal, parameter                      :: ci_perturb = 1.d-14
+    PetscReal, parameter                      :: ci_perturb = 1.d-10
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
     !
