@@ -27,6 +27,7 @@ module PhotosynthesisAuxType
      PetscReal :: gbv       ! leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal :: gbc       ! leaf boundary layer conductance, CO2 (mol CO2/m2 leaf/s)
      PetscReal :: eair      ! vapor pressure profile (Pa)
+     PetscReal :: patm      ! atmospheric pressure (Pa)
 
      PetscReal :: cair      ! atmospheric CO2 profile (umol/mol)
      PetscReal :: o2ref     ! atmospheric O2 at reference height (mmol/mol)
@@ -126,6 +127,8 @@ module PhotosynthesisAuxType
   private :: fth   ! photosynthesis temperature inhibition
   private :: fth25 ! scaling factor for photosynthesis temperature inhibition
 
+  PetscReal, parameter :: gs_min = 1.d-6
+
 contains
 
 
@@ -215,6 +218,7 @@ contains
     this%o2ref   = 0.d0
     this%ceair   = 0.d0
     this%esat    = 0.d0
+    this%patm    = 101325.d0
 
     this%pathway_and_stomatal_params_defined = 0
     this%colim  =  1
@@ -278,7 +282,7 @@ contains
     this%gleaf_c = 0.d0
     this%gleaf_w = 0.d0
 
-    this%iota    = 0.d0
+    this%iota    = 750.d0
 
     this%dac_dci = 0.d0
     this%daj_dci = 0.d0
@@ -316,8 +320,6 @@ contains
        this%kp25    = 0.d0;
        this%rd25    = 0.015d0 * this%vcmax25;
 
-    case (VAR_WUE)
-
     case default
        write(iulog,*)'Unsupported photosynthesis pathway: ',this%c3psn
        call exit(0)
@@ -352,6 +354,8 @@ contains
           this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 1.62d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
+       elseif (this%gstype == VAR_WUE) then
+
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
           call exit(0)
@@ -368,6 +372,8 @@ contains
 
           this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 4.45d0;       ! Medlyn slope of conductance-photosynthesis relationship
+
+       elseif (this%gstype == VAR_WUE) then
 
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
@@ -441,9 +447,9 @@ contains
        case (VAR_WUE)
 
           if (this%an > 0.d0) then
-             this%gs = (this%cair - this%ci)/(1.6d0 * this%an) - this%gbc/1.6d0
+             this%gs = 1.d0/ ( (this%cair - this%ci)/(1.6d0 * this%an) - 1.6d0/this%gbc )
           else
-             this%gs = 0.d0
+             this%gs = gs_min
           end if
 
        end select
@@ -775,7 +781,7 @@ contains
     PetscReal :: aquad, bquad, cquad
     PetscReal :: root1, root2
 
-    this%g0 = max( this%g0opt * this%btran, 1.d-06 )
+    this%g0 = max( this%g0opt * this%btran, gs_min )
     this%g1 = this%g1opt
 
     if (this%an > 0.d0) then

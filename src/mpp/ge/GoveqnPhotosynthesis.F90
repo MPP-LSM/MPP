@@ -120,6 +120,10 @@ contains
     ! !DESCRIPTION:
     ! Computes the residual equation for the discretized Richards equation
     !
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_WUE
+    !
     implicit none
     !
     ! !ARGUMENTS
@@ -131,6 +135,7 @@ contains
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
     PetscInt                                  :: icell
+    PetscReal                                 :: wl, term1, term2, term3
     PetscReal, pointer                        :: f_p(:)
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
@@ -141,8 +146,23 @@ contains
 
     do icell = 1, this%mesh%ncells_local
     
-       f_p(icell) = avars(icell)%an - avars(icell)%gleaf_c * (avars(icell)%cair - avars(icell)%ci)
+       select case (avars(icell)%gstype)
+       case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+          f_p(icell) = avars(icell)%an - avars(icell)%gleaf_c * (avars(icell)%cair - avars(icell)%ci)
 
+       case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+          f_p(icell) = avars(icell)%an - avars(icell)%gleaf_c * (avars(icell)%cair - avars(icell)%ci)
+
+       case (VAR_WUE)
+          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+
+          term1 = (avars(icell)%cair - avars(icell)%ci)/wl
+          term2 = avars(icell)%dan_dci / (avars(icell)%dan_dci + avars(icell)%gleaf_c)
+          term3 = 1.6 * (avars(icell)%gleaf_c/avars(icell)%gleaf_w)**2.d0
+
+          f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+
+       end select
     end do
 
     call VecRestoreArrayF90(F, f_p, ierr); CHKERRQ(ierr)
@@ -154,6 +174,10 @@ contains
     !
     ! !DESCRIPTION:
     ! Computes the jacobian matrix for the discretized Richards equation
+    !
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_WUE
     !
     implicit none
     !
@@ -170,6 +194,10 @@ contains
     PetscReal                                 :: value
     PetscReal                                 :: an_1, ci_1, gleaf_1
     PetscReal                                 :: an_2, ci_2, gleaf_2
+    PetscReal                                 :: wl
+    PetscReal                                 :: term1_1, term2_1, term3_1
+    PetscReal                                 :: term1_2, term2_2, term3_2
+    PetscReal                                 :: dterm1_dci, dterm2_dci, dterm3_dci
     PetscReal, pointer                        :: f_p(:)
     PetscReal, parameter                      :: ci_perturb = 1.d-14
 
@@ -181,20 +209,55 @@ contains
 
     do icell = 1, this%mesh%ncells_local
     
+       wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+
        an_1    = avars(icell)%an
        ci_1    = avars(icell)%ci
-       gleaf_1 = 1.d0 / (1.d0/avars(icell)%gbc + 1.6d0/avars(icell)%gs);
+       gleaf_1 = avars(icell)%gleaf_c
+
+       term1_1 = (avars(icell)%cair - avars(icell)%ci)/wl
+       term2_1 = avars(icell)%dan_dci / (avars(icell)%dan_dci + avars(icell)%gleaf_c)
+       term3_1 = 1.6 * (avars(icell)%gleaf_c/avars(icell)%gleaf_w)**2.d0
 
        avars(icell)%ci = ci_1 - ci_perturb
        call avars(icell)%AuxVarCompute()
 
        an_2    = avars(icell)%an
        ci_2    = avars(icell)%ci
-       gleaf_2 = 1.d0 / (1.d0/avars(icell)%gbc + 1.6d0/avars(icell)%gs);
+       gleaf_2 = avars(icell)%gleaf_c
 
+       term1_2 = (avars(icell)%cair - avars(icell)%ci)/wl
+       term2_2 = avars(icell)%dan_dci / (avars(icell)%dan_dci + avars(icell)%gleaf_c)
+       term3_2 = 1.6 * (avars(icell)%gleaf_c/avars(icell)%gleaf_w)**2.d0
+
+       avars(icell)%ci = ci_1
+       call avars(icell)%AuxVarCompute()
+
+       select case (avars(icell)%gstype)
+       case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
        value = (an_1 - an_2)/ci_perturb &
             - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
             + gleaf_1
+
+       case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+       value = (an_1 - an_2)/ci_perturb &
+            - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
+            + gleaf_1
+
+       case (VAR_WUE)
+
+          dterm1_dci = (term1_1 - term1_2)/ci_perturb
+          dterm2_dci = (term2_1 - term2_2)/ci_perturb
+          dterm3_dci = (term3_1 - term3_2)/ci_perturb
+
+          !f_p = iota - term1 * term2 * term3
+          value = &
+               - dterm1_dci * term2_1    * term3_1    &
+               - term1_1    * dterm2_dci * term3_1    &
+               - term1_1    * term2_1    * dterm3_dci
+
+       end select
+
 
        call MatSetValuesLocal(B, 1, icell-1, 1, icell-1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
     end do
