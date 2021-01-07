@@ -81,6 +81,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_WUE
     !
     implicit none
     !
@@ -112,8 +113,10 @@ contains
           gstype = VAR_STOMATAL_CONDUCTANCE_BBERRY
        case ('medlyn')
           gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+       case ('wue')
+          gstype = VAR_WUE
        case default
-          write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn'
+          write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn, wue'
           call exit(0)
        end select
     endif

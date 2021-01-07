@@ -28,6 +28,7 @@ contains
     use GoveqnPhotosynthesisType            , only : goveqn_photosynthesis_type
     use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants           , only : VAR_WUE
     use MultiPhysicsProbConstants           , only : TFRZ
     !
     ! !ARGUMENTS
@@ -81,7 +82,8 @@ contains
 
              call SatVap (cur_goveq%aux_vars_in(icell)%tleaf, esat_current, desat_current)
 
-             if (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
+             if (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN .or. &
+                 cur_goveq%aux_vars_in(icell)%gstype == VAR_WUE) then
                 cur_goveq%aux_vars_in(icell)%eair = esat_current - vpd_tleaf
              else
                 cur_goveq%aux_vars_in(icell)%eair = esat_current * relhum/100.d0
