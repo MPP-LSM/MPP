@@ -18,6 +18,39 @@ module PhotosynthesisAuxType
 
   private
 
+  type :: root_auxvar_type
+     PetscReal :: biomass ! fine root biomass (g biomass/m^2)
+     PetscReal :: radius  ! fine root radius (m)
+     PetscReal :: density ! fine root density (g biomass/m^3 root)
+     PetscReal :: resist  ! hydraulic resistance of root (MPa.s.g/mmol H2O)
+  end type root_auxvar_type
+
+  type :: soil_auxvar_type
+     PetscInt           :: nlevsoi       ! number of soil layers
+
+     PetscReal          :: psi_weighted  ! weighted water potential (MPa)
+
+     PetscReal, pointer :: h2osoi_vol(:) ! volumetric water content (m^3/m^3)
+     PetscReal, pointer :: watsat(:)     ! volumetric content at saturation (i.e. porosity) (m^3/m^3)
+     PetscReal, pointer :: psi(:)        ! matric potential (mm)
+     PetscReal, pointer :: hksat(:)      ! hydraulic conductivity at saturation (mm H2O/s)
+     PetscReal, pointer :: bsw(:)        ! Capp and Hornberger 'b' parameter
+     PetscReal, pointer :: rootfr(:)     ! fraction of roots
+     PetscReal, pointer :: dz(:)         ! layer thickness (m)
+  end type soil_auxvar_type
+
+  type :: plant_auxvar_type
+     PetscInt  :: num_leaf                ! number of leaves: 1 (single leaf) and 2 (sunlit and shaded leaves)
+
+     PetscReal, pointer :: leaf_psi(:)    ! water potential from previous time step (MPa)
+     PetscReal, pointer :: leaf_height(:) ! height (m)
+     PetscReal, pointer :: leaf_capc(:)   ! leaf capacitance (mmol H2O/ m^2 leaf/MPa)
+     PetscReal, pointer :: leaf_lsc(:)    ! leaf-specific conducntance (mmol H2O/m^2/MPa)
+     PetscReal, pointer :: leaf_minlwp(:) ! minimum leaf water potential (MPa)
+     PetscReal, pointer :: leaf_lai(:)    ! leaf area index (m^2/m^2)
+
+  end type plant_auxvar_type
+
   type, public :: photosynthesis_auxvar_type
 
      ! Primary indepedent variables
@@ -116,6 +149,11 @@ module PhotosynthesisAuxType
      PetscReal :: dan_dci   ! deriavate of leaf net photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
 
      PetscInt  :: pathway_and_stomatal_params_defined
+
+     type(root_auxvar_type) :: root
+     type(soil_auxvar_type) :: soil
+     type(plant_auxvar_type):: plant
+
    contains
 
      procedure, public :: Init          => PhotosynthesisInit
