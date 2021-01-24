@@ -401,6 +401,10 @@ contains
     this%dag_dci = 0.d0
     this%dan_dci = 0.d0
 
+    allocate(this%root)
+    allocate(this%soil)
+    allocate(this%plant)
+
     this%root%biomass = 0.d0
     this%root%radius  = 0.d0
     this%root%density = 0.d0
