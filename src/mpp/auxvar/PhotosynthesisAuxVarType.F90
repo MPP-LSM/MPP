@@ -18,14 +18,14 @@ module PhotosynthesisAuxType
 
   private
 
-  type :: root_auxvar_type
+  type, public :: root_auxvar_type
      PetscReal :: biomass ! fine root biomass (g biomass/m^2)
      PetscReal :: radius  ! fine root radius (m)
      PetscReal :: density ! fine root density (g biomass/m^3 root)
      PetscReal :: resist  ! hydraulic resistance of root (MPa.s.g/mmol H2O)
   end type root_auxvar_type
 
-  type :: soil_auxvar_type
+  type, public :: soil_auxvar_type
      PetscInt           :: nlevsoi       ! number of soil layers
 
      PetscReal          :: psi_weighted  ! weighted water potential (MPa)
@@ -37,10 +37,14 @@ module PhotosynthesisAuxType
      PetscReal, pointer :: bsw(:)        ! Capp and Hornberger 'b' parameter
      PetscReal, pointer :: rootfr(:)     ! fraction of roots
      PetscReal, pointer :: dz(:)         ! layer thickness (m)
+   contains
+
+     procedure, public :: AllocateMemory => SoilAuxVarAllocateMemory
+
   end type soil_auxvar_type
 
-  type :: plant_auxvar_type
-     PetscInt  :: num_leaf                ! number of leaves: 1 (single leaf) and 2 (sunlit and shaded leaves)
+  type, public :: plant_auxvar_type
+     PetscInt  :: nleaf                   ! number of leaves: 1 (single leaf) and 2 (sunlit and shaded leaves)
 
      PetscReal, pointer :: leaf_psi(:)    ! water potential from previous time step (MPa)
      PetscReal, pointer :: leaf_height(:) ! height (m)
@@ -48,6 +52,10 @@ module PhotosynthesisAuxType
      PetscReal, pointer :: leaf_lsc(:)    ! leaf-specific conducntance (mmol H2O/m^2/MPa)
      PetscReal, pointer :: leaf_minlwp(:) ! minimum leaf water potential (MPa)
      PetscReal, pointer :: leaf_lai(:)    ! leaf area index (m^2/m^2)
+
+   contains
+
+     procedure, public :: AllocateMemory => PlantAuxVarAllocateMemory
 
   end type plant_auxvar_type
 
@@ -150,9 +158,9 @@ module PhotosynthesisAuxType
 
      PetscInt  :: pathway_and_stomatal_params_defined
 
-     type(root_auxvar_type) :: root
-     type(soil_auxvar_type) :: soil
-     type(plant_auxvar_type):: plant
+     type(root_auxvar_type) , pointer :: root
+     type(soil_auxvar_type) , pointer :: soil
+     type(plant_auxvar_type), pointer :: plant
 
    contains
 
@@ -169,6 +177,63 @@ module PhotosynthesisAuxType
 
 contains
 
+  !------------------------------------------------------------------------
+  subroutine SoilAuxVarAllocateMemory(this)
+    !
+    implicit none
+    !
+    class(soil_auxvar_type) :: this
+
+    if (this%nlevsoi == 0) then
+       call endrun(msg=' ERROR: Number of soil layers is zero '//&
+            errMsg(__FILE__, __LINE__))
+    end if
+
+    allocate(this%h2osoi_vol( this%nlevsoi))
+    allocate(this%watsat(     this%nlevsoi))
+    allocate(this%psi(        this%nlevsoi))
+    allocate(this%hksat(      this%nlevsoi))
+    allocate(this%bsw(        this%nlevsoi))
+    allocate(this%rootfr(     this%nlevsoi))
+    allocate(this%dz(         this%nlevsoi))
+
+    this%h2osoi_vol (:) = 0.d0
+    this%watsat     (:) = 0.d0
+    this%psi        (:) = 0.d0
+    this%hksat      (:) = 0.d0
+    this%bsw        (:) = 0.d0
+    this%rootfr     (:) = 0.d0
+    this%dz         (:) = 0.d0
+
+  end subroutine SoilAuxVarAllocateMemory
+
+  !------------------------------------------------------------------------
+  subroutine PlantAuxVarAllocateMemory(this)
+    !
+    implicit none
+    !
+    class(plant_auxvar_type) :: this
+
+    if (this%nleaf == 0) then
+       call endrun(msg=' ERROR: Number of leaves is zero '//&
+            errMsg(__FILE__, __LINE__))
+    end if
+
+    allocate(this%leaf_psi    (this%nleaf))
+    allocate(this%leaf_height (this%nleaf))
+    allocate(this%leaf_capc   (this%nleaf))
+    allocate(this%leaf_lsc    (this%nleaf))
+    allocate(this%leaf_minlwp (this%nleaf))
+    allocate(this%leaf_lai    (this%nleaf))
+
+    this%leaf_psi    (:) = 0.d0
+    this%leaf_height (:) = 0.d0
+    this%leaf_capc   (:) = 0.d0
+    this%leaf_lsc    (:) = 0.d0
+    this%leaf_minlwp (:) = 0.d0
+    this%leaf_lai    (:) = 0.d0
+
+  end subroutine PlantAuxVarAllocateMemory
 
   !------------------------------------------------------------------------
   function ft (tl, ha) result(ans)
@@ -327,6 +392,9 @@ contains
     this%dap_dci = 0.d0
     this%dag_dci = 0.d0
     this%dan_dci = 0.d0
+
+    this%soil%nlevsoi = 0
+    this%plant%nleaf  = 0
 
   end subroutine PhotosynthesisInit
 
