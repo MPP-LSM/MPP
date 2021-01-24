@@ -52,6 +52,7 @@ module PhotosynthesisAuxType
      PetscReal, pointer :: leaf_lsc(:)    ! leaf-specific conducntance (mmol H2O/m^2/MPa)
      PetscReal, pointer :: leaf_minlwp(:) ! minimum leaf water potential (MPa)
      PetscReal, pointer :: leaf_lai(:)    ! leaf area index (m^2/m^2)
+     PetscReal, pointer :: k_stem2leaf(:) ! hydraulic conductance (mmol H2O/m^2 leaf area/MPa)
 
    contains
 
@@ -225,6 +226,7 @@ contains
     allocate(this%leaf_lsc    (this%nleaf))
     allocate(this%leaf_minlwp (this%nleaf))
     allocate(this%leaf_lai    (this%nleaf))
+    allocate(this%k_stem2leaf (this%nleaf))
 
     this%leaf_psi    (:) = 0.d0
     this%leaf_height (:) = 0.d0
@@ -232,6 +234,7 @@ contains
     this%leaf_lsc    (:) = 0.d0
     this%leaf_minlwp (:) = 0.d0
     this%leaf_lai    (:) = 0.d0
+    this%k_stem2leaf (:) = 0.d0
 
   end subroutine PlantAuxVarAllocateMemory
 
