@@ -401,6 +401,11 @@ contains
     this%dag_dci = 0.d0
     this%dan_dci = 0.d0
 
+    this%root%biomass = 0.d0
+    this%root%radius  = 0.d0
+    this%root%density = 0.d0
+    this%root%resist  = 0.d0
+
     this%soil%nlevsoi = 0
     this%plant%nleaf  = 0
 
