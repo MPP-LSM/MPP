@@ -13,6 +13,7 @@ module PhotosynthesisAuxType
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
   use MultiPhysicsProbConstants , only : VAR_WUE
+  use petscsys
 
   implicit none
 
@@ -27,8 +28,6 @@ module PhotosynthesisAuxType
 
   type, public :: soil_auxvar_type
      PetscInt           :: nlevsoi       ! number of soil layers
-
-     PetscReal          :: psi_weighted  ! weighted water potential (MPa)
 
      PetscReal, pointer :: h2osoi_vol(:) ! volumetric water content (m^3/m^3)
      PetscReal, pointer :: watsat(:)     ! volumetric content at saturation (i.e. porosity) (m^3/m^3)
@@ -54,6 +53,8 @@ module PhotosynthesisAuxType
      PetscReal, pointer :: leaf_lai(:)    ! leaf area index (m^2/m^2)
      PetscReal, pointer :: k_stem2leaf(:) ! hydraulic conductance (mmol H2O/m^2 leaf area/MPa)
 
+     PetscReal, pointer :: resist_soil(:) ! hydraulic resistance (MPa.s.m2/mmol H2O)
+     PetscReal, pointer :: psi_soil(:)    ! weighted water potential (MPa)
    contains
 
      procedure, public :: AllocateMemory => PlantAuxVarAllocateMemory
@@ -227,6 +228,8 @@ contains
     allocate(this%leaf_minlwp (this%nleaf))
     allocate(this%leaf_lai    (this%nleaf))
     allocate(this%k_stem2leaf (this%nleaf))
+    allocate(this%resist_soil (this%nleaf))
+    allocate(this%psi_soil    (this%nleaf))
 
     this%leaf_psi    (:) = 0.d0
     this%leaf_height (:) = 0.d0
@@ -235,6 +238,8 @@ contains
     this%leaf_minlwp (:) = 0.d0
     this%leaf_lai    (:) = 0.d0
     this%k_stem2leaf (:) = 0.d0
+    this%resist_soil (:) = 0.d0
+    this%psi_soil    (:) = 0.d0
 
   end subroutine PlantAuxVarAllocateMemory
 
@@ -493,6 +498,108 @@ contains
   end subroutine SetStomatalConductanceParameters
 
   !------------------------------------------------------------------------
+  subroutine ComputeSoilResistance(this)
+    !
+    use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT
+    !
+    implicit none
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type)    :: this
+    !
+    class(soil_auxvar_type)  , pointer   :: soil
+    class(plant_auxvar_type) , pointer   :: plant
+    class(root_auxvar_type)  , pointer   :: root
+    PetscInt                             :: ileaf, j
+    PetscReal                            :: s, hk, head, totevap
+    PetscReal                            :: root_biomass_density, root_length_density, root_dist, root_cross_sec_area
+    PetscReal                            :: soilr, soilr1, soilr2, blw_grnd_conductance
+    PetscReal                , pointer   :: psi_mpa(:), evap(:)
+    PetscReal                , parameter :: g = 9.80665d0
+    PetscReal                , parameter :: denh2o = 1000.d0
+    PetscReal                , parameter :: mmh2o = 18.02d-3 ! molecular mass of water (kg/mol)
+
+    soil  => this%soil
+    plant => this%plant
+    root  => this%root
+
+    allocate(psi_mpa (soil%nlevsoi))
+    allocate(evap    (soil%nlevsoi))
+
+    head                = g * denh2o * 1.d0-6 ! MPa/m
+    root_cross_sec_area = PETSC_PI * (root%radius**2.d0);
+
+    do ileaf = 1, plant%nleaf
+
+       blw_grnd_conductance = 0.d0
+
+       do j = 1, soil%nlevsoi
+
+          s = max(min(soil%h2osoi_vol(j)/soil%watsat(j), 1.d0), 0.01d0);
+
+          hk = soil%hksat(j) * s**(2.d0 * soil%bsw(j) + 3.d0); ! mm/s
+          hk = hk * 1e-03 / head;                              ! mm/s -> m/s -> m2/s/MPa
+          hk = hk * denh2o / mmh2o * 1000.d0;                  ! m2/s/MPa -> mmol/m/s/MPa
+
+          ! Matric potential for each layer (MPa)
+          psi_mpa(j) = soil%psi(j) * 1e-03 * head;          ! mm -> m -> MPa
+
+          ! Root biomass density (g biomass / m3 soil)
+          root_biomass_density = root%biomass * soil%rootfr(j) / soil%dz(j);
+          root_biomass_density = max(root_biomass_density, 1.d-10);
+
+          ! Root length density (m root per m3 soil)
+          root_length_density = root_biomass_density / (root%density * root_cross_sec_area);
+
+          ! Distance between roots (m)
+          root_dist = sqrt(1.d0 / (root_length_density * PETSC_PI));
+
+          ! Soil-to-root resistance (MPa.s.m2/mmol H2O)
+          soilr1 = log(root_dist/root%radius) / (2.d0 * PETSC_PI * root_length_density * soil%dz(j) * hk);
+
+          ! Root-to-stem resistance (MPa.s.m2/mmol H2O)
+          soilr2 = root%resist / (root_biomass_density * soil%dz(j));
+
+          ! Belowground resistance (MPa.s.m2/mmol H2O)
+          soilr = soilr1 + soilr2;
+
+          ! Total belowground resistance. First sum the conductances (1/soilr)
+          ! for each soil layer and then convert back to a resistance after the
+          ! summation
+
+          blw_grnd_conductance = blw_grnd_conductance + 1.d0 / soilr;
+
+          ! Maximum transpiration for each layer (mmol H2O/m2/s)
+
+          evap(j) = (psi_mpa(j) - plant%leaf_minlwp(ileaf)) / soilr;
+          evap(j) = max (evap(j), 0.d0);
+       end do
+
+       ! Belowground resistance: resistance = 1 / conductance
+       plant%resist_soil(ileaf) = plant%leaf_lai(ileaf)/blw_grnd_conductance
+
+       ! Weighted soil water potential (MPa)
+       plant%psi_soil(ileaf) = 0.d0;
+       totevap               = 0.d0
+
+       do j = 1, soil%nlevsoi
+          plant%psi_soil(ileaf) = plant%psi_soil(ileaf) + psi_mpa(j) * evap(j);
+          totevap = totevap + evap(j)
+       end do
+
+       if (totevap > 0.d0) then
+          plant%psi_soil(ileaf) = plant%psi_soil(ileaf)/totevap
+       else
+          plant%psi_soil(ileaf) = plant%leaf_minlwp(ileaf)
+       end if
+
+    enddo
+
+    deallocate(psi_mpa)
+    deallocate(evap   )
+
+  end subroutine ComputeSoilResistance
+
+  !------------------------------------------------------------------------
   subroutine PhotosynthesisAuxVarCompute(this)
     !
     ! !DESCRIPTION:
@@ -517,6 +624,8 @@ contains
     end if
 
     if (this%dpai > 0.d0) then
+
+       call ComputeSoilResistance(this)
 
        select case(this%c3psn)
        case (VAR_PHOTOSYNTHETIC_PATHWAY_C4)
