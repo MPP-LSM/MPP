@@ -534,7 +534,7 @@ contains
     allocate(psi_mpa (soil%nlevsoi))
     allocate(evap    (soil%nlevsoi))
 
-    head                = g * denh2o * 1.d0-6 ! MPa/m
+    head                = g * denh2o * 1.d-6 ! MPa/m
     root_cross_sec_area = PETSC_PI * (root%radius**2.d0);
 
     do ileaf = 1, plant%nleaf
