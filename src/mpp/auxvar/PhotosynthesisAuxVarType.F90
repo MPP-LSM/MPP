@@ -601,7 +601,7 @@ contains
           plant%psi_soil(ileaf) = plant%leaf_minlwp(ileaf)
        end if
 
-       plant%leaf_lsc(ileaf) = 1.d0/(1.d0/ plant%k_stem2leaf(ileaf) + 1.d0/plant%resist_soil(ileaf))
+       plant%leaf_lsc(ileaf) = 1.d0/(1.d0/ plant%k_stem2leaf(ileaf) + plant%resist_soil(ileaf))
 
     enddo
 
