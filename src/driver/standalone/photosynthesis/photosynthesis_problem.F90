@@ -89,6 +89,13 @@ contains
     character(len=256) :: gs_model
     PetscBool          :: flag
     PetscErrorCode     :: ierr
+    PetscOptions       :: options
+
+    call PetscOptionsCreate(options, ierr); CHKERRQ(ierr);
+    call PetscOptionsInsertString(options, '-photosynthesis_pathway     <c3|c4>', ierr); CHKERRQ(ierr)
+    call PetscOptionsInsertString(options, '-stomatal_conductance_model <ball-berry|medlyn|wue>', ierr); CHKERRQ(ierr)
+    call PetscOptionsView(options,PETSC_VIEWER_STDOUT_WORLD,ierr); CHKERRQ(ierr)
+    call PetscOptionsDestroy(options, ierr); CHKERRQ(ierr)
 
     c3psn = VAR_PHOTOSYNTHETIC_PATHWAY_C4
     gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
