@@ -12,6 +12,7 @@ module PhotosynthesisAuxType
   use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
   use MultiPhysicsProbConstants , only : VAR_WUE
   use petscsys
 
@@ -55,6 +56,7 @@ module PhotosynthesisAuxType
 
      PetscReal, pointer :: resist_soil(:) ! hydraulic resistance (MPa.s.m2/mmol H2O)
      PetscReal, pointer :: psi_soil(:)    ! weighted water potential (MPa)
+     PetscReal, pointer :: dpsi_soil(:)   ! change in weighted water potential (MPa)
    contains
 
      procedure, public :: AllocateMemory => PlantAuxVarAllocateMemory
@@ -149,6 +151,7 @@ module PhotosynthesisAuxType
      PetscReal :: gs        ! leaf stomatal conductance (mol H2O/m2 leaf/s)
      PetscReal :: gleaf_c   ! leaf-to-air conductance to CO2 (mol CO2/m2 leaf/s)
      PetscReal :: gleaf_w   ! leaf-to-air conductance to H2O (mol H2O/m2 leaf/s)
+     PetscReal :: etflx     ! Leaf transpiration flux (mol H2O/m2 leaf/s)
 
      PetscReal :: iota      ! stomatal efficiency (umol CO2/ mol H2O)
 
@@ -230,6 +233,7 @@ contains
     allocate(this%k_stem2leaf (this%nleaf))
     allocate(this%resist_soil (this%nleaf))
     allocate(this%psi_soil    (this%nleaf))
+    allocate(this%dpsi_soil   (this%nleaf))
 
     this%leaf_psi    (:) = 0.d0
     this%leaf_height (:) = 0.d0
@@ -240,6 +244,7 @@ contains
     this%k_stem2leaf (:) = 0.d0
     this%resist_soil (:) = 0.d0
     this%psi_soil    (:) = 0.d0
+    this%dpsi_soil   (:) = 0.d0
 
   end subroutine PlantAuxVarAllocateMemory
 
@@ -392,6 +397,7 @@ contains
     this%gs      = 0.d0
     this%gleaf_c = 0.d0
     this%gleaf_w = 0.d0
+    this%etflx   = 0.d0
 
     this%iota    = 750.d0
 
@@ -626,7 +632,12 @@ contains
     ! !ARGUMENTS
     class(photosynthesis_auxvar_type) :: this
     !
-    PetscReal :: t1, t2, t3
+    PetscReal                            :: t1, t2, t3, a, b, dy, head
+    PetscInt                             :: ileaf
+    class(plant_auxvar_type) , pointer   :: plant
+    PetscReal                , parameter :: g = 9.80665d0
+    PetscReal                , parameter :: denh2o = 1000.d0
+    PetscReal                , parameter :: mmh2o = 18.02d-3 ! molecular mass of water (kg/mol)
 
     if (this%pathway_and_stomatal_params_defined  == 0) then
        call SetPathwayParameters(this)
@@ -681,15 +692,36 @@ contains
              this%gs = gs_min
           end if
 
-       end select
+       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
-       if (this%gs > 0.d0) then
-          this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
-          this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
-       else
-          this%gleaf_c = 0.d0
-          this%gleaf_w = 0.d0
-       end if
+          if (this%gs > 0.d0) then
+             this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
+             this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
+          else
+             this%gleaf_c = 0.d0
+             this%gleaf_w = 0.d0
+          end if
+
+          if (this%an > 0.d0) then
+             this%gs = 1.d0/ ( (this%cair - this%ci)/(1.6d0 * this%an) - 1.d0/(1.6d0*this%gbc) )
+          else
+             this%gs = gs_min
+          end if
+
+          this%etflx = (this%esat - this%eair)/ (1.d0/this%gbv + 1.0/this%gs )/this%patm
+
+          plant => this%plant
+
+          head = g * denh2o * 1.d-6 ! MPa/m
+
+          ileaf = 1 ! Currently only one leaf is supported
+
+          a  = plant%psi_soil(ileaf) - head * plant%leaf_height(ileaf) - 1.d3 * this%etflx/plant%leaf_lsc(ileaf)
+          b  = plant%leaf_capc(ileaf) / plant%leaf_lsc(ileaf)
+
+          plant%dpsi_soil(ileaf) = (a - plant%leaf_psi(ileaf)) * (1.d0 - exp(-1800.d0/b));
+
+       end select
 
     else
        write(iulog,*)'PhotosynthesisAuxVarCompute: Add code when dapi = 0.d0'
