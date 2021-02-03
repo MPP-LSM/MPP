@@ -89,6 +89,7 @@ module SystemOfEquationsBaseType
      procedure, public :: CreateVectorsForGovEqn       => SOBCreateVectorsForGovEqn
      procedure, public :: AllocateAuxVars              => SOEBaseAllocateAuxVars
      procedure, public :: ComputeNumInternalAuxVars    => SOEBaseComputeNumInternalAuxVars
+     procedure, public :: SetDofsForGovEqn             => SOESetDofsForGovEqn
   end type sysofeqns_base_type
 
   public :: SOEBaseInit
@@ -1135,6 +1136,45 @@ contains
   end subroutine SOEBaseAddGovEqnWithMeshRank
 
   !------------------------------------------------------------------------
+  subroutine SOESetDofsForGovEqn(this, goveqn_rank, ndofs)
+    !
+    ! !DESCRIPTION:
+    ! Sets DOFs for a governing equation
+    !
+    implicit none
+    !
+    class(sysofeqns_base_type)            :: this
+    PetscInt                 , intent(in) :: goveqn_rank
+    PetscInt                 , intent(in) :: ndofs
+    !
+    class (goveqn_base_type) , pointer    :: cur_goveqn
+    PetscInt                              :: igoveqn
+
+    if (goveqn_rank > this%ngoveqns) then
+       write(iulog,*) 'Attempting to set DOFs for a governing equation ' // &
+            'that exceeds the number governing equation in the list'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end if
+
+    if (this%ngoveqns == 1) then
+
+       this%goveqns%dof = ndofs
+
+    else
+
+       cur_goveqn => this%goveqns
+
+       do igoveqn = 2, goveqn_rank
+          cur_goveqn => cur_goveqn%next
+       enddo
+
+       cur_goveqn%dof = ndofs
+
+    endif
+
+  end subroutine SOESetDofsForGovEqn
+
+!------------------------------------------------------------------------
   subroutine SOEBaseAddCouplingBCsInGovEqn(this, igoveq, name, unit, &
        num_other_goveqs, id_of_other_goveqs, &
        icoupling_of_other_goveqns, region_type, conn_set)
