@@ -29,6 +29,7 @@ include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/ml_model)
 include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/leafbndlyr)
 include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/longwave)
 include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/shortwave)
+include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/photosynthesis)
 
 link_libraries(${MPP_LIBRARIES})
 link_libraries(${PETSC_LIBRARIES})
