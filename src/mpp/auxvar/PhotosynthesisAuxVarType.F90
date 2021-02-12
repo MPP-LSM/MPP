@@ -680,17 +680,41 @@ contains
 
           call GsBallBerry(this)
 
-       case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+          if (this%gs > 0.d0) then
+            this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
+            this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
+         else
+            this%gleaf_c = 0.d0
+            this%gleaf_w = 0.d0
+         end if
+
+      case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
 
           call GsMedlyn(this)
 
-       case (VAR_WUE)
+           if (this%gs > 0.d0) then
+            this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
+            this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
+         else
+            this%gleaf_c = 0.d0
+            this%gleaf_w = 0.d0
+         end if
+
+      case (VAR_WUE)
 
           if (this%an > 0.d0) then
              this%gs = 1.d0/ ( (this%cair - this%ci)/(1.6d0 * this%an) - 1.6d0/this%gbc )
           else
              this%gs = gs_min
           end if
+
+          if (this%gs > 0.d0) then
+            this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
+            this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
+         else
+            this%gleaf_c = 0.d0
+            this%gleaf_w = 0.d0
+         end if
 
        case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
