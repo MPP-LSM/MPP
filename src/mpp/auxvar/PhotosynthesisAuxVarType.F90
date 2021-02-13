@@ -857,6 +857,9 @@ contains
     if (this%ci > 0.d0) then
        this%ap      = this%kp * this%ci
        this%dap_dci = this%kp
+    else
+       this%ap      = 0.d0
+       this%dap_dci = 0.d0
     end if
 
   end subroutine C4_Metabolic_Photosynthesis_Rate
