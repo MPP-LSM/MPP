@@ -236,7 +236,7 @@ contains
     character(len=256)                :: filename_base
     PetscInt, intent(in)              :: num_cells
     !
-    PetscInt                          :: output, ieqn, ncells, icell, k
+    PetscInt                          :: output, ieqn, ncells, icell, k, idof
     character(len=512)                :: filename
     character(len=64)                 :: category
     character(len=64)                 :: name
@@ -245,8 +245,6 @@ contains
     class(goveqn_base_type) , pointer :: goveq
 
     ncells = (nz_cair+1)*ncair
-
-    allocate(ci(ncells))
 
     call regression%Init(filename_base, num_cells)
     call regression%OpenOutput()
@@ -258,10 +256,15 @@ contains
     select type(goveq)
     class is (goveqn_photosynthesis_type)
 
-       do k = 1,nz_cair+1
-          icell = k
+       allocate(ci(ncells * goveq%dof ))
+       icell = 0;
 
-          ci(icell) = goveq%aux_vars_in(icell)%ci
+       do k = 1,nz_cair+1
+
+          do idof = 1, goveq%dof
+             icell = icell + 1
+             ci(icell) = goveq%aux_vars_in(icell)%ci(idof)
+          end do
 
        end do
 

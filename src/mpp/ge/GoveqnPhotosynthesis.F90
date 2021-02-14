@@ -34,6 +34,7 @@ module GoveqnPhotosynthesisType
 
   end type goveqn_photosynthesis_type
 
+
 contains
 
   !------------------------------------------------------------------------
@@ -82,7 +83,7 @@ contains
     ! Update aux vars for internal cells
     do ghosted_id = 1, this%mesh%ncells_all
       if (this%mesh%is_active(ghosted_id)) then
-         call this%aux_vars_in(ghosted_id)%Init()
+         call this%aux_vars_in(ghosted_id)%Init(this%dof)
       end if
    enddo
 
@@ -134,7 +135,7 @@ contains
     !
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell
+    PetscInt                                  :: icell, idof
     PetscReal                                 :: wl, term1, term2, term3
     PetscReal, pointer                        :: f_p(:)
 
@@ -148,19 +149,25 @@ contains
     
        select case (avars(icell)%gstype)
        case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
-          f_p(icell) = avars(icell)%an - avars(icell)%gleaf_c * (avars(icell)%cair - avars(icell)%ci)
+          do idof = 1,this%dof
+             f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+          end do
 
        case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
-          f_p(icell) = avars(icell)%an - avars(icell)%gleaf_c * (avars(icell)%cair - avars(icell)%ci)
+          do idof = 1,this%dof
+             f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+          end do
 
        case (VAR_WUE)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
 
-          term1 = (avars(icell)%cair - avars(icell)%ci)/wl
-          term2 = avars(icell)%dan_dci / (avars(icell)%dan_dci + avars(icell)%gleaf_c)
-          term3 = 1.6 * (avars(icell)%gleaf_c/avars(icell)%gleaf_w)**2.d0
+          do idof = 1,this%dof
+             term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+             term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+             term3 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-          f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+             f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+          end do
 
        end select
     end do
@@ -190,7 +197,7 @@ contains
     !
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell
+    PetscInt                                  :: icell, idof
     PetscReal                                 :: value
     PetscReal                                 :: an_1, ci_1, gleaf_1
     PetscReal                                 :: an_2, ci_2, gleaf_2
@@ -199,11 +206,12 @@ contains
     PetscReal                                 :: term1_2, term2_2, term3_2
     PetscReal                                 :: dterm1_dci, dterm2_dci, dterm3_dci
     PetscReal, pointer                        :: f_p(:)
-    PetscReal, parameter                      :: ci_perturb = 1.d-14
+    PetscReal                                 :: ci_perturb
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
     !
     ! dF/dci = dAn/dci - dgleaf/dci * (ca - ci) + gleaf
+
     
     avars => this%aux_vars_in
 
@@ -211,55 +219,64 @@ contains
     
        wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
 
-       an_1    = avars(icell)%an
-       ci_1    = avars(icell)%ci
-       gleaf_1 = avars(icell)%gleaf_c
+       do idof = 1,this%dof
+          if (avars(icell)%gstype == VAR_WUE) then
+             ci_perturb = 1.d-10
+          else
+             ci_perturb = 1.d-14
+          end if
 
-       term1_1 = (avars(icell)%cair - avars(icell)%ci)/wl
-       term2_1 = avars(icell)%dan_dci / (avars(icell)%dan_dci + avars(icell)%gleaf_c)
-       term3_1 = 1.6 * (avars(icell)%gleaf_c/avars(icell)%gleaf_w)**2.d0
+          an_1    = avars(icell)%an(idof)
+          ci_1    = avars(icell)%ci(idof)
+          gleaf_1 = avars(icell)%gleaf_c(idof)
 
-       avars(icell)%ci = ci_1 - ci_perturb
-       call avars(icell)%AuxVarCompute()
+          term1_1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+          term2_1 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+          term3_1 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-       an_2    = avars(icell)%an
-       ci_2    = avars(icell)%ci
-       gleaf_2 = avars(icell)%gleaf_c
+          avars(icell)%ci(idof) = ci_1 - ci_perturb
+          call avars(icell)%AuxVarCompute()
 
-       term1_2 = (avars(icell)%cair - avars(icell)%ci)/wl
-       term2_2 = avars(icell)%dan_dci / (avars(icell)%dan_dci + avars(icell)%gleaf_c)
-       term3_2 = 1.6 * (avars(icell)%gleaf_c/avars(icell)%gleaf_w)**2.d0
+          an_2    = avars(icell)%an(idof)
+          ci_2    = avars(icell)%ci(idof)
+          gleaf_2 = avars(icell)%gleaf_c(idof)
 
-       avars(icell)%ci = ci_1
-       call avars(icell)%AuxVarCompute()
+          term1_2 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+          term2_2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+          term3_2 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-       select case (avars(icell)%gstype)
-       case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
-       value = (an_1 - an_2)/ci_perturb &
-            - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
-            + gleaf_1
+          avars(icell)%ci(idof) = ci_1
+          call avars(icell)%AuxVarCompute()
 
-       case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
-       value = (an_1 - an_2)/ci_perturb &
-            - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
-            + gleaf_1
+          select case (avars(icell)%gstype)
+          case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
 
-       case (VAR_WUE)
+             value = (an_1 - an_2)/ci_perturb &
+                  - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
+                  + gleaf_1
 
-          dterm1_dci = (term1_1 - term1_2)/ci_perturb
-          dterm2_dci = (term2_1 - term2_2)/ci_perturb
-          dterm3_dci = (term3_1 - term3_2)/ci_perturb
+          case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+             value = (an_1 - an_2)/ci_perturb &
+                  - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
+                  + gleaf_1
 
-          !f_p = iota - term1 * term2 * term3
-          value = &
-               - dterm1_dci * term2_1    * term3_1    &
-               - term1_1    * dterm2_dci * term3_1    &
-               - term1_1    * term2_1    * dterm3_dci
+          case (VAR_WUE)
 
-       end select
+             dterm1_dci = (term1_1 - term1_2)/ci_perturb
+             dterm2_dci = (term2_1 - term2_2)/ci_perturb
+             dterm3_dci = (term3_1 - term3_2)/ci_perturb
+
+             !f_p = iota - term1 * term2 * term3
+             value = &
+                  - dterm1_dci * term2_1    * term3_1    &
+                  - term1_1    * dterm2_dci * term3_1    &
+                  - term1_1    * term2_1    * dterm3_dci
+
+          end select
 
 
-       call MatSetValuesLocal(B, 1, icell-1, 1, icell-1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+          call MatSetValuesLocal(B, 1, icell-1, 1, icell-1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+       enddo
     end do
 
     call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
@@ -285,19 +302,21 @@ contains
    Vec :: x
    !
    PetscScalar, pointer :: x_p(:)
-   PetscInt             :: ghosted_id, size
+   PetscInt             :: ghosted_id, size, idof
    PetscErrorCode       :: ierr
    
    call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
 
-   if (size /= this%mesh%ncells_local) then
+   if (size /= this%mesh%ncells_local * this%dof) then
       call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
    end if
 
    call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
 
    do ghosted_id = 1, this%mesh%ncells_local
-      this%aux_vars_in(ghosted_id)%ci = x_p(ghosted_id)
+      do idof = 1, this%dof
+         this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+      end do
    end do
 
    call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
@@ -323,13 +342,13 @@ contains
     PetscInt                     :: nauxvar
     PetscReal, pointer           :: var_values(:)
 
-    if (nauxvar > this%mesh%ncells_all) then
+    if (nauxvar > this%mesh%ncells_all * this%dof) then
       call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
     endif
 
     select case(auxvar_type)
     case(AUXVAR_INTERNAL)
-       call PhotosynthesisGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
+       call PhotosynthesisGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, this%dof, var_values)
     case default
        write(*,*)'Unknown auxvar_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -338,7 +357,7 @@ contains
   end subroutine PhotosynthesisGetRValues
 
   !------------------------------------------------------------------------
-  subroutine PhotosynthesisGetRValuesFromAuxVars (aux_var, var_type, ncells, var_values)
+  subroutine PhotosynthesisGetRValuesFromAuxVars (aux_var, var_type, ncells, ndof, var_values)
     !
     ! !DESCRIPTION:
     !
@@ -351,15 +370,18 @@ contains
     type(photosynthesis_auxvar_type) , pointer :: aux_var(:)
     PetscInt                                   :: var_type
     PetscInt                                   :: ncells
+    PetscInt                                   :: ndof
     PetscReal                        , pointer :: var_values(:)
     !
-    PetscInt                                   :: ghosted_id
+    PetscInt                                   :: ghosted_id, idof
 
     select case(var_type)
     case(VAR_STOMATAL_CONDUCTANCE)
 
        do ghosted_id = 1, ncells
-          var_values(ghosted_id) = aux_var(ghosted_id)%gs
+          do idof = 1, ndof
+             var_values(ghosted_id) = aux_var(ghosted_id)%gs(idof)
+          end do
        end do
 
     case default

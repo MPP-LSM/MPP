@@ -66,102 +66,105 @@ module PhotosynthesisAuxType
   type, public :: photosynthesis_auxvar_type
 
      ! Primary indepedent variables
-     PetscReal :: ci        ! leaf intercellular CO2 (umol/mol)
+     PetscReal , pointer :: ci(:)      ! leaf intercellular CO2 (umol/mol)
 
-     PetscReal :: tleaf     ! leaf temperature (K)
-     PetscReal :: gbv       ! leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
-     PetscReal :: gbc       ! leaf boundary layer conductance, CO2 (mol CO2/m2 leaf/s)
-     PetscReal :: eair      ! vapor pressure profile (Pa)
-     PetscReal :: patm      ! atmospheric pressure (Pa)
+     PetscInt            :: ndof       ! no. of unknowns. 1 for BB, Medlyn, and WUE; 2 for Bonan14
 
-     PetscReal :: cair      ! atmospheric CO2 profile (umol/mol)
-     PetscReal :: o2ref     ! atmospheric O2 at reference height (mmol/mol)
-     PetscReal :: apar      ! leaf absorbed PAR (umol photon/m2 leaf/s)
+     PetscReal           :: tleaf      ! leaf temperature (K)
+     PetscReal           :: gbv        ! leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
+     PetscReal           :: gbc        ! leaf boundary layer conductance, CO2 (mol CO2/m2 leaf/s)
+     PetscReal           :: eair       ! vapor pressure profile (Pa)
+     PetscReal           :: patm       ! atmospheric pressure (Pa)
 
-     PetscInt  :: colim     ! Photosynthesis co-limitation: 0 = no. 1 = yes
-     PetscInt  :: c3psn     ! photosynthetic pathway: 1. = c3 plant and 0. = c4 plant
-     PetscInt  :: gstype    ! Stomatal conductance: 0 = Medlyn. 1 = Ball-Berry. 2 = WUE optimization
+     PetscReal           :: cair       ! atmospheric CO2 profile (umol/mol)
+     PetscReal           :: o2ref      ! atmospheric O2 at reference height (mmol/mol)
+     PetscReal           :: apar       ! leaf absorbed PAR (umol photon/m2 leaf/s)
 
-     PetscReal :: ceair     ! vapor pressure of air, constrained
-     PetscReal :: esat      ! saturation vapor pressure (Pa)
-     PetscReal :: desat     ! derivative of saturation vapor pressure w.r.t. leaf temperature (Pa/K)
+     PetscInt            :: colim      ! Photosynthesis co-limitation: 0 = no. 1 = yes
+     PetscInt            :: c3psn      ! photosynthetic pathway: 1. = c3 plant and 0. = c4 plant
+     PetscInt            :: gstype     ! Stomatal conductance: 0 = Medlyn. 1 = Ball-Berry. 2 = WUE optimization
 
-     PetscReal :: g0opt     ! Ball-Berry minimum leaf conductance, unstressed (mol H2O/m2/s)
-     PetscReal :: g1opt     ! Ball-Berry slope of conductance-photosynthesis relationship, unstressed
-     PetscReal :: g0        ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
-     PetscReal :: g1        ! Ball-Berry slope of conductance-photosynthesis relationship
-     PetscReal :: dpai      ! layer plant area index (m2/m2)
-     PetscReal :: btran     ! Ball-Berry soil wetness factor (-)
+     PetscReal           :: ceair      ! vapor pressure of air, constrained
+     PetscReal           :: esat       ! saturation vapor pressure (Pa)
+     PetscReal           :: desat      ! derivative of saturation vapor pressure w.r.t. leaf temperature (Pa/K)
 
-     PetscReal :: vcmax25   ! leaf maximum carboxylation rate at 25C for canopy layer (umol/m2/s)
-     PetscReal :: jmax25    ! C3 - maximum electron transport rate at 25C for canopy layer (umol/m2/s)
-     PetscReal :: rd25      ! leaf respiration rate at 25C for canopy layer (umol CO2/m2/s)
-     PetscReal :: kp25      ! C4 - initial slope of CO2 response curve at 25C for canopy layer (mol/m2/s)
+     PetscReal           :: g0opt      ! Ball-Berry minimum leaf conductance, unstressed (mol H2O/m2/s)
+     PetscReal           :: g1opt      ! Ball-Berry slope of conductance-photosynthesis relationship, unstressed
+     PetscReal           :: g0         ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
+     PetscReal           :: g1         ! Ball-Berry slope of conductance-photosynthesis relationship
+     PetscReal           :: dpai       ! layer plant area index (m2/m2)
+     PetscReal           :: btran      ! Ball-Berry soil wetness factor (-)
 
-     PetscReal :: kc25      ! Michaelis-Menten constant for CO2 at 25C (umol/mol)
-     PetscReal :: ko25      ! Michaelis-Menten constant for O2 at 25C (mmol/mol)
-     PetscReal :: cp25      ! CO2 compensation point at 25C (umol/mol)
+     PetscReal           :: vcmax25    ! leaf maximum carboxylation rate at 25C for canopy layer (umol/m2/s)
+     PetscReal           :: jmax25     ! C3 - maximum electron transport rate at 25C for canopy layer (umol/m2/s)
+     PetscReal           :: rd25       ! leaf respiration rate at 25C for canopy layer (umol CO2/m2/s)
+     PetscReal           :: kp25       ! C4 - initial slope of CO2 response curve at 25C for canopy layer (mol/m2/s)
 
-     PetscReal :: rdha      ! activation energy for rd (J/mol)
-     PetscReal :: kcha      ! activation energy for kc (J/mol)
-     PetscReal :: koha      ! activation energy for ko (J/mol)
-     PetscReal :: cpha      ! activation energy for cp (J/mol)
-     PetscReal :: vcmaxha   ! activation energy for vcmax (J/mol)
-     PetscReal :: jmaxha    ! activation energy for jmax (J/mol)
+     PetscReal           :: kc25       ! Michaelis-Menten constant for CO2 at 25C (umol/mol)
+     PetscReal           :: ko25       ! Michaelis-Menten constant for O2 at 25C (mmol/mol)
+     PetscReal           :: cp25       ! CO2 compensation point at 25C (umol/mol)
 
-     PetscReal :: rdhd      ! Deactivation energy for rd (J/mol)
-     PetscReal :: vcmaxhd   ! Deactivation energy for vcmax (J/mol)
-     PetscReal :: jmaxhd    ! Deactivation energy for jmax (J/mol)
+     PetscReal           :: rdha       ! activation energy for rd (J/mol)
+     PetscReal           :: kcha       ! activation energy for kc (J/mol)
+     PetscReal           :: koha       ! activation energy for ko (J/mol)
+     PetscReal           :: cpha       ! activation energy for cp (J/mol)
+     PetscReal           :: vcmaxha    ! activation energy for vcmax (J/mol)
+     PetscReal           :: jmaxha     ! activation energy for jmax (J/mol)
 
-     PetscReal :: rdse      ! entropy term for rd (J/mol/K)
-     PetscReal :: vcmaxse   ! entropy term for vcmax (J/mol/K)
-     PetscReal :: jmaxse    ! entropy term for jmax (J/mol/K)
+     PetscReal           :: rdhd       ! Deactivation energy for rd (J/mol)
+     PetscReal           :: vcmaxhd    ! Deactivation energy for vcmax (J/mol)
+     PetscReal           :: jmaxhd     ! Deactivation energy for jmax (J/mol)
 
-     PetscReal :: vcmaxc    ! scaling factor for high temperature inhibition (25 C = 1.0)
-     PetscReal :: jmaxc     ! scaling factor for high temperature inhibition (25 C = 1.0)
-     PetscReal :: rdc       ! scaling factor for high temperature inhibition (25 C = 1.0)
+     PetscReal           :: rdse       ! entropy term for rd (J/mol/K)
+     PetscReal           :: vcmaxse    ! entropy term for vcmax (J/mol/K)
+     PetscReal           :: jmaxse     ! entropy term for jmax (J/mol/K)
 
-     PetscReal :: colim_c3  ! Empirical curvature parameter for C3 co-limitation
-     PetscReal :: colim_c4a ! Empirical curvature parameter for C4 co-limitation
-     PetscReal :: colim_c4b ! Empirical curvature parameter for C4 co-limitation
+     PetscReal           :: vcmaxc     ! scaling factor for high temperature inhibition (25 C = 1.0)
+     PetscReal           :: jmaxc      ! scaling factor for high temperature inhibition (25 C = 1.0)
+     PetscReal           :: rdc        ! scaling factor for high temperature inhibition (25 C = 1.0)
 
-     PetscReal :: qe_c4     ! Quantum yield, used only for C4 (mol CO2 / mol photons)
-     PetscReal :: phi_psii  ! Quantum yield of PS II
-     PetscReal :: theta_j   ! Empirical curvature parameter for electron transport rate
+     PetscReal           :: colim_c3   ! Empirical curvature parameter for C3 co-limitation
+     PetscReal           :: colim_c4a  ! Empirical curvature parameter for C4 co-limitation
+     PetscReal           :: colim_c4b  ! Empirical curvature parameter for C4 co-limitation
 
-     PetscReal :: vcmax     ! maximum carboxylation rate (umol/m2/s)
-     PetscReal :: jmax      ! maximum electron transport rate (umol/m2/s)
-     PetscReal :: je        ! Electron transport rate (umol/m2/s)
+     PetscReal           :: qe_c4      ! Quantum yield, used only for C4 (mol CO2 / mol photons)
+     PetscReal           :: phi_psii   ! Quantum yield of PS II
+     PetscReal           :: theta_j    ! Empirical curvature parameter for electron transport rate
 
-     PetscReal :: kc        ! Michaelis-Menten constant for CO2 (umol/mol)
-     PetscReal :: ko        ! Michaelis-Menten constant for O2 (mmol/mol)     
-     PetscReal :: cp        ! CO2 compensation point (umol/mol)
+     PetscReal           :: vcmax      ! maximum carboxylation rate (umol/m2/s)
+     PetscReal           :: jmax       ! maximum electron transport rate (umol/m2/s)
+     PetscReal           :: je         ! Electron transport rate (umol/m2/s)
 
-     PetscReal :: rd        ! leaf respiration rate (umol CO2/m2 leaf/s)
-     PetscReal :: kp        ! C4: Initial slope of CO2 response curve at 25C (mol/m2/s)
+     PetscReal           :: kc         ! Michaelis-Menten constant for CO2 (umol/mol)
+     PetscReal           :: ko         ! Michaelis-Menten constant for O2 (mmol/mol)
+     PetscReal           :: cp         ! CO2 compensation point (umol/mol)
 
-     PetscReal :: hs        ! leaf fractional humidity at leaf surface (dimensionless)
-     PetscReal :: vpd       ! leaf vapor pressure deficit (Pa)
-     PetscReal :: ac        ! leaf rubisco-limited gross photosynthesis (umol CO2/m2 leaf/s)
-     PetscReal :: aj        ! leaf RuBP-limited gross photosynthesis (umol CO2/m2 leaf/s)
-     PetscReal :: ap        ! leaf product-limited (C3), CO2-limited (C4) gross photosynthesis (umol CO2/m2 leaf/s)
-     PetscReal :: ag        ! leaf gross photosynthesis (umol CO2/m2 leaf/s)
-     PetscReal :: an        ! leaf net photosynthesis (umol CO2/m2 leaf/s)
-     PetscReal :: cs        ! leaf surface CO2 (umol/mol)
-     PetscReal :: gs        ! leaf stomatal conductance (mol H2O/m2 leaf/s)
-     PetscReal :: gleaf_c   ! leaf-to-air conductance to CO2 (mol CO2/m2 leaf/s)
-     PetscReal :: gleaf_w   ! leaf-to-air conductance to H2O (mol H2O/m2 leaf/s)
-     PetscReal :: etflx     ! Leaf transpiration flux (mol H2O/m2 leaf/s)
+     PetscReal           :: rd         ! leaf respiration rate (umol CO2/m2 leaf/s)
+     PetscReal           :: kp         ! C4: Initial slope of CO2 response curve at 25C (mol/m2/s)
 
-     PetscReal :: iota      ! stomatal efficiency (umol CO2/ mol H2O)
+     PetscReal           :: hs         ! leaf fractional humidity at leaf surface (dimensionless)
+     PetscReal           :: vpd        ! leaf vapor pressure deficit (Pa)
 
-     PetscReal :: dac_dci   ! deriavate of leaf rubisco-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
-     PetscReal :: daj_dci   ! deriavate of leaf RuBP-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
-     PetscReal :: dap_dci   ! deriavate of leaf product-limited (C3), CO2-limited (C4) gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
-     PetscReal :: dag_dci   ! deriavate of leaf gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
-     PetscReal :: dan_dci   ! deriavate of leaf net photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal , pointer :: ac(:)      ! leaf rubisco-limited gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal , pointer :: aj(:)      ! leaf RuBP-limited gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal , pointer :: ap(:)      ! leaf product-limited (C3), CO2-limited (C4) gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal , pointer :: ag(:)      ! leaf gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal , pointer :: an(:)      ! leaf net photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal           :: cs         ! leaf surface CO2 (umol/mol)
+     PetscReal , pointer :: gs(:)      ! leaf stomatal conductance (mol H2O/m2 leaf/s)
+     PetscReal , pointer :: gleaf_c(:) ! leaf-to-air conductance to CO2 (mol CO2/m2 leaf/s)
+     PetscReal , pointer :: gleaf_w(:) ! leaf-to-air conductance to H2O (mol H2O/m2 leaf/s)
+     PetscReal           :: etflx      ! Leaf transpiration flux (mol H2O/m2 leaf/s)
 
-     PetscInt  :: pathway_and_stomatal_params_defined
+     PetscReal           :: iota       ! stomatal efficiency (umol CO2/ mol H2O)
+
+     PetscReal , pointer :: dac_dci(:) ! deriavate of leaf rubisco-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal , pointer :: daj_dci(:) ! deriavate of leaf RuBP-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal , pointer :: dap_dci(:) ! deriavate of leaf product-limited (C3), CO2-limited (C4) gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal , pointer :: dag_dci(:) ! deriavate of leaf gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+     PetscReal , pointer :: dan_dci(:) ! deriavate of leaf net photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
+
+     PetscInt            :: pathway_and_stomatal_params_defined
 
      type(root_auxvar_type) , pointer :: root
      type(soil_auxvar_type) , pointer :: soil
@@ -317,15 +320,18 @@ contains
   end function fth25
 
   !------------------------------------------------------------------------
-  subroutine PhotosynthesisInit(this)
+  subroutine PhotosynthesisInit(this, ndof)
     !
     implicit none
     !
     class(photosynthesis_auxvar_type) :: this
-    PetscInt                          :: c3psn
-    PetscInt                          :: gstype
+    PetscInt                          :: ndof
 
-    this%ci      = 0.d0
+
+    this%ndof = ndof
+
+    allocate(this%ci(ndof))
+    this%ci(:) = 0.d0
 
     this%tleaf   = 0.d0
     this%gbv     = 0.d0
@@ -388,24 +394,42 @@ contains
     this%rd      = 0.d0
     this%hs      = 0.d0
     this%vpd     = 0.d0
-    this%ac      = 0.d0
-    this%aj      = 0.d0
-    this%ap      = 0.d0
-    this%ag      = 0.d0
-    this%an      = 0.d0
+
+    allocate(this%ac(ndof))
+    allocate(this%aj(ndof))
+    allocate(this%ap(ndof))
+    allocate(this%ag(ndof))
+    allocate(this%an(ndof))
+
+    this%ac(:)   = 0.d0
+    this%aj(:)   = 0.d0
+    this%ap(:)   = 0.d0
+    this%ag(:)   = 0.d0
+    this%an(:)   = 0.d0
+
+    allocate(this%gs(ndof))
+    allocate(this%gleaf_c(ndof))
+    allocate(this%gleaf_w(ndof))
+    this%gs(:)      = 0.d0
+    this%gleaf_c(:) = 0.d0
+    this%gleaf_w(:) = 0.d0
+
     this%cs      = 0.d0
-    this%gs      = 0.d0
-    this%gleaf_c = 0.d0
-    this%gleaf_w = 0.d0
     this%etflx   = 0.d0
 
     this%iota    = 750.d0
 
-    this%dac_dci = 0.d0
-    this%daj_dci = 0.d0
-    this%dap_dci = 0.d0
-    this%dag_dci = 0.d0
-    this%dan_dci = 0.d0
+    allocate(this%dac_dci(ndof))
+    allocate(this%daj_dci(ndof))
+    allocate(this%dap_dci(ndof))
+    allocate(this%dag_dci(ndof))
+    allocate(this%dan_dci(ndof))
+
+    this%dac_dci(:) = 0.d0
+    this%daj_dci(:) = 0.d0
+    this%dap_dci(:) = 0.d0
+    this%dag_dci(:) = 0.d0
+    this%dan_dci(:) = 0.d0
 
     allocate(this%root)
     allocate(this%soil)
@@ -633,7 +657,7 @@ contains
     class(photosynthesis_auxvar_type) :: this
     !
     PetscReal                            :: t1, t2, t3, a, b, dy, head
-    PetscInt                             :: ileaf
+    PetscInt                             :: ileaf, idof
     class(plant_auxvar_type) , pointer   :: plant
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
@@ -666,7 +690,9 @@ contains
        end select
 
        ! CO2 at leaf surface
-       this%cs = max(this%cair - this%an/this%gbc, 1.d0)
+       do idof = 1, this%ndof
+          this%cs = max(this%cair - this%an(idof)/this%gbc, 1.d0)
+       end do
 
        ! Saturation vapor pressure at leaf temperature
        call SatVap (this%tleaf, this%esat, this%desat)
@@ -680,59 +706,67 @@ contains
 
           call GsBallBerry(this)
 
-          if (this%gs > 0.d0) then
-            this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
-            this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
-         else
-            this%gleaf_c = 0.d0
-            this%gleaf_w = 0.d0
-         end if
+          do idof = 1, this%ndof
+             if (this%gs(idof) > 0.d0) then
+                This%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
+                this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
+             else
+                this%gleaf_c(idof) = 0.d0
+                this%gleaf_w(idof) = 0.d0
+             end if
+          enddo
 
       case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
 
           call GsMedlyn(this)
 
-           if (this%gs > 0.d0) then
-            this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
-            this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
-         else
-            this%gleaf_c = 0.d0
-            this%gleaf_w = 0.d0
-         end if
+          do idof = 1, this%ndof
+             if (this%gs(idof) > 0.d0) then
+                this%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
+                this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
+             else
+                this%gleaf_c(idof) = 0.d0
+                this%gleaf_w(idof) = 0.d0
+             end if
+          enddo
 
       case (VAR_WUE)
 
-          if (this%an > 0.d0) then
-             this%gs = 1.d0/ ( (this%cair - this%ci)/(1.6d0 * this%an) - 1.6d0/this%gbc )
-          else
-             this%gs = gs_min
-          end if
+         do idof = 1, this%ndof
+            if (this%an(idof) > 0.d0) then
+               this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.6d0/this%gbc )
+            else
+               this%gs(idof) = gs_min
+            end if
 
-          if (this%gs > 0.d0) then
-            this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
-            this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
-         else
-            this%gleaf_c = 0.d0
-            this%gleaf_w = 0.d0
-         end if
+            if (this%gs(idof) > 0.d0) then
+               this%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
+               this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
+            else
+               this%gleaf_c(idof) = 0.d0
+               this%gleaf_w(idof) = 0.d0
+            end if
+         enddo
 
        case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
-          if (this%an > 0.d0) then
-             this%gs = 1.d0/ ( (this%cair - this%ci)/(1.6d0 * this%an) - 1.d0/(1.6d0*this%gbc) )
-          else
-             this%gs = gs_min
-          end if
+          do idof = 1, this%ndof
+             if (this%an(idof) > 0.d0) then
+                this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.d0/(1.6d0*this%gbc) )
+             else
+                this%gs(idof) = gs_min
+             end if
 
-          if (this%gs > 0.d0) then
-            this%gleaf_c = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs)
-            this%gleaf_w = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs)
-         else
-            this%gleaf_c = 0.d0
-            this%gleaf_w = 0.d0
-         end if
+             if (this%gs(idof) > 0.d0) then
+                this%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
+                this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
+             else
+                this%gleaf_c(idof) = 0.d0
+                this%gleaf_w(idof) = 0.d0
+             end if
+          enddo
 
-         this%etflx = (this%esat - this%eair)/ (1.d0/this%gbv + 1.0/this%gs )/this%patm
+          this%etflx = (this%esat - this%eair)/ (1.d0/this%gbv + 1.0/this%gs(2) )/this%patm
 
           plant => this%plant
 
@@ -844,23 +878,27 @@ contains
     !
     ! !ARGUMENTS
     class(photosynthesis_auxvar_type) :: this
+    !
+    PetscInt :: idof
 
-    ! Rubisco-limited photosynthesis
-    this%ac = this%vcmax
-    this%dac_dci = 0.d0
+    do idof = 1, this%ndof
+       ! Rubisco-limited photosynthesis
+       this%ac(idof) = this%vcmax
+       this%dac_dci(idof) = 0.d0
 
-    ! RuBP-limited photosynthesis
-    this%aj = this%qe_c4 * this%apar
-    this%daj_dci = 0.d0
+       ! RuBP-limited photosynthesis
+       this%aj(idof) = this%qe_c4 * this%apar
+       this%daj_dci(idof) = 0.d0
 
-    ! PEP carboxylase-limited (CO2-limited)
-    if (this%ci > 0.d0) then
-       this%ap      = this%kp * this%ci
-       this%dap_dci = this%kp
-    else
-       this%ap      = 0.d0
-       this%dap_dci = 0.d0
-    end if
+       ! PEP carboxylase-limited (CO2-limited)
+       if (this%ci(idof) > 0.d0) then
+          this%ap(idof)      = this%kp * this%ci(idof)
+          this%dap_dci(idof) = this%kp
+       else
+          this%ap(idof) = 0.d0
+          this%dap_dci(idof) = 0.d0
+       end if
+    enddo
 
   end subroutine C4_Metabolic_Photosynthesis_Rate
 
@@ -876,34 +914,36 @@ contains
     class(photosynthesis_auxvar_type) :: this
     !
     PetscReal :: a, b
+    PetscInt  :: idof
 
+    do idof = 1, this%ndof
+       if (this%ci(idof) - this%cp > 0.d0) then
 
-    if (this%ci - this%cp > 0.d0) then
+          ! Rubisco-limited photosynthesis
+          a = this%vcmax
+          b = this%kc*(1.d0 + this%o2ref/this%ko)
 
-       ! Rubisco-limited photosynthesis
-       a = this%vcmax
-       b = this%kc*(1.d0 + this%o2ref/this%ko)
+          this%ac(idof)      = a*(this%ci(idof) - this%cp)/(this%ci(idof) + b)
+          this%dac_dci(idof) = a*(b + this%cp)/((this%ci(idof) + b)**2.d0)
 
-       this%ac      = a*(this%ci - this%cp)/(this%ci + b)
-       this%dac_dci = a*(b + this%cp)/((this%ci + b)**2.d0)
+          ! RuBP-limited photosynthesis
+          a = this%je/4.d0
+          b = 2*this%cp
 
-       ! RuBP-limited photosynthesis
-       a = this%je/4.d0
-       b = 2*this%cp
+          this%aj(idof)      = a*(this%ci(idof) - this%cp)/(this%ci(idof) + b)
+          this%daj_dci(idof) = a*(b + this%cp)/((this%ci(idof) + b)**2.d0)
 
-       this%aj      = a*(this%ci - this%cp)/(this%ci + b)
-       this%daj_dci = a*(b + this%cp)/((this%ci + b)**2.d0)
+       else
+          this%ac(idof)      = 0.d0
+          this%dac_dci(idof) = 0.d0
+          this%aj(idof)      = 0.d0
+          this%daj_dci(idof) = 0.d0
+       end if
 
-    else
-       this%ac      = 0.d0
-       this%dac_dci = 0.d0
-       this%aj      = 0.d0
-       this%daj_dci = 0.d0
-    end if
-
-    ! Product-limited photosynthesis
-    this%ap      = 0.d0
-    this%dap_dci = 0.d0
+       ! Product-limited photosynthesis
+       this%ap(idof)      = 0.d0
+       this%dap_dci(idof) = 0.d0
+    enddo
 
   end subroutine C3_Metabolic_Photosynthesis_Rate
 
@@ -922,70 +962,73 @@ contains
     PetscReal :: aquad, bquad, cquad
     PetscReal :: root1, root2
     PetscReal :: ai, dai_dci, denom
+    PetscInt  :: idof
 
-    select case(this%colim)
-    case (1)
-       aquad = this%colim_c4a
-       bquad = -(this%ac + this%aj)
-       cquad =   this%ac * this%aj
+    do idof = 1, this%ndof
+       select case(this%colim)
+       case (1)
+          aquad = this%colim_c4a
+          bquad = -(this%ac(idof) + this%aj(idof))
+          cquad =   this%ac(idof) * this%aj(idof)
 
-       call quadratic(aquad, bquad, cquad, root1, root2)
-       ai = min(root1, root2)
-       denom   = this%ac + this%aj - 2.d0 * this%colim_c4a * ai
-       dai_dci = (this%dac_dci * (this%aj - ai) + this%daj_dci * (this%ac - ai)) / denom
+          call quadratic(aquad, bquad, cquad, root1, root2)
+          ai = min(root1, root2)
+          denom   = this%ac(idof) + this%aj(idof) - 2.d0 * this%colim_c4a * ai
+          dai_dci = (this%dac_dci(idof) * (this%aj(idof) - ai) + this%daj_dci(idof) * (this%ac(idof) - ai)) / denom
 
-       aquad = this%colim_c4b
-       bquad = -(ai + this%ap)
-       cquad =   ai * this%ap
+          aquad = this%colim_c4b
+          bquad = -(ai + this%ap(idof))
+          cquad =   ai * this%ap(idof)
 
-       call quadratic(aquad, bquad, cquad, root1, root2)
-       this%ag = min(root1, root2)
+          call quadratic(aquad, bquad, cquad, root1, root2)
+          this%ag(idof) = min(root1, root2)
 
-       if (this%ag > 0.d0) then
-          denom        = ai + this%ap - 2.d0 * this%colim_c4b * this%ag
-          this%dag_dci = (dai_dci * (this%ap - this%ag) + this%dap_dci * (ai - this%ag))/denom
-       else
-          this%dag_dci = 0.d0
+          if (this%ag(idof) > 0.d0) then
+             denom        = ai + this%ap(idof) - 2.d0 * this%colim_c4b * this%ag(idof)
+             this%dag_dci(idof) = (dai_dci * (this%ap(idof) - this%ag(idof)) + this%dap_dci(idof) * (ai - this%ag(idof)))/denom
+          else
+             this%dag_dci(idof) = 0.d0
+          end if
+
+       case (0)
+
+          this%ag(idof) = min(this%ac(idof), this%aj(idof), this%ap(idof))
+
+          if (this%ac(idof) < this%aj(idof) .and. this%ac(idof) < this%ap(idof)) then
+             this%dag_dci(idof) = this%dac_dci(idof)
+
+          elseif (this%aj(idof) < this%ac(idof) .and. this%aj(idof) < this%ap(idof)) then
+             this%dag_dci(idof) = this%daj_dci(idof)
+
+          else
+             this%dag_dci(idof) = this%dap_dci(idof)
+          end if
+
+       end select
+
+       if (this%ac(idof) < 0.d0) then
+          this%ac(idof)      = 0.d0
+          this%dac_dci(idof) = 0.d0
+       endif
+
+       if (this%aj(idof) < 0.d0) then
+          this%aj(idof)      = 0.d0
+          this%daj_dci(idof) = 0.d0
+       endif
+
+       if (this%ap(idof) < 0.d0) then
+          this%ap(idof)      = 0.d0
+          this%dap_dci(idof) = 0.d0
+       endif
+
+       if (this%ag(idof) < 0.d0) then
+          this%ag(idof)      = 0.d0
+          this%dag_dci(idof) = 0.d0
        end if
 
-    case (0)
-
-       this%ag = min(this%ac, this%aj, this%ap)
-
-       if (this%ac < this%aj .and. this%ac < this%ap) then
-          this%dag_dci = this%dac_dci
-
-       elseif (this%aj < this%ac .and. this%aj < this%ap) then
-          this%dag_dci = this%daj_dci
-
-       else
-          this%dag_dci = this%dap_dci
-       end if
-
-    end select
-    
-    if (this%ac < 0.d0) then
-       this%ac      = 0.d0
-       this%dac_dci = 0.d0
-    endif
-
-    if (this%aj < 0.d0) then
-       this%aj      = 0.d0
-       this%daj_dci = 0.d0
-    endif
-
-    if (this%ap < 0.d0) then
-       this%ap      = 0.d0
-       this%dap_dci = 0.d0
-    endif
-
-    if (this%ag < 0.d0) then
-       this%ag      = 0.d0
-       this%dag_dci = 0.d0
-    end if
-
-    this%an      = this%ag - this%rd
-    this%dan_dci = this%dag_dci
+       this%an(idof)      = this%ag(idof) - this%rd
+       this%dan_dci(idof) = this%dag_dci(idof)
+    enddo
 
   end subroutine C4_Net_Assimilation
 
@@ -1002,56 +1045,59 @@ contains
     !
     PetscReal :: aquad, bquad, cquad
     PetscReal :: root1, root2, denom
+    PetscInt  :: idof
     
-    select case(this%colim)
-    case (1)
-       aquad = this%colim_c3
-       bquad = -(this%ac + this%aj)
-       cquad =   this%ac * this%aj
+    do idof = 1, this%ndof
+       select case(this%colim)
+       case (1)
+          aquad = this%colim_c3
+          bquad = -(this%ac(idof) + this%aj(idof))
+          cquad =   this%ac(idof) * this%aj(idof)
 
-       call quadratic(aquad, bquad, cquad, root1, root2)
+          call quadratic(aquad, bquad, cquad, root1, root2)
 
-       this%ag = min(root1, root2)
-       if (this%ag > 0.d0) then
-          denom        = this%ac + this%aj - 2.d0 * this%colim_c3 * this%ag
-          this%dag_dci = (this%dac_dci * (this%aj - this%ag) + this%daj_dci * (this%ac - this%ag)) / denom
-       else
-          this%dag_dci = 0.d0
+          this%ag(idof) = min(root1, root2)
+          if (this%ag(idof) > 0.d0) then
+             denom        = this%ac(idof) + this%aj(idof) - 2.d0 * this%colim_c3 * this%ag(idof)
+             this%dag_dci(idof) = (this%dac_dci(idof) * (this%aj(idof) - this%ag(idof)) + this%daj_dci(idof) * (this%ac(idof) - this%ag(idof))) / denom
+          else
+             this%dag_dci(idof) = 0.d0
+          endif
+
+       case (0)
+
+          this%ag(idof) = min(this%ac(idof), this%aj(idof))
+          if (this%ac(idof) < this%aj(idof)) then
+             this%dag_dci(idof) = this%dac_dci(idof)
+          else
+             this%dag_dci(idof) = this%daj_dci(idof)
+          end if
+
+       end select
+
+       if (this%ac(idof) < 0.d0) then
+          this%ac(idof)      = 0.d0
+          this%dac_dci(idof) = 0.d0
        endif
 
-    case (0)
+       if (this%aj(idof) < 0.d0) then
+          this%aj(idof)      = 0.d0
+          this%daj_dci(idof) = 0.d0
+       endif
 
-       this%ag = min(this%ac, this%aj)
-       if (this%ac < this%aj) then
-          this%dag_dci = this%dac_dci
-       else
-          this%dag_dci = this%daj_dci
+       if (this%ap(idof) < 0.d0) then
+          this%ap(idof)      = 0.d0
+          this%dap_dci(idof) = 0.d0
+       endif
+
+       if (this%ag(idof) < 0.d0) then
+          this%ag(idof)      = 0.d0
+          this%dag_dci(idof) = 0.d0
        end if
 
-    end select
-
-    if (this%ac < 0.d0) then
-       this%ac      = 0.d0
-       this%dac_dci = 0.d0
-    endif
-
-    if (this%aj < 0.d0) then
-       this%aj      = 0.d0
-       this%daj_dci = 0.d0
-    endif
-
-    if (this%ap < 0.d0) then
-       this%ap      = 0.d0
-       this%dap_dci = 0.d0
-    endif
-
-    if (this%ag < 0.d0) then
-       this%ag      = 0.d0
-       this%dag_dci = 0.d0
-    end if
-
-    this%an      = this%ag - this%rd
-    this%dan_dci = this%dag_dci
+       this%an(idof)      = this%ag(idof) - this%rd
+       this%dan_dci(idof) = this%dag_dci(idof)
+    enddo
 
   end subroutine C3_Net_Assimilation
 
@@ -1068,22 +1114,26 @@ contains
     !
     PetscReal :: aquad, bquad, cquad
     PetscReal :: root1, root2
+    PetscInt  :: idof
 
     this%g0 = max( this%g0opt * this%btran, gs_min )
     this%g1 = this%g1opt
 
-    if (this%an > 0.d0) then
+    do idof = 1, this%ndof
 
-       aquad = this%cs
-       bquad = this%cs   * (this%gbv - this%g0) - this%g1*this%an
-       cquad = -this%gbv * (this%cs * this%g0 + this%g1 * this%an * this%ceair/this%esat)
+       if (this%an(idof) > 0.d0) then
 
-       call quadratic (aquad, bquad, cquad, root1, root2)
-       this%gs = max(root1, root2)
-       
-    else
-       this%gs = this%g0
-    end if
+          aquad = this%cs
+          bquad = this%cs   * (this%gbv - this%g0) - this%g1*this%an(idof)
+          cquad = -this%gbv * (this%cs * this%g0 + this%g1 * this%an(idof) * this%ceair/this%esat)
+
+          call quadratic (aquad, bquad, cquad, root1, root2)
+          this%gs(idof) = max(root1, root2)
+
+       else
+          this%gs(idof) = this%g0
+       end if
+    enddo
 
   end subroutine GsBallBerry
 
@@ -1102,27 +1152,30 @@ contains
     PetscReal :: aquad, bquad, cquad
     PetscReal :: root1, root2
     PetscReal :: vpd_term, term
+    PetscInt  :: idof
 
     this%g0 = this%g0opt
     this%g1 = this%g1opt
 
-    if (this%an > 0.d0) then
+    do idof = 1, this%ndof
+    if (this%an(idof) > 0.d0) then
 
        vpd_term = max((this%esat - this%ceair), vpd_min) * 0.001d0
-       term = 1.6d0 * this%an / this%cs
+       term = 1.6d0 * this%an(idof) / this%cs
 
        aquad = 1.d0
        bquad = -(2.d0 * (this%g0 + term) + (this%g1 * term)**2.d0 / (this%gbv * vpd_term))
        cquad = this%g0 * this%g0 + (2.d0 * this%g0 + term * (1.d0 - this%g1 * this%g1 / vpd_term)) * term
 
        call quadratic (aquad, bquad, cquad, root1, root2)
-       this%gs = max(root1,root2)
+       this%gs(idof) = max(root1,root2)
 
     else
 
-       this%gs = this%g0
+       this%gs(idof) = this%g0
 
     end if
+    enddo
 
   end subroutine GsMedlyn
 
