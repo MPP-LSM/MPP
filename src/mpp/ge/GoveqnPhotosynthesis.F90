@@ -124,6 +124,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants , only : VAR_WUE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     implicit none
     !
@@ -169,6 +170,16 @@ contains
              f_p(icell) = avars(icell)%iota - term1 * term2 * term3
           end do
 
+       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+
+          do idof = 1,this%dof
+             term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+             term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+             term3 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+
+             f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+          end do
        end select
     end do
 
@@ -185,6 +196,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants , only : VAR_WUE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     implicit none
     !
@@ -220,7 +232,7 @@ contains
        wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
 
        do idof = 1,this%dof
-          if (avars(icell)%gstype == VAR_WUE) then
+          if (avars(icell)%gstype == VAR_WUE .or. avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
              ci_perturb = 1.d-10
           else
              ci_perturb = 1.d-14
@@ -261,6 +273,18 @@ contains
                   + gleaf_1
 
           case (VAR_WUE)
+
+             dterm1_dci = (term1_1 - term1_2)/ci_perturb
+             dterm2_dci = (term2_1 - term2_2)/ci_perturb
+             dterm3_dci = (term3_1 - term3_2)/ci_perturb
+
+             !f_p = iota - term1 * term2 * term3
+             value = &
+                  - dterm1_dci * term2_1    * term3_1    &
+                  - term1_1    * dterm2_dci * term3_1    &
+                  - term1_1    * term2_1    * dterm3_dci
+
+          case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
              dterm1_dci = (term1_1 - term1_2)/ci_perturb
              dterm2_dci = (term2_1 - term2_2)/ci_perturb

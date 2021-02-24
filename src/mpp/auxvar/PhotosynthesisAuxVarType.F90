@@ -509,6 +509,8 @@ contains
 
        elseif (this%gstype == VAR_WUE) then
 
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
           call exit(0)
@@ -527,6 +529,8 @@ contains
           this%g1opt = 4.45d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
        elseif (this%gstype == VAR_WUE) then
+
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
 
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
@@ -752,7 +756,7 @@ contains
 
           do idof = 1, this%ndof
              if (this%an(idof) > 0.d0) then
-                this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.d0/(1.6d0*this%gbc) )
+                this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.6d0/this%gbc )
              else
                 this%gs(idof) = gs_min
              end if
