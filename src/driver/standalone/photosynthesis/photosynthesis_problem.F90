@@ -83,6 +83,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants , only : VAR_WUE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     implicit none
     !
@@ -154,6 +155,8 @@ contains
        gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
     case ('wue')
        gstype = VAR_WUE
+    case ('bonan14')
+       gstype = VAR_STOMATAL_CONDUCTANCE_BONAN14
     case default
        write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn, wue'
        call exit(0)
