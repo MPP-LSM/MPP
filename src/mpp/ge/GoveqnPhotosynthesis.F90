@@ -165,7 +165,7 @@ contains
           do idof = 1,this%dof
              term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
              term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-             term3 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+             term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
              f_p(icell) = avars(icell)%iota - term1 * term2 * term3
           end do
@@ -176,7 +176,7 @@ contains
           do idof = 1,this%dof
              term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
              term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-             term3 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+             term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
              f_p(icell) = avars(icell)%iota - term1 * term2 * term3
           end do
@@ -232,11 +232,7 @@ contains
        wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
 
        do idof = 1,this%dof
-          if (avars(icell)%gstype == VAR_WUE .or. avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
-             ci_perturb = 1.d-10
-          else
-             ci_perturb = 1.d-14
-          end if
+          ci_perturb = -1.e-7
 
           an_1    = avars(icell)%an(idof)
           ci_1    = avars(icell)%ci(idof)
@@ -244,7 +240,7 @@ contains
 
           term1_1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
           term2_1 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-          term3_1 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+          term3_1 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
           avars(icell)%ci(idof) = ci_1 - ci_perturb
           call avars(icell)%AuxVarCompute()
@@ -255,7 +251,7 @@ contains
 
           term1_2 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
           term2_2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-          term3_2 = 1.6 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+          term3_2 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
           avars(icell)%ci(idof) = ci_1
           call avars(icell)%AuxVarCompute()
