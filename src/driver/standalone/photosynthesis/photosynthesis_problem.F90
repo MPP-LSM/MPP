@@ -4,6 +4,12 @@ module photosynthesis_problem
   use mpp_abortutils                 , only : endrun
   use mpp_shr_log_mod                , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbPhotosynthesis , only : mpp_photosynthesis_type
+  use MultiPhysicsProbConstants      , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
+  use MultiPhysicsProbConstants      , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
+  use MultiPhysicsProbConstants      , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+  use MultiPhysicsProbConstants      , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+  use MultiPhysicsProbConstants      , only : VAR_WUE
+  use MultiPhysicsProbConstants      , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
   use photosynthesis_global_vars
   use petscsys
   use petscdm
@@ -77,13 +83,6 @@ contains
 
   !------------------------------------------------------------------------
   subroutine read_command_line_options(namelist_filename)
-    !
-    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
-    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-    use MultiPhysicsProbConstants , only : VAR_WUE
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     implicit none
     !
@@ -205,6 +204,10 @@ contains
     PHTSYN_GE = 1
 
     call phtsyn_mpp%AddGovEqnWithMeshRank(GE_PHOTOSYNTHESIS, 'Photosynthesis model', PHTSYN_MESH)
+
+    if (gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+       call phtsyn_mpp%SetDofsForGovEqn(PHTSYN_GE, 2)
+    end if
     
     call phtsyn_mpp%SetMeshesOfGoveqnsByMeshRank()
 

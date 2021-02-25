@@ -178,7 +178,7 @@ contains
              term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
              term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-             f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+             f_p((icell-1)*this%dof + idof) = avars(icell)%iota - term1 * term2 * term3
           end do
        end select
     end do
@@ -295,7 +295,7 @@ contains
           end select
 
 
-          call MatSetValuesLocal(B, 1, icell-1, 1, icell-1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+          call MatSetValuesLocal(B, 1, (icell-1)*this%dof + idof - 1, 1, (icell-1)*this%dof + idof - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
        enddo
     end do
 
