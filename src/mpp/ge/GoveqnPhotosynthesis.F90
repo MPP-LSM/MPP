@@ -136,7 +136,7 @@ contains
     !
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell, idof
+    PetscInt                                  :: icell, idof, idx
     PetscReal                                 :: wl, term1, term2, term3
     PetscReal, pointer                        :: f_p(:)
 
@@ -178,7 +178,8 @@ contains
              term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
              term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-             f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+             idx = (icell-1)*this%dof + idof
+             f_p(idx) = avars(icell)%iota - term1 * term2 * term3
           end do
        end select
     end do
@@ -209,7 +210,7 @@ contains
     !
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell, idof
+    PetscInt                                  :: icell, idof, idx
     PetscReal                                 :: value
     PetscReal                                 :: an_1, ci_1, gleaf_1
     PetscReal                                 :: an_2, ci_2, gleaf_2
@@ -294,8 +295,8 @@ contains
 
           end select
 
-
-          call MatSetValuesLocal(B, 1, icell-1, 1, icell-1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+          idx = (icell-1)*this%dof + idof
+          call MatSetValuesLocal(B, 1, idx - 1, 1, idx - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
        enddo
     end do
 
