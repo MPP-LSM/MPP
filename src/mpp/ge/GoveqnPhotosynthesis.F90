@@ -9,6 +9,7 @@ module GoveqnPhotosynthesisType
   use mpp_abortutils            , only : endrun
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use PhotosynthesisAuxType     , only : photosynthesis_auxvar_type
+  use PhotosynthesisAuxType     , only : plant_auxvar_type
   use GoverningEquationBaseType , only : goveqn_base_type
   use petscvec
   use petscmat
@@ -135,10 +136,11 @@ contains
     PetscErrorCode                            :: ierr
     !
     ! !LOCAL VARIABLES
-    type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell, idof, idx
-    PetscReal                                 :: wl, term1, term2, term3
-    PetscReal, pointer                        :: f_p(:)
+    type(photosynthesis_auxvar_type) , pointer :: avars(:)
+    type(plant_auxvar_type)          , pointer :: plant
+    PetscInt                                   :: icell, idof, idx, ileaf
+    PetscReal                                  :: wl, term1, term2, term3, ci
+    PetscReal, pointer                         :: f_p(:)
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
 
@@ -173,7 +175,7 @@ contains
        case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
 
-          do idof = 1,this%dof
+          do idof = 1,this%dof-1
              term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
              term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
              term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
@@ -181,6 +183,17 @@ contains
              idx = (icell-1)*this%dof + idof
              f_p(idx) = avars(icell)%iota - term1 * term2 * term3
           end do
+
+          if (this%dof > 1) then
+             plant => avars(icell)%plant
+
+             idof = this%dof
+             idx = (icell-1)*this%dof + idof
+             ileaf = 1
+
+             ! psi_{t} + dpsi_{t+1} - leaf_minlwp
+             f_p(idx) =  (plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf))*1.0e5
+          end if
        end select
     end do
 
@@ -210,10 +223,11 @@ contains
     !
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell, idof, idx
+    type(plant_auxvar_type)         , pointer :: plant
+    PetscInt                                  :: icell, idof, idx, ileaf
     PetscReal                                 :: value
-    PetscReal                                 :: an_1, ci_1, gleaf_1
-    PetscReal                                 :: an_2, ci_2, gleaf_2
+    PetscReal                                 :: an_1, ci_1, gleaf_1, psi_term_1
+    PetscReal                                 :: an_2, ci_2, gleaf_2, psi_term_2
     PetscReal                                 :: wl
     PetscReal                                 :: term1_1, term2_1, term3_1
     PetscReal                                 :: term1_2, term2_2, term3_2
@@ -224,13 +238,14 @@ contains
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
     !
     ! dF/dci = dAn/dci - dgleaf/dci * (ca - ci) + gleaf
-
     
     avars => this%aux_vars_in
 
     do icell = 1, this%mesh%ncells_local
     
        wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+
+       plant => avars(icell)%plant
 
        do idof = 1,this%dof
           ci_perturb = -1.e-7
@@ -243,6 +258,9 @@ contains
           term2_1 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
           term3_1 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
+          ileaf = 1
+          psi_term_1 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
+
           avars(icell)%ci(idof) = ci_1 - ci_perturb
           call avars(icell)%AuxVarCompute()
 
@@ -253,6 +271,8 @@ contains
           term1_2 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
           term2_2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
           term3_2 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+
+          psi_term_2 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
 
           avars(icell)%ci(idof) = ci_1
           call avars(icell)%AuxVarCompute()
@@ -283,15 +303,19 @@ contains
 
           case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
-             dterm1_dci = (term1_1 - term1_2)/ci_perturb
-             dterm2_dci = (term2_1 - term2_2)/ci_perturb
-             dterm3_dci = (term3_1 - term3_2)/ci_perturb
+             if (idof == 1) then
+                dterm1_dci = (term1_1 - term1_2)/ci_perturb
+                dterm2_dci = (term2_1 - term2_2)/ci_perturb
+                dterm3_dci = (term3_1 - term3_2)/ci_perturb
 
-             !f_p = iota - term1 * term2 * term3
-             value = &
-                  - dterm1_dci * term2_1    * term3_1    &
-                  - term1_1    * dterm2_dci * term3_1    &
-                  - term1_1    * term2_1    * dterm3_dci
+                !f_p = iota - term1 * term2 * term3
+                value = &
+                     - dterm1_dci * term2_1    * term3_1    &
+                     - term1_1    * dterm2_dci * term3_1    &
+                     - term1_1    * term2_1    * dterm3_dci
+             else
+                value = (psi_term_1 - psi_term_2)/ci_perturb * 1.e5
+             endif
 
           end select
 

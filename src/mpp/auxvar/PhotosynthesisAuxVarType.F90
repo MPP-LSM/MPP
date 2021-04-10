@@ -661,6 +661,7 @@ contains
     class(photosynthesis_auxvar_type) :: this
     !
     PetscReal                            :: t1, t2, t3, a, b, dy, head
+    PetscReal                            :: an, gbc, delta_c
     PetscInt                             :: ileaf, idof
     class(plant_auxvar_type) , pointer   :: plant
     PetscReal                , parameter :: g = 9.80665d0
@@ -737,8 +738,12 @@ contains
       case (VAR_WUE)
 
          do idof = 1, this%ndof
-            if (this%an(idof) > 0.d0) then
-               this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.6d0/this%gbc )
+            an = this%an(idof)
+            if (an > 0.d0) then
+               delta_c = this%cair - this%ci(idof)
+               gbc = this%gbc
+               this%gs (idof) = 1.6d0 / (an/delta_c - 1.d0/gbc)
+               !this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - /(1.6*this%gbc) )
             else
                this%gs(idof) = gs_min
             end if
@@ -755,8 +760,13 @@ contains
        case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
           do idof = 1, this%ndof
-             if (this%an(idof) > 0.d0) then
-                this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.6d0/this%gbc )
+            an = this%an(idof)
+            if (an > 0.d0) then
+               delta_c = this%cair - this%ci(idof)
+               an = this%an(idof)
+               gbc = this%gbc
+               this%gs (idof) = 1.6d0 / (an/delta_c - 1.d0/gbc)
+!                this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.d0/(1.6d0*this%gbc) )
              else
                 this%gs(idof) = gs_min
              end if
@@ -770,7 +780,8 @@ contains
              end if
           enddo
 
-          this%etflx = (this%esat - this%eair)/ (1.d0/this%gbv + 1.0/this%gs(2) )/this%patm
+          idof = this%ndof
+          this%etflx = (this%esat - this%eair)/this%patm * this%gleaf_w(idof)
 
           plant => this%plant
 

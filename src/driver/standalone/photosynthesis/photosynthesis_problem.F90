@@ -196,6 +196,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : GE_PHOTOSYNTHESIS
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     ! !ARGUMENTS
     implicit none
@@ -205,6 +206,10 @@ contains
     PHTSYN_GE = 1
 
     call phtsyn_mpp%AddGovEqnWithMeshRank(GE_PHOTOSYNTHESIS, 'Photosynthesis model', PHTSYN_MESH)
+
+    if (gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+       call phtsyn_mpp%SetDofsForGovEqn(PHTSYN_GE, 2)
+    end if
     
     call phtsyn_mpp%SetMeshesOfGoveqnsByMeshRank()
 
