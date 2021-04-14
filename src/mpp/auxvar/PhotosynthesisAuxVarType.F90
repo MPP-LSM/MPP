@@ -742,8 +742,7 @@ contains
             if (an > 0.d0) then
                delta_c = this%cair - this%ci(idof)
                gbc = this%gbc
-               this%gs (idof) = 1.6d0 / (an/delta_c - 1.d0/gbc)
-               !this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - /(1.6*this%gbc) )
+               this%gs(idof) = 1.6d0/ (delta_c/an - 1.d0/gbc )
             else
                this%gs(idof) = gs_min
             end if
@@ -765,8 +764,7 @@ contains
                delta_c = this%cair - this%ci(idof)
                an = this%an(idof)
                gbc = this%gbc
-               this%gs (idof) = 1.6d0 / (an/delta_c - 1.d0/gbc)
-!                this%gs(idof) = 1.d0/ ( (this%cair - this%ci(idof))/(1.6d0 * this%an(idof)) - 1.d0/(1.6d0*this%gbc) )
+               this%gs(idof) = 1.6d0/ (delta_c/an - 1.d0/gbc )
              else
                 this%gs(idof) = gs_min
              end if
