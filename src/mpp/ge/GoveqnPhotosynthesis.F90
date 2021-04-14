@@ -211,6 +211,8 @@ contains
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants , only : VAR_WUE
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
+    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
     !
     implicit none
     !
@@ -248,7 +250,13 @@ contains
        plant => avars(icell)%plant
 
        do idof = 1,this%dof
-          ci_perturb = -1.e-7
+          if ( &
+               (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) .or. &
+               (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
+             ci_perturb = -1.e-14
+          else
+             ci_perturb = -1.e-7
+          endif
 
           an_1    = avars(icell)%an(idof)
           ci_1    = avars(icell)%ci(idof)
