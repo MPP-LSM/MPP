@@ -146,7 +146,28 @@ contains
                 cur_goveq%aux_vars_in(icell)%btran = 1.d0
                 cur_goveq%aux_vars_in(icell)%dpai  = dpai(nbot-1 + k)
                 cur_goveq%aux_vars_in(icell)%dpai  = 1.d0
-             end do
+
+                ! Root parameters
+                cur_goveq%aux_vars_in(icell)%root%biomass = 500.d0
+                cur_goveq%aux_vars_in(icell)%root%radius  = 0.29d-3
+                cur_goveq%aux_vars_in(icell)%root%density = 0.31d6
+                cur_goveq%aux_vars_in(icell)%root%resist  = 25.d0
+
+                ! Soil paramters
+                call set_soil_parameters(cur_goveq%aux_vars_in(icell)%soil)
+
+                ! Plant parameters
+                cur_goveq%aux_vars_in(icell)%plant%nleaf = 1
+                call cur_goveq%aux_vars_in(icell)%plant%AllocateMemory()
+
+                cur_goveq%aux_vars_in(icell)%plant%leaf_psi(:)    = -1.5d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_height(:) = 15.d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_capc(:)   = 2500.d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -2.d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_lai(:)    = 500.d0
+                cur_goveq%aux_vars_in(icell)%plant%k_stem2leaf(:) = 4.d0
+
+               end do
           end do
        end do
 
@@ -155,6 +176,63 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
+  subroutine set_soil_parameters(soil)
+   !
+   use PhotosynthesisAuxType, only : soil_auxvar_type
+   !
+   implicit none
+   !
+   type(soil_auxvar_type), pointer :: soil
+   !
+   PetscInt  :: j, texture
+   PetscReal :: beta_param, z1, z2
+   PetscReal, parameter, dimension(11) :: theta_sat = [0.395d0, 0.410d0, 0.435d0, 0.485d0, 0.451d0, 0.420d0, 0.477d0, 0.476d0, 0.426d0, 0.492d0, 0.482d0]
+   PetscReal, parameter, dimension(11) :: psi_sat   = [-121.d0, -90.d0, -218d0, -786.d0, -478.d0, -299.d0, -356.d0, -630.d0, -153.d0, -490.d0, -405.d0]
+   PetscReal, parameter, dimension(11) :: b         = [4.05d0, 4.38d0, 4.90d0, 5.30d0, 5.39d0, 7.12d0, 7.75d0, 8.52d0, 10.40d0, 10.40d0, 11.40d0];
+   PetscReal, parameter, dimension(11) :: k_sat     = [1.056d0, 0.938d0, 0.208d0, 0.0432d0, 0.0417d0, 0.0378d0, 0.0102d0, 0.0147d0, 0.0130d0, 0.0062d0, 0.0077d0];
+
+   texture = 5;
+
+   soil%nlevsoi = 11
+
+   call soil%AllocateMemory()
+
+   soil%dz(01) = 0.05d0
+   soil%dz(02) = 0.05d0
+   soil%dz(03) = 0.10d0
+   soil%dz(04) = 0.10d0
+   soil%dz(05) = 0.20d0
+   soil%dz(06) = 0.20d0
+   soil%dz(07) = 0.20d0
+   soil%dz(08) = 0.30d0
+   soil%dz(09) = 0.40d0
+   soil%dz(10) = 0.40d0
+   soil%dz(11) = 0.50d0
+
+   beta_param = 0.90d0;  ! root profile parameter: shallow profile
+   !beta_param = 0.97d0;  ! root profile parameter: deep profile
+
+   do j = 1, soil%nlevsoi
+      if (j == 1) then
+         z2 = soil%dz(j) * 100;
+         soil%rootfr(j) = 1 - beta_param**z2;
+      else
+         z1 = z2;
+         z2 = z1 + soil%dz(j) * 100;
+         soil%rootfr(j) = beta_param**z1 - beta_param**z2;
+      end if
+
+      soil%watsat(j)     = theta_sat(texture)
+      soil%hksat(j)      = k_sat(texture) * 10.d0/60.d0
+      soil%bsw(j)        = b(texture)
+
+      soil%h2osoi_vol(j) = 0.5d0*soil%watsat(j)
+      soil%psi(j)        = psi_sat(texture) * (soil%h2osoi_vol(j)/soil%watsat(j))**(-soil%bsw(j))
+   end do
+
+ end subroutine set_soil_parameters
+
+ !------------------------------------------------------------------------
   subroutine photosynthesis_set_boundary_conditions(psy_mpp)
 
     ! !DESCRIPTION
