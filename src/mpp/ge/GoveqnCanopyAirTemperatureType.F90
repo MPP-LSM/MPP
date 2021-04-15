@@ -402,7 +402,7 @@ contains
     PetscInt                     :: nauxvar
     PetscReal, pointer           :: var_values(:)
 
-    if (nauxvar > this%mesh%ncells_all) then
+    if (nauxvar > this%mesh%ncells_all*this%nleafGE) then
       call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
     endif
 
