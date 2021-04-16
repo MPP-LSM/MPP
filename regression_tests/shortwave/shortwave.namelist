@@ -1,0 +1,9 @@
+&mpp_driver
+  problem_type = 'shortwave'
+/
+
+&regression_test
+  write_regression_output = .true.
+  num_cells = 6
+/
+

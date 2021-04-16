@@ -4,3 +4,4 @@ local
 *.stdout
 *.regression
 *xcode
+.DS_Store

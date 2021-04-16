@@ -9,6 +9,7 @@ module GoveqnPhotosynthesisType
   use mpp_abortutils            , only : endrun
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use PhotosynthesisAuxType     , only : photosynthesis_auxvar_type
+  use PhotosynthesisAuxType     , only : plant_auxvar_type
   use GoverningEquationBaseType , only : goveqn_base_type
   use petscvec
   use petscmat
@@ -29,10 +30,11 @@ module GoveqnPhotosynthesisType
      procedure, public :: ComputeResidual           => PhotosynthesisComputeResidual
      procedure, public :: ComputeJacobian           => PhotosynthesisComputeJacobian
      !procedure, public :: ComputeOperatorsDiag     => PhotosynthesisComputeOperatorsDiag
-     !procedure, public :: GetRValues               => PhotosynthesisGetRValues
+     procedure, public :: GetRValues               => PhotosynthesisGetRValues
      procedure, public :: SavePrimaryIndependentVar => PhotosynthesisSavePrmIndepVar
 
   end type goveqn_photosynthesis_type
+
 
 contains
 
@@ -82,7 +84,7 @@ contains
     ! Update aux vars for internal cells
     do ghosted_id = 1, this%mesh%ncells_all
       if (this%mesh%is_active(ghosted_id)) then
-         call this%aux_vars_in(ghosted_id)%Init()
+         call this%aux_vars_in(ghosted_id)%Init(this%dof)
       end if
    enddo
 
@@ -120,6 +122,11 @@ contains
     ! !DESCRIPTION:
     ! Computes the residual equation for the discretized Richards equation
     !
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_WUE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    !
     implicit none
     !
     ! !ARGUMENTS
@@ -129,10 +136,11 @@ contains
     PetscErrorCode                            :: ierr
     !
     ! !LOCAL VARIABLES
-    type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell
-    PetscReal                                 :: gleaf
-    PetscReal, pointer                        :: f_p(:)
+    type(photosynthesis_auxvar_type) , pointer :: avars(:)
+    type(plant_auxvar_type)          , pointer :: plant
+    PetscInt                                   :: icell, idof, idx, ileaf
+    PetscReal                                  :: wl, term1, term2, term3, ci
+    PetscReal, pointer                         :: f_p(:)
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
 
@@ -142,10 +150,51 @@ contains
 
     do icell = 1, this%mesh%ncells_local
     
-       gleaf = 1.d0 / (1.d0/avars(icell)%gbc + 1.6d0/avars(icell)%gs);
+       select case (avars(icell)%gstype)
+       case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+          do idof = 1,this%dof
+             f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+          end do
 
-       f_p(icell) = avars(icell)%an - gleaf * (avars(icell)%cair - avars(icell)%ci)
+       case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+          do idof = 1,this%dof
+             f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+          end do
 
+       case (VAR_WUE)
+          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+
+          do idof = 1,this%dof
+             term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+             term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+             term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+
+             f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+          end do
+
+       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+
+          do idof = 1,this%dof-1
+             term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+             term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+             term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+
+             idx = (icell-1)*this%dof + idof
+             f_p(idx) = avars(icell)%iota - term1 * term2 * term3
+          end do
+
+          if (this%dof > 1) then
+             plant => avars(icell)%plant
+
+             idof = this%dof
+             idx = (icell-1)*this%dof + idof
+             ileaf = 1
+
+             ! psi_{t} + dpsi_{t+1} - leaf_minlwp
+             f_p(idx) =  (plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf))*1.0e5
+          end if
+       end select
     end do
 
     call VecRestoreArrayF90(F, f_p, ierr); CHKERRQ(ierr)
@@ -158,6 +207,13 @@ contains
     ! !DESCRIPTION:
     ! Computes the jacobian matrix for the discretized Richards equation
     !
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_WUE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
+    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
+    !
     implicit none
     !
     ! !ARGUMENTS
@@ -169,12 +225,17 @@ contains
     !
     ! !LOCAL VARIABLES
     type(photosynthesis_auxvar_type), pointer :: avars(:)
-    PetscInt                                  :: icell
+    type(plant_auxvar_type)         , pointer :: plant
+    PetscInt                                  :: icell, idof, idx, ileaf
     PetscReal                                 :: value
-    PetscReal                                 :: an_1, ci_1, gleaf_1
-    PetscReal                                 :: an_2, ci_2, gleaf_2
+    PetscReal                                 :: an_1, ci_1, gleaf_1, psi_term_1
+    PetscReal                                 :: an_2, ci_2, gleaf_2, psi_term_2
+    PetscReal                                 :: wl
+    PetscReal                                 :: term1_1, term2_1, term3_1
+    PetscReal                                 :: term1_2, term2_2, term3_2
+    PetscReal                                 :: dterm1_dci, dterm2_dci, dterm3_dci
     PetscReal, pointer                        :: f_p(:)
-    PetscReal, parameter                      :: ci_perturb = 1.d-14
+    PetscReal                                 :: ci_perturb
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
     !
@@ -184,22 +245,91 @@ contains
 
     do icell = 1, this%mesh%ncells_local
     
-       an_1    = avars(icell)%an
-       ci_1    = avars(icell)%ci
-       gleaf_1 = 1.d0 / (1.d0/avars(icell)%gbc + 1.6d0/avars(icell)%gs);
+       wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
 
-       avars(icell)%ci = ci_1 - ci_perturb
-       call avars(icell)%AuxVarCompute()
+       plant => avars(icell)%plant
 
-       an_2    = avars(icell)%an
-       ci_2    = avars(icell)%ci
-       gleaf_2 = 1.d0 / (1.d0/avars(icell)%gbc + 1.6d0/avars(icell)%gs);
+       do idof = 1,this%dof
+          if ( &
+               (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) .or. &
+               (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
+             ci_perturb = -1.e-14
+          else
+             ci_perturb = -1.e-7
+          endif
 
-       value = (an_1 - an_2)/ci_perturb &
-            - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
-            + gleaf_1
+          an_1    = avars(icell)%an(idof)
+          ci_1    = avars(icell)%ci(idof)
+          gleaf_1 = avars(icell)%gleaf_c(idof)
 
-       call MatSetValuesLocal(B, 1, icell-1, 1, icell-1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+          term1_1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+          term2_1 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+          term3_1 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+
+          ileaf = 1
+          psi_term_1 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
+
+          avars(icell)%ci(idof) = ci_1 - ci_perturb
+          call avars(icell)%AuxVarCompute()
+
+          an_2    = avars(icell)%an(idof)
+          ci_2    = avars(icell)%ci(idof)
+          gleaf_2 = avars(icell)%gleaf_c(idof)
+
+          term1_2 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+          term2_2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+          term3_2 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+
+          psi_term_2 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
+
+          avars(icell)%ci(idof) = ci_1
+          call avars(icell)%AuxVarCompute()
+
+          select case (avars(icell)%gstype)
+          case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+
+             value = (an_1 - an_2)/ci_perturb &
+                  - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
+                  + gleaf_1
+
+          case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+             value = (an_1 - an_2)/ci_perturb &
+                  - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
+                  + gleaf_1
+
+          case (VAR_WUE)
+
+             dterm1_dci = (term1_1 - term1_2)/ci_perturb
+             dterm2_dci = (term2_1 - term2_2)/ci_perturb
+             dterm3_dci = (term3_1 - term3_2)/ci_perturb
+
+             !f_p = iota - term1 * term2 * term3
+             value = &
+                  - dterm1_dci * term2_1    * term3_1    &
+                  - term1_1    * dterm2_dci * term3_1    &
+                  - term1_1    * term2_1    * dterm3_dci
+
+          case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+
+             if (idof == 1) then
+                dterm1_dci = (term1_1 - term1_2)/ci_perturb
+                dterm2_dci = (term2_1 - term2_2)/ci_perturb
+                dterm3_dci = (term3_1 - term3_2)/ci_perturb
+
+                !f_p = iota - term1 * term2 * term3
+                value = &
+                     - dterm1_dci * term2_1    * term3_1    &
+                     - term1_1    * dterm2_dci * term3_1    &
+                     - term1_1    * term2_1    * dterm3_dci
+             else
+                value = (psi_term_1 - psi_term_2)/ci_perturb * 1.e5
+             endif
+
+          end select
+
+          idx = (icell-1)*this%dof + idof
+          call MatSetValuesLocal(B, 1, idx - 1, 1, idx - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+       enddo
     end do
 
     call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
@@ -225,24 +355,94 @@ contains
    Vec :: x
    !
    PetscScalar, pointer :: x_p(:)
-   PetscInt             :: ghosted_id, size
+   PetscInt             :: ghosted_id, size, idof
    PetscErrorCode       :: ierr
    
    call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
 
-   if (size /= this%mesh%ncells_local) then
+   if (size /= this%mesh%ncells_local * this%dof) then
       call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
    end if
 
    call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
 
    do ghosted_id = 1, this%mesh%ncells_local
-      this%aux_vars_in(ghosted_id)%ci = x_p(ghosted_id)
+      do idof = 1, this%dof
+         this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+      end do
    end do
 
    call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
 
  end subroutine PhotosynthesisSavePrmIndepVar
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisGetRValues (this, auxvar_type, var_type, nauxvar, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    !
+    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants, only : AUXVAR_BC
+    use MultiPhysicsProbConstants, only : AUXVAR_SS
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_photosynthesis_type) :: this
+    PetscInt                     :: auxvar_type
+    PetscInt                     :: var_type
+    PetscInt                     :: nauxvar
+    PetscReal, pointer           :: var_values(:)
+
+    if (nauxvar > this%mesh%ncells_all * this%dof) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
+    select case(auxvar_type)
+    case(AUXVAR_INTERNAL)
+       call PhotosynthesisGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, this%dof, var_values)
+    case default
+       write(*,*)'Unknown auxvar_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
+  end subroutine PhotosynthesisGetRValues
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisGetRValuesFromAuxVars (aux_var, var_type, ncells, ndof, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(photosynthesis_auxvar_type) , pointer :: aux_var(:)
+    PetscInt                                   :: var_type
+    PetscInt                                   :: ncells
+    PetscInt                                   :: ndof
+    PetscReal                        , pointer :: var_values(:)
+    !
+    PetscInt                                   :: ghosted_id, idof
+
+    select case(var_type)
+    case(VAR_STOMATAL_CONDUCTANCE)
+
+       do ghosted_id = 1, ncells
+          do idof = 1, ndof
+             var_values(ghosted_id) = aux_var(ghosted_id)%gs(idof)
+          end do
+       end do
+
+    case default
+       write(iulog,*) 'PhotosynthesisGetRValuesFromAuxVars: Unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine PhotosynthesisGetRValuesFromAuxVars
 
 #endif
 

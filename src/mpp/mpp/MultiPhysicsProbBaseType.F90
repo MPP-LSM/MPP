@@ -63,6 +63,7 @@ module MultiPhysicsProbBaseType
      procedure, public :: GovEqnSetBothCouplingVars     => MPPGovEqnSetBothCouplingVars
      procedure, public :: GovEqnAddCouplingCondition    => MPPGovEqnAddCouplingCondition
      procedure, public :: AddMesh                       => MPPAddMesh
+     procedure, public :: SetDofsForGovEqn              => MPPSetDofsForGovEqn
   end type multiphysicsprob_base_type
 
   public :: MPPBaseInit
@@ -469,6 +470,23 @@ contains
   end subroutine MPPAddGovEqnWithMeshRank
 
   !------------------------------------------------------------------------
+ subroutine MPPSetDofsForGovEqn(this, geq_rank, ndofs)
+   !
+   ! !DESCRIPTION:
+   ! Sets the DOFs for a governing equation
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(multiphysicsprob_base_type) :: this
+   PetscInt, intent(in)              :: geq_rank
+   PetscInt, intent(in)              :: ndofs
+
+   call this%soe%SetDofsForGovEqn(geq_rank, ndofs)
+
+ end subroutine MPPSetDofsForGovEqn
+
+!------------------------------------------------------------------------
   subroutine MPPSetMeshesOfGoveqns(this)
     !
     ! !DESCRIPTION:

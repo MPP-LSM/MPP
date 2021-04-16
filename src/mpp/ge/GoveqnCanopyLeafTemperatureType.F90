@@ -216,6 +216,10 @@ contains
     PetscInt                     :: nauxvar
     PetscReal, pointer           :: var_values(:)
 
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
     select case(auxvar_type)
     case(AUXVAR_INTERNAL)
        call CLeafTempGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
@@ -244,6 +248,10 @@ contains
     PetscInt                     :: var_type
     PetscInt                     :: nauxvar
     PetscReal, pointer           :: var_values(:)
+
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
 
     select case(auxvar_type)
     case(AUXVAR_INTERNAL)

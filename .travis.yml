@@ -5,7 +5,8 @@ before_script:
 
 sudo: required
 
-dist: trusty # Ubuntu 14.04.
+#dist: trusty # Ubuntu 14.04.
+dist : bionic # Ubuntu 18.04.
 
 compiler:
   - gcc

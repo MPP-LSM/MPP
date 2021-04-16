@@ -1,0 +1,14 @@
+&mpp_driver
+  problem_type = 'photosynthesis'
+/
+
+&regression_test
+  write_regression_output = .true.
+  num_cells = 10
+/
+
+&problem_options
+  photosynthesis_pathway     = 'c4'
+  stomatal_conductance_model = 'ball-berry'
+/
+

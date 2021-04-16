@@ -46,6 +46,7 @@ module GoverningEquationBaseType
      procedure, public :: Destroy                           => GoveqnBaseDestroy
      procedure, public :: PrintInfo                         => GoveqnBasePrintInfo
      procedure, public :: PreSolve                          => GoveqnBasePreSolve
+     procedure, public :: PostSolve                         => GoveqnBasePostSolve
      procedure, public :: ComputeResidual                   => GoveqnBaseComputeResidual
      procedure, public :: ComputeJacobian                   => GoveqnBaseComputeJacobian
      procedure, public :: ComputeOffDiagJacobian            => GoveqnBaseComputeOffDiagJacobian
@@ -310,6 +311,23 @@ contains
   end subroutine GoveqnBasePreSolve
 
   !------------------------------------------------------------------------
+  subroutine GoveqnBasePostSolve(this)
+   !
+   ! !DESCRIPTION:
+   ! Dummy subroutine for PreSolve
+   !
+   implicit none
+   !
+   ! !ARGUMENTS
+   class(goveqn_base_type) :: this
+
+   write(iulog,*) 'In GoveqnBasePostSolve: This needs to be extended by ' // &
+        'child class.'
+   call endrun(msg=errMsg(__FILE__, __LINE__))
+
+  end subroutine GoveqnBasePostSolve
+
+ !------------------------------------------------------------------------
   subroutine GoveqnBaseGetNConditionsExcptCondItype(this, cond_type, &
               cond_itype_to_exclude, num_conds)
     !

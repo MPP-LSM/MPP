@@ -347,7 +347,7 @@ contains
     type(regression_type) :: regression
     class(goveqn_base_type) , pointer :: goveq
 
-    ncells = (nz_cair+1)*ncair
+    ncells = ntree*(nz_cair+1)*ncair
 
     allocate(data(ncells))
 
@@ -361,13 +361,16 @@ contains
        select type(goveq)
        class is (goveqn_cair_temp_type)
           name = 'air_temperature'; category = 'temperature'
+          ncells = (nz_cair+1)*ncair
           call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
           
        class is (goveqn_cair_vapor_type)
           name = 'air_vapor'; category = 'general'
+          ncells = (nz_cair+1)*ncair
           call goveq%GetRValues(AUXVAR_INTERNAL, VAR_WATER_VAPOR, ncells, data)
 
        class is (goveqn_cleaf_temp_type)
+          ncells = ntree*(nz_cair+1)*ncair
           if (ieqn == 3) then
              name = 'sunlit_leaf_temperature'
           else

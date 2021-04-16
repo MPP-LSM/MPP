@@ -32,6 +32,7 @@ module SystemOfEquationsLongwaveType
      procedure, public :: Init                  => LongwaveSoeInit
      procedure, public :: AllocateAuxVars       => LongwaveSoeAllocateAuxVars
      procedure, public :: PreSolve              => LongwaveSoePreSolve
+     procedure, public :: PostSolve             => LongwaveSoePostSolve
      procedure, public :: ComputeRHS            => LongwaveSoeComputeRhs
      procedure, public :: ComputeOperators      => LongwaveSoeComputeOperators
 
@@ -115,6 +116,28 @@ contains
     enddo
 
   end subroutine LongwaveSoePreSolve
+
+  !------------------------------------------------------------------------
+  subroutine LongwaveSoePostSolve (this)
+    !
+    ! !DESCRIPTION:
+    ! After a solve, save radiation up, down, and absorbed at each cell
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType, only : SOEBaseInit
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_longwave_type) :: this
+    !
+    class(goveqn_base_type) , pointer :: cur_goveq
+    PetscErrorCode :: ierr
+
+    call VecCopy(this%solver%soln, this%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call this%SavePrimaryIndependentVar(this%solver%soln)
+
+  end subroutine LongwaveSoePostSolve
 
   !------------------------------------------------------------------------
   subroutine LongwaveSoeComputeRhs(this, ksp, B, ierr)
