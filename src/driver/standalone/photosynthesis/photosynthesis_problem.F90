@@ -252,26 +252,26 @@ contains
     type(regression_type)             :: regression
     class(goveqn_base_type) , pointer :: goveq
 
-    ncells = (nz_cair+1)*ncair
-
     call regression%Init(filename_base, num_cells)
     call regression%OpenOutput()
-    
+
     ieqn = 1
 
     call phtsyn_mpp%soe%SetPointerToIthGovEqn(ieqn, goveq)
 
+    ncells = (nz_cair+1) * ncair * goveq%dof
+
     select type(goveq)
     class is (goveqn_photosynthesis_type)
 
-       allocate(ci(ncells * goveq%dof ))
+       allocate(ci(ncells))
        icell = 0;
 
        do k = 1,nz_cair+1
 
           do idof = 1, goveq%dof
              icell = icell + 1
-             ci(icell) = goveq%aux_vars_in(icell)%ci(idof)
+             ci(icell) = goveq%aux_vars_in(k)%ci(idof)
           end do
 
        end do
