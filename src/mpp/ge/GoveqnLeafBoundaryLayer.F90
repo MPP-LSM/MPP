@@ -73,9 +73,14 @@ contains
     ! !ARGUMENTS
     class(goveqn_leaf_bnd_lyr_type) :: this
     !
+    PetscInt :: icell
+    !
 
     ! Allocate memory and initialize aux vars: For internal connections
     allocate(this%aux_vars_in(this%mesh%ncells_all))
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%Init()
+    enddo
 
   end subroutine LeafBndLyrAllocateAuxVars
 
