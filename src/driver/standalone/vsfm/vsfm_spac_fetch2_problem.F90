@@ -30,15 +30,16 @@ module vsfm_spac_fetch2_problem
   PetscReal , parameter :: RLD           = 1.d4 ! root length density [m_root / m^3_soil]
 
   PetscInt  , parameter :: es_nz                = 85        ! -
-  PetscReal , parameter :: es_Asapwood          = 87.6282d0 ! m^2
-  PetscReal , parameter :: es_phis50_def        = -2.50d6   ! Pa
+  !PetscReal , parameter :: es_Asapwood         = 87.6282d0 ! m^2
+  PetscReal , parameter :: es_Asapwood          = 0.0198d0 ! m^2
+  PetscReal , parameter :: es_phis50_def        = -0.90d6   ! Pa
   PetscReal , parameter :: es_phi50_def         = -2.2d6    ! Pa
   PetscReal , parameter :: es_phi88_def         = -0.5d6    ! Pa
-  PetscReal , parameter :: es_c1_def            = 1.2d6     ! Pa
-  PetscReal , parameter :: es_c2_def            = 5.0d0     ! -
-  PetscReal , parameter :: es_c3_def            = 10.3d0    ! -
-  PetscReal , parameter :: es_kmax_def          = 0.275d-6  ! s
-  PetscReal , parameter :: es_chuang_phi0_def   = -5.74d8   ! Pa
+  PetscReal , parameter :: es_c1_def            = 1.4d6     ! Pa
+  PetscReal , parameter :: es_c2_def            = 2.0d0     ! -
+  PetscReal , parameter :: es_c3_def            = 20.0d0    ! -
+  PetscReal , parameter :: es_kmax_def          = 0.5d-6  ! s
+  PetscReal , parameter :: es_chuang_phi0_def   = -1.4d8   ! Pa
   PetscReal , parameter :: es_chuang_p_def      = 20.d0     ! -
   PetscReal , parameter :: es_taper_top         = 0.2d0     ! -
   PetscInt  , parameter :: es_ntree             = 3342
@@ -839,13 +840,13 @@ end subroutine SetUpTreeProperties
 
     ! Read the soil bc file
     if (soil_bc_specified) then
-       call PetscViewerBinaryOpen(PETSC_COMM_WORLD, soil_bc_file, FILE_MODE_READ, viewer, ierr); CHKERRQ(ierr)
+       call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(soil_bc_file), FILE_MODE_READ, viewer, ierr); CHKERRQ(ierr)
        call VecCreate(PETSC_COMM_WORLD, SoilBC, ierr); CHKERRQ(ierr)
        call VecLoad(SoilBC, viewer, ierr); CHKERRQ(ierr)
        call PetscViewerDestroy(viewer, ierr); CHKERRQ(ierr)
        call VecGetSize(SoilBC, vec_size, ierr); CHKERRQ(ierr)
        if (save_pressure_bc) then
-         call VecDuplicate(SoilMoistureBC,SoilBC, ierr); CHKERRQ(ierr) 
+         call VecDuplicate(SoilBC,SoilMoistureBC,ierr); CHKERRQ(ierr)
        end if
 
        ntimes = vec_size
@@ -858,7 +859,6 @@ end subroutine SetUpTreeProperties
        end if
     end if
 
-    write(*,*)'sm_bc_specified: ',sm_bc_specified
     write(*,*)trim(sm_bc_file)
     if (sm_bc_specified) then
        call PetscViewerBinaryOpen(PETSC_COMM_WORLD, sm_bc_file, FILE_MODE_READ, viewer, ierr); CHKERRQ(ierr)
@@ -976,7 +976,8 @@ end subroutine SetUpTreeProperties
        select case(trim(problem_type))
        case ('oak','pine','e','m','o','p')
           call set_source_sink_for_single_tree(nET, istep, ET)
-          call set_boundary_conditions_for_single_tree(istep, SoilBC)
+          if (soil_bc_specified) call set_boundary_conditions_for_single_tree(istep, SoilBC)
+          if (sm_bc_specified) call set_soil_moisture_boundary_conditions_for_single_tree(istep, SoilMoistureBC, SoilBC)
 
        case ('oak_and_pine')
           call set_source_sink_for_single_tree(nET, istep, ET)
@@ -1038,6 +1039,8 @@ end subroutine SetUpTreeProperties
 
        if (save_et_factor) then
           select case(trim(problem_type))
+          case ('oak','pine','oak_and_pine','oak_spac','pine_spac','e','m','o','p')
+             call diagnose_et_factor_single_tree(nET, istep, et_factor_p)
           case ('emop_spac','e_spac','m_spac','o_spac','p_spac')
              call diagnose_et_factor_emop(nET, istep, et_factor_p)
           case default
@@ -1143,12 +1146,14 @@ end subroutine SetUpTreeProperties
        call VecDestroy(Coupling_Mass_Flux, ierr); CHKERRQ(ierr)
     end if
 
+#if 0
     if (save_pressure_bc) then
        call PetscViewerBinaryOpen(PETSC_COMM_SELF,pressure_bc_file,FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
        call VecView(SoilBC,viewer,ierr);CHKERRQ(ierr)
        call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
        call VecDestroy(SoilBC, ierr); CHKERRQ(ierr)
     end if
+#endif
   end subroutine run_vsfm_spac_fetch2_problem
   
   !------------------------------------------------------------------------
@@ -4745,6 +4750,43 @@ end subroutine SetUpTreeProperties
     end do
 
   end subroutine diagnose_et_factor_emop
+
+  !------------------------------------------------------------------------
+  subroutine diagnose_et_factor_single_tree(nET, istep, et_factor_p)
+    !
+    ! !DESCRIPTION:
+    !
+    use MultiPhysicsProbVSFM      , only : vsfm_mpp
+    use MultiPhysicsProbConstants , only : AUXVAR_SS
+    use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants , only : VAR_POT_SINK_DOWNREG_FACTOR
+    use MultiPhysicsProbConstants , only : VAR_PRESSURE
+    use petscsys
+    use petscvec
+    !
+    implicit none
+    !
+    PetscInt           :: nET, istep
+    PetscReal, pointer :: et_factor_p(:)
+    !
+    PetscReal, pointer :: ss_value(:)
+    PetscInt           :: kk, et_idx, soe_auxvar_id
+
+    et_idx        = (istep-1)*(nET)
+    soe_auxvar_id = 1
+
+    allocate(ss_value(nET))
+
+    call vsfm_mpp%soe%GetDataForCLM(AUXVAR_SS, VAR_POT_SINK_DOWNREG_FACTOR, soe_auxvar_id, ss_value)
+
+    do kk = 1, nET
+       et_idx = et_idx + 1
+       et_factor_p(et_idx) = ss_value(kk)
+    end do
+
+    deallocate(ss_value)
+
+  end subroutine diagnose_et_factor_single_tree
 
   !------------------------------------------------------------------------
   subroutine save_internal_mass_flux_data(soe, num_internal_mass_flux, istep, mass_flux_p)
