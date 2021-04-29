@@ -39,6 +39,7 @@ module RichardsODEPressureAuxType
      PetscInt  :: density_type           ! [-]
      PetscReal :: pot_mass_sink_pressure ! [Pa]
      PetscReal :: pot_mass_sink_exponent ! [-]
+     PetscReal :: pot_sink_downreg_factor! [-]
 
      ! derived quantities = f(state_variables, parameters)
      PetscReal :: vis                    ! [Pa s]
@@ -96,6 +97,7 @@ contains
     this%por                     = 0.d0
     this%pot_mass_sink_pressure  = 0.d0
     this%pot_mass_sink_exponent  = 0.d0
+    this%pot_sink_downreg_factor = 0.d0
 
     this%satParams%sat_func_type = 0
     this%satParams%sat_res       = 0.d0

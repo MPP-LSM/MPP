@@ -151,8 +151,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_BBERRY   = 654
   PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C4     = 655
   PetscInt, parameter, public :: VAR_PHOTOSYNTHETIC_PATHWAY_C3     = 656
-
-
+  PetscInt, parameter, public :: VAR_POT_SINK_DOWNREG_FACTOR       = 657
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
@@ -160,6 +159,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: AUXVAR_SS                         = 703
   PetscInt, parameter, public :: AUXVAR_CONN_INTERNAL              = 704
   PetscInt, parameter, public :: AUXVAR_CONN_BC                    = 705
+  PetscInt, parameter, public :: AUXVAR_BC_OTR_GOVEQ               = 706
 
   PetscInt, parameter, public :: PETSC_TS                          = 801
   PetscInt, parameter, public :: PETSC_SNES                        = 802

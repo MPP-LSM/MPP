@@ -32,8 +32,10 @@ module SystemOfEquationsVSFMType
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_bc(:)            ! Boundary conditions.
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_ss(:)            ! Source-sink.
      type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_conn_in(:)       ! Internal connections
+     type (sysofeqns_vsfm_auxvar_type), pointer :: aux_vars_bc_otr_geqn(:)   ! Boundary conditions for coupling with other governing equations
 
      PetscInt                                   :: num_auxvars_conn_in       ! Number of auxvars associated with internal connections
+     PetscInt                                   :: num_auxvars_bc_otr_geqn   ! Number of auxvars associated with boundary condition for coupling with other governing equations
    contains
      procedure, public :: Init                   => VSFMSOEInit
      procedure, public :: Residual               => VSFMSOEResidual
@@ -74,10 +76,17 @@ contains
 
     call SOEBaseInit(this)
 
+    this%num_auxvars_in         = 0
+    this%num_auxvars_in_local   = 0
+    this%num_auxvars_bc         = 0
+    this%num_auxvars_ss         = 0
+    this%num_auxvars_bc_otr_geqn= 0
+
     nullify(this%aux_vars_in           )
     nullify(this%aux_vars_bc           )
     nullify(this%aux_vars_ss           )
     nullify(this%aux_vars_conn_in      )
+    nullify(this%aux_vars_bc_otr_geqn  )
 
   end subroutine VSFMSOEInit
 
@@ -164,7 +173,7 @@ contains
        do
           if (.not.associated(cur_goveq)) exit
           select type(cur_goveq)
-             class is (goveqn_richards_ode_pressure_type)
+          class is (goveqn_richards_ode_pressure_type)
              call cur_goveq%UpdateAuxVars()
           end select
           cur_goveq => cur_goveq%next
@@ -234,6 +243,7 @@ contains
     DM, pointer                     :: dms(:)
     Vec, pointer                    :: X_subvecs(:)
     Mat, pointer                    :: B_submats(:,:)
+    PetscInt, pointer               :: B_submats_filled(:,:)
     class(goveqn_base_type),pointer :: cur_goveq_1
     class(goveqn_base_type),pointer :: cur_goveq_2
     PetscViewer                     :: viewer
@@ -259,11 +269,47 @@ contains
     ! Get submatrices
     allocate(is(nDM))
     allocate(B_submats(nDM,nDM))
+    allocate(B_submats_filled(nDM,nDM))
     call DMCompositeGetLocalISs(this%solver%dm, is, ierr); CHKERRQ(ierr)
+
+    ! Initialize
     do row = 1,nDM
        do col = 1,nDM
-          call MatGetLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
-               ierr); CHKERRQ(ierr)
+          B_submats_filled(row,col) = 0
+       enddo
+    enddo
+
+    ! Determine if a submat will be filled
+    row = 0
+    cur_goveq_1 => this%goveqns
+    do
+       if (.not.associated(cur_goveq_1)) exit
+       row = row + 1
+       B_submats_filled(row,row) = 1
+
+       cur_goveq_2 => cur_goveq_1%next
+       col = row
+       do
+          if (.not.associated(cur_goveq_2)) exit
+          col = col + 1
+          call cur_goveq_1%IsCoupledToOtherEquation(cur_goveq_2%rank_in_soe_list, &
+               are_eqns_coupled)
+          if (are_eqns_coupled) then
+             B_submats_filled(row,col) = 1
+             B_submats_filled(col,row) = 1
+          endif
+          cur_goveq_2 => cur_goveq_2%next
+       enddo
+       cur_goveq_1 => cur_goveq_1%next
+    enddo
+
+    ! Get access to only those submats that will be filled
+    do row = 1,nDM
+       do col = 1,nDM
+          if (B_submats_filled(row,col) == 1) then
+             call MatGetLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
+                  ierr); CHKERRQ(ierr)
+          endif
        enddo
     enddo
 
@@ -327,8 +373,10 @@ contains
     ! Restore submatrices
     do row = 1,nDM
        do col = 1,nDM
+          if (B_submats_filled(row,col)==1) then
           call MatRestoreLocalSubMatrix(B, is(row), is(col), B_submats(row,col), &
                ierr); CHKERRQ(ierr)
+          endif
        enddo
     enddo
 
@@ -350,6 +398,7 @@ contains
     deallocate(X_subvecs )
     deallocate(is        )
     deallocate(B_submats )
+    deallocate(B_submats_filled)
 
   end subroutine VSFMJacobian
 
@@ -444,9 +493,10 @@ contains
        cur_goveqn => cur_goveqn%next
     enddo
 
-    write(iulog,*)'  No. of aux_vars_in : ',this%num_auxvars_in
-    write(iulog,*)'  No. of aux_vars_bc : ',this%num_auxvars_bc
-    write(iulog,*)'  No. of aux_vars_ss : ',this%num_auxvars_ss
+    write(iulog,*)'  No. of aux_vars_in          : ',this%num_auxvars_in
+    write(iulog,*)'  No. of aux_vars_bc          : ',this%num_auxvars_bc
+    write(iulog,*)'  No. of aux_vars_ss          : ',this%num_auxvars_ss
+    write(iulog,*)'  No. of aux_vars_bc_otr_geqn : ',this%num_auxvars_bc_otr_geqn
     write(iulog,*)''
     write(iulog,*)'++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
 
@@ -524,6 +574,7 @@ contains
     use MultiPhysicsProbConstants     , only : AUXVAR_BC
     use MultiPhysicsProbConstants     , only : AUXVAR_SS
     use MultiPhysicsProbConstants     , only : AUXVAR_CONN_INTERNAL
+    use MultiPhysicsProbConstants     , only : AUXVAR_BC_OTR_GOVEQ
     use GoverningEquationBaseType     , only : goveqn_base_type
     use GoveqnRichardsODEPressureType , only : goveqn_richards_ode_pressure_type
     !
@@ -537,16 +588,28 @@ contains
     PetscInt                        :: iauxvar_in_off
     PetscInt                        :: iauxvar_bc_off
     PetscInt                        :: iauxvar_ss_off
+    PetscInt                        :: iauxvar_bc_otr_geqn_off
     PetscInt                        :: iauxvar_conn_in_off
-    PetscInt                        :: num_auxvars_filled
+    PetscInt                        :: num_auxvars_filled_in
+    PetscInt                        :: num_auxvars_filled_bc
+    PetscInt                        :: num_auxvars_filled_ss
+    PetscInt                        :: num_auxvars_filled_conn_in
+    PetscInt                        :: num_auxvars_filled_bc_otr_geqn
     PetscErrorCode                  :: ierr
 
     call VecCopy(this%solver%soln, this%solver%soln_prev,ierr); CHKERRQ(ierr)
 
-    iauxvar_in_off       = 0
-    iauxvar_bc_off       = 0
-    iauxvar_ss_off       = 0
-    iauxvar_conn_in_off  = 0
+    iauxvar_in_off             = 0
+    iauxvar_bc_off             = 0
+    iauxvar_ss_off             = 0
+    iauxvar_conn_in_off        = 0
+    iauxvar_bc_otr_geqn_off    = 0
+
+    num_auxvars_filled_in      = 0
+    num_auxvars_filled_bc      = 0
+    num_auxvars_filled_ss      = 0
+    num_auxvars_filled_conn_in = 0
+    num_auxvars_filled_bc_otr_geqn = 0
 
     select case (this%itype)
     case(SOE_RE_ODE)
@@ -558,21 +621,32 @@ contains
              class is (goveqn_richards_ode_pressure_type)
 
                 call cur_goveq%SetDataInSOEAuxVar(AUXVAR_INTERNAL, this%aux_vars_in, &
-                     iauxvar_in_off, num_auxvars_filled)
-                iauxvar_in_off = iauxvar_in_off + num_auxvars_filled
+                     iauxvar_in_off, num_auxvars_filled_in)
+                iauxvar_in_off = iauxvar_in_off + num_auxvars_filled_in
 
-                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC      , this%aux_vars_bc, &
-                     iauxvar_bc_off, num_auxvars_filled)
-                iauxvar_bc_off = iauxvar_bc_off + num_auxvars_filled
+                if (this%num_auxvars_bc>0) then
+                   call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC      , this%aux_vars_bc, &
+                        iauxvar_bc_off, num_auxvars_filled_bc)
+                   iauxvar_bc_off = iauxvar_bc_off + num_auxvars_filled_bc
+                endif
 
-                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_SS      , this%aux_vars_ss, &
-                     iauxvar_ss_off, num_auxvars_filled)
-                iauxvar_ss_off = iauxvar_ss_off + num_auxvars_filled
+                if (this%num_auxvars_ss>0) then
+                   call cur_goveq%SetDataInSOEAuxVar(AUXVAR_SS      , this%aux_vars_ss, &
+                        iauxvar_ss_off, num_auxvars_filled_ss)
+                   iauxvar_ss_off = iauxvar_ss_off + num_auxvars_filled_ss
+                endif
 
-                call cur_goveq%SetDataInSOEAuxVar(AUXVAR_CONN_INTERNAL, this%aux_vars_conn_in, &
-                     iauxvar_conn_in_off, num_auxvars_filled)
-                iauxvar_conn_in_off = iauxvar_conn_in_off + num_auxvars_filled
+                if (this%num_auxvars_conn_in>0) then
+                   call cur_goveq%SetDataInSOEAuxVar(AUXVAR_CONN_INTERNAL, this%aux_vars_conn_in, &
+                        iauxvar_conn_in_off, num_auxvars_filled_conn_in)
+                   iauxvar_conn_in_off = iauxvar_conn_in_off + num_auxvars_filled_conn_in
+                endif
 
+                if (this%num_auxvars_bc_otr_geqn>0) then
+                   call cur_goveq%SetDataInSOEAuxVar(AUXVAR_BC_OTR_GOVEQ, this%aux_vars_bc_otr_geqn, &
+                        iauxvar_bc_otr_geqn_off, num_auxvars_filled_bc_otr_geqn)
+                   iauxvar_bc_otr_geqn_off = iauxvar_bc_otr_geqn_off + num_auxvars_filled_bc_otr_geqn
+                endif
 
              end select
           cur_goveq => cur_goveq%next
@@ -1331,6 +1405,7 @@ contains
                     -cur_conn_set_1%conn(iauxvar)%GetDistUnitVecX(), &
                     -cur_conn_set_1%conn(iauxvar)%GetDistUnitVecY(), &
                     -cur_conn_set_1%conn(iauxvar)%GetDistUnitVecZ() )
+                call cur_conn_set_2%conn(iauxvar)%SetDistUnitVec(dx/dist, dy/dist, dz/dist)
 
                 ! dist_up eq2 = dist_dn eq1
                 ! dist_up eq1 = dist_dn eq2

@@ -54,7 +54,9 @@ module GoverningEquationBaseType
      procedure, public :: ComputeOperatorsOffDiag           => GoveqnBaseComputeOperatorsOffDiag
      procedure, public :: SetDtime                          => GoveqnBaseSetDtime
      procedure, public :: GetNConditionsExcptCondItype      => GoveqnBaseGetNConditionsExcptCondItype
+     procedure, public :: GetNConditionsOfCondItype         => GoveqnBaseGetNConditionsOfCondItype
      procedure, public :: GetNCellsInCondsExcptCondItype    => GoveqnBaseGetNCellsInCondsExcptCondItype
+     procedure, public :: GetNCellsInCondsOfCondItype       => GoveqnBaseGetNCellsInCondsOfCondItype
      procedure, public :: GetCondNamesExcptCondItype        => GoveqnBaseGetCondNamesExcptCondItype
      procedure, public :: AddCondition                      => GoveqnBaseAddCondition
      procedure, public :: AddCouplingBC                     => GoveqnBaseAddCouplingBC
@@ -351,6 +353,47 @@ contains
   end subroutine GoveqnBaseGetNConditionsExcptCondItype
 
   !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetNConditionsOfCondItype(this, cond_type, &
+              cond_itype, num_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of conditions of
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)            :: this
+    PetscInt             , intent(in)  :: cond_type
+    PetscInt             , intent(in)  :: cond_itype
+    PetscInt             , intent(out) :: num_conds
+    !
+    ! !LOCAL VARIABLES:
+    character(len=256)                 :: string
+
+    ! Choose the condition type
+    select case (cond_type)
+    case (COND_BC)
+       call this%boundary_conditions%GetNumCondsOfCondItype( &
+            cond_itype, num_conds)
+
+    case (COND_SS)
+       call this%source_sinks%GetNumCondsOfCondItype( &
+            cond_itype, num_conds)
+
+    case default
+       write(string,*) cond_type
+       write(iulog,*) 'Unknown cond_type = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine GoveqnBaseGetNConditionsOfCondItype
+
+  !------------------------------------------------------------------------
   subroutine GoveqnBaseGetNCellsInCondsExcptCondItype(this, cond_type, &
               cond_itype_to_exclude, num_conds, ncells_for_conds)
     !
@@ -394,6 +437,51 @@ contains
     end select
 
   end subroutine GoveqnBaseGetNCellsInCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine GoveqnBaseGetNCellsInCondsOfCondItype(this, cond_type, &
+              cond_itype, num_conds, ncells_for_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of conditions
+    !
+    ! !USES:
+    use ConditionType             , only : condition_type
+    use MultiPhysicsProbConstants , only : COND_BC
+    use MultiPhysicsProbConstants , only : COND_SS
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_base_type)                     :: this
+    PetscInt             , intent(in)           :: cond_type
+    PetscInt             , intent(in)           :: cond_itype
+    PetscInt             , intent(out)          :: num_conds
+    PetscInt             , intent(out), pointer :: ncells_for_conds(:)
+    !
+    ! !LOCAL VARIABLES:
+    character(len=256)                          :: string
+
+    call this%GetNConditionsOfCondItype( &
+         cond_type, cond_itype, num_conds)
+
+    ! Choose the condition type
+    select case (cond_type)
+    case (COND_BC)
+       call this%boundary_conditions%GetNumCellsForCondsOfCondItype( &
+            cond_itype, ncells_for_conds)
+
+    case (COND_SS)
+       call this%source_sinks%GetNumCellsForCondsOfCondItype( &
+            cond_itype, ncells_for_conds)
+
+    case default
+       write(string,*) cond_type
+       write(iulog,*) 'Unknown cond_type = ' // trim(string)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine GoveqnBaseGetNCellsInCondsOfCondItype
 
   !------------------------------------------------------------------------
   subroutine GoveqnBaseGetCondNamesExcptCondItype(this, cond_type, &

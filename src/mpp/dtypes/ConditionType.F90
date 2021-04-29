@@ -54,9 +54,11 @@ module ConditionType
      procedure, public :: PrintInfo                         => ConditionListPrintInfo
      procedure, public :: GetNumConds                       => CondListGetNumConds
      procedure, public :: GetNumCondsExcptCondItype         => CondListGetNumCondsExcptCondItype
+     procedure, public :: GetNumCondsOfCondItype            => CondListGetNumCondsOfCondItype
      procedure, public :: GetNumCellsForConds               => CondListGetNumCellsForConds
      procedure, public :: GetNumCellsForCondsExcptCondItype => CondListGetNumCellsForCondsExcptCondItype
      procedure, public :: GetConnIDDnForCondsExcptCondItype => CondListGetConnIDDnForCondsExcptCondItype
+     procedure, public :: GetNumCellsForCondsOfCondItype    => CondListGetNumCellsForCondsOfCondItype
      procedure, public :: GetCondNamesExcptCondItype        => CondListGetCondNamesExcptCondItype
   end type condition_list_type
 
@@ -241,6 +243,35 @@ contains
   end subroutine CondListGetNumCondsExcptCondItype
 
   !------------------------------------------------------------------------
+  subroutine CondListGetNumCondsOfCondItype( &
+       this, cond_itype, num_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of conditions of itype = cond_type_to_exclude
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(condition_list_type), intent(in)  :: this
+    PetscInt                  , intent(in)  :: cond_itype
+    PetscInt                  , intent(out) :: num_conds
+    !
+    ! !LOCAL VARIABLES:
+    type(condition_type), pointer            :: cur_cond
+
+    num_conds = 0
+    cur_cond => this%first
+    do
+       if (.not.associated(cur_cond)) exit
+       if (cur_cond%itype == cond_itype) then
+          num_conds = num_conds + 1
+       endif
+       cur_cond => cur_cond%next
+    enddo
+
+  end subroutine CondListGetNumCondsOfCondItype
+
+  !------------------------------------------------------------------------
   subroutine CondListGetNumCellsForConds(this, num_cells_for_conds)
     !
     ! !DESCRIPTION:
@@ -301,6 +332,50 @@ contains
     end if
 
   end subroutine CondListGetNumCellsForCondsExcptCondItype
+
+  !------------------------------------------------------------------------
+  subroutine CondListGetNumCellsForCondsOfCondItype( &
+       this, cond_itype, num_cells_for_conds)
+    !
+    ! !DESCRIPTION:
+    ! Returns the total number of cells associated with all conditions excluding
+    ! conditions of itype = cond_type_to_exclude
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(condition_list_type), intent(in)           :: this
+    PetscInt                  , intent(in)           :: cond_itype
+    PetscInt                  , intent(out), pointer :: num_cells_for_conds(:)
+    !
+    ! !LOCAL VARIABLES:
+    PetscInt                                         :: num_conds
+    type(condition_type)      , pointer              :: cur_cond
+
+    call this%GetNumCondsOfCondItype(cond_itype, num_conds)
+
+    if (num_conds == 0) then
+
+       nullify(num_cells_for_conds)
+
+    else
+
+       allocate(num_cells_for_conds(num_conds))
+
+       num_conds = 0
+       cur_cond => this%first
+       do
+          if (.not.associated(cur_cond)) exit
+          if (cur_cond%itype == cond_itype) then
+             num_conds = num_conds + 1
+             num_cells_for_conds(num_conds) = cur_cond%ncells
+          endif
+          cur_cond => cur_cond%next
+       enddo
+
+    end if
+
+  end subroutine CondListGetNumCellsForCondsOfCondItype
 
   !------------------------------------------------------------------------
   subroutine CondListGetConnIDDnForCondsExcptCondItype( &
