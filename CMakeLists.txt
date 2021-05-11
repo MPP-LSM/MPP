@@ -137,7 +137,9 @@ find_package(PETSc)
 if (NOT PETSC_FOUND)
   message(FATAL_ERROR "PETSc was not found.")
 endif()
-include_directories(${PETSC_INCLUDES})
+#set(PETSC_INCLUDES "${PETSC_INCLUDE_DIRS}")
+#include_directories(${PETSC_INCLUDES})
+include_directories(${PETSC_INCLUDE_DIRS})
 
 # Include PETSc in the rpath.
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:${PETSC_DIR}/${PETSC_ARCH}/lib")

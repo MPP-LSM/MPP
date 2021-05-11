@@ -29,6 +29,7 @@ include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/longwave)
 include_directories(${CMAKE_BINARY_DIR}/src/driver/standalone/shortwave)
 
 link_libraries(${MPP_LIBRARIES})
+link_directories(${PETSC_LIBRARY_DIRS})
 link_libraries(${PETSC_LIBRARIES})
 link_libraries(${NETCDF_LIBRARY})
 link_libraries(${NETCDF_F90_LIBRARIES})
