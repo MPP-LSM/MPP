@@ -2,6 +2,7 @@
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/util)
 
 link_libraries(${MPP_LIBRARIES})
+link_directories(${PETSC_LIBRARY_DIRS})
 link_libraries(${PETSC_LIBRARIES})
 link_libraries(${NETCDF_LIBRARY})
 link_libraries(${NETCDF_F90_LIBRARIES})
