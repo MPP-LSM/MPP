@@ -91,7 +91,7 @@ cd MPP
 make CC=$CC CXX=$CXX FC=$FC config
 ```
 
-3. Build MPP
+3. Build MPP (add `SKIP_PETSC_TESTS=yes` if building on a node that cannot run tests)
 ```sh
 make CC=$CC CXX=$CXX FC=$FC install
 ```
