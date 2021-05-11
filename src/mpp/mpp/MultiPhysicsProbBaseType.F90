@@ -1267,6 +1267,10 @@ contains
 
     ! Create matrix
     call DMCreateMatrix    (base_soe%solver%dm   , base_soe%solver%Amat, ierr); CHKERRQ(ierr)
+    ! DEBUG: Just trying this for a sequential matrix!
+    ! This is not really correct: Need to handle MPIAIJ matrices, and this is actually too much
+    ! memory being allocated -- there are a few long rows, but most are short.
+    call MatSeqAIJSetPreallocation(base_soe%solver%Amat,256,PETSC_NULL_INTEGER,ierr);CHKERRQ(ierr)
 
     call MatSetOption      (base_soe%solver%Amat , MAT_NEW_NONZERO_LOCATION_ERR , &
          PETSC_FALSE, ierr); CHKERRQ(ierr)

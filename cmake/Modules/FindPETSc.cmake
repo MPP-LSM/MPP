@@ -320,6 +320,8 @@ int main(int argc,char *argv[]) {
   # Note that we have forced values for all these choices.  If you
   # change these, you are telling the system to trust you that they
   # work.  It is likely that you will end up with a broken build.
+  set (PETSC_FOUND ON CACHE BOOL "Foo" FORCE)
+  set (PETSC_EXECUTABLE_RUNS ON CACHE BOOL "Foo" FORCE)
   mark_as_advanced (PETSC_INCLUDES PETSC_LIBRARIES PETSC_COMPILER PETSC_DEFINITIONS PETSC_MPIEXEC PETSC_EXECUTABLE_RUNS)
 endif ()
 
