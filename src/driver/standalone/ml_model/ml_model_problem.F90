@@ -104,7 +104,6 @@ contains
   !------------------------------------------------------------------------
   subroutine set_initial_conditions()
     !
-    use ml_model_utils , only : compute_dpai_fssh
     use mlc            , only : mlc_set_initial_conditions
     !
     implicit none
@@ -117,7 +116,7 @@ contains
   subroutine run_ml_model_problem(namelist_filename)
     !
     use ml_model_boundary_conditions , only : read_boundary_conditions, allocate_memory
-    use ml_model_utils               , only : compute_dpai_fssh
+    use ml_model_utils               , only : compute_dpai, compute_fssh_and_cumlai
     use mlc                          , only : extract_data_from_mlc
     use swv                          , only : extract_data_from_swv
     use lbl                          , only : extract_data_from_lbl
@@ -128,7 +127,7 @@ contains
     use lbl                          , only : solve_lbl
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc
-    use ml_model_global_vars         , only : dpai, fssh, cumlai, ncair, ntree
+    use ml_model_global_vars         , only : dpai, fssh, cumlai, ncair, ntree, nz_cair, nbot, ntop
     !
     implicit none
     !
@@ -145,7 +144,12 @@ contains
     call read_command_options()
     call read_namelist_file(namelist_filename)
 
-    call compute_dpai_fssh(dpai, fssh, cumlai)
+    allocate(dpai(nz_cair+1))
+    allocate(fssh(nz_cair+1))
+    allocate(cumlai(nz_cair+1))
+
+    call compute_dpai(dpai, fssh, cumlai)
+    call compute_fssh_and_cumlai(nbot, ntop, dpai, fssh, cumlai)
 
     call allocate_memory()
     call init_mpps()

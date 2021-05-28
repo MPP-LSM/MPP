@@ -12,14 +12,15 @@ module ml_model_utils
   PetscInt, parameter :: CANOPY_MESH          = 2
   PetscInt, parameter :: CANOPY_AND_SOIL_MESH = 3
 
-  public :: compute_dpai_fssh
+  public :: compute_dpai
+  public :: compute_fssh_and_cumlai
   public :: set_value_in_condition
   public :: get_value_from_condition
 
 contains
 
   !------------------------------------------------------------------------
-  subroutine compute_dpai_fssh(dpai, fssh, cumlai)
+  subroutine compute_dpai(dpai, fssh, cumlai)
     !
     use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair
     !
@@ -32,10 +33,6 @@ contains
     PetscReal :: dz_leaf, qbeta, pbeta, pai
     PetscReal :: zl, zu, z_int, dz_int, zrel, beta_pdf, pad
     PetscReal :: pai_sum, pai_miss, pai_old, pai_new
-
-    allocate(dpai(nz_cair+1))
-    allocate(fssh(nz_cair+1))
-    allocate(cumlai(nz_cair+1))
 
     dpai(:) = 0.d0
     fssh(:) = 0.d0
@@ -110,7 +107,21 @@ contains
     end do
     nbot = ic_bot
 
-    Kb = 1.762817445019839d0;
+  end subroutine compute_dpai
+
+  !------------------------------------------------------------------------
+  subroutine compute_fssh_and_cumlai(nbot, ntop, dpai, fssh, cumlai)
+    !
+    implicit none
+    !
+    PetscInt  , intent(in)          :: nbot, ntop
+    PetscReal , pointer, intent(in) :: dpai(:)
+    PetscReal , intent(inout)       :: fssh(:), cumlai(:)
+    !
+    PetscInt :: k
+    PetscReal :: Kb, sumpai
+
+    Kb = 1.7628174450198393d0;
     do k = ntop, nbot, -1
        if (k == ntop) then
           sumpai = 0.5d0 * dpai(k);
@@ -122,7 +133,7 @@ contains
        cumlai(k) = sumpai
     end do
 
-  end subroutine compute_dpai_fssh
+  end subroutine compute_fssh_and_cumlai
 
   !------------------------------------------------------------------------
   subroutine allocate_memory_for_condition(cond, ndata)
