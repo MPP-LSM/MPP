@@ -22,7 +22,7 @@ module ml_model_global_vars
   PetscInt :: nbot, ntop
 
   ! Vegetation parameters
-  PetscReal, pointer :: dpai(:), cumlai(:), fssh(:)
+  PetscReal, pointer :: dpai(:), sumpai(:), cumlai(:), fssh(:)
 
   ! Problem parameters
   PetscInt  :: ncair

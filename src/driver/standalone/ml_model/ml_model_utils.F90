@@ -20,23 +20,23 @@ module ml_model_utils
 contains
 
   !------------------------------------------------------------------------
-  subroutine compute_dpai(dpai, fssh, cumlai)
+  subroutine compute_dpai(dpai, cumlai, sumpai)
     !
     use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair
     !
     implicit none
     !
-    PetscReal, pointer :: dpai(:), fssh(:), cumlai(:)
+    PetscReal, pointer :: dpai(:), fssh(:), cumlai(:), sumpai(:)
     !
     PetscInt  :: k, i, num_int, ic_bot
-    PetscReal :: Kb, sumpai
+    PetscReal :: Kb
     PetscReal :: dz_leaf, qbeta, pbeta, pai
     PetscReal :: zl, zu, z_int, dz_int, zrel, beta_pdf, pad
     PetscReal :: pai_sum, pai_miss, pai_old, pai_new
 
     dpai(:) = 0.d0
-    fssh(:) = 0.d0
     cumlai(:) = 0.d0
+    sumpai(:) = 0.d0
 
     ! Determine plant area index increment for each layer by numerically
     ! integrating the plant area density (beta distribution) between
@@ -47,7 +47,7 @@ contains
     qbeta   = 2.d0;               ! Parameter for beta distribution
     pai     = 5.051612734794617d0
 
-    nbot = 6 + 1     ! 1st layer is soil layer
+    nbot = 1 + 1     ! 1st layer is soil layer
     ntop = nveg + 1  ! 
 
     do k = nbot, ntop
@@ -110,27 +110,32 @@ contains
   end subroutine compute_dpai
 
   !------------------------------------------------------------------------
-  subroutine compute_fssh_and_cumlai(nbot, ntop, dpai, fssh, cumlai)
+  subroutine compute_fssh_and_cumlai(nbot, ntop, dpai, fssh, cumlai, sumpai)
     !
     implicit none
     !
     PetscInt  , intent(in)          :: nbot, ntop
     PetscReal , pointer, intent(in) :: dpai(:)
-    PetscReal , intent(inout)       :: fssh(:), cumlai(:)
+    PetscReal , intent(inout)       :: fssh(:), cumlai(:), sumpai(:)
     !
     PetscInt :: k
-    PetscReal :: Kb, sumpai
+    PetscReal :: Kb
+
+    fssh(:) = 0.d0
+    cumlai(:) = 0.d0
+    sumpai(:) = 0.d0
 
     Kb = 1.7628174450198393d0;
     do k = ntop, nbot, -1
        if (k == ntop) then
-          sumpai = 0.5d0 * dpai(k);
+          sumpai(k) = 0.5d0 * dpai(k);
+          cumlai(k) = dpai(k);
        else
-          sumpai = sumpai + &
+          sumpai(k) = sumpai(k+1) + &
                0.5d0 * (dpai(k+1) + dpai(k));
+          cumlai(k) = cumlai(k+1) + dpai(k)
        end if
-       fssh(k) = exp(-Kb * sumpai);
-       cumlai(k) = sumpai
+       fssh(k) = exp(-Kb * sumpai(k));
     end do
 
   end subroutine compute_fssh_and_cumlai

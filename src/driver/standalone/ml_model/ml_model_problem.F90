@@ -127,7 +127,7 @@ contains
     use lbl                          , only : solve_lbl
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc
-    use ml_model_global_vars         , only : dpai, fssh, cumlai, ncair, ntree, nz_cair, nbot, ntop
+    use ml_model_global_vars         , only : dpai, fssh, cumlai, sumpai, ncair, ntree, nz_cair, nbot, ntop
     !
     implicit none
     !
@@ -143,13 +143,13 @@ contains
 
     call read_command_options()
     call read_namelist_file(namelist_filename)
+    allocate(dpai  (nz_cair*ntree +1))
+    allocate(fssh  (nz_cair*ntree +1))
+    allocate(cumlai(nz_cair*ntree +1))
+    allocate(sumpai(nz_cair*ntree +1))
 
-    allocate(dpai(nz_cair+1))
-    allocate(fssh(nz_cair+1))
-    allocate(cumlai(nz_cair+1))
-
-    call compute_dpai(dpai, fssh, cumlai)
-    call compute_fssh_and_cumlai(nbot, ntop, dpai, fssh, cumlai)
+    call compute_dpai(dpai, cumlai, sumpai)
+    call compute_fssh_and_cumlai(nbot, ntop, dpai, fssh, cumlai, sumpai)
 
     call allocate_memory()
     call init_mpps()
