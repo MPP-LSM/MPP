@@ -8,7 +8,6 @@ module ml_model_problem
   use MultiPhysicsProbLBL            , only : mpp_lbl_type
   use MultiPhysicsProbPhotosynthesis , only : mpp_photosynthesis_type
   use MultiPhysicsProbMLC            , only : mpp_mlc_type
-  use ml_model_global_vars
   use petscsys
   use petscdm
   use petscdmda
@@ -29,6 +28,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine read_namelist_file(namelist_filename)
+    !
+    use ml_model_global_vars, only : ncair, ntree
     !
     implicit none
     !
@@ -68,6 +69,8 @@ contains
 
   !------------------------------------------------------------------------
   subroutine read_command_options()
+    !
+    use ml_model_global_vars, only : ncair, ntree
     !
     implicit none
     !
@@ -125,7 +128,7 @@ contains
     use lbl                          , only : solve_lbl
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc
-    use ml_model_global_vars         , only : dpai, fssh, cumlai
+    use ml_model_global_vars         , only : dpai, fssh, cumlai, ncair, ntree
     !
     implicit none
     !
