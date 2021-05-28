@@ -141,7 +141,7 @@ contains
     PetscInt                               :: k, icol, icell, ileaf, iconn, sum_conn, nz, ncol
 
     PetscReal                  , parameter :: clumpfac  = 1.d0
-    PetscReal                  , parameter :: Kb        = 0.577350269189626d0
+    PetscReal                  , parameter :: Kb        = 1.7628174450198393d0
     PetscReal                  , parameter :: td        = 0.913235689378651d0
 
     call swv_mpp%soe%SetPointerToIthGovEqn(SHORTWAVE_GE, cur_goveq)
