@@ -10,8 +10,73 @@ module ml_model_boundary_conditions
 #include <petsc/finclude/petsc.h>
 
   public :: read_boundary_conditions
+  public :: allocate_memory
 
 contains
+
+  !------------------------------------------------------------------------
+  subroutine allocate_memory()
+    !
+    use ml_model_global_vars, only : condition_type
+    use ml_model_utils      , only : allocate_memory_for_condition
+    use ml_model_meshes     , only : nleaf
+    !
+    implicit none
+
+    call allocate_memory_for_condition(Iskyb_vis , ncair)
+    call allocate_memory_for_condition(Iskyd_vis , ncair)
+    call allocate_memory_for_condition(Iskyb_nir , ncair)
+    call allocate_memory_for_condition(Iskyd_nir , ncair)
+    call allocate_memory_for_condition(Irsky     , ncair)
+
+    call allocate_memory_for_condition(Tref  , ncair)
+    call allocate_memory_for_condition(Qref  , ncair)
+    call allocate_memory_for_condition(Pref  , ncair)
+    call allocate_memory_for_condition(Rhref , ncair)
+
+    call allocate_memory_for_condition(co2ref , ncair)
+    call allocate_memory_for_condition(o2ref , ncair)
+
+    call allocate_memory_for_condition(Uref  , ncair)
+
+    call allocate_memory_for_condition(Albsoib_vis, ncair)
+    call allocate_memory_for_condition(Albsoib_nir, ncair)
+    call allocate_memory_for_condition(Albsoid_vis, ncair)
+    call allocate_memory_for_condition(Albsoid_nir, ncair)
+
+    call allocate_memory_for_condition(tg, ncair)
+    call allocate_memory_for_condition(soil_t, ncair)
+
+    call allocate_memory_for_condition(sza, ncair)
+
+    call allocate_memory_for_condition(gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
+
+    call allocate_memory_for_condition(gs_sun, ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(gs_shd, ncair*ntree*(ntop-nbot+1))
+
+    call allocate_memory_for_condition(Tcan      , ncair)
+
+    call allocate_memory_for_condition(Tair      , ncair*nz_cair)
+    call allocate_memory_for_condition(eair      , ncair*nz_cair)
+
+    call allocate_memory_for_condition(Tleaf_sun , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Tleaf_shd , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Labs_leaf_sun, ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Labs_leaf_shd, ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(gs_shd    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_sun_vis    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_shd_vis    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_sun_nir    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(Ileaf_shd_nir    , ncair*(ntop-nbot+1) )
+    
+    call allocate_memory_for_condition(Tsoil  , ncair)
+    call allocate_memory_for_condition(Labs_soil, ncair)
+    call allocate_memory_for_condition(Isoil_vis, ncair)
+    call allocate_memory_for_condition(Isoil_nir, ncair)
+
+  end subroutine allocate_memory
 
   !------------------------------------------------------------------------
   subroutine read_boundary_conditions(istep)
