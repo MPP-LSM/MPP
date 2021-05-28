@@ -35,11 +35,16 @@ module ml_model_global_vars
   type(condition_type) :: Ileaf_sun_nir, Ileaf_shd_nir
   type(condition_type) :: Isoil_vis, Isoil_nir
   type(condition_type) :: Labs_leaf_sun, Labs_leaf_shd, Labs_soil
-  type(condition_type) :: Pref, Uref, Tref, Rhref
+  type(condition_type) :: Pref, Uref, Tref, Rhref, Qref
   type(condition_type) :: Tleaf_sun, Tleaf_shd, Tsoil, Tcan
   type(condition_type) :: Tair, eair
   type(condition_type) :: gs_sun, gs_shd
   type(condition_type) :: gbh, gbv, gbc
+  type(condition_type) :: co2ref, o2ref
+  type(condition_type) :: Albsoib_vis, Albsoib_nir
+  type(condition_type) :: Albsoid_vis, Albsoid_nir
+  type(condition_type) :: tg, soil_t
+  type(condition_type) :: sza
 
   ! Shortwave model
   PetscInt :: SHORTWAVE_MESH

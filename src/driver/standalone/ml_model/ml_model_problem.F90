@@ -125,10 +125,25 @@ contains
     call allocate_memory_for_condition(Iskyd_nir , ncair)
     call allocate_memory_for_condition(Irsky     , ncair)
 
-    call allocate_memory_for_condition(Pref  , ncair)
-    call allocate_memory_for_condition(Uref  , ncair)
     call allocate_memory_for_condition(Tref  , ncair)
+    call allocate_memory_for_condition(Qref  , ncair)
+    call allocate_memory_for_condition(Pref  , ncair)
     call allocate_memory_for_condition(Rhref , ncair)
+
+    call allocate_memory_for_condition(co2ref , ncair)
+    call allocate_memory_for_condition(o2ref , ncair)
+
+    call allocate_memory_for_condition(Uref  , ncair)
+
+    call allocate_memory_for_condition(Albsoib_vis, ncair)
+    call allocate_memory_for_condition(Albsoib_nir, ncair)
+    call allocate_memory_for_condition(Albsoid_vis, ncair)
+    call allocate_memory_for_condition(Albsoid_nir, ncair)
+
+    call allocate_memory_for_condition(tg, ncair)
+    call allocate_memory_for_condition(soil_t, ncair)
+
+    call allocate_memory_for_condition(sza, ncair)
 
     call allocate_memory_for_condition(gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
