@@ -19,11 +19,13 @@ module ml_model_utils
 contains
 
   !------------------------------------------------------------------------
-  subroutine compute_dpai_fssh()
+  subroutine compute_dpai_fssh(dpai, fssh, cumlai)
     !
-    use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair, dpai, dpai, fssh, cumlai
+    use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair
     !
     implicit none
+    !
+    PetscReal, pointer :: dpai(:), fssh(:), cumlai(:)
     !
     PetscInt  :: k, i, num_int, ic_bot
     PetscReal :: Kb, sumpai

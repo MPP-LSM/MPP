@@ -125,6 +125,7 @@ contains
     use lbl                          , only : solve_lbl
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc
+    use ml_model_global_vars         , only : dpai, fssh, cumlai
     !
     implicit none
     !
@@ -141,7 +142,7 @@ contains
     call read_command_options()
     call read_namelist_file(namelist_filename)
 
-    call compute_dpai_fssh()
+    call compute_dpai_fssh(dpai, fssh, cumlai)
 
     call allocate_memory()
     call init_mpps()
