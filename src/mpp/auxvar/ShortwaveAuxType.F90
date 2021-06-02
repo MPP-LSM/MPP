@@ -158,7 +158,7 @@ contains
           aa = (1.d0 - this%leaf_td) * this%leaf_rho(iband)
           bb = (1.d0 - this%leaf_td) * this%leaf_tau(iband) + this%leaf_td
 
-          this%f(iband) = aa - bb**2.d0/aa;
+          this%f(iband) = aa - bb*bb/aa;
           this%e(iband) = bb/aa
           this%rad_source(iband) = this%Iskyb(iband) * this%leaf_tbcum * (1.d0 - this%leaf_tb)
 

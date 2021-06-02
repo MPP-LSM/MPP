@@ -12,30 +12,80 @@ module ml_model_utils
   PetscInt, parameter :: CANOPY_MESH          = 2
   PetscInt, parameter :: CANOPY_AND_SOIL_MESH = 3
 
-  public :: compute_dpai
-  public :: compute_fssh_and_cumlai
+  public :: compute_vertical_veg_structure
+  public :: compute_fssh
   public :: set_value_in_condition
   public :: get_value_from_condition
 
 contains
 
   !------------------------------------------------------------------------
-  subroutine compute_dpai(dpai, cumlai, sumpai)
-    !
-    use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair
+  function cummulative_area_index(pbeta, qbeta, z_u, z_l, hc) result(cumm_area_index)
     !
     implicit none
     !
-    PetscReal, pointer :: dpai(:), fssh(:), cumlai(:), sumpai(:)
+    PetscReal, intent(in) :: pbeta, qbeta, z_u, z_l, hc
+    PetscReal :: cumm_area_index
+    !
+    PetscReal :: dz_int, z_int, beta_pdf, zrel
+    PetscInt  :: i
+    !
+    PetscInt, parameter :: num_int = 100
+
+    ! Numerical integration between zl and zu using 100 sublayers
+
+    cumm_area_index = 0.d0
+
+    dz_int = (z_u - z_l)/num_int
+
+    do i = 1, num_int
+       if (i == 1) then
+          z_int = z_l + 0.5d0 * dz_int
+       else
+          z_int = z_int + dz_int
+       end if
+       zrel = min(z_int/hc, 1.d0)
+
+       beta_pdf = (zrel**(pbeta-1) * (1.d0 - zrel)**(qbeta-1))/exp(lgamma(pbeta) + lgamma(qbeta) - lgamma(pbeta+qbeta));
+
+       cumm_area_index = cumm_area_index + beta_pdf * dz_int
+    end do
+
+  end function cummulative_area_index
+
+  !------------------------------------------------------------------------
+  subroutine compute_vertical_veg_structure(dlai, dsai, dpai, cumpai, sumpai)
+    !
+    use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair, ntree
+    !
+    implicit none
+    !
+    PetscReal, pointer, intent(inout) :: dlai(:), dsai(:), dpai(:), cumpai(:), sumpai(:)
     !
     PetscInt  :: k, i, num_int, ic_bot
     PetscReal :: Kb
-    PetscReal :: dz_leaf, qbeta, pbeta, pai
+    PetscReal :: dz_leaf
     PetscReal :: zl, zu, z_int, dz_int, zrel, beta_pdf, pad
-    PetscReal :: pai_sum, pai_miss, pai_old, pai_new
+    PetscReal :: lai_sum, lai_miss, lai_old, lai_new
+    PetscReal :: sai_sum, sai_miss, sai_old, sai_new
+    !
+    PetscReal, parameter :: lai_pbeta = 3.5d0
+    PetscReal, parameter :: lai_qbeta = 2.0d0
+    PetscReal, parameter :: sai_pbeta = 3.5d0
+    PetscReal, parameter :: sai_qbeta = 2.0d0
+    PetscReal, parameter :: lai      = 4.1516127586364746d0
+    PetscReal, parameter :: sai      = 0.89999997615814209d0
 
+    allocate(dlai  (nz_cair*ntree +1))
+    allocate(dsai  (nz_cair*ntree +1))
+    allocate(dpai  (nz_cair*ntree +1))
+    allocate(cumpai(nz_cair*ntree +1))
+    allocate(sumpai(nz_cair*ntree +1))
+
+    dlai(:) = 0.d0
+    dsai(:) = 0.d0
     dpai(:) = 0.d0
-    cumlai(:) = 0.d0
+    cumpai(:) = 0.d0
     sumpai(:) = 0.d0
 
     ! Determine plant area index increment for each layer by numerically
@@ -43,9 +93,6 @@ contains
     ! the bottom and top heights for that layer
 
     dz_leaf = dz_cair;
-    pbeta   = 3.5d0;              ! Parameter for beta distribution
-    qbeta   = 2.d0;               ! Parameter for beta distribution
-    pai     = 5.051612734794617d0
 
     nbot = 1 + 1     ! 1st layer is soil layer
     ntop = nveg + 1  ! 
@@ -53,92 +100,100 @@ contains
     do k = nbot, ntop
        zl = dz_leaf * (k-2);
        zu = dz_leaf * (k-1);
-       dpai(k) = 0.d0
 
-       ! Numerical integration between zl and zu using 100 sublayers
-       num_int = 100
-       dz_int = (zu-zl)/num_int
-       do i = 1, num_int
-          if (i == 1) then
-             z_int = zl + 0.5d0 * dz_int
-          else
-             z_int = z_int + dz_int
-          end if
-
-          zrel = min(z_int/hc,1.d0)
-          beta_pdf = (zrel**(pbeta-1) * (1.d0 - zrel)**(qbeta-1))/exp(lgamma(pbeta) + lgamma(qbeta) - lgamma(pbeta+qbeta));
-          pad = (pai / hc) * beta_pdf
-
-          dpai(k) = dpai(k) + pad * dz_int
-
-       end do
+       dlai(k) = cummulative_area_index(lai_pbeta, lai_qbeta, zu, zl, hc) * (lai/hc)
+       dsai(k) = cummulative_area_index(sai_pbeta, sai_qbeta, zu, zl, hc) * (sai/hc)
     end do
 
-    pai_sum = 0;
+    lai_sum = 0;
+    sai_sum = 0;
     do k = nbot, ntop
-       pai_sum = pai_sum + dpai(k)
+       lai_sum = lai_sum + dlai(k)
+       sai_sum = sai_sum + dsai(k)
     end do
 
     ! Set layers with small plant area index to zero
-    pai_miss = 0;
+    lai_miss = 0.d0
+    sai_miss = 0.d0
     do k = nbot, ntop
-       if (dpai(k) < 0.01d0) then
-          pai_miss = pai_miss + dpai(k)
-          dpai(k) = 0.d0;
+       if (dlai(k) + dsai(k) < 0.01d0) then
+
+          lai_miss = lai_miss + dlai(k)
+          sai_miss = sai_miss + dsai(k)
+
+          dlai(k) = 0.d0;
+          dsai(k) = 0.d0;
        end if
     end do
 
     ! Distribute the missing plant area across vegetation layers
     ! in proportion to the plant area profile
 
-    if (pai_miss > 0.d0) then
-       pai_old = pai_sum;
-       pai_new = pai_old - pai_miss;
+    if (lai_miss > 0.d0) then
+       lai_old = lai_sum;
+       lai_new = lai_old - lai_miss;
        do k = nbot, ntop
-          dpai(k) = dpai(k) + pai_miss * (dpai(k) / pai_new);
+          dlai(k) = dlai(k) + lai_miss * (dlai(k) / lai_new);
+       end do
+    end if
+
+    if (sai_miss > 0.d0) then
+       sai_old = sai_sum;
+       sai_new = sai_old - sai_miss;
+       do k = nbot, ntop
+          dsai(k) = dsai(k) + sai_miss * (dsai(k) / sai_new);
        end do
     end if
 
     ! Find the lowest vegetation layer
+    ic_bot = 0
     do k = ntop, nbot,-1
-       if (dpai(k) > 0.d0) then
+       if (dlai(k) + dsai(k) > 0.d0) then
           ic_bot = k
        end if
     end do
     nbot = ic_bot
+    if (nbot == 0) then
+       call endrun (msg=' ERROR: compute_vertical_veg_structure: nbot not defined')
+    endif
 
-  end subroutine compute_dpai
+    do k = ntop, nbot, -1
+       dpai(k) = dlai(k) + dsai(k)
+       if (k == ntop) then
+          sumpai(k) = 0.5d0 * dpai(k);
+          cumpai(k) = dpai(k);
+       else
+          sumpai(k) = sumpai(k+1) + 0.5d0 * (dpai(k+1) + dpai(k));
+          cumpai(k) = cumpai(k+1) + dpai(k)
+       end if
+    end do
+
+  end subroutine compute_vertical_veg_structure
 
   !------------------------------------------------------------------------
-  subroutine compute_fssh_and_cumlai(nbot, ntop, dpai, fssh, cumlai, sumpai)
+  subroutine compute_fssh(nbot, ntop, sumpai, fssh)
+    !
+    use ml_model_global_vars, only : nz_cair, ntree
     !
     implicit none
     !
     PetscInt  , intent(in)          :: nbot, ntop
-    PetscReal , pointer, intent(in) :: dpai(:)
-    PetscReal , intent(inout)       :: fssh(:), cumlai(:), sumpai(:)
+    PetscReal , pointer, intent(in) :: sumpai(:)
+    PetscReal , pointer, intent(inout)       :: fssh(:)
     !
     PetscInt :: k
     PetscReal :: Kb
 
+    allocate(fssh  (nz_cair*ntree +1))
+
     fssh(:) = 0.d0
-    cumlai(:) = 0.d0
-    sumpai(:) = 0.d0
 
     Kb = 1.7628174450198393d0;
     do k = ntop, nbot, -1
-       if (k == ntop) then
-          sumpai(k) = 0.5d0 * dpai(k);
-          cumlai(k) = dpai(k);
-       else
-          sumpai(k) = sumpai(k+1) + &
-               0.5d0 * (dpai(k+1) + dpai(k));
-          cumlai(k) = cumlai(k+1) + dpai(k)
-       end if
        fssh(k) = exp(-Kb * sumpai(k));
     end do
 
-  end subroutine compute_fssh_and_cumlai
+  end subroutine compute_fssh
 
   !------------------------------------------------------------------------
   subroutine allocate_memory_for_condition(cond, ndata)

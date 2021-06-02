@@ -3,6 +3,8 @@ module swv
   use mpp_abortutils            , only : endrun
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbShortwave , only : mpp_shortwave_type
+  use mpp_abortutils            , only : endrun
+  use mpp_varctl                , only : iulog
   use ml_model_global_vars
   use petscsys
 
@@ -117,7 +119,7 @@ contains
   end subroutine add_conditions_to_goveqns
 
   !------------------------------------------------------------------------
-  subroutine set_parameters(swv_mpp)
+  subroutine set_parameters(swv_mpp, dlai, dsai, dpai)
 
     ! !DESCRIPTION:
     !
@@ -134,15 +136,35 @@ contains
     implicit none
     !
     type(mpp_shortwave_type)               :: swv_mpp
+    PetscReal, pointer, intent(in)         :: dlai(:), dsai(:), dpai(:)
     !
     class(goveqn_base_type)    , pointer   :: cur_goveq
     class(connection_set_type) , pointer   :: cur_conn_set
     class(condition_type)      , pointer   :: cur_cond
-    PetscInt                               :: k, icol, icell, ileaf, iconn, sum_conn, nz, ncol
+    PetscInt                               :: k, icol, icell, ileaf, iconn, sum_conn, nz, ncol, idx
+    PetscReal                              :: wl, ws, inc
 
-    PetscReal                  , parameter :: clumpfac  = 1.d0
-    PetscReal                  , parameter :: Kb        = 1.7628174450198393d0
-    PetscReal                  , parameter :: td        = 0.913235689378651d0
+    !PetscReal                  , parameter :: clumpfac  = 1.d0
+    !PetscReal                  , parameter :: Kb        = 1.7628174450198393d0
+    !PetscReal                  , parameter :: td        = 0.913235689378651d0
+    PetscReal                  , parameter :: rho_l_vis = 0.1d0
+    PetscReal                  , parameter :: rho_s_vis = 0.16d0
+    PetscReal                  , parameter :: tau_l_vis = 5.d-2
+    PetscReal                  , parameter :: tau_s_vis = 1.d-3
+
+    PetscReal                  , parameter :: rho_l_nir = 0.45d0
+    PetscReal                  , parameter :: rho_s_nir = 0.39d0
+    PetscReal                  , parameter :: tau_l_nir = 0.25d0
+    PetscReal                  , parameter :: tau_s_nir = 1.d-3
+
+    PetscReal                  , parameter :: rho_min = 1.d-6
+    PetscReal                  , parameter :: tau_min = 1.d-6
+    PetscReal                  , parameter :: albedo_sat_vis = 0.07d0
+    PetscReal                  , parameter :: albedo_sat_nir = 0.14d0
+    PetscReal                  , parameter :: albedo_dry_vis = 0.14d0
+    PetscReal                  , parameter :: albedo_dry_nir = 0.25d0
+    !
+    PetscReal                  , parameter :: h2osoi_vol = 0.10914649814367294
 
     call swv_mpp%soe%SetPointerToIthGovEqn(SHORTWAVE_GE, cur_goveq)
 
@@ -160,36 +182,28 @@ contains
              if (k == 1) then
                 cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
 
-                cur_goveq%aux_vars_in(icell)%soil_albedo_b(1) = 0.1d0 ! vis + direct
-                cur_goveq%aux_vars_in(icell)%soil_albedo_b(2) = 0.2d0 ! nir + direct
+                inc = max(0.11d0 - 0.4d0*h2osoi_vol, 0.d0)
+                cur_goveq%aux_vars_in(icell)%soil_albedo_b(1) = min(albedo_sat_vis + inc, albedo_dry_vis)
+                cur_goveq%aux_vars_in(icell)%soil_albedo_b(2) = min(albedo_sat_nir + inc, albedo_dry_nir)
 
-                cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = 0.1d0 ! vis + diffuse
-                cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = 0.2d0 ! nir + diffuse
+                cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = min(albedo_sat_vis + inc, albedo_dry_vis)
+                cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = min(albedo_sat_nir + inc, albedo_dry_nir)
 
-                cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * dpai(nbot)   * clumpfac)
-                cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(nbot) * clumpfac)
-                cur_goveq%aux_vars_in(icell)%leaf_td    = td
              else
-                cur_goveq%aux_vars_in(icell)%leaf_rho(1)   = 0.10d0
-                cur_goveq%aux_vars_in(icell)%leaf_rho(2)   = 0.45d0
+                idx = nbot + k - 2
+                wl = dlai(idx)/dpai(idx)
+                ws = dsai(idx)/dpai(idx)
 
-                cur_goveq%aux_vars_in(icell)%leaf_tau(1)   = 0.05d0
-                cur_goveq%aux_vars_in(icell)%leaf_tau(2)   = 0.25d0
+                cur_goveq%aux_vars_in(icell)%leaf_rho(1)   = max(rho_l_vis*wl + rho_s_vis*ws, rho_min)
+                cur_goveq%aux_vars_in(icell)%leaf_rho(2)   = max(rho_l_nir*wl + rho_s_nir*ws, rho_min)
 
-                cur_goveq%aux_vars_in(icell)%leaf_omega(1) = 0.55d0
-                cur_goveq%aux_vars_in(icell)%leaf_omega(2) = 0.30d0
+                cur_goveq%aux_vars_in(icell)%leaf_tau(1)   = max(tau_l_vis*wl + tau_s_vis*ws, tau_min)
+                cur_goveq%aux_vars_in(icell)%leaf_tau(2)   = max(tau_l_nir*wl + tau_s_nir*ws, tau_min)
+
+                cur_goveq%aux_vars_in(icell)%leaf_omega(1) = cur_goveq%aux_vars_in(icell)%leaf_rho(1) + cur_goveq%aux_vars_in(icell)%leaf_tau(1)
+                cur_goveq%aux_vars_in(icell)%leaf_omega(2) = cur_goveq%aux_vars_in(icell)%leaf_rho(2) + cur_goveq%aux_vars_in(icell)%leaf_tau(2)
 
                 cur_goveq%aux_vars_in(icell)%leaf_dlai        = dpai(k + nbot - 2)
-                cur_goveq%aux_vars_in(icell)%leaf_fraction(1) = fssh(k + nbot - 2)
-                cur_goveq%aux_vars_in(icell)%leaf_fraction(2) = 1.d0 - fssh(k + nbot - 2)
-
-                cur_goveq%aux_vars_in(icell)%leaf_tb    = exp(-Kb * dpai(k + nbot - 2)   * clumpfac)
-                if (k == ntop) then
-                   cur_goveq%aux_vars_in(icell)%leaf_tbcum = 1.d0
-               else
-                   cur_goveq%aux_vars_in(icell)%leaf_tbcum = exp(-Kb * cumlai(k + nbot - 2 + 1) * clumpfac)
-               endif
-                cur_goveq%aux_vars_in(icell)%leaf_td    = td
              end if
           end do
        end do
@@ -197,6 +211,63 @@ contains
     end select
 
   end subroutine set_parameters
+
+  !------------------------------------------------------------------------
+  subroutine compute_kb(xl, sza, phi1, phi2, kb)
+    !
+    implicit none
+    !
+    PetscReal, intent(in) :: xl, sza
+    PetscReal, intent(out) :: phi1, phi2, kb
+    !
+    PetscReal :: chil, gdir
+    PetscReal, parameter :: kb_max = 40.d0
+    PetscReal, parameter :: chil_min = -0.4d0
+    PetscReal, parameter :: chil_max =  0.6d0
+
+    chil = min(max(xl, chil_min),chil_max)
+
+    if (abs(chil) <= 0.01d0) chil = 0.01d0
+
+    phi1 = 0.5d0 - 0.633d0 * chil - 0.330d0 * chil * chil
+    phi2 = 0.877d0 * (1.d0 - 2.d0 * phi1)
+
+    gdir = phi1 + phi2 * cos(sza)
+
+    ! Direct beam extinction coefficient
+    kb = gdir / cos(sza)
+    kb = min(kb, kb_max)
+
+  end subroutine compute_kb
+
+  !------------------------------------------------------------------------
+  subroutine compute_transmittance_coefficents(xl, sza, dpai, clump_fac, tb, td)
+    !
+    implicit none
+    !
+    PetscReal, intent(in) :: xl, sza, dpai, clump_fac
+    PetscReal, intent(out) :: tb, td
+    !
+    PetscReal :: chil, phi1, phi2, gdir, gdirj, kb, angle
+    PetscInt  :: j
+    PetscReal, parameter :: pi = 4.d0 * atan(1.0d0)
+
+    ! Direct beam extinction coefficient
+    call compute_kb(xl, sza, phi1, phi2, kb)
+
+    ! Canopy layer transmittance of direct beam radiation
+    tb = exp(-kb * dpai * clump_fac)
+
+    ! Canopy layer transmittance of diffuse radiation
+    td = 0.d0
+    do j = 1, 9
+       angle = (5.d0 + (j - 1) * 10.d0) * pi / 180.d0
+       gdirj = phi1 + phi2 * cos(angle)
+       td = td + exp(-gdirj / cos(angle) * dpai * clump_fac) * sin(angle) * cos(angle)
+    end do
+    td = td * 2.d0 * (10.d0 * pi / 180.d0)
+
+  end subroutine compute_transmittance_coefficents
 
   !------------------------------------------------------------------------
   subroutine swv_set_boundary_conditions(swv_mpp)
@@ -211,6 +282,8 @@ contains
     use ConditionType                  , only : condition_type
     use ConnectionSetType              , only : connection_set_type
     use ml_model_utils                 , only : get_value_from_condition
+    use ml_model_global_vars           , only : dpai, sumpai, cumpai
+    use ShortwaveAuxType               , only : shortwave_auxvar_type
     !
     ! !ARGUMENTS
     implicit none
@@ -220,27 +293,76 @@ contains
     class(goveqn_base_type)    , pointer :: cur_goveq
     class(connection_set_type) , pointer :: cur_conn_set
     class(condition_type)      , pointer :: cur_cond
-    PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol
+    PetscInt                             :: icair, itree, k
+    PetscInt                             :: icell, iconn, sum_conn, nz
+    PetscReal                            :: sza_value, sumpai_value, dpai_value, cumpai_value
+    PetscReal                            :: Kb, tb, tbcum, td
+    PetscReal                            :: phi1, phi2
+    type(shortwave_auxvar_type), pointer :: avars(:)
+    !
+    PetscReal, parameter                 :: xl        = 0.25d0
+    PetscReal, parameter                 :: clump_fac = 1.d0
 
     call swv_mpp%soe%SetPointerToIthGovEqn(SHORTWAVE_GE, cur_goveq)
 
     select type(cur_goveq)
     class is (goveqn_shortwave_type)
 
-       ncol = ncair * ntree
+       avars => cur_goveq%aux_vars_in
+
        nz   = (ntop-nbot+1) + 1
 
        icell = 0
-       do icol = 1, ncol
-          do k = 1, nz
-             icell = icell + 1
-             cur_goveq%aux_vars_in(icell)%Iskyb(1) = get_value_from_condition(Iskyb_vis, icol)
-             cur_goveq%aux_vars_in(icell)%Iskyb(2) = get_value_from_condition(Iskyb_nir, icol)
-             cur_goveq%aux_vars_in(icell)%Iskyd(1) = get_value_from_condition(Iskyd_vis, icol)
-             cur_goveq%aux_vars_in(icell)%Iskyd(2) = get_value_from_condition(Iskyd_nir, icol)
+       do icair = 1, ncair
+          sza_value = get_value_from_condition(sza, icair)
 
-          end do
-       end do
+          do itree = 1, ntree
+             do k = 1, nz
+                icell = icell + 1
+
+                avars(icell)%Iskyb(1) = get_value_from_condition(Iskyb_vis, icair)
+                avars(icell)%Iskyb(2) = get_value_from_condition(Iskyb_nir, icair)
+                avars(icell)%Iskyd(1) = get_value_from_condition(Iskyd_vis, icair)
+                avars(icell)%Iskyd(2) = get_value_from_condition(Iskyd_nir, icair)
+
+                call compute_kb(xl, sza_value, phi1, phi2, kb) ! xl = xl(icell)
+
+                ! Direct beam transmittance (tb) and diffuse transmittance (td)
+                ! through a single layer
+                !
+                ! Transmittance (tbcum) of unscattered direct beam onto layer i
+
+                if ( k == 1) then ! soil layer
+                   dpai_value   = 0.d0
+                   avars(icell)%leaf_tb = 0.d0
+                   avars(icell)%leaf_td = 0.d0
+
+                   cumpai_value = cumpai(nbot) ! i-th
+                   avars(icell)%leaf_tbcum = exp(-kb * cumpai_value * clump_fac)
+                else
+                   dpai_value   = dpai  (nbot + k - 2) ! i-th
+                   call compute_transmittance_coefficents(xl, sza_value, dpai_value, clump_fac, tb, td)
+
+                   avars(icell)%leaf_tb = tb
+                   avars(icell)%leaf_td = td
+
+                   if (k == ntop) then
+                      cumpai = 0.d0
+                   else
+                      cumpai_value   = cumpai(nbot + k - 1) ! (i+1)-th
+                   end if
+                   avars(icell)%leaf_tbcum = exp(-kb * cumpai_value * clump_fac)
+
+                endif
+
+                if (k > 1) then
+                   avars(icell)%leaf_fraction(1) = avars(icell)%leaf_tbcum/(kb * dpai_value) * (1.d0 - exp(-kb * clump_fac * dpai_value))
+                   avars(icell)%leaf_fraction(2) = 1.d0 - avars(icell)%leaf_fraction(1)
+                end if
+
+             end do ! k-loop
+          end do ! itree-loop
+       end do ! icair-loop
 
        sum_conn = 0
        cur_cond => cur_goveq%boundary_conditions%first
@@ -252,7 +374,10 @@ contains
           do iconn = 1, cur_conn_set%num_connections
              sum_conn = sum_conn + 1
 
-             icell = cur_conn_set%conn(iconn)%GetIDDn()
+             if (sum_conn > ncair) then
+                write(iulog,*)'Num. of cells in BC is greater than ncair'
+                call endrun(msg=errMsg(__FILE__, __LINE__))
+             end if
 
              cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = get_value_from_condition(Iskyb_vis, sum_conn)
              cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = get_value_from_condition(Iskyb_nir, sum_conn)
@@ -297,6 +422,8 @@ contains
   !------------------------------------------------------------------------
   subroutine init_swv(swv_mpp)
     !
+    use ml_model_global_vars, only : dlai, dsai, dpai
+    !
     implicit none
     !
     class(mpp_shortwave_type) :: swv_mpp
@@ -315,7 +442,7 @@ contains
 
     call swv_mpp%SetupProblem()
 
-    call set_parameters(swv_mpp)
+    call set_parameters(swv_mpp, dlai, dsai, dpai)
 
   end subroutine init_swv
 

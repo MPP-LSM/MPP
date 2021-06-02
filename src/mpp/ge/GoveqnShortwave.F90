@@ -570,7 +570,7 @@ contains
 
              do iband = 1, nband
                 diffuse = v_p((ghosted_id-1)*nband + iband)
-                direct  = avars(ghosted_id)%Iskyb(iband) * (1.d0 - avars(ghosted_id)%soil_albedo_b(iband))
+                direct  = avars(ghosted_id)%Iskyb(iband) * avars(ghosted_id)%leaf_tbcum * (1.d0 - avars(ghosted_id)%soil_albedo_b(iband))
                 avars(ghosted_id)%Iabs_soil(iband) = diffuse + direct
              end do
 
