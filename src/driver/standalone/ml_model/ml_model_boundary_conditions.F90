@@ -130,7 +130,7 @@ contains
        call set_value_in_condition(soil_t, icair, 294.84927368164062d0)
 
        ! 18
-       call set_value_in_condition(sza, icair, 1.3473336294553706d0)
+       call set_value_in_condition(sza, icair, 1.3473335314944674d0)
 
   end do
 
