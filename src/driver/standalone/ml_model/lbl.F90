@@ -108,6 +108,7 @@ contains
     class(connection_set_type) , pointer :: cur_conn_set
     class(condition_type)      , pointer :: cur_cond
     PetscInt                             :: k, icol, icell, ileaf, iconn, sum_conn, nz, ncol
+    PetscReal                  , parameter :: dleaf = 0.04d0 ! [m]
 
     call lbl_mpp%soe%SetPointerToIthGovEqn(LBL_GE, cur_goveq)
 
@@ -122,10 +123,7 @@ contains
           do icol = 1, ncol
              do k = 1, nz
                 icell = icell + 1
-
-                cur_goveq%aux_vars_in(icell)%patm  = 101325.d0 ! [Pa]
-                cur_goveq%aux_vars_in(icell)%wind  = 5.d0      ! [m/s]
-                cur_goveq%aux_vars_in(icell)%dleaf = 0.05d0    ! [m]
+                cur_goveq%aux_vars_in(icell)%dleaf = dleaf    ! [m]
              end do
           end do
        end do
@@ -185,8 +183,15 @@ contains
               idx_data = idx_data + 1
               if (k >= nbot .and. k<=ntop) then
                  icell = icell + 1
+
                  cur_goveq%aux_vars_in(icell           )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
                  cur_goveq%aux_vars_in(icell + ncol*nz )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
+
+                 cur_goveq%aux_vars_in(icell           )%wind  = get_value_from_condition(Uref, icair)  ! [m/s]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%wind  = get_value_from_condition(Uref, icair)  ! [m/s]
+
+                 cur_goveq%aux_vars_in(icell           )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
               endif
             enddo
        enddo
