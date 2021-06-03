@@ -22,7 +22,7 @@ module ml_model_global_vars
   PetscInt :: nbot, ntop
 
   ! Vegetation parameters
-  PetscReal, pointer :: dlai(:), dsai(:), dpai(:), sumpai(:), cumpai(:), fssh(:)
+  PetscReal, pointer :: dlai(:), dsai(:), dpai(:), sumpai(:), cumpai(:), fssh(:), leaf_td(:)
 
   ! Problem parameters
   PetscInt  :: ncair
@@ -36,7 +36,7 @@ module ml_model_global_vars
   type(condition_type) :: Isoil_vis, Isoil_nir
   type(condition_type) :: Labs_leaf_sun, Labs_leaf_shd, Labs_soil
   type(condition_type) :: Pref, Uref, Tref, Rhref, Qref
-  type(condition_type) :: Tleaf_sun, Tleaf_shd, Tsoil, Tcan
+  type(condition_type) :: Tleaf_sun, Tleaf_shd, Tcan
   type(condition_type) :: Tair, eair
   type(condition_type) :: gs_sun, gs_shd
   type(condition_type) :: gbh, gbv, gbc

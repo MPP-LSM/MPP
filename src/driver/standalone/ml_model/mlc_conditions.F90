@@ -220,7 +220,7 @@ contains
        gs_shd, rn_shd                                 , &
        gbh, gbv                                       , &
        Pref, Uref, Rhref, Tref, Tcan                  , &
-       rn_soil, Tsoil)
+       rn_soil, tg)
 
     ! !DESCRIPTION:
     !
@@ -234,7 +234,7 @@ contains
     PetscReal , pointer :: rn_sun(:), rn_shd(:)
     PetscReal , pointer :: gbh(:), gbv(:)
     PetscReal , pointer :: Pref(:), Uref(:), Rhref(:), Tref(:), Tcan(:)
-    PetscReal , pointer :: rn_soil(:), Tsoil(:)
+    PetscReal , pointer :: rn_soil(:), tg(:)
 
     call set_air_temp_boundary_conditions( mlc_mpp, gbh, gs_sun, gs_shd)
     call set_air_vapor_boundary_conditions(mlc_mpp, gbv, gs_sun, gs_shd)
@@ -243,7 +243,7 @@ contains
     call set_canopy_leaf_boundary_conditions(mlc_mpp, CLEF_TEMP_SHD_GE, gbh, gbv, gs_shd, rn_shd)
 
     call set_atmospheric_boundary_conditions(mlc_mpp, Pref, Uref, Rhref, Tref, Tcan)
-    call set_soil_boundary_conditions(mlc_mpp, Tsoil, rn_soil)
+    call set_soil_boundary_conditions(mlc_mpp, tg, rn_soil)
     
   end subroutine mlc_set_boundary_conditions
 
@@ -435,7 +435,7 @@ contains
   end subroutine set_atmospheric_boundary_conditions
 
   !------------------------------------------------------------------------
-  subroutine set_soil_boundary_conditions(mlc_mpp, Tsoil, rn_soil)
+  subroutine set_soil_boundary_conditions(mlc_mpp, tg, rn_soil)
     !
     ! !DESCRIPTION:
     !
@@ -447,7 +447,7 @@ contains
     implicit none
     !
     class(mpp_mlc_type)                   :: mlc_mpp
-    PetscReal                  , pointer :: rn_soil(:), Tsoil(:)
+    PetscReal                  , pointer :: rn_soil(:), tg(:)
     !
     class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_mlc_type)  , pointer :: soe
@@ -465,7 +465,7 @@ contains
 
     do icair = 1, ncair
 
-       soe%cturb%tsoi(icair)   = Tsoil(icair)
+       soe%cturb%tsoi(icair)   = tg(icair)
        soe%cturb%rnsoi(icair)  = rn_soil(icair)
     end do
 

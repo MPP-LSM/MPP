@@ -345,6 +345,7 @@ contains
 
                    avars(icell)%leaf_tb = tb
                    avars(icell)%leaf_td = td
+                   leaf_td(nbot + k - 2) = td
 
                    if (k == ntop) then
                       cumpai = 0.d0

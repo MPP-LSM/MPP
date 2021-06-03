@@ -71,7 +71,6 @@ contains
     call allocate_memory_for_condition(Ileaf_sun_nir    , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(Ileaf_shd_nir    , ncair*(ntop-nbot+1) )
     
-    call allocate_memory_for_condition(Tsoil  , ncair)
     call allocate_memory_for_condition(Labs_soil, ncair)
     call allocate_memory_for_condition(Isoil_vis, ncair)
     call allocate_memory_for_condition(Isoil_nir, ncair)
@@ -100,7 +99,7 @@ contains
        call set_value_in_condition(Iskyd_nir, icair, 34.534271332129173d0)
 
       ! 5
-       call set_value_in_condition(Irsky, icair, 295.93499389648440d0)
+       call set_value_in_condition(Irsky, icair, 329.34600000000000d0)
 
       ! 6-8
        call set_value_in_condition(Tref, icair, 295.93499389648440d0)

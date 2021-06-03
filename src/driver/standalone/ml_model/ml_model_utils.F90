@@ -54,13 +54,13 @@ contains
   end function cummulative_area_index
 
   !------------------------------------------------------------------------
-  subroutine compute_vertical_veg_structure(dlai, dsai, dpai, cumpai, sumpai)
+  subroutine compute_vertical_veg_structure(dlai, dsai, dpai, cumpai, sumpai, leaf_td)
     !
     use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair, ntree
     !
     implicit none
     !
-    PetscReal, pointer, intent(inout) :: dlai(:), dsai(:), dpai(:), cumpai(:), sumpai(:)
+    PetscReal, pointer, intent(inout) :: dlai(:), dsai(:), dpai(:), cumpai(:), sumpai(:), leaf_td(:)
     !
     PetscInt  :: k, i, num_int, ic_bot
     PetscReal :: Kb
@@ -81,12 +81,14 @@ contains
     allocate(dpai  (nz_cair*ntree +1))
     allocate(cumpai(nz_cair*ntree +1))
     allocate(sumpai(nz_cair*ntree +1))
+    allocate(leaf_td(nz_cair*ntree +1))
 
     dlai(:) = 0.d0
     dsai(:) = 0.d0
     dpai(:) = 0.d0
     cumpai(:) = 0.d0
     sumpai(:) = 0.d0
+    leaf_td(:)= 0.d0
 
     ! Determine plant area index increment for each layer by numerically
     ! integrating the plant area density (beta distribution) between

@@ -142,7 +142,7 @@ contains
     PetscInt                               :: k, icol, icell, ileaf, iconn, sum_conn, nz, ncol
 
     PetscReal               , parameter :: emleaf = 0.98d0
-    PetscReal               , parameter :: emgrnd = 1.00d0
+    PetscReal               , parameter :: emgrnd = 0.96d0
     PetscReal               , parameter :: Irsky  = 400.d0
     PetscReal               , parameter :: td = 0.915d0
 
@@ -172,8 +172,8 @@ contains
                    write(iulog,*)'Longwave model: number of leaves is not 2'
                    call exit(0)
                 end if
-                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fraction(ileaf) = fssh(k)
-                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fraction(ileaf) = 1.d0 -fssh(k)
+                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fraction(ileaf) = fssh(nbot + k - 2)
+                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fraction(ileaf) = 1.d0 -fssh(nbot + k - 2)
              end if
           end do
        end do
@@ -221,11 +221,13 @@ contains
              icell = icell + 1
 
              if (k == 1) then
-                cur_goveq%aux_vars_in(icell)%soil_temperature = get_value_from_condition(Tsoil, icol)
+                cur_goveq%aux_vars_in(icell)%soil_temperature = get_value_from_condition(tg, icol)
              else
                 leaf_count = leaf_count + 1
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_sun, leaf_count)
-                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_shd, leaf_count)
+                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_shd, leaf_count)
+
+                cur_goveq%aux_vars_in(icell)%trans = leaf_td(nbot + k - 2)
              end if
           end do
        end do

@@ -347,7 +347,7 @@ contains
 
        if (avars(icell)%is_soil) then
 
-          value = avars(icell)%f
+          value = -avars(icell)%f
           row = (icell-1)*this%dof
           col = row + 1
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);

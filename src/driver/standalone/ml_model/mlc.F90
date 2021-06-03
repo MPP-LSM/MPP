@@ -254,10 +254,10 @@ contains
        call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
 
        if (ii == CAIR_TEMP_GE .or. ii == CLEF_TEMP_SUN_GE .or. ii == CLEF_TEMP_SHD_GE) then
-          v_p(:) = soe%cturb%tref(1)
+          v_p(:) = 295.93499389648440d0
 
        else if (ii == CAIR_VAPR_GE) then
-          v_p(:) = soe%cturb%vref(1)
+          v_p(:) = 9.4800086099820265E-003
        endif
 
        call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
@@ -537,7 +537,7 @@ contains
     use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
     use MultiPhysicsProbMLC             , only : mpp_mlc_type
     use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
-    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, Tsoil, Tair, eair
+    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, tg, Tair, eair
     use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
     use GoverningEquationBaseType       , only : goveqn_base_type
     use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
@@ -606,7 +606,7 @@ contains
           idx_data = idx_data + 1
           if (k == 1) then
              idx_soil = idx_soil + 1
-             call set_value_in_condition(Tsoil, idx_soil, tair_data(idx_data))
+             call set_value_in_condition(tg, idx_soil, tair_data(idx_data))
           else
              idx_air = idx_air + 1
              call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
