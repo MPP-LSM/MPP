@@ -267,7 +267,7 @@ contains
     PetscReal                  , pointer :: tair_local(:), tleaf_local(:)
     PetscReal                            :: Isun_vis, Ishd_vis
     PetscReal                , parameter :: relhum = 80.d0
-    PetscReal                , parameter :: unit_conversion = 4.6 ! w/m2 to mmol_photons/m2/s
+    PetscReal                , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 
@@ -289,16 +289,12 @@ contains
 
              tleaf_local(ileaf           ) = get_value_from_condition(Tleaf_sun, ileaf) ! [K]
              tleaf_local(ileaf + ncol*nz ) = get_value_from_condition(Tleaf_shd, ileaf) ! [K]
-             !tleaf_local(icell)            = TFRZ + 11.d0
-             !tleaf_local(icell + ncol*nz ) = TFRZ + 11.d0
 
              Isun_vis = get_value_from_condition(Ileaf_sun_vis, icell) ! w/m2
              Ishd_vis = get_value_from_condition(Ileaf_shd_vis, icell) ! w/m2
 
              cur_goveq%aux_vars_in(ileaf          )%apar = Isun_vis * unit_conversion ! [mmol_photon/m2/s]
              cur_goveq%aux_vars_in(ileaf + ncol*nz)%apar = Ishd_vis * unit_conversion ! [mmol_photon/m2/s]
-             cur_goveq%aux_vars_in(ileaf          )%apar = 2000.d0 *(1.d0 - 0.1d0 - 0.1d0)
-             cur_goveq%aux_vars_in(ileaf + ncol*nz)%apar = 2000.d0 *(1.d0 - 0.1d0 - 0.1d0)
           end do
        end do
 
