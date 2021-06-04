@@ -153,12 +153,20 @@ contains
        select case (avars(icell)%gstype)
        case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
           do idof = 1,this%dof
-             f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+             if (avars(icell)%an(idof) > 0.d0) then
+                f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+             else
+                f_p(icell) = 0.d0
+             end if
           end do
 
        case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
           do idof = 1,this%dof
-             f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+             if (avars(icell)%an(idof) > 0.d0) then
+                f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+             else
+                f_p(icell) = 0.d0
+             endif
           end do
 
        case (VAR_WUE)
@@ -288,14 +296,22 @@ contains
           select case (avars(icell)%gstype)
           case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
 
-             value = (an_1 - an_2)/ci_perturb &
-                  - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
-                  + gleaf_1
+             if (avars(icell)%an(idof) > 0.d0) then
+                value = (an_1 - an_2)/ci_perturb &
+                     - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
+                     + gleaf_1
+             else
+                value = 1.d0
+             end if
 
           case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
-             value = (an_1 - an_2)/ci_perturb &
-                  - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
-                  + gleaf_1
+             if (avars(icell)%an(idof) > 0.d0) then
+                value = (an_1 - an_2)/ci_perturb &
+                     - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
+                     + gleaf_1
+             else
+                value = 1.d0
+             end if
 
           case (VAR_WUE)
 
