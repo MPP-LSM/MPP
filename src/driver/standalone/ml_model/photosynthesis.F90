@@ -101,6 +101,7 @@ contains
     use ConnectionSetType    , only : connection_set_type
     use ml_model_global_vars , only : PHOTOSYNTHESIS_MESH, PHOTOSYNTHESIS_GE, c3psn, gstype
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
+    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
     use WaterVaporMod        , only : SatVap
     use ml_model_meshes      , only : nleaf
@@ -119,6 +120,7 @@ contains
     PetscReal                , parameter :: rho = 0.1d0
 
     c3psn  = VAR_PHOTOSYNTHETIC_PATHWAY_C4
+    c3psn  = VAR_PHOTOSYNTHETIC_PATHWAY_C3
     gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
@@ -257,17 +259,16 @@ contains
     !
     type(mpp_photosynthesis_type)        :: psy_mpp
     !
-    class(goveqn_base_type)    , pointer :: cur_goveq
-    class(connection_set_type) , pointer :: cur_conn_set
-    class(condition_type)      , pointer :: cur_cond
-    PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf, idx_data, icair
-    PetscReal                            :: eair, vpd_tleaf
-    PetscReal                            :: esat_tair, desat_tair
-    PetscReal                            :: esat_tleaf, desat_tleaf
-    PetscReal                  , pointer :: tair_local(:), tleaf_local(:)
-    PetscReal                            :: Isun_vis, Ishd_vis
-    PetscReal                , parameter :: relhum = 80.d0
-    PetscReal                , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
+    class(goveqn_base_type)    , pointer   :: cur_goveq
+    class(connection_set_type) , pointer   :: cur_conn_set
+    class(condition_type)      , pointer   :: cur_cond
+    PetscInt                               :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf, idx_data, icair
+    PetscReal                              :: Isun_vis, Ishd_vis
+    PetscReal                              :: qref_value , pref_value
+    PetscReal                  , pointer   :: tleaf_local(:)
+    PetscReal                  , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
+    PetscReal                  , parameter :: mmh2o = 18.02d-3 ! molecular mass of water (kg/mol)
+    PetscReal                  , parameter :: mmdry = 28.97d-3 ! molecular mass of dry air (kg/mol)
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 
@@ -277,7 +278,6 @@ contains
        ncol = ncair
        nz   = (ntop-nbot+1)
 
-       allocate(tair_local (ncol * nz * 2))
        allocate(tleaf_local(ncol * nz * 2))
 
        icell = 0
@@ -300,38 +300,29 @@ contains
 
        icell = 0
        idx_data = 0
+
        do icair = 1, ncair
-          do k = 1, nz_cair
-              idx_data = idx_data + 1
-              if (k >= nbot .and. k<=ntop) then
-                 icell = icell + 1
-                 tair_local(icell           )  = get_value_from_condition(Tair, idx_data)  ! [K]
-                 tair_local(icell + ncol*nz )  = get_value_from_condition(Tair, idx_data)  ! [K]
-                 tair_local(icell)            = TFRZ + 25.d0
-                 tair_local(icell + ncol*nz ) = TFRZ + 25.d0
-              endif
-            enddo
-       enddo
+          do k = 1, nz
+             idx_data = idx_data + 1
 
-       do icell = 1, ncol*nz*nleaf
+             do ileaf = 1, nleaf
+                icell = icell + 1
 
-          call SatVap (tair_local( icell) , esat_tair, desat_tair )
-          call SatVap (tleaf_local(icell), esat_tleaf, desat_tleaf)
-          eair = esat_tair * relhum /100.d0
-          vpd_tleaf = esat_tair - eair
+                cur_goveq%aux_vars_in(icell)%tleaf = tleaf_local(icell)
 
-          cur_goveq%aux_vars_in(icell)%tleaf = tleaf_local(icell)
-           cur_goveq%aux_vars_in(icell)%gbv   = get_value_from_condition(gbh, icell)
-           cur_goveq%aux_vars_in(icell)%gbc   = get_value_from_condition(gbc, icell)
-           cur_goveq%aux_vars_in(icell)%gbv   = 2.224407920268566d0
-           cur_goveq%aux_vars_in(icell)%gbc   = 1.637448199187622d0
+                cur_goveq%aux_vars_in(icell)%gbv   = get_value_from_condition(gbv, icell)
+                cur_goveq%aux_vars_in(icell)%gbc   = get_value_from_condition(gbc, icell)
 
-             if (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
-                cur_goveq%aux_vars_in(icell)%eair = esat_tleaf - vpd_tleaf
-             else
-                cur_goveq%aux_vars_in(icell)%eair = esat_tleaf * relhum/100.d0
-             end if
+                cur_goveq%aux_vars_in(icell)%cair  = get_value_from_condition(co2ref, icair)
+                cur_goveq%aux_vars_in(icell)%o2ref = get_value_from_condition(o2ref, icair)
 
+                qref_value = get_value_from_condition(qref, icair)
+                pref_value = get_value_from_condition(pref, icair)
+
+                cur_goveq%aux_vars_in(icell)%eair = &
+                                     qref_value * pref_value/(mmh2o/mmdry + (1.d0 - mmh2o/mmdry) * qref_value)
+             end do
+          end do
        end do
 
     end select
@@ -361,8 +352,6 @@ contains
 
     call set_parameters(psy_mpp)
 
-    call set_initial_conditions(psy_mpp)
-
   end subroutine init_photosynthesis
 
   !------------------------------------------------------------------------
@@ -373,6 +362,7 @@ contains
     ! !USES:
     use SystemOfEquationsBaseType , only : sysofeqns_base_type
     use ml_model_utils            , only : get_value_from_condition
+    use ml_model_meshes           , only : nleaf
     !
     ! !ARGUMENTS
     implicit none
@@ -387,7 +377,7 @@ contains
     DM                         , pointer :: dms(:)
     Vec                        , pointer :: soln_subvecs(:)
     PetscReal                  , pointer :: v_p(:)
-    PetscInt                             :: ii
+    PetscInt                             :: ii, icair, k, ileaf, idx_data, icell, nz
     PetscViewer                          :: viewer
     PetscInt                             :: soe_auxvar_id
     PetscErrorCode                       :: ierr
@@ -417,9 +407,20 @@ contains
          psy_mpp%soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
+    nz   = (ntop-nbot+1)
+
     do ii = 1, nDM
        call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
-       v_p(:) = 152.d0
+
+       icell = 0
+       do icair = 1, ncair
+          do k = 1, nz
+             do ileaf = 1, nleaf
+                icell = icell + 1
+                v_p(icell) = 0.7d0 * get_value_from_condition(co2ref, icair)
+             end do
+          end do
+       end do
        call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
     enddo
 
@@ -502,6 +503,8 @@ contains
     PetscInt                 :: converged_reason
     PetscBool                :: flg
     PetscErrorCode           :: ierr
+
+    call set_initial_conditions(psy_mpp)
 
     call photosynthesis_set_boundary_conditions(psy_mpp)
 
