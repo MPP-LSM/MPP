@@ -33,6 +33,7 @@ contains
     call allocate_memory_for_condition(Qref  , ncair)
     call allocate_memory_for_condition(Pref  , ncair)
     call allocate_memory_for_condition(Rhref , ncair)
+    call allocate_memory_for_condition(Eair  , ncair)
 
     call allocate_memory_for_condition(co2ref , ncair)
     call allocate_memory_for_condition(o2ref , ncair)
@@ -59,7 +60,7 @@ contains
     call allocate_memory_for_condition(Tcan      , ncair)
 
     call allocate_memory_for_condition(Tair      , ncair*nz_cair)
-    call allocate_memory_for_condition(eair      , ncair*nz_cair)
+    call allocate_memory_for_condition(Qair      , ncair*nz_cair)
 
     call allocate_memory_for_condition(Tleaf_sun , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(Tleaf_shd , ncair*(ntop-nbot+1) )

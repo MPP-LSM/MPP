@@ -557,13 +557,13 @@ contains
     PetscInt             :: idx_leaf, idx_data, idx_soil, idx_air
     PetscInt             :: ileaf, icair, itree, k, ieqn
     PetscInt             :: ncells
-    PetscReal,  pointer  :: tleaf_data(:), tair_data(:), eair_data(:)
+    PetscReal,  pointer  :: tleaf_data(:), tair_data(:), qair_data(:)
     PetscErrorCode       :: ierr
 
     ncells = ncair*ntree*(nz_cair+1)
     allocate(tleaf_data(ncells))
     allocate(tair_data(ncells))
-    allocate(eair_data(ncells))
+    allocate(qair_data(ncells))
 
     do ileaf = 1, 2
        ncells = ncair*ntree*(ntop-nbot+1)
@@ -596,7 +596,7 @@ contains
 
     ncells = ncair*(nz_cair+1)
     call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, ncells, eair_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, ncells, qair_data)
 
     idx_soil = 0
     idx_data = 0
@@ -610,14 +610,14 @@ contains
           else
              idx_air = idx_air + 1
              call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
-             call set_value_in_condition(eair, idx_air, eair_data(idx_data))
+             call set_value_in_condition(qair, idx_air, qair_data(idx_data))
           end if
        end do
     end do
 
     deallocate(tleaf_data)
     deallocate(tair_data)
-    deallocate(eair_data)
+    deallocate(qair_data)
 
   end subroutine extract_data_from_mlc
 
