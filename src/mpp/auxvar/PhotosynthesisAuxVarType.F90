@@ -504,7 +504,7 @@ contains
 
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
 
-          this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
+          this%g0opt = 1.0d-4;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 1.62d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
        elseif (this%gstype == VAR_WUE) then
@@ -525,7 +525,7 @@ contains
 
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
 
-          this%g0opt = 0.0d0;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
+          this%g0opt = 1.0d-4;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 4.45d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
        elseif (this%gstype == VAR_WUE) then
@@ -941,7 +941,7 @@ contains
 
           ! RuBP-limited photosynthesis
           a = this%je/4.d0
-          b = 2*this%cp
+          b = 2.d0*this%cp
 
           this%aj(idof)      = a*(this%ci(idof) - this%cp)/(this%ci(idof) + b)
           this%daj_dci(idof) = a*(b + this%cp)/((this%ci(idof) + b)**2.d0)
