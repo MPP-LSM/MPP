@@ -523,12 +523,102 @@ contains
   end subroutine CAirTempComputeRhs
 
   !------------------------------------------------------------------------
+  function gs0(this, icell, iconn)
+    !
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    class(goveqn_cair_temp_type) :: this
+    PetscInt                               :: icell, iconn
+    PetscReal                              :: gs0
+    !
+    class(cair_temp_auxvar_type) , pointer :: auxvar(:)
+    PetscReal                              :: qsat, s0
+    PetscReal                              :: gsw, gsa
+
+    auxvar => this%aux_vars_in
+
+    call SatVap(auxvar(icell)%temperature, qsat, s0)
+    qsat = qsat/this%aux_vars_in(icell)%pref
+    s0   = s0  /this%aux_vars_in(icell)%pref
+
+    gsw = 1.d0 / auxvar(icell)%soil_resis * auxvar(icell)%rhomol
+    gsa = this%aux_vars_conn_in(iconn)%ga
+    gs0 = gsw * gsa / (gsw + gsa)
+
+  end function gs0
+
+
+  !------------------------------------------------------------------------
+  function delta0_numerator(this, icell, iconn)
+    !
+    use MultiPhysicsProbConstants , only : HVAP, MM_H2O
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    class(goveqn_cair_temp_type) :: this
+    PetscInt :: icell, iconn
+    PetscReal :: delta0_numerator
+    !
+    class(cair_temp_auxvar_type) , pointer :: auxvar(:)
+    PetscReal :: qsat, s0
+    PetscReal :: gs_0, lambda
+
+    auxvar => this%aux_vars_in
+    lambda = HVAP * MM_H2O
+
+    call SatVap(auxvar(icell)%temperature, qsat, s0)
+    qsat = qsat/this%aux_vars_in(icell)%pref
+    s0   = s0  /this%aux_vars_in(icell)%pref
+
+    gs_0 = gs0(this, icell, iconn)
+
+    delta0_numerator = &
+         ( auxvar(icell)%soil_rn                                                        & ! (Rn_soil
+         - lambda * auxvar(icell)%soil_rhg * gs_0 * (qsat - s0*auxvar(icell)%temperature) & !  lambda * h_{s0} * g_{s0} * (qsat(T0) - s0*T0)
+         + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature & !  kappa_1/dz_0.5 * T_{-1})
+         )
+  end function delta0_numerator
+
+  !------------------------------------------------------------------------
+  function gamma0(this, icell, iconn)
+    !
+    use MultiPhysicsProbConstants , only : HVAP, MM_H2O
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    class(goveqn_cair_temp_type) :: this
+    PetscInt :: icell, iconn
+    PetscReal :: gamma0
+    !
+    class(cair_temp_auxvar_type) , pointer :: auxvar(:)
+    PetscReal :: qsat, s0, gs_0, lambda
+
+    auxvar => this%aux_vars_in
+    lambda = HVAP * MM_H2O
+
+    call SatVap(auxvar(icell)%temperature, qsat, s0)
+    qsat = qsat/this%aux_vars_in(icell)%pref
+    s0   = s0  /this%aux_vars_in(icell)%pref
+
+    gs_0 = gs0(this, icell, iconn)
+
+    ! The ground temperatue contributes to the canopy air layer above the ground
+    gamma0 = &
+         this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(iconn)%ga + & ! Cp * ga
+         lambda * this%aux_vars_in(icell)%soil_rhg * gs_0 * s0           + & ! lambda * h0 * gs0 * s0
+         this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz    ! k/dz
+
+  end function gamma0
+
+  !------------------------------------------------------------------------
   subroutine CAirTempRhsAccumulation(this, b_p)
     !
     ! !DESCRIPTION:
     ! Dummy subroutine for PETSc TS RSHFunction
-    use MultiPhysicsProbConstants , only : HVAP, MM_H2O
-    use WaterVaporMod             , only : SatVap
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
     use MultiPhysicsProbConstants , only : COND_DIRICHLET
@@ -542,12 +632,10 @@ contains
     class(cair_temp_auxvar_type) , pointer :: auxvar(:)
     class(connection_set_type)   , pointer :: cur_conn_set
     PetscInt                               :: icell, iconn
-    PetscReal                              :: qsat, si, gsw, gsa, gs0, lambda
+    PetscReal                              :: numer, denom
     PetscBool                              :: found
 
     auxvar => this%aux_vars_in
-
-    lambda = HVAP * MM_H2O
     
     cur_conn_set => this%mesh%intrn_conn_set_list%first
 
@@ -570,20 +658,21 @@ contains
              call endrun(msg=errMsg(__FILE__, __LINE__))
           end if
 
-          call SatVap(auxvar(icell)%temperature, qsat, si)
-          qsat = qsat/this%aux_vars_in(icell)%pref
-          si   = si  /this%aux_vars_in(icell)%pref
+          ! The ground temperatue does not change
+          b_p(icell) = auxvar(icell)%soil_temperature
 
-          gsw = 1.d0 / auxvar(icell)%soil_resis * auxvar(icell)%rhomol
-          gsa = this%aux_vars_conn_in(iconn)%ga
-          gs0 = gsw * gsa / (gsw + gsa)
+          ! The ground temperatue contributes to the canopy air layer above the ground
+          numer = delta0_numerator(this, icell, iconn)
+          denom = gamma0(this, icell, iconn)
 
-          b_p(icell) = b_p(icell) &
-               + ( auxvar(icell)%soil_rn &
-               - lambda * auxvar(icell)%soil_rhg * gs0* (qsat - si*auxvar(icell)%temperature) &
-               + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature &
-               )
+#ifdef USE_BONAN_FORMULATION
+          b_p(icell+1) = b_p(icell+1) + numer/denom * this%aux_vars_conn_in(iconn)%ga
+#else
+          b_p(icell+1) = b_p(icell+1) + numer/denom * this%mesh%volume(icell+1) * this%aux_vars_conn_in(iconn)%ga
+#endif
+
        else
+
 #ifdef USE_BONAN_FORMULATION
           b_p(icell) = b_p(icell) + auxvar(icell)%rhomol / this%dtime * auxvar(icell)%temperature * this%mesh%vol(icell)
 #else
@@ -640,7 +729,7 @@ contains
 
 #ifdef USE_BONAN_FORMULATION
              b_p(cell_id) = b_p(cell_id) + &
-                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%temperature
+                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%temperature ! For top boundary condition: ga_{i+1/2}/dz_{i+1} * T^{ref}
 #else
              b_p(cell_id) = b_p(cell_id) + &
                   this%aux_vars_conn_bc(sum_conn)%ga/dist * auxvar(sum_conn)%temperature
@@ -688,11 +777,9 @@ contains
     PetscInt                             :: icell, ileaf, iconn, sum_conn
     PetscInt                             :: cell_id, cell_id_up, cell_id_dn
     PetscInt                             :: row, col
-    PetscReal                            :: value, ga, dist, gsw, gsa, gs0
-    PetscReal                            :: qsat, si, lambda
+    PetscReal                            :: value, ga, dist
+    PetscReal                            :: numer, denom
     PetscBool                            :: found
-
-    lambda = HVAP * MM_H2O
 
     ! For soil cell
     icell = 1
@@ -721,25 +808,20 @@ contains
              call endrun(msg=errMsg(__FILE__, __LINE__))
           end if
 
-          call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-          qsat = qsat/this%aux_vars_in(icell)%pref
-          si   = si  /this%aux_vars_in(icell)%pref
-
-          gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-          gsa = this%aux_vars_conn_in(iconn)%ga
-          gs0 = gsw * gsa / (gsw + gsa)
-
-          value = &
-               this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(iconn)%ga + &
-               lambda * this%aux_vars_in(icell)%soil_rhg * gs0 * si + &
-               this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz
-
+          ! The ground temperature does not change
+          value = 1.d0
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-          ! For soil-cell <--> air temperature
-          row = icell-1; col = icell+1-1
-          value = -this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(iconn)%ga
+          ! The ground temperature contributes to the canopy air space layer above the ground
+          row = icell; col = icell
+          numer = this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(iconn)%ga
+          denom = gamma0(this, icell, iconn)
 
+#ifdef USE_BONAN_FORMULATION
+          value = -numer/denom * this%aux_vars_conn_in(iconn)%ga
+#else
+          value = -numer/denom * this%aux_vars_conn_in(iconn)%ga/this%mesh%vol(icell+1)
+#endif
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
        else
@@ -764,7 +846,6 @@ contains
                      this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
                      this%mesh%vol(icell)
 #endif
-
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
              end if
           end do
@@ -792,12 +873,22 @@ contains
           value = ga/dist
 #endif
           if (.not.this%aux_vars_in(cell_id_up)%is_soil) then
-             call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+             ! Skip if cell_id_up = Canopy-air and cell_id_dn = soil
+             if (.not.this%aux_vars_in(cell_id_dn)%is_soil) then
+                call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             end if
+
              call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_up-1,  value, ADD_VALUES, ierr); CHKERRQ(ierr)
           endif
 
           if (.not.this%aux_vars_in(cell_id_dn)%is_soil) then
-             call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+             ! Skip if cell_id_dn = Canopy-air and cell_id_up = soil
+             if (.not.this%aux_vars_in(cell_id_up)%is_soil) then
+                call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_up-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             end if
+
              call MatSetValuesLocal(B, 1, cell_id_dn-1, 1, cell_id_dn-1,  value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if
 
@@ -873,7 +964,8 @@ contains
     ! !LOCAL VARIABLES
     class(connection_set_type)   , pointer :: cur_conn_set
     PetscInt                               :: icell, ileaf, row, col, iconn, geq_leaf_temp_rank, cair_auxvar_idx, leaf_idx
-    PetscReal                              :: value, gleaf, gleaf_et, gsw, gsa, gs0, lambda
+    PetscReal                              :: value, gleaf, gleaf_et, gs_0, lambda
+    PetscReal                              :: numer, denom!, qsat, s0
     PetscBool                              :: found
 
     lambda = HVAP * MM_H2O
@@ -885,7 +977,6 @@ contains
        ! For soil-cell <--> air vapor
        do icell = 1, this%mesh%ncells_local
           if (this%aux_vars_in(icell)%is_soil) then
-             row = icell-1; col = icell-1
 
              ! Find the internal connection that is between the soil layer overlying
              ! air space
@@ -902,11 +993,22 @@ contains
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              end if
 
-             gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-             gsa = this%aux_vars_conn_in(1)%ga
-             gs0 = gsw * gsa / (gsw + gsa)
+             ! The ground temperature does not change
+             value = 0.d0
+             row = icell-1; col = icell-1
+             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-             value = - lambda * gs0
+             ! The ground temperature contributes to the canopy air space layer above the ground
+             gs_0 = gs0(this, icell, iconn)
+             numer = lambda * gs_0
+             denom = gamma0(this, icell, iconn)
+
+#ifdef USE_BONAN_FORMULATION
+             value = -numer/denom * this%aux_vars_conn_in(iconn)%ga
+#else
+             value = -numer/denom * this%aux_vars_conn_in(iconn)%ga/this%mesh%vol(icell+1)
+#endif
+             row = icell ; col = icell
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           endif
        enddo
