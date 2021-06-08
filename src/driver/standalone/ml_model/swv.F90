@@ -531,7 +531,7 @@ contains
                    icell = icell + 1;
 
                    count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
-                   count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
+                   count = count + 1; call set_value_in_condition(Isoil_nir, icell, Iabs_soil(count))
                 else
                    count = count + 2
                 end if
