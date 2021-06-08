@@ -135,7 +135,7 @@ contains
     !
     PetscReal                    :: dt
     PetscBool                    :: converged
-    PetscInt                     :: istep
+    PetscInt                     :: istep, isubstep
     PetscInt                     :: converged_reason
 
     ncair = 1;
@@ -150,31 +150,34 @@ contains
     call allocate_memory()
     call init_mpps()
 
+    call read_boundary_conditions(istep)
     call set_initial_conditions()
 
     do istep = 1, 1
        call read_boundary_conditions(istep)
 
-       dt = 30.d0 * 60.d0 ! [sec]
        write(*,*)'Solving shortwave radiation'
        call solve_swv(swv_mpp, istep, dt)
        call extract_data_from_swv(swv_mpp)
 
-       call extract_data_from_mlc(mlc_mpp)
-       write(*,*)'Solving longwave radiation'
-       call solve_lwv(lwv_mpp, istep, dt)
-       call extract_data_from_lwv(lwv_mpp)
+       do isubstep = 1, 1
+          dt = 300.d0 ! [sec]
+          call extract_data_from_mlc(mlc_mpp)
+          write(*,*)'Solving longwave radiation'
+          call solve_lwv(lwv_mpp, istep, dt)
+          call extract_data_from_lwv(lwv_mpp)
 
-       write(*,*)'Solving leaf boundary layer'
-       call solve_lbl(lbl_mpp, istep, dt)
-       call extract_data_from_lbl(lbl_mpp)
+          write(*,*)'Solving leaf boundary layer'
+          call solve_lbl(lbl_mpp, istep, dt)
+          call extract_data_from_lbl(lbl_mpp)
 
-       write(*,*)'Solving photosynthesis'
-       call solve_photosynthesis(psy_mpp, istep, dt)
-       call extract_data_from_photosynthesis(psy_mpp)
+          write(*,*)'Solving photosynthesis'
+          call solve_photosynthesis(psy_mpp, istep, dt)
+          call extract_data_from_photosynthesis(psy_mpp)
 
-       write(*,*)'Solving MLC'
-       call solve_mlc(mlc_mpp, istep, dt)
+          write(*,*)'Solving MLC'
+          call solve_mlc(mlc_mpp, istep, dt)
+       end do
     end do
 
   end subroutine run_ml_model_problem
