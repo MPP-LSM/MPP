@@ -188,6 +188,8 @@ contains
   !------------------------------------------------------------------------
   subroutine mlc_set_initial_conditions(mlc_mpp)
     !
+    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
+    !
     ! !DESCRIPTION:
     !
     ! !USES:
@@ -203,7 +205,7 @@ contains
     class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_mlc_type)  , pointer :: soe
     PetscReal                            :: relhum, eref, esat, desatdt
-    PetscInt                             :: p
+    PetscInt                             :: icair
     PetscInt                             :: nDM
     DM                         , pointer :: dms(:)
     Vec                        , pointer :: soln_subvecs(:)
@@ -223,16 +225,17 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
-    do p = 1, ncair
-       soe%cturb%pref(p) = 98620.d0 !get_value_from_condition(Pref, p)
-       soe%cturb%uref(p) = 5.d0     !get_value_from_condition(Uref, p)
-       soe%cturb%tref(p) = 295.d0   !get_value_from_condition(Tref, p)
-       soe%cturb%rhref(p)= 80.d0    !get_value_from_condition(Rhref, p)
+    do icair = 1, ncair
+       soe%cturb%pref(icair) = get_value_from_condition(Pref, icair)
+       soe%cturb%uref(icair) = get_value_from_condition(Uref, icair)
+       soe%cturb%tref(icair) = get_value_from_condition(Tref, icair)
+       soe%cturb%rhref(icair)= 80.d0    !get_value_from_condition(Rhref, icair)
+       soe%cturb%vref(icair) = get_value_from_condition(Qref, icair)
 
-       call soe%cturb%ComputeDerivedAtmInputs(p)
+       call soe%cturb%ComputeDerivedAtmInputs(icair)
 
-       soe%cturb%vcan(p) = soe%cturb%vref(p)
-       soe%cturb%tcan(p) = soe%cturb%tref(p)
+       soe%cturb%vcan(icair) = soe%cturb%vref(icair)
+       soe%cturb%tcan(icair) = soe%cturb%tref(icair)
     end do
 
     ! Find number of GEs packed within the SoE
@@ -250,14 +253,15 @@ contains
          mlc_mpp%soe%solver%soln, nDM, &
          PETSC_NULL_INTEGER, soln_subvecs, ierr)
 
+    icair = 1;
     do ii = 1, nDM
        call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
 
        if (ii == CAIR_TEMP_GE .or. ii == CLEF_TEMP_SUN_GE .or. ii == CLEF_TEMP_SHD_GE) then
-          v_p(:) = 295.93499389648440d0
+          v_p(:) = get_value_from_condition(Tref, icair)
 
        else if (ii == CAIR_VAPR_GE) then
-          v_p(:) = 9.4800086099820265E-003
+          v_p(:) = get_value_from_condition(Qref, icair)
        endif
 
        call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
@@ -280,9 +284,47 @@ contains
  !------------------------------------------------------------------------
   subroutine set_boundary_conditions(mlc_mpp)
     !
+    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
+    use SystemOfEquationsBaseType , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType  , only : sysofeqns_mlc_type
+    use ml_model_utils            , only : get_value_from_condition
+    !
+    ! !ARGUMENTS
     implicit none
     !
-    class(mpp_mlc_type) :: mlc_mpp
+    type(mpp_mlc_type) :: mlc_mpp
+    !
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
+    PetscInt                             :: icair
+
+    base_soe => mlc_mpp%soe
+
+    select type(base_soe)
+    class is (sysofeqns_mlc_type)
+       soe => base_soe
+    class default
+       write(iulog,*) 'Unsupported class type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    do icair = 1, ncair
+       soe%cturb%pref(icair) = get_value_from_condition(pref, icair)
+       soe%cturb%uref(icair) = get_value_from_condition(uref, icair)
+       soe%cturb%tref(icair) = get_value_from_condition(tref, icair)
+       soe%cturb%vref(icair) = get_value_from_condition(qref, icair)
+
+       call soe%cturb%ComputeDerivedAtmInputs(icair)
+
+       soe%cturb%vcan(icair) = soe%cturb%vref(icair)
+       soe%cturb%tcan(icair) = soe%cturb%tref(icair)
+       soe%cturb%tsoi(icair) = get_value_from_condition(soil_t,icair)
+
+       soe%cturb%rnsoi(icair) = &
+            get_value_from_condition(Isoil_vis, icair) + &
+            get_value_from_condition(Isoil_nir, icair) + &
+            get_value_from_condition(Labs_soil, icair)
+    end do
 
     call set_air_temp_ge_parameters(mlc_mpp)
     call set_air_vapor_ge_parameters(mlc_mpp)
