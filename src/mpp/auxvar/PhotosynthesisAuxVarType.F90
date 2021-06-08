@@ -543,7 +543,7 @@ contains
   !------------------------------------------------------------------------
   subroutine ComputeSoilResistance(this)
     !
-    use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT
+    use MultiPhysicsProbConstants , only : GRAVITY_CONSTANT, MM_H2O
     !
     implicit none
     ! !ARGUMENTS
@@ -559,7 +559,7 @@ contains
     PetscReal                , pointer   :: psi_mpa(:), evap(:)
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
-    PetscReal                , parameter :: mmh2o = 18.02d-3 ! molecular mass of water (kg/mol)
+    !PetscReal                , parameter :: mmh2o = 18.02d-3 ! molecular mass of water (kg/mol)
 
     soil  => this%soil
     plant => this%plant
@@ -581,7 +581,7 @@ contains
 
           hk = soil%hksat(j) * s**(2.d0 * soil%bsw(j) + 3.d0); ! mm/s
           hk = hk * 1e-03 / head;                              ! mm/s -> m/s -> m2/s/MPa
-          hk = hk * denh2o / mmh2o * 1000.d0;                  ! m2/s/MPa -> mmol/m/s/MPa
+          hk = hk * denh2o / MM_H2O * 1000.d0;                  ! m2/s/MPa -> mmol/m/s/MPa
 
           ! Matric potential for each layer (MPa)
           psi_mpa(j) = soil%psi(j) * 1e-03 * head;          ! mm -> m -> MPa
@@ -666,7 +666,6 @@ contains
     class(plant_auxvar_type) , pointer   :: plant
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
-    PetscReal                , parameter :: mmh2o = 18.02d-3 ! molecular mass of water (kg/mol)
 
     if (this%pathway_and_stomatal_params_defined  == 0) then
        call SetPathwayParameters(this)
