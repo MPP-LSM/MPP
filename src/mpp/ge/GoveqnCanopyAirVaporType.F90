@@ -285,8 +285,9 @@ contains
     ! top-layer
     do icair = 1, cturb%ncair
        iconn = icair
-       this%aux_vars_conn_bc(iconn)%ga = cturb%ga_prof(icair, k)
-       this%aux_vars_bc(iconn)%water_vapor    = cturb%vref(icair)
+       this%aux_vars_conn_bc(iconn)%ga     = cturb%ga_prof(icair, k)
+       this%aux_vars_bc(iconn)%water_vapor = cturb%vref(icair)
+       this%aux_vars_bc(iconn)%pref        = cturb%pref(icair)
     end do
 
   end subroutine CAirVaporGetFromSoeAuxVarsCturb
