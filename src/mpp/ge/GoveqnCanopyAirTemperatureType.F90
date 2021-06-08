@@ -523,6 +523,41 @@ contains
   end subroutine CAirTempComputeRhs
 
   !------------------------------------------------------------------------
+  function SoilAirIConn(this, icell)
+    !
+    use ConnectionSetType, only : connection_set_type
+    !
+    implicit none
+    !
+    class(goveqn_cair_temp_type)         :: this
+    PetscInt                             :: icell, SoilAirIConn
+    !
+    class(connection_set_type) , pointer :: cur_conn_set
+    PetscInt                             :: iconn
+    PetscBool                            :: found
+
+    cur_conn_set => this%mesh%intrn_conn_set_list%first
+
+    ! Find the internal connection that is between the soil layer overlying
+    ! air space
+    found = PETSC_FALSE
+    do iconn = 1, cur_conn_set%num_connections
+       if (cur_conn_set%conn(iconn)%GetIDUp() == icell .or. &
+            cur_conn_set%conn(iconn)%GetIDDn() == icell) then
+          found = PETSC_TRUE
+          exit
+       end if
+    end do
+    if (.not. found) then
+       write(iulog,*)'Internal connection not found'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end if
+
+    SoilAirIConn = iconn
+
+  end function SoilAirIConn
+
+  !------------------------------------------------------------------------
   function gs0(this, icell, iconn)
     !
     use WaterVaporMod             , only : SatVap
@@ -549,9 +584,32 @@ contains
 
   end function gs0
 
+  !------------------------------------------------------------------------
+  function alpha0(this, icell, iconn)
+    !
+    ! Equation 16.86 from Bonan (2019)
+    !
+    use MultiPhysicsProbConstants , only : HVAP, MM_H2O
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    class(goveqn_cair_temp_type)           :: this
+    PetscInt                               :: icell, iconn
+    !
+    PetscReal                              :: numer, denom, alpha0
+
+    numer = this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(iconn)%ga
+    denom = gamma0(this, icell, iconn)
+
+    alpha0 = numer/denom
+
+  end function alpha0
 
   !------------------------------------------------------------------------
-  function delta0_numerator(this, icell, iconn)
+  function beta0(this, icell, iconn)
+    !
+    ! Equation 16.87 from Bonan (2019)
     !
     use MultiPhysicsProbConstants , only : HVAP, MM_H2O
     use WaterVaporMod             , only : SatVap
@@ -559,28 +617,65 @@ contains
     implicit none
     !
     class(goveqn_cair_temp_type) :: this
-    PetscInt :: icell, iconn
-    PetscReal :: delta0_numerator
+    PetscInt                     :: icell, iconn
+    PetscReal                    :: beta0
     !
-    class(cair_temp_auxvar_type) , pointer :: auxvar(:)
-    PetscReal :: qsat, s0
-    PetscReal :: gs_0, lambda
+    PetscReal                    :: qsat, s0
+    PetscReal                    :: gs_0, lambda, numer, denom
 
-    auxvar => this%aux_vars_in
     lambda = HVAP * MM_H2O
 
-    call SatVap(auxvar(icell)%temperature, qsat, s0)
+    call SatVap(this%aux_vars_in(icell)%temperature, qsat, s0)
     qsat = qsat/this%aux_vars_in(icell)%pref
     s0   = s0  /this%aux_vars_in(icell)%pref
 
     gs_0 = gs0(this, icell, iconn)
 
-    delta0_numerator = &
-         ( auxvar(icell)%soil_rn                                                        & ! (Rn_soil
+    numer = lambda * gs_0
+    denom = gamma0(this, icell, iconn)
+
+    beta0 = numer/denom
+
+  end function beta0
+
+  !------------------------------------------------------------------------
+  function delta0(this, icell, iconn)
+    !
+    ! Equation 16.88 from Bonan (2019)
+    !
+    use MultiPhysicsProbConstants , only : HVAP, MM_H2O
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    class(goveqn_cair_temp_type)           :: this
+    PetscInt                               :: icell, iconn
+    PetscReal                              :: delta0
+    !
+    class(cair_temp_auxvar_type) , pointer :: auxvar(:)
+    PetscReal                              :: qsat, s0
+    PetscReal                              :: gs_0, lambda, numer, denom
+
+    auxvar => this%aux_vars_in
+    lambda = HVAP * MM_H2O
+
+    call SatVap(this%aux_vars_in(icell)%temperature, qsat, s0)
+    qsat = qsat/this%aux_vars_in(icell)%pref
+    s0   = s0  /this%aux_vars_in(icell)%pref
+
+    gs_0 = gs0(this, icell, iconn)
+
+    numer = &
+         ( auxvar(icell)%soil_rn                                                          & ! (Rn_soil
          - lambda * auxvar(icell)%soil_rhg * gs_0 * (qsat - s0*auxvar(icell)%temperature) & !  lambda * h_{s0} * g_{s0} * (qsat(T0) - s0*T0)
-         + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature & !  kappa_1/dz_0.5 * T_{-1})
+         + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature   & !  kappa_1/dz_0.5 * T_{-1})
          )
-  end function delta0_numerator
+
+    denom = gamma0(this, icell, iconn)
+
+    delta0 = numer/denom
+
+  end function delta0
 
   !------------------------------------------------------------------------
   function gamma0(this, icell, iconn)
@@ -632,8 +727,7 @@ contains
     class(cair_temp_auxvar_type) , pointer :: auxvar(:)
     class(connection_set_type)   , pointer :: cur_conn_set
     PetscInt                               :: icell, iconn
-    PetscReal                              :: numer, denom
-    PetscBool                              :: found
+    PetscReal                              :: delta0_value
 
     auxvar => this%aux_vars_in
     
@@ -643,32 +737,19 @@ contains
     do icell = 1, this%mesh%ncells_local
        if (auxvar(icell)%is_soil) then
 
-          ! Find the internal connection that is between the soil layer overlying
-          ! air space
-          found = PETSC_FALSE
-          do iconn = 1, cur_conn_set%num_connections
-             if (cur_conn_set%conn(iconn)%GetIDUp() == icell .or. &
-                  cur_conn_set%conn(iconn)%GetIDDn() == icell) then
-                found = PETSC_TRUE
-                exit
-             end if
-          end do
-          if (.not. found) then
-             write(iulog,*)'Internal connection not found'
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          end if
+          ! Get soil-air connection id
+          iconn = SoilAirIConn(this, icell)
 
           ! The ground temperatue does not change
           b_p(icell) = auxvar(icell)%soil_temperature
 
           ! The ground temperatue contributes to the canopy air layer above the ground
-          numer = delta0_numerator(this, icell, iconn)
-          denom = gamma0(this, icell, iconn)
+          delta0_value = delta0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-          b_p(icell+1) = b_p(icell+1) + numer/denom * this%aux_vars_conn_in(iconn)%ga
+          b_p(icell+1) = b_p(icell+1) + delta0_value * this%aux_vars_conn_in(iconn)%ga
 #else
-          b_p(icell+1) = b_p(icell+1) + numer/denom * this%mesh%volume(icell+1) * this%aux_vars_conn_in(iconn)%ga
+          b_p(icell+1) = b_p(icell+1) + delta0_value * this%mesh%vol(icell+1) / this%aux_vars_conn_in(iconn)%ga
 #endif
 
        else
@@ -778,8 +859,7 @@ contains
     PetscInt                             :: cell_id, cell_id_up, cell_id_dn
     PetscInt                             :: row, col
     PetscReal                            :: value, ga, dist
-    PetscReal                            :: numer, denom
-    PetscBool                            :: found
+    PetscReal                            :: alpha0_value
 
     ! For soil cell
     icell = 1
@@ -793,20 +873,8 @@ contains
 
        if (this%aux_vars_in(icell)%is_soil) then
 
-          ! Find the internal connection that is between the soil layer overlying
-          ! air space
-          found = PETSC_FALSE
-          do iconn = 1, cur_conn_set%num_connections
-                 if (cur_conn_set%conn(iconn)%GetIDUp() == icell .or. &
-                  cur_conn_set%conn(iconn)%GetIDDn() == icell) then
-                found = PETSC_TRUE
-                exit
-             end if
-          end do
-          if (.not. found) then
-             write(iulog,*)'Internal connection not found'
-             call endrun(msg=errMsg(__FILE__, __LINE__))
-          end if
+          ! Get soil-air connection id
+          iconn = SoilAirIConn(this, icell)
 
           ! The ground temperature does not change
           value = 1.d0
@@ -814,13 +882,12 @@ contains
 
           ! The ground temperature contributes to the canopy air space layer above the ground
           row = icell; col = icell
-          numer = this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(iconn)%ga
-          denom = gamma0(this, icell, iconn)
+          alpha0_value = alpha0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-          value = -numer/denom * this%aux_vars_conn_in(iconn)%ga
+          value = -alpha0_value * this%aux_vars_conn_in(iconn)%ga
 #else
-          value = -numer/denom * this%aux_vars_conn_in(iconn)%ga/this%mesh%vol(icell+1)
+          value = -alpha0_value * this%aux_vars_conn_in(iconn)%ga / this%mesh%vol(icell+1)
 #endif
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
@@ -964,11 +1031,8 @@ contains
     ! !LOCAL VARIABLES
     class(connection_set_type)   , pointer :: cur_conn_set
     PetscInt                               :: icell, ileaf, row, col, iconn, geq_leaf_temp_rank, cair_auxvar_idx, leaf_idx
-    PetscReal                              :: value, gleaf, gleaf_et, gs_0, lambda
-    PetscReal                              :: numer, denom!, qsat, s0
-    PetscBool                              :: found
-
-    lambda = HVAP * MM_H2O
+    PetscReal                              :: value, gleaf, gleaf_et
+    PetscReal                              :: beta0_value
 
     cur_conn_set => this%mesh%intrn_conn_set_list%first
 
@@ -978,20 +1042,8 @@ contains
        do icell = 1, this%mesh%ncells_local
           if (this%aux_vars_in(icell)%is_soil) then
 
-             ! Find the internal connection that is between the soil layer overlying
-             ! air space
-             found = PETSC_FALSE
-             do iconn = 1, cur_conn_set%num_connections
-                if (cur_conn_set%conn(iconn)%GetIDUp() == icell .or. &
-                     cur_conn_set%conn(iconn)%GetIDDn() == icell) then
-                   found = PETSC_TRUE
-                   exit
-                end if
-             end do
-             if (.not. found) then
-                write(iulog,*)'Internal connection not found'
-                call endrun(msg=errMsg(__FILE__, __LINE__))
-             end if
+             ! Get soil-air connection id
+             iconn = SoilAirIConn(this, icell)
 
              ! The ground temperature does not change
              value = 0.d0
@@ -999,14 +1051,12 @@ contains
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
              ! The ground temperature contributes to the canopy air space layer above the ground
-             gs_0 = gs0(this, icell, iconn)
-             numer = lambda * gs_0
-             denom = gamma0(this, icell, iconn)
+             beta0_value = beta0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-             value = -numer/denom * this%aux_vars_conn_in(iconn)%ga
+             value = -beta0_value * this%aux_vars_conn_in(iconn)%ga
 #else
-             value = -numer/denom * this%aux_vars_conn_in(iconn)%ga/this%mesh%vol(icell+1)
+             value = -beta0_value * this%aux_vars_conn_in(iconn)%ga/this%mesh%vol(icell+1)
 #endif
              row = icell ; col = icell
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
