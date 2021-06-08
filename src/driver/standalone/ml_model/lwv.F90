@@ -118,7 +118,7 @@ contains
   end subroutine add_conditions_to_goveqns
 
   !------------------------------------------------------------------------
-  subroutine set_parameters(lwv_mpp)
+  subroutine set_parameters(lwv_mpp, dpai)
 
     ! !DESCRIPTION:
     !
@@ -135,6 +135,7 @@ contains
     implicit none
     !
     type(mpp_longwave_type)               :: lwv_mpp
+    PetscReal, pointer, intent(in)         :: dpai(:)
     !
     class(goveqn_base_type)    , pointer   :: cur_goveq
     class(connection_set_type) , pointer   :: cur_conn_set
@@ -174,6 +175,8 @@ contains
                 end if
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fraction(ileaf) = fssh(nbot + k - 2)
                 ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fraction(ileaf) = 1.d0 -fssh(nbot + k - 2)
+                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_dlai(ileaf) = dpai(k + nbot - 2)
+                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_dlai(ileaf) = dpai(k + nbot - 2)
              end if
           end do
        end do
@@ -284,6 +287,8 @@ contains
   !------------------------------------------------------------------------
   subroutine init_lwv(lwv_mpp)
     !
+    use ml_model_global_vars, only : dpai
+    !
     implicit none
     !
     class(mpp_longwave_type) :: lwv_mpp
@@ -302,7 +307,7 @@ contains
 
     call lwv_mpp%SetupProblem()
 
-    call set_parameters(lwv_mpp)
+    call set_parameters(lwv_mpp, dpai)
 
   end subroutine init_lwv
 
