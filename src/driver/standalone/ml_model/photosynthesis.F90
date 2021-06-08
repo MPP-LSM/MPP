@@ -240,6 +240,7 @@ contains
     ! !DESCRIPTION
     !
     ! !USES:
+    use MultiPhysicsProbConstants           , only : MM_H2O, MM_DRY_AIR
     use SystemOfEquationsBaseType           , only : sysofeqns_base_type
     use SystemOfEquationsPhotosynthesisType , only : sysofeqns_photosynthesis_type
     use GoverningEquationBaseType           , only : goveqn_base_type
@@ -267,8 +268,6 @@ contains
     PetscReal                              :: qref_value , pref_value
     PetscReal                  , pointer   :: tleaf_local(:)
     PetscReal                  , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
-    PetscReal                  , parameter :: mmh2o = 18.02d-3 ! molecular mass of water (kg/mol)
-    PetscReal                  , parameter :: mmdry = 28.97d-3 ! molecular mass of dry air (kg/mol)
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 
@@ -320,7 +319,7 @@ contains
                 pref_value = get_value_from_condition(pref, icair)
 
                 cur_goveq%aux_vars_in(icell)%eair = &
-                                     qref_value * pref_value/(mmh2o/mmdry + (1.d0 - mmh2o/mmdry) * qref_value)
+                                     qref_value * pref_value/(MM_H2O/MM_DRY_AIR + (1.d0 - MM_H2O/MM_DRY_AIR) * qref_value)
              end do
           end do
        end do
