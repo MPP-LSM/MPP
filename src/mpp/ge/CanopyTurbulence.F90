@@ -18,6 +18,23 @@ module CanopyTurbulence
   public :: WindProfile
   public :: AerodynamicConductances
 
+  PetscReal, parameter :: cd = 0.25d0               ! RSL - leaf drag coefficient (dimensionless)
+  PetscReal, parameter :: beta_neutral_max = 0.35d0 ! RSL - maximum value for beta in neutral conditions
+  PetscReal, parameter :: cr = 0.3d0                ! RSL - parameter to calculate beta_neutral
+  PetscReal, parameter :: c2 = 0.5d0                ! RSL - depth scale multiplier
+  PetscReal, parameter :: Pr0 = 0.5d0               ! RSL - neutral value for Pr (Sc)
+  PetscReal, parameter :: Pr1 = 0.3d0               ! RSL - magnitude of variation of Pr (Sc) with stability
+  PetscReal, parameter :: Pr2 = 2.0d0               ! RSL - scale of variation of Pr (Sc) with stability
+  PetscReal, parameter :: z0mg = 0.01d0             ! RSL - roughness length of ground (m)
+  PetscReal, parameter :: wind_forc_min = 1.0d0     ! Minimum wind speed at forcing height (m/s)
+  PetscReal, parameter :: eta_max = 20.d0           ! Maximum value for "eta" parameter (used to constrain lm/beta)
+  PetscReal, parameter :: zeta_min = -2.0d0         ! Minimum value for Monin-Obukhov zeta parameter
+  PetscReal, parameter :: zeta_max = 1.0d0          ! Maximum value for Monin-Obukhov zeta parameter
+  PetscReal, parameter :: beta_min = 0.2d0          ! Minimum value for H&F beta parameter
+  PetscReal, parameter :: beta_max = 0.5d0          ! Maximum value for H&F beta parameter
+  PetscReal, parameter :: wind_min = 0.1d0          ! Minimum wind speed in canopy (m/s)
+  PetscReal, parameter :: ra_max = 500.d0           ! Maximum aerodynamic resistance (s/m)
+
 contains
 
   !------------------------------------------------------------------------
@@ -27,10 +44,8 @@ contains
     !
     class(canopy_turbulence_auxvar_type) :: cturb
     !
-    PetscReal :: cd, obu0, obu1, tol, dummy
+    PetscReal :: obu0, obu1, tol, dummy
     PetscInt  :: icair
-
-    cd = 0.25d0
 
     do icair = 1, cturb%ncair
 
@@ -113,7 +128,7 @@ contains
     PetscReal :: psi_c_hc, psi_c_rsl_hc, psi_c_zs, psi_c_rsl_zs
     PetscReal :: psic, psic1, psic2
     PetscReal :: ga_below_hc, ga_above_hc
-    PetscReal :: zom_g, zoc_g, zlog_m, zlog_c, ustar_g
+    PetscReal :: zoc_g, zlog_m, zlog_c, ustar_g
 
     do icair = 1, cturb%ncair
 
@@ -207,17 +222,22 @@ contains
 
        ! At ground
        k = 1
-       zom_g = 0.01d0
-       zoc_g = 0.1d0 * zom_g
-       zlog_m = log(cturb%zs(icair,k+1)/zom_g)
+       zoc_g = 0.1d0 * z0mg
+       zlog_m = log(cturb%zs(icair,k+1)/z0mg)
        zlog_c = log(cturb%zs(icair,k+1)/zoc_g)
        ustar_g = cturb%wind(icair,k+1) * VKC /zlog_m;
        ustar_g = max(ustar_g, 0.01d0)
        res = zlog_c/(VKC * ustar_g)
        cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res
 
+       !gac0(p) = rhomol(p) * vkc * ustar_g / zlog_c   !!! CLMml v0 CODE !!!
+
+       res = min (cturb%rhomol(icair)/cturb%ga_prof(icair,k), ra_max)
+       cturb%ga_prof(icair,k) = cturb%rhomol(icair) / res
+
        ! Limit resistance to < 500 s/m
-       do k = 1, cturb%ncan_lev
+       k = 1
+       do k = 1+1, cturb%ncan_lev
           res = min(cturb%rhomol(icair)/cturb%ga_prof(icair,k), 500.d0)
           cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res
        end do
@@ -240,17 +260,19 @@ contains
      PetscReal :: beta_neutral, LcL, beta
      PetscReal :: a, b, c, d, q, r
      PetscReal :: dp, z_minus_d, h_minus_d
-     PetscReal :: PrSc0, PrSc1, PrSc2
      PetscReal :: phi_m_hc
      PetscReal :: phi_c_hc
      PetscReal :: psim, psi_m_zref, psi_m_hc, psi_m_rsl_zref, psi_m_rsl_hc
      PetscReal :: psic, psi_c_zref, psi_c_hc, psi_c_rsl_zref, psi_c_rsl_hc
      PetscReal :: zlog, tvstar
-     !
+     PetscReal :: c1
 
-     beta_neutral = 0.35d0
-
+     ! Limit the value of Obukhov length
      if (abs(obu_val) < 0.1d0) obu_val = 0.1d0
+
+     ! neutral value of beta
+     c1 = (VKC / log((cturb%hc(icair) + z0mg)/z0mg))**2.d0
+     beta_neutral = min(sqrt(c1 + cr*cturb%pai(icair)), beta_neutral_max)
 
      LcL = cturb%Lc(icair)/obu_val
 
@@ -270,26 +292,26 @@ contains
         beta = -(b+r)/(3.d0*a) - (b**2.d0 - 3.d0*a*c)/(3.d0*a*r)
      end if
 
-     beta = min(0.50d0, max(beta,0.20d0))
+     beta = min(beta_max, max(beta, beta_min))
      cturb%beta(icair) = beta
 
-     dp = beta**2 * cturb%Lc(icair)
+     dp = beta**2.d0 * cturb%Lc(icair)
+     dp = dp * (1.d0 - exp(-0.25d0*cturb%pai(icair)/beta**2.d0))
+     dp = min(cturb%hc(icair), dp)
      cturb%disp(icair) = max(cturb%hc(icair) - dp, 0.d0)
 
      z_minus_d = cturb%zref(icair) - cturb%disp(icair) ! zdisp
      h_minus_d = cturb%hc(icair)   - cturb%disp(icair)
 
-     PrSc0 = 0.5d0;        ! Neutral value for Pr (Sc)
-     PrSc1 = 0.3d0;        ! Magnitude of variation of Pr (Sc) with stability
-     PrSc2 = 2.0d0;        ! Scale of variation of Pr (Sc) with stability
-
-     cturb%PrSc(icair) = PrSc0 + PrSc1 * tanh(PrSc2*cturb%Lc(icair)/obu_val);
+     ! Prandtl (Schmidt) number at canopy top
+     cturb%PrSc(icair) = Pr0 + Pr1 * tanh(Pr2*cturb%Lc(icair)/obu_val);
+     cturb%PrSc(icair) = (1.d0 - beta_neutral/beta_neutral_max) * 1.d0 + (beta_neutral/beta_neutral_max) * cturb%PrSc(icair)
 
      ! Compute Monin-Obokhov phi functions for momentum and scalar
      phi_m_hc = phim_monin_obukhov(h_minus_d / obu_val)
      phi_c_hc = phic_monin_obukhov(h_minus_d / obu_val)
 
-     cturb%c2(icair) = 0.5d0;
+     cturb%c2(icair)  = c2;
      cturb%c1m(icair) = (1.d0 - VKC/ (2.d0 * beta * phi_m_hc)) * exp(0.5d0 * cturb%c2(icair))
 
      ! Compute psi_hat
