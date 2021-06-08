@@ -729,7 +729,7 @@ contains
 
           ! The specific humidity (or partial pressure of water vapor) does not change
           ! for gound cell
-          b_p(icell) = this%aux_vars_in(icell)%water_vapor/this%aux_vars_in(icell)%pref
+          b_p(icell) = this%aux_vars_in(icell)%water_vapor
 
           ! The specific humidity (or partial pressure of water vapor) at ground
           ! contributes to the canopy air cell above the ground
@@ -747,10 +747,10 @@ contains
 #endif
        else
 
-          factor = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR))
 #ifdef USE_BONAN_FORMULATION
+          factor = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*auxvar(icell)%water_vapor)
           b_p(icell) = b_p(icell) + &
-               auxvar(icell)%rhomol / this%dtime * factor * auxvar(icell)%water_vapor/this%aux_vars_in(icell)%pref * this%mesh%vol(icell)
+               auxvar(icell)%rhomol / this%dtime * factor * auxvar(icell)%water_vapor * this%mesh%vol(icell)
 #else
           b_p(icell) = b_p(icell) + &
                auxvar(icell)%rhomol / this%dtime * factor * auxvar(icell)%water_vapor/this%aux_vars_in(icell)%pref
