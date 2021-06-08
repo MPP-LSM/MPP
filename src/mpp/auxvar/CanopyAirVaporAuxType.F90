@@ -27,7 +27,11 @@ module CanopyAirVaporAuxType
 
      PetscBool          :: is_soil             ! PETSC_TRUE if the grid cell is a soil grid cell
      PetscReal          :: soil_rhg            ! Relative humidity of airspace at soil surface (fraction)
+     PetscReal          :: soil_rn             ! Net radiation at ground (W/m2)
+     PetscReal          :: soil_tk             ! Soil thermal conductivity (W/m/K)
+     PetscReal          :: soil_dz             ! Soil layer depth (m)
      PetscReal          :: soil_resis          ! Soil evaporative resistance (s/m)
+     PetscReal          :: soil_temperature    ! Soil temperature (K)
 
      PetscInt           :: nleaf
      PetscReal, pointer :: leaf_temperature(:) ! Vegetation temperature from previous timestep (K)
@@ -71,6 +75,9 @@ contains
 
     this%is_soil             = PETSC_FALSE
     this%soil_rhg            = 0.d0
+    this%soil_rn             = 0.d0
+    this%soil_tk             = 0.d0
+    this%soil_dz             = 0.d0
     this%soil_resis          = 0.d0
 
     this%leaf_temperature(:) = 0.d0
