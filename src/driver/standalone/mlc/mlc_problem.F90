@@ -276,7 +276,7 @@ contains
     end select
 
     p = 1
-    soe%cturb%vcan(p) = soe%cturb%vref(p)
+    soe%cturb%qcan(p) = soe%cturb%qref(p)
     soe%cturb%tcan(p) = soe%cturb%tref(p)
 
     ! Find number of GEs packed within the SoE
@@ -301,7 +301,7 @@ contains
           v_p(:) = soe%cturb%tref(1)
 
        else if (ii == CAIR_VAPR_GE) then
-          v_p(:) = soe%cturb%vref(1)          
+          v_p(:) = soe%cturb%qref(1)  
 
        endif
 

@@ -336,7 +336,7 @@ contains
 
      cturb%ustar(icair)     =  cturb%uref(icair)                       * VKC / (zlog + psim)
      cturb%tstar(icair)     = (cturb%thref(icair) - cturb%tcan(icair)) * VKC / (zlog + psic)
-     cturb%vstar(icair)     = (cturb%vref(icair)  - cturb%vcan(icair)) * VKC / (zlog + psic)
+     cturb%vstar(icair)     = (cturb%qref(icair)  - cturb%qcan(icair)) * VKC / (zlog + psic)
      cturb%obu_ustar(icair) = obu_val
 
      ! Aerodynamic conductance

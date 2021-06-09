@@ -23,13 +23,13 @@ module CanopyTurbulenceAuxType
      PetscReal, pointer :: zref(:)      ! Reference height (m)
      PetscReal, pointer :: pref(:)      ! Atmospheric pressure (Pa)
      PetscReal, pointer :: uref(:)      ! Wind speed at reference height (m/s)
-     PetscReal, pointer :: vref(:)      ! Water vapor at reference height (mol/mol)
+     PetscReal, pointer :: qref(:)      ! Water vapor at reference height (mol/mol)
      PetscReal, pointer :: tref(:)      ! Air temperature at reference height (K)
      PetscReal, pointer :: rhref(:)     ! Relative humidity at reference height (%)
      !PetscReal, pointer :: shref(:)     ! Specific humidity at reference height (kg/kg)
 
      PetscReal, pointer :: ucan(:)      ! Wind speed at canopy top (m/s)
-     PetscReal, pointer :: vcan(:)      ! Water vapor at canopy top (mol/mol)
+     PetscReal, pointer :: qcan(:)      ! Water vapor at canopy top (mol/mol)
      PetscReal, pointer :: tcan(:)      ! Air temperature at canopy top (K)
 
      PetscReal, pointer :: rhomol(:)    ! Molar density (mol/m3)
@@ -93,13 +93,13 @@ contains
 
     allocate(this%pref      (ncair))
     allocate(this%uref      (ncair))
-    allocate(this%vref      (ncair))
+    allocate(this%qref      (ncair))
     allocate(this%tref      (ncair))
     allocate(this%rhref     (ncair))
     !allocate(this%shref     (ncair))
 
     allocate(this%ucan      (ncair))
-    allocate(this%vcan      (ncair))
+    allocate(this%qcan      (ncair))
     allocate(this%tcan      (ncair))
 
     allocate(this%rhomol    (ncair))
@@ -161,17 +161,17 @@ contains
 
     !call satvap (this%tref(icair), esat, desatdt);
     !eref = (this%rhref(icair) / 100.d0) * esat
-    !this%vref(icair) = eref / this%pref(icair)
+    !this%qref(icair) = eref / this%pref(icair)
 
-    eref = this%vref(icair) * this%pref(icair) / (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR) * this%vref(icair))
+    eref = this%qref(icair) * this%pref(icair) / (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR) * this%qref(icair))
 
     this%rhomol(icair) = this%pref(icair) / (RGAS * this%tref(icair))
     this%rhoair(icair) = this%rhomol(icair) * MM_DRY_AIR * (1.d0 - (1.d0 - MM_H2O/MM_DRY_AIR) * eref / this%pref(icair))
     this%mmair(icair)  = this%rhoair(icair) / this%rhomol(icair)
     this%thref(icair)  = this%tref(icair) + 0.0098d0 * this%zref(icair)
 
-    this%cpair(icair)  = CPD * (1.d0 + (CPW/CPD - 1.d0) * this%vref(icair)) * this%mmair(icair)
-    this%thvref(icair) = this%thref(icair) * (1.d0 + 0.61d0 * this%vref(icair))
+    this%cpair(icair)  = CPD * (1.d0 + (CPW/CPD - 1.d0) * this%qref(icair)) * this%mmair(icair)
+    this%thvref(icair) = this%thref(icair) * (1.d0 + 0.61d0 * this%qref(icair))
 
   end subroutine CAirTurbComputeDerivedAtmInputs
 
