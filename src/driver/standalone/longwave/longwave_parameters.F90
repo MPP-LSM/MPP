@@ -64,7 +64,7 @@ contains
 
           do ileaf = 1, cur_goveq%aux_vars_in(icell)%nleaf
              cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = TFRZ + 25.d0
-             cur_goveq%aux_vars_in(icell)%leaf_fraction(ileaf)    = 1.0d0
+             cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf)    = 1.0d0
              cur_goveq%aux_vars_in(icell)%leaf_dlai(ileaf)        = 0.1d0
           end do
 
