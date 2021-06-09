@@ -30,7 +30,7 @@ module ShortwaveAuxType
      PetscReal          :: leaf_tb              ! exponential transmittances of direct radiation through a single leaf
      PetscReal          :: leaf_tbcum           ! cumulative exponential transmittance of direct beam onto a canopy layer
      PetscReal          :: leaf_dlai            ! layer leaf area index (m^2/m^2) (size = nleaf)
-     PetscReal, pointer :: leaf_fraction(:)     ! fraction of leaf(size = nleaf)
+     PetscReal, pointer :: leaf_fssh(:)     ! fraction of leaf(size = nleaf)
      
 
      PetscBool          :: is_soil              ! TRUE if the grid cell is a soil grid cell
@@ -82,7 +82,7 @@ contains
     allocate(this%leaf_rho          (nband       ))
     allocate(this%leaf_tau          (nband       ))
     allocate(this%leaf_omega        (nband       ))
-    allocate(this%leaf_fraction     (nleaf       ))
+    allocate(this%leaf_fssh     (nleaf       ))
 
     allocate(this%soil_albedo_b     (nband       ))
     allocate(this%soil_albedo_d     (nband       ))
@@ -110,7 +110,7 @@ contains
     this%leaf_td              = 0.d0
     this%leaf_tbcum           = 0.d0
     this%leaf_dlai            = 0.d0
-    this%leaf_fraction(:)     = 0.d0
+    this%leaf_fssh(:)     = 0.d0
 
     this%is_soil              = PETSC_FALSE
     this%soil_albedo_b(:)     = 0.d0

@@ -25,7 +25,7 @@ module LongwaveAuxType
      PetscReal          :: leaf_tau            ! leaf transmittance
      PetscReal          :: leaf_emiss          ! leaf emissivity
      PetscReal, pointer :: leaf_temperature(:) ! leaf temperature
-     PetscReal, pointer :: leaf_fraction(:)    ! fraction of leaf
+     PetscReal, pointer :: leaf_fssh(:)    ! fraction of leaf
      PetscReal, pointer :: leaf_dlai(:)        ! leaf area index
      
 
@@ -58,7 +58,7 @@ contains
     PetscInt                    :: nleaf
 
     allocate(this%leaf_temperature(nleaf));
-    allocate(this%leaf_fraction(   nleaf));
+    allocate(this%leaf_fssh(   nleaf));
     allocate(this%leaf_dlai(       nleaf));
 
     this%Idn                 = 0.d0
@@ -72,7 +72,7 @@ contains
     this%leaf_tau            = 0.d0
     this%leaf_emiss          = 0.d0
     this%leaf_temperature(:) = 0.d0
-    this%leaf_fraction(:)    = 0.d0
+    this%leaf_fssh(:)    = 0.d0
     this%leaf_dlai(:)        = 0.d0
 
     this%is_soil             = PETSC_FALSE
@@ -123,7 +123,7 @@ contains
        do ileaf = 1, this%nleaf
 
           ! frac * (1 - tau) * emiss * sigma * T^4
-          cc = this%leaf_fraction(ileaf)    * &
+          cc = this%leaf_fssh(ileaf)    * &
                (1.d0 - this%trans)          * &
                STEFAN_BOLTZMAN_CONSTANT     * &
                this%leaf_emiss              * &
