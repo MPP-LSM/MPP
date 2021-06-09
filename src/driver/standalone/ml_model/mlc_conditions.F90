@@ -429,7 +429,7 @@ contains
 
        call soe%cturb%ComputeDerivedAtmInputs(icair)
 
-       soe%cturb%vcan(icair) = soe%cturb%vref(icair)
+       soe%cturb%qcan(icair) = soe%cturb%qref(icair)
     end do
 
   end subroutine set_atmospheric_boundary_conditions

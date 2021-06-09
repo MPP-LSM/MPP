@@ -230,11 +230,11 @@ contains
        soe%cturb%uref(icair) = get_value_from_condition(Uref, icair)
        soe%cturb%tref(icair) = get_value_from_condition(Tref, icair)
        soe%cturb%rhref(icair)= 80.d0    !get_value_from_condition(Rhref, icair)
-       soe%cturb%vref(icair) = get_value_from_condition(Qref, icair)
+       soe%cturb%qref(icair) = get_value_from_condition(Qref, icair)
 
        call soe%cturb%ComputeDerivedAtmInputs(icair)
 
-       soe%cturb%vcan(icair) = soe%cturb%vref(icair)
+       soe%cturb%qcan(icair) = soe%cturb%qref(icair)
        soe%cturb%tcan(icair) = soe%cturb%tref(icair)
     end do
 
@@ -312,11 +312,11 @@ contains
        soe%cturb%pref(icair) = get_value_from_condition(pref, icair)
        soe%cturb%uref(icair) = get_value_from_condition(uref, icair)
        soe%cturb%tref(icair) = get_value_from_condition(tref, icair)
-       soe%cturb%vref(icair) = get_value_from_condition(qref, icair)
+       soe%cturb%qref(icair) = get_value_from_condition(qref, icair)
 
        call soe%cturb%ComputeDerivedAtmInputs(icair)
 
-       soe%cturb%vcan(icair) = soe%cturb%vref(icair)
+       soe%cturb%qcan(icair) = soe%cturb%qref(icair)
        soe%cturb%tcan(icair) = soe%cturb%tref(icair)
        soe%cturb%tsoi(icair) = get_value_from_condition(soil_t,icair)
 
