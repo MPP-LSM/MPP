@@ -545,14 +545,9 @@ contains
     PetscReal                              :: gs0
     !
     class(cair_vapor_auxvar_type) , pointer :: auxvar(:)
-    PetscReal                              :: qsat, s0
     PetscReal                              :: gsw, gsa
 
     auxvar => this%aux_vars_in
-
-    call SatVap(auxvar(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
 
     gsw = 1.d0 / auxvar(icell)%soil_resis * auxvar(icell)%rhomol
     gsa = this%aux_vars_conn_in(iconn)%ga
@@ -596,14 +591,9 @@ contains
     PetscInt                               :: icell, iconn
     PetscReal                              :: beta0
     !
-    PetscReal                              :: qsat, s0
     PetscReal                              :: gs_0, lambda, numer, denom
 
     lambda = HVAP * MM_H2O
-
-    call SatVap(this%aux_vars_in(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
 
     gs_0 = gs0(this, icell, iconn)
 
@@ -629,21 +619,21 @@ contains
     PetscReal                               :: delta0
     !
     class(cair_vapor_auxvar_type) , pointer :: auxvar(:)
-    PetscReal                               :: qsat, s0
+    PetscReal                               :: qsat, dqsat, esat, desat
     PetscReal                               :: gs_0, lambda, numer, denom
 
     auxvar => this%aux_vars_in
     lambda = HVAP * MM_H2O
 
-    call SatVap(this%aux_vars_in(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
+    call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+    qsat = esat/this%aux_vars_in(icell)%pref
+    dqsat   = desat  /this%aux_vars_in(icell)%pref
 
     gs_0 = gs0(this, icell, iconn)
 
     numer = &
          ( auxvar(icell)%soil_rn                                                         & ! (Rn_soil
-         - lambda * auxvar(icell)%soil_rhg * gs_0 * (qsat - s0*auxvar(icell)%temperature) & !  lambda * h_{s0} * g_{s0} * (qsat(T0) - s0*T0)
+         - lambda * auxvar(icell)%soil_rhg * gs_0 * (qsat - dqsat*auxvar(icell)%temperature) & !  lambda * h_{s0} * g_{s0} * (qsat(T0) - s0*T0)
          + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature & !  kappa_1/dz_0.5 * T_{-1})
          )
 
@@ -666,21 +656,21 @@ contains
     PetscReal                              :: gamma0
     !
     class(cair_vapor_auxvar_type), pointer :: auxvar(:)
-    PetscReal                              :: qsat, s0, gs_0, lambda
+    PetscReal                              :: qsat, dqsat, esat, desat, gs_0, lambda
 
     auxvar => this%aux_vars_in
     lambda = HVAP * MM_H2O
 
-    call SatVap(auxvar(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
+    call SatVap(auxvar(icell)%temperature, esat, desat)
+    qsat  = esat /this%aux_vars_in(icell)%pref
+    dqsat = desat/this%aux_vars_in(icell)%pref
 
     gs_0 = gs0(this, icell, iconn)
 
     ! The ground temperatue contributes to the canopy air layer above the ground
     gamma0 = &
          this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(iconn)%ga + & ! Cp * ga
-         lambda * this%aux_vars_in(icell)%soil_rhg * gs_0 * s0           + & ! lambda * h0 * gs0 * s0
+         lambda * this%aux_vars_in(icell)%soil_rhg * gs_0 * dqsat           + & ! lambda * h0 * gs0 * s0
          this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz    ! k/dz
 
   end function gamma0
@@ -707,7 +697,9 @@ contains
     PetscScalar                   , pointer :: b_p(:)
     class(cair_vapor_auxvar_type) , pointer :: auxvar(:)
     class(connection_set_type)    , pointer :: cur_conn_set
-    PetscReal                               :: qsat, s0, si, gleaf, gleaf_et, factor, gs0_value
+    PetscReal                               :: qsat0, dqsat0, esat0, desat0
+    PetscReal                               :: qsat, dqsat, esat, desat
+    PetscReal                               :: gleaf, gleaf_et, factor, gs0_value
     PetscReal                               :: delta0_value, value, lambda
 
     auxvar => this%aux_vars_in
@@ -723,9 +715,9 @@ contains
           ! air space
           iconn = SoilAirIConn(this, icell)
 
-          call SatVap(auxvar(icell)%temperature, qsat, s0)
-          qsat = qsat/this%aux_vars_in(icell)%pref
-          s0   = s0  /this%aux_vars_in(icell)%pref
+          call SatVap(auxvar(icell)%temperature, esat0, desat0)
+          qsat0  = esat0  /this%aux_vars_in(icell)%pref
+          dqsat0 = desat0/this%aux_vars_in(icell)%pref
 
           ! The specific humidity (or partial pressure of water vapor) does not change
           ! for gound cell
@@ -738,7 +730,7 @@ contains
           gs0_value = gs0(this, icell, iconn)
 
           value = gs0_value * &
-               auxvar(icell)%soil_rhg*(qsat + s0*(delta0_value - auxvar(icell)%temperature))
+               auxvar(icell)%soil_rhg*(qsat0 + dqsat0*(delta0_value - auxvar(icell)%temperature))
 
 #ifdef USE_BONAN_FORMULATION
           b_p(icell+1) = b_p(icell+1) + value
@@ -756,9 +748,9 @@ contains
                auxvar(icell)%rhomol / this%dtime * factor * auxvar(icell)%water_vapor/this%aux_vars_in(icell)%pref
 #endif
           do ileaf = 1,auxvar(icell)%nleaf
-             call SatVap(auxvar(icell)%leaf_temperature(ileaf), qsat, si)
-             qsat = qsat/this%aux_vars_in(icell)%pref
-             si   = si  /this%aux_vars_in(icell)%pref
+             call SatVap(auxvar(icell)%leaf_temperature(ileaf), esat, desat)
+             qsat  = esat /this%aux_vars_in(icell)%pref
+             dqsat = desat/this%aux_vars_in(icell)%pref
 
              ! Add contribution from leaf, if present in the given layer
              if (auxvar(icell)%leaf_dpai(ileaf) > 0.d0) then
@@ -774,10 +766,10 @@ contains
 
 #ifdef USE_BONAN_FORMULATION
                 b_p(icell) = b_p(icell) &
-                     + gleaf_et * (qsat - si*auxvar(icell)%leaf_temperature(ileaf))
+                     + gleaf_et * (qsat - dqsat*auxvar(icell)%leaf_temperature(ileaf))
 #else
                 b_p(icell) = b_p(icell) &
-                     + gleaf_et * (qsat - si*auxvar(icell)%leaf_temperature(ileaf)) /this%mesh%vol(icell)
+                     + gleaf_et * (qsat - dqsat*auxvar(icell)%leaf_temperature(ileaf)) /this%mesh%vol(icell)
 #endif
              end if
           end do
@@ -792,7 +784,6 @@ contains
     ! !DESCRIPTION:
     ! Dummy subroutine for PETSc TS RSHFunction
     use MultiPhysicsProbConstants , only : HVAP
-    use WaterVaporMod             , only : SatVap
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
     use MultiPhysicsProbConstants , only : COND_DIRICHLET
@@ -884,7 +875,7 @@ contains
     PetscInt                             :: cell_id, cell_id_up, cell_id_dn
     PetscInt                             :: row, col
     PetscReal                            :: value, ga, dist, gsw, gsa, gs0_value
-    PetscReal                            :: qsat, si, gleaf, gleaf_et
+    PetscReal                            :: qsat, dqsat, esat, desat, gleaf, gleaf_et
     PetscReal                            :: beta0_value, lambda
 
     lambda = HVAP * MM_H2O
@@ -909,18 +900,18 @@ contains
           ! air space
           iconn = SoilAirIConn(this, icell)
 
-          call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-          qsat = qsat/this%aux_vars_in(icell)%pref
-          si   = si  /this%aux_vars_in(icell)%pref
+          call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+          qsat = esat /this%aux_vars_in(icell)%pref
+          dqsat= desat/this%aux_vars_in(icell)%pref
 
           gs0_value = gs0(this, icell, iconn)
 
           beta0_value = beta0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-          value = gs0_value * si * this%aux_vars_in(icell)%soil_rhg * beta0_value
+          value = gs0_value * dqsat * this%aux_vars_in(icell)%soil_rhg * beta0_value
 #else
-          value = gs0_value * si * this%aux_vars_in(icell)%soil_rhg * beta0_value/this%mesh%vol(icell+1)
+          value = gs0_value * dqsat * this%aux_vars_in(icell)%soil_rhg * beta0_value/this%mesh%vol(icell+1)
 #endif
 
           row = icell; col = icell;
@@ -938,9 +929,9 @@ contains
           do ileaf = 1, this%aux_vars_in(icell)%nleaf
              if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
 
-                call SatVap(this%aux_vars_in(icell)%leaf_temperature(ileaf), qsat, si)
-                qsat = qsat/this%aux_vars_in(icell)%pref
-                si   = si  /this%aux_vars_in(icell)%pref
+                call SatVap(this%aux_vars_in(icell)%leaf_temperature(ileaf), esat, desat)
+                qsat = esat/this%aux_vars_in(icell)%pref
+                dqsat= desat/this%aux_vars_in(icell)%pref
 
                 gleaf = &
                      this%aux_vars_in(icell)%leaf_gs(ileaf) * this%aux_vars_in(icell)%gbv/ &
@@ -1100,7 +1091,7 @@ contains
     !
     ! !LOCAL VARIABLES
     PetscInt                      :: icell, ileaf, row, col, cair_auxvar_idx, leaf_idx, geq_leaf_temp_rank, iconn
-    PetscReal                     :: value, qsat, si, gs0, gsa, gsw, alpha0_value
+    PetscReal                     :: value, qsat, dqsat, esat, desat, gs0, gsa, gsw, alpha0_value
     PetscReal                     :: gleaf, gleaf_et
 
     select case (itype_of_other_goveq)
@@ -1117,9 +1108,9 @@ contains
 
                 ! The specific humidity (or partial pressure of water vapor) at ground
                 ! contributes to the canopy air cell above the ground
-                call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-                qsat = qsat/this%aux_vars_in(icell)%pref
-                si   = si  /this%aux_vars_in(icell)%pref
+                call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+                qsat = esat/this%aux_vars_in(icell)%pref
+                dqsat= desat/this%aux_vars_in(icell)%pref
 
                 iconn = SoilAirIConn(this, icell)
                 gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
@@ -1129,9 +1120,9 @@ contains
                 alpha0_value = alpha0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-                value = - this%aux_vars_in(icell)%soil_rhg * si * gs0 * alpha0_value
+                value = - this%aux_vars_in(icell)%soil_rhg * dqsat * gs0 * alpha0_value
 #else
-                value = - this%aux_vars_in(icell)%soil_rhg * si * gs0 * alpha0_value / this%mesh%vol(icell+1)
+                value = - this%aux_vars_in(icell)%soil_rhg * dqsat * gs0 * alpha0_value / this%mesh%vol(icell+1)
 #endif
                 row = icell; col = icell;
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1148,9 +1139,9 @@ contains
           if (this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) > 0.d0) then
              row = cair_auxvar_idx-1; col = ileaf-1
 
-             call SatVap(this%aux_vars_in(cair_auxvar_idx)%leaf_temperature(leaf_idx), qsat, si)
-             qsat = qsat/this%aux_vars_in(cair_auxvar_idx)%pref
-             si   = si  /this%aux_vars_in(cair_auxvar_idx)%pref
+             call SatVap(this%aux_vars_in(cair_auxvar_idx)%leaf_temperature(leaf_idx), esat, desat)
+             qsat  = qsat /this%aux_vars_in(cair_auxvar_idx)%pref
+             dqsat = desat/this%aux_vars_in(cair_auxvar_idx)%pref
 
              gleaf = &
                   this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%gbv/ &
@@ -1163,9 +1154,9 @@ contains
              gleaf_et = gleaf_et * this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 
 #ifdef USE_BONAN_FORMULATION
-             value = -si*gleaf_et
+             value = -dqsat * gleaf_et
 #else
-             value = -si*gleaf_et/this%mesh%vol(cair_auxvar_idx)
+             value = -dqsat * gleaf_et/this%mesh%vol(cair_auxvar_idx)
 #endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
