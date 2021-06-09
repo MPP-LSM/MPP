@@ -569,14 +569,9 @@ contains
     PetscReal                              :: gs0
     !
     class(cair_temp_auxvar_type) , pointer :: auxvar(:)
-    PetscReal                              :: qsat, s0
     PetscReal                              :: gsw, gsa
 
     auxvar => this%aux_vars_in
-
-    call SatVap(auxvar(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
 
     gsw = 1.d0 / auxvar(icell)%soil_resis * auxvar(icell)%rhomol
     gsa = this%aux_vars_conn_in(iconn)%ga
@@ -620,14 +615,9 @@ contains
     PetscInt                     :: icell, iconn
     PetscReal                    :: beta0
     !
-    PetscReal                    :: qsat, s0
     PetscReal                    :: gs_0, lambda, numer, denom
 
     lambda = HVAP * MM_H2O
-
-    call SatVap(this%aux_vars_in(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
 
     gs_0 = gs0(this, icell, iconn)
 
@@ -653,22 +643,22 @@ contains
     PetscReal                              :: delta0
     !
     class(cair_temp_auxvar_type) , pointer :: auxvar(:)
-    PetscReal                              :: qsat, s0
+    PetscReal                              :: qsat, dqsat, esat, desat
     PetscReal                              :: gs_0, lambda, numer, denom
 
     auxvar => this%aux_vars_in
     lambda = HVAP * MM_H2O
 
-    call SatVap(this%aux_vars_in(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
+    call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+    qsat  = esat /this%aux_vars_in(icell)%pref
+    dqsat = desat/this%aux_vars_in(icell)%pref
 
     gs_0 = gs0(this, icell, iconn)
 
     numer = &
-         ( auxvar(icell)%soil_rn                                                          & ! (Rn_soil
-         - lambda * auxvar(icell)%soil_rhg * gs_0 * (qsat - s0*auxvar(icell)%temperature) & !  lambda * h_{s0} * g_{s0} * (qsat(T0) - s0*T0)
-         + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature   & !  kappa_1/dz_0.5 * T_{-1})
+         ( auxvar(icell)%soil_rn                                                             & ! (Rn_soil
+         - lambda * auxvar(icell)%soil_rhg * gs_0 * (qsat - dqsat*auxvar(icell)%temperature) & !  lambda * h_{s0} * g_{s0} * (qsat(T0) - s0*T0)
+         + auxvar(icell)%soil_tk/auxvar(icell)%soil_dz * auxvar(icell)%soil_temperature      & !  kappa_1/dz_0.5 * T_{-1})
          )
 
     denom = gamma0(this, icell, iconn)
@@ -690,21 +680,21 @@ contains
     PetscReal :: gamma0
     !
     class(cair_temp_auxvar_type) , pointer :: auxvar(:)
-    PetscReal :: qsat, s0, gs_0, lambda
+    PetscReal :: qsat0, dqsat0, esat0, desat0, gs_0, lambda
 
     auxvar => this%aux_vars_in
     lambda = HVAP * MM_H2O
 
-    call SatVap(auxvar(icell)%temperature, qsat, s0)
-    qsat = qsat/this%aux_vars_in(icell)%pref
-    s0   = s0  /this%aux_vars_in(icell)%pref
+    call SatVap(auxvar(icell)%temperature, esat0, desat0)
+    qsat0 = esat0/this%aux_vars_in(icell)%pref
+    dqsat0   = desat0  /this%aux_vars_in(icell)%pref
 
     gs_0 = gs0(this, icell, iconn)
 
     ! The ground temperatue contributes to the canopy air layer above the ground
     gamma0 = &
          this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(iconn)%ga + & ! Cp * ga
-         lambda * this%aux_vars_in(icell)%soil_rhg * gs_0 * s0           + & ! lambda * h0 * gs0 * s0
+         lambda * this%aux_vars_in(icell)%soil_rhg * gs_0 * dqsat0           + & ! lambda * h0 * gs0 * s0
          this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz    ! k/dz
 
   end function gamma0
