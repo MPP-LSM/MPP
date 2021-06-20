@@ -61,6 +61,7 @@ contains
 
     call allocate_memory_for_condition(Tair      , ncair*nz_cair)
     call allocate_memory_for_condition(Qair      , ncair*nz_cair)
+    call allocate_memory_for_condition(Wind      , ncair*nz_cair)
 
     call allocate_memory_for_condition(Tleaf_sun , ncair*(ntop-nbot+1) )
     call allocate_memory_for_condition(Tleaf_shd , ncair*(ntop-nbot+1) )

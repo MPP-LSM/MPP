@@ -38,7 +38,7 @@ module ml_model_global_vars
   type(condition_type) :: Pref, Uref, Tref, Rhref, Qref, eair
   type(condition_type) :: Tleaf_sun, Tleaf_shd ! dimension = nveg
   type(condition_type) :: Tcan
-  type(condition_type) :: Tair, qair ! dimension = ncan
+  type(condition_type) :: Tair, qair, wind ! dimension = ncan
   type(condition_type) :: gs_sun, gs_shd
   type(condition_type) :: gbh, gbv, gbc
   type(condition_type) :: co2ref, o2ref
