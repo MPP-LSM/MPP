@@ -1131,41 +1131,41 @@ contains
              end if
           end do
 
-    case (GE_CANOPY_LEAF_TEMP)
-       geq_leaf_temp_rank = rank_of_other_goveq
-       do ileaf = 1, this%nLeaf
-          cair_auxvar_idx = this%LeafGE2CAirAuxVar_in(ileaf,1)
-          leaf_idx        = this%LeafGE2CAirAuxVar_in(ileaf,2) + &
-                            (geq_leaf_temp_rank-1)*this%aux_vars_in(cair_auxvar_idx)%nleaf/this%nleafGE
+       case (GE_CANOPY_LEAF_TEMP)
+          geq_leaf_temp_rank = rank_of_other_goveq
+          do ileaf = 1, this%nLeaf
+             cair_auxvar_idx = this%LeafGE2CAirAuxVar_in(ileaf,1)
+             leaf_idx        = this%LeafGE2CAirAuxVar_in(ileaf,2) + &
+                  (geq_leaf_temp_rank-1)*this%aux_vars_in(cair_auxvar_idx)%nleaf/this%nleafGE
 
-          if (this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) > 0.d0) then
-             row = cair_auxvar_idx-1; col = ileaf-1
+             if (this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) > 0.d0) then
+                row = cair_auxvar_idx-1; col = ileaf-1
 
-             call SatVap(this%aux_vars_in(cair_auxvar_idx)%leaf_temperature(leaf_idx), esat, desat)
-             qsat  = qsat /this%aux_vars_in(cair_auxvar_idx)%pref
-             dqsat = desat/this%aux_vars_in(cair_auxvar_idx)%pref
+                call SatVap(this%aux_vars_in(cair_auxvar_idx)%leaf_temperature(leaf_idx), esat, desat)
+                qsat  = qsat /this%aux_vars_in(cair_auxvar_idx)%pref
+                dqsat = desat/this%aux_vars_in(cair_auxvar_idx)%pref
 
-             gleaf = &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%gbv/ &
-                  (this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) + this%aux_vars_in(cair_auxvar_idx)%gbv)
+                gleaf = &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%gbv/ &
+                     (this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) + this%aux_vars_in(cair_auxvar_idx)%gbv)
 
-             gleaf_et = &
-                  gleaf                       * this%aux_vars_in(cair_auxvar_idx)%leaf_fdry(leaf_idx) + &
-                  this%aux_vars_in(cair_auxvar_idx)%gbv * this%aux_vars_in(cair_auxvar_idx)%leaf_fwet(leaf_idx)
+                gleaf_et = &
+                     gleaf                       * this%aux_vars_in(cair_auxvar_idx)%leaf_fdry(leaf_idx) + &
+                     this%aux_vars_in(cair_auxvar_idx)%gbv * this%aux_vars_in(cair_auxvar_idx)%leaf_fwet(leaf_idx)
 
-             gleaf_et = gleaf_et * this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
+                gleaf_et = gleaf_et * this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 
 #ifdef USE_BONAN_FORMULATION
-             value = -dqsat * gleaf_et
+                value = -dqsat * gleaf_et
 #else
-             value = -dqsat * gleaf_et/this%mesh%vol(cair_auxvar_idx)
+                value = -dqsat * gleaf_et/this%mesh%vol(cair_auxvar_idx)
 #endif
 
-             call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
-          end if
+                call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+             end if
 
-       end do
-    end select
+          end do
+       end select
        
     call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
