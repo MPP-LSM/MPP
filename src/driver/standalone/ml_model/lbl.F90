@@ -181,20 +181,20 @@ contains
        do icair = 1, ncair
           do k = 1, nz_cair
               idx_data = idx_data + 1
-              if (k >= nbot .and. k<=ntop) then
+              if (k >= nbot-1 .and. k<=ntop-1) then
                  icell = icell + 1
 
                  cur_goveq%aux_vars_in(icell           )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
                  cur_goveq%aux_vars_in(icell + ncol*nz )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
 
-                 cur_goveq%aux_vars_in(icell           )%wind  = get_value_from_condition(Uref, icair)  ! [m/s]
-                 cur_goveq%aux_vars_in(icell + ncol*nz )%wind  = get_value_from_condition(Uref, icair)  ! [m/s]
+                 cur_goveq%aux_vars_in(icell           )%wind  = get_value_from_condition(wind, idx_data)  ! [m/s]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%wind  = get_value_from_condition(wind, idx_data)  ! [m/s]
 
                  cur_goveq%aux_vars_in(icell           )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
                  cur_goveq%aux_vars_in(icell + ncol*nz )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
               endif
             enddo
-       enddo
+         enddo
 
     end select
 
