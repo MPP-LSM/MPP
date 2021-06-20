@@ -705,6 +705,9 @@ contains
        ! ensures that hs does not go to zero. Also eair <= esat[tleaf] so that hs <= 1. 
        this%ceair = min( max(this%eair, 0.20d0*this%esat), this%esat )
 
+       ! Constrain the vapor pressure to be less than equal to leaf esat
+       this%ceair = min( this%eair, this%esat )
+
        select case(this%gstype)
        case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
 
