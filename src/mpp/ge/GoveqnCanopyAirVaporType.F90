@@ -245,6 +245,7 @@ contains
     !
     ! !USES:
     use CanopyTurbulenceAuxType, only : canopy_turbulence_auxvar_type 
+    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
     !
     implicit none
     !
@@ -253,6 +254,7 @@ contains
     class(canopy_turbulence_auxvar_type) :: cturb
     !
     PetscInt :: ncair, icair, icell, iconn, k
+    PetscReal :: qref_value, factor
 
     ! all layers
     do icair = 1, cturb%ncair
@@ -286,7 +288,9 @@ contains
     do icair = 1, cturb%ncair
        iconn = icair
        this%aux_vars_conn_bc(iconn)%ga     = cturb%ga_prof(icair, k)
-       this%aux_vars_bc(iconn)%water_vapor = cturb%qref(icair)
+       qref_value = cturb%qref(icair)
+       factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
+       this%aux_vars_bc(iconn)%water_vapor = qref_value * factor
        this%aux_vars_bc(iconn)%pref        = cturb%pref(icair)
     end do
 
@@ -699,7 +703,7 @@ contains
     class(connection_set_type)    , pointer :: cur_conn_set
     PetscReal                               :: qsat0, dqsat0, esat0, desat0
     PetscReal                               :: qsat, dqsat, esat, desat
-    PetscReal                               :: gleaf, gleaf_et, factor, gs0_value
+    PetscReal                               :: gleaf, gleaf_et, gs0_value
     PetscReal                               :: delta0_value, value, lambda
 
     auxvar => this%aux_vars_in
@@ -740,12 +744,11 @@ contains
        else
 
 #ifdef USE_BONAN_FORMULATION
-          factor = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*auxvar(icell)%water_vapor)
           b_p(icell) = b_p(icell) + &
-               auxvar(icell)%rhomol / this%dtime * factor * auxvar(icell)%water_vapor * this%mesh%vol(icell)
+               auxvar(icell)%rhomol / this%dtime * auxvar(icell)%water_vapor * this%mesh%vol(icell)
 #else
           b_p(icell) = b_p(icell) + &
-               auxvar(icell)%rhomol / this%dtime * factor * auxvar(icell)%water_vapor/this%aux_vars_in(icell)%pref
+               auxvar(icell)%rhomol / this%dtime * auxvar(icell)%water_vapor/this%aux_vars_in(icell)%pref
 #endif
           do ileaf = 1,auxvar(icell)%nleaf
              call SatVap(auxvar(icell)%leaf_temperature(ileaf), esat, desat)
@@ -798,7 +801,7 @@ contains
     type(condition_type)          , pointer :: cur_cond
     class(connection_set_type)    , pointer :: cur_conn_set
     class(cair_vapor_auxvar_type) , pointer :: auxvar(:)
-    PetscReal                               :: dist_up, dist_dn, dist, factor
+    PetscReal                               :: dist_up, dist_dn, dist
     PetscInt                                :: iconn, sum_conn, cell_id
 
     ! Boundary cells
@@ -823,13 +826,12 @@ contains
 
              cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
 
-             factor = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR) * auxvar(sum_conn)%water_vapor)
 #ifdef USE_BONAN_FORMULATION
              b_p(cell_id) = b_p(cell_id) + &
-                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%water_vapor * factor
+                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%water_vapor
 #else
              b_p(cell_id) = b_p(cell_id) + &
-                  this%aux_vars_conn_bc(sum_conn)%ga/dist * auxvar(sum_conn)%water_vapor * factor
+                  this%aux_vars_conn_bc(sum_conn)%ga/dist * auxvar(sum_conn)%water_vapor
 #endif
 
           case default
