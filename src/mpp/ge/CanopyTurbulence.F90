@@ -84,7 +84,7 @@ contains
        psi_m_hc     = psim_monin_obukhov (h_minus_d / cturb%obu(icair) );
        psi_m_rsl_hc = 0.d0
 
-       do k = cturb%ntop(icair)+1, cturb%ncair
+       do k = cturb%ntop(icair)+1, cturb%ncan_lev
           z_minus_d = cturb%zs(icair, k) - cturb%disp(icair)
 
           psi_m_zs     = psim_monin_obukhov (z_minus_d / cturb%obu(icair) );
