@@ -343,7 +343,7 @@ contains
      cturb%gac(icair) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
 
      ! New Obukhov length
-     tvstar = cturb%tstar(icair) + 0.61d0 * cturb%thref(icair) * cturb%vstar(icair) * MM_H2O/MM_DRY_AIR
+     tvstar = cturb%tstar(icair) + 0.61d0 * cturb%thref(icair) * cturb%vstar(icair)
      cturb%obu(icair) = cturb%ustar(icair)**2.d0 * cturb%thvref(icair)/ (VKC * GRAVITY_CONSTANT * tvstar)
 
      obu_dif = cturb%obu(icair) - obu_val
