@@ -357,7 +357,8 @@ contains
                 endif
 
                 if (k > 1) then
-                   avars(icell)%leaf_fssh(1) = avars(icell)%leaf_tbcum/(kb * dpai_value) * (1.d0 - exp(-kb * clump_fac * dpai_value))
+                   !avars(icell)%leaf_fssh(1) = avars(icell)%leaf_tbcum/(kb * dpai_value) * (1.d0 - exp(-kb * clump_fac * dpai_value))
+                   avars(icell)%leaf_fssh(1) = fssh(nbot + k - 2)
                    avars(icell)%leaf_fssh(2) = 1.d0 - avars(icell)%leaf_fssh(1)
                 end if
 
