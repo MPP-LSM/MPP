@@ -12,6 +12,7 @@ module lwv
 #include <petsc/finclude/petsc.h>
 
   public :: init_lwv
+  public :: lwv_set_initial_conditions
   public :: lwv_set_boundary_conditions
   public :: solve_lwv
   public :: extract_data_from_lwv
@@ -186,7 +187,56 @@ contains
   end subroutine set_parameters
 
   !------------------------------------------------------------------------
-  subroutine lwv_set_boundary_conditions(lwv_mpp)
+  subroutine lwv_set_initial_conditions(lwv_mpp)
+    !
+    use SystemOfEquationsBaseType     , only : sysofeqns_base_type
+    use SystemOfEquationsLongwaveType , only : sysofeqns_longwave_type
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    use GoveqnLongwaveType            , only : goveqn_longwave_type
+    use ConditionType                 , only : condition_type
+    use ConnectionSetType             , only : connection_set_type
+    use ml_model_utils                , only : get_value_from_condition
+    !
+    implicit none
+
+    class(mpp_longwave_type) :: lwv_mpp
+
+    !
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    class(connection_set_type) , pointer :: cur_conn_set
+    class(condition_type)      , pointer :: cur_cond
+    PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf
+    PetscInt :: istep, isubstep
+
+    call lwv_mpp%soe%SetPointerToIthGovEqn(LONGWAVE_GE, cur_goveq)
+
+    select type(cur_goveq)
+    class is (goveqn_longwave_type)
+
+       ncol = ncair * ntree
+       nz   = (ntop-nbot+1) + 1
+
+       icell = 0
+       leaf_count = 0
+       do icol = 1, ncol
+          do k = 1, nz
+             icell = icell + 1
+
+             if (k == 1) then
+                cur_goveq%aux_vars_in(icell)%soil_temperature = get_value_from_condition(tg, icol)
+             else
+                leaf_count = leaf_count + 1
+                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tref, icol)
+                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tref, icol)
+             end if
+          end do
+       end do
+    end select
+
+  end subroutine lwv_set_initial_conditions
+
+  !------------------------------------------------------------------------
+  subroutine lwv_set_boundary_conditions(lwv_mpp, istep, isubstep)
 
     ! !DESCRIPTION:
     !
@@ -208,6 +258,7 @@ contains
     class(connection_set_type) , pointer :: cur_conn_set
     class(condition_type)      , pointer :: cur_cond
     PetscInt                             :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf
+    PetscInt :: istep, isubstep
 
     call lwv_mpp%soe%SetPointerToIthGovEqn(LONGWAVE_GE, cur_goveq)
 
@@ -229,7 +280,6 @@ contains
                 leaf_count = leaf_count + 1
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_sun, leaf_count)
                 ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_shd, leaf_count)
-
                 cur_goveq%aux_vars_in(icell)%trans = leaf_td(nbot + k - 2)
              end if
           end do
@@ -312,7 +362,7 @@ contains
   end subroutine init_lwv
 
   !------------------------------------------------------------------------
-  subroutine extract_data_from_lwv(lwv_mpp)
+  subroutine extract_data_from_lwv(lwv_mpp, istep, isubstep)
     !
     ! !DESCRIPTION:
     !   Extracts following variables from the longwave radiation model:
@@ -335,6 +385,7 @@ contains
     implicit none
     !
     class(mpp_longwave_type)           :: lwv_mpp
+    PetscInt :: istep, isubstep
     !
     PetscInt                            :: idx_leaf, idx_data, idx_soil, idx_air
     PetscInt                            :: icair, itree, k, leaf_icell, soil_icell
@@ -380,12 +431,12 @@ contains
   end subroutine extract_data_from_lwv
 
  !------------------------------------------------------------------------
-  subroutine solve_lwv(lwv_mpp, istep, dt)
+  subroutine solve_lwv(lwv_mpp, istep, isubstep, dt)
     !
     implicit none
     !
     class(mpp_longwave_type) :: lwv_mpp
-    PetscInt                 :: istep
+    PetscInt                 :: istep, isubstep
     PetscReal                :: dt
     !
     PetscBool                :: converged
@@ -393,7 +444,7 @@ contains
     PetscBool                :: flg
     PetscErrorCode           :: ierr
 
-    call lwv_set_boundary_conditions(lwv_mpp)
+    call lwv_set_boundary_conditions(lwv_mpp, istep, isubstep)
 
     call lwv_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 

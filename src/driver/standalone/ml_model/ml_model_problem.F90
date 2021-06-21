@@ -104,10 +104,12 @@ contains
   !------------------------------------------------------------------------
   subroutine set_initial_conditions()
     !
-    use mlc            , only : mlc_set_initial_conditions
+    use lwv , only : lwv_set_initial_conditions
+    use mlc , only : mlc_set_initial_conditions
     !
     implicit none
 
+    call lwv_set_initial_conditions(lwv_mpp)
     call mlc_set_initial_conditions(mlc_mpp)
 
   end subroutine set_initial_conditions
@@ -168,12 +170,12 @@ contains
           dt = 300.d0 ! [sec]
 
           !write(*,*)'    Solving longwave radiation'
+          call solve_lwv(lwv_mpp, istep, isubstep, dt)
+          call extract_data_from_lwv(lwv_mpp, istep, isubstep)
+
           if (istep == 1 .and. isubstep < 3) then
              call extract_data_from_mlc(mlc_mpp, istep, isubstep)
           end if
-
-          call solve_lwv(lwv_mpp, istep, isubstep, dt)
-          call extract_data_from_lwv(lwv_mpp, istep, isubstep)
 
           write(*,*)'    Solving leaf boundary layer'
           call solve_lbl(lbl_mpp, istep, isubstep,  dt)
