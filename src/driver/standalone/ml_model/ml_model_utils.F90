@@ -184,13 +184,12 @@ contains
     PetscReal , pointer, intent(inout)       :: fssh(:)
     !
     PetscInt :: k
-    PetscReal :: Kb
+    PetscReal, parameter :: Kb = 1.7628168203899233d0;
 
     allocate(fssh  (nz_cair*ntree +1))
 
     fssh(:) = 0.d0
 
-    Kb = 1.7628174450198393d0;
     do k = ntop, nbot, -1
        fssh(k) = exp(-Kb * sumpai(k));
     end do
