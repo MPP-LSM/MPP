@@ -336,14 +336,14 @@ contains
 
      cturb%ustar(icair)     =  cturb%uref(icair)                       * VKC / (zlog + psim)
      cturb%tstar(icair)     = (cturb%thref(icair) - cturb%tcan(icair)) * VKC / (zlog + psic)
-     cturb%vstar(icair)     = (cturb%qref(icair)  - cturb%qcan(icair)) * VKC / (zlog + psic)
+     cturb%qstar(icair)     = (cturb%qref(icair)  - cturb%qcan(icair)) * VKC / (zlog + psic)
      cturb%obu_ustar(icair) = obu_val
 
      ! Aerodynamic conductance
      cturb%gac(icair) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
 
      ! New Obukhov length
-     tvstar = cturb%tstar(icair) + 0.61d0 * cturb%thref(icair) * cturb%vstar(icair)
+     tvstar = cturb%tstar(icair) + 0.61d0 * cturb%thref(icair) * cturb%qstar(icair)
      cturb%obu(icair) = cturb%ustar(icair)**2.d0 * cturb%thvref(icair)/ (VKC * GRAVITY_CONSTANT * tvstar)
 
      obu_dif = cturb%obu(icair) - obu_val

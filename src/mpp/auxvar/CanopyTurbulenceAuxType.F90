@@ -49,7 +49,7 @@ module CanopyTurbulenceAuxType
      PetscReal, pointer :: PrSc(:)      ! Prandtl (Schmidt) number at canopy top
      PetscReal, pointer :: ustar(:)     ! Friction velocity (m/s)
      PetscReal, pointer :: tstar(:)     ! Temperature scale (K)
-     PetscReal, pointer :: vstar(:)     ! Water vapor scale (mol/mol)
+     PetscReal, pointer :: qstar(:)     ! Water vapor scale (mol/mol)
      PetscReal, pointer :: gac(:)       ! Aerodynamic conductance for a scalar above canopy (mol/m2/s)
      PetscReal, pointer :: obu_ustar(:) ! Obukhov length used for u* (m)
      PetscReal, pointer :: obu(:)       ! Value for Obukhov length (m)
@@ -119,7 +119,7 @@ contains
     allocate(this%PrSc      (ncair))
     allocate(this%ustar     (ncair))
     allocate(this%tstar     (ncair))
-    allocate(this%vstar     (ncair))
+    allocate(this%qstar     (ncair))
     allocate(this%gac       (ncair))
     allocate(this%obu_ustar (ncair))
     allocate(this%obu       (ncair))
