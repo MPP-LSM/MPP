@@ -235,7 +235,7 @@ contains
  end subroutine set_soil_parameters
 
  !------------------------------------------------------------------------
-  subroutine photosynthesis_set_boundary_conditions(psy_mpp)
+  subroutine photosynthesis_set_boundary_conditions(psy_mpp, istep, isubstep)
 
     ! !DESCRIPTION
     !
@@ -259,13 +259,14 @@ contains
     implicit none
     !
     type(mpp_photosynthesis_type)        :: psy_mpp
+    PetscInt :: istep, isubstep
     !
     class(goveqn_base_type)    , pointer   :: cur_goveq
     class(connection_set_type) , pointer   :: cur_conn_set
     class(condition_type)      , pointer   :: cur_cond
     PetscInt                               :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf, idx_data, icair
     PetscReal                              :: Isun_vis, Ishd_vis
-    PetscReal                              :: qref_value , pref_value
+    PetscReal                              :: qair_value , pref_value
     PetscReal                  , pointer   :: tleaf_local(:)
     PetscReal                  , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
 
@@ -282,6 +283,7 @@ contains
        icell = 0
        ileaf = 0
        do icol = 1, ncol
+          pref_value = get_value_from_condition(pref, icol)
           do k = 1, nz
              icell = icell + 1
              ileaf = ileaf + 1
@@ -294,17 +296,17 @@ contains
 
              cur_goveq%aux_vars_in(ileaf          )%apar = Isun_vis * unit_conversion ! [mmol_photon/m2/s]
              cur_goveq%aux_vars_in(ileaf + ncol*nz)%apar = Ishd_vis * unit_conversion ! [mmol_photon/m2/s]
+             if (istep == 1 .and. isubstep > 1) then
+                cur_goveq%aux_vars_in(icell)%eair = get_value_from_condition(qair, (icol-1)*nz + nbot + k - 2) * pref_value
+             endif
           end do
        end do
 
        icell = 0
-       idx_data = 0
 
        do icair = 1, ncair
-          do k = 1, nz
-             idx_data = idx_data + 1
-
-             do ileaf = 1, nleaf
+          do ileaf = 1, nleaf
+             do k = 1, nz
                 icell = icell + 1
 
                 cur_goveq%aux_vars_in(icell)%tleaf = tleaf_local(icell)
@@ -315,11 +317,16 @@ contains
                 cur_goveq%aux_vars_in(icell)%cair  = get_value_from_condition(co2ref, icair)
                 cur_goveq%aux_vars_in(icell)%o2ref = get_value_from_condition(o2ref, icair)
 
-                qref_value = get_value_from_condition(qref, icair)
                 pref_value = get_value_from_condition(pref, icair)
 
-                cur_goveq%aux_vars_in(icell)%eair = &
-                                     qref_value * pref_value/(MM_H2O/MM_DRY_AIR + (1.d0 - MM_H2O/MM_DRY_AIR) * qref_value)
+                if (istep == 1 .and. isubstep == 1) then
+                   qair_value = get_value_from_condition(qref, icair)
+                   cur_goveq%aux_vars_in(icell)%eair = &
+                        qair_value * pref_value/(MM_H2O/MM_DRY_AIR + (1.d0 - MM_H2O/MM_DRY_AIR) * qair_value)
+                else
+                   qair_value = get_value_from_condition(qair,  (icair-1)*nz + nbot + k - 2)
+                   cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
+                endif
              end do
           end do
        end do
@@ -438,7 +445,7 @@ contains
   end subroutine set_initial_conditions
 
   !------------------------------------------------------------------------
-  subroutine extract_data_from_photosynthesis(psy_mpp)
+  subroutine extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
     !
     ! !DESCRIPTION:
     !   Extracts following variables from the photsynthesis model
@@ -460,6 +467,7 @@ contains
     implicit none
     !
     class(mpp_photosynthesis_type)      :: psy_mpp
+    PetscInt :: istep, isubstep
     !
     PetscInt                            :: icell, offset
     PetscInt                            :: ncells
@@ -489,12 +497,12 @@ contains
   end subroutine extract_data_from_photosynthesis
 
   !------------------------------------------------------------------------
-  subroutine solve_photosynthesis(psy_mpp, istep, dt)
+  subroutine solve_photosynthesis(psy_mpp, istep, isubstep, dt)
     !
     implicit none
     !
     class(mpp_photosynthesis_type) :: psy_mpp
-    PetscInt                 :: istep
+    PetscInt                 :: istep, isubstep
     PetscReal                :: dt
     !
     PetscScalar, pointer          :: ci_p(:)
@@ -505,7 +513,7 @@ contains
 
     call set_initial_conditions(psy_mpp)
 
-    call photosynthesis_set_boundary_conditions(psy_mpp)
+    call photosynthesis_set_boundary_conditions(psy_mpp, istep, isubstep)
 
     call psy_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
