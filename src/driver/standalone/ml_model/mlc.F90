@@ -214,6 +214,7 @@ contains
     PetscViewer                          :: viewer
     PetscInt                             :: soe_auxvar_id
     PetscErrorCode                       :: ierr
+    PetscReal :: qref_value, factor
 
     base_soe => mlc_mpp%soe
 
@@ -230,12 +231,19 @@ contains
        soe%cturb%uref(icair) = get_value_from_condition(Uref, icair)
        soe%cturb%tref(icair) = get_value_from_condition(Tref, icair)
        soe%cturb%rhref(icair)= 80.d0    !get_value_from_condition(Rhref, icair)
-       soe%cturb%qref(icair) = get_value_from_condition(Qref, icair)
+
+       soe%cturb%wind(icair,:) = get_value_from_condition(Uref, icair)
+
+       qref_value = get_value_from_condition(Qref, icair)
+       factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
+       soe%cturb%qref(icair) = qref_value! * factor
+       soe%cturb%qcan(icair) = qref_value! * factor
+
 
        call soe%cturb%ComputeDerivedAtmInputs(icair)
 
-       soe%cturb%qcan(icair) = soe%cturb%qref(icair)
        soe%cturb%tcan(icair) = soe%cturb%tref(icair)
+       !soe%cturb%qref(icair) = qref_value * factor
     end do
 
     ! Find number of GEs packed within the SoE
@@ -261,7 +269,9 @@ contains
           v_p(:) = get_value_from_condition(Tref, icair)
 
        else if (ii == CAIR_VAPR_GE) then
-          v_p(:) = get_value_from_condition(Qref, icair)
+          qref_value = get_value_from_condition(Qref, icair)
+          factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
+          v_p(:) = qref_value * factor
        endif
 
        call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
@@ -282,21 +292,27 @@ contains
   end subroutine mlc_set_initial_conditions
 
  !------------------------------------------------------------------------
-  subroutine set_boundary_conditions(mlc_mpp)
+  subroutine set_boundary_conditions(mlc_mpp, istep, isubstep)
     !
     use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
     use SystemOfEquationsBaseType , only : sysofeqns_base_type
     use SystemOfEquationsMLCType  , only : sysofeqns_mlc_type
     use ml_model_utils            , only : get_value_from_condition
+    use GoverningEquationBaseType      , only : goveqn_base_type
+    use GoveqnCanopyAirVaporType  , only : goveqn_cair_vapor_type
+    use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
     !
     ! !ARGUMENTS
     implicit none
     !
     type(mpp_mlc_type) :: mlc_mpp
+    PetscInt :: istep, isubstep
     !
     class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_mlc_type)  , pointer :: soe
+    class(goveqn_base_type)    , pointer :: cur_goveq
     PetscInt                             :: icair
+    PetscReal                            :: factor, qref_value, tcan_value, qcan_value
 
     base_soe => mlc_mpp%soe
 
@@ -308,16 +324,43 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
+    call base_soe%SetPointerToIthGovEqn(CAIR_TEMP_GE, cur_goveq)
+    select type(cur_goveq)
+    class is (goveqn_cair_temp_type)
+       tcan_value = cur_goveq%aux_vars_in(ntop)%temperature
+    end select
+
+    call base_soe%SetPointerToIthGovEqn(CAIR_VAPR_GE, cur_goveq)
+    select type(cur_goveq)
+    class is (goveqn_cair_vapor_type)
+       qcan_value = cur_goveq%aux_vars_in(ntop)%water_vapor
+    end select
+
+
     do icair = 1, ncair
        soe%cturb%pref(icair) = get_value_from_condition(pref, icair)
        soe%cturb%uref(icair) = get_value_from_condition(uref, icair)
        soe%cturb%tref(icair) = get_value_from_condition(tref, icair)
-       soe%cturb%qref(icair) = get_value_from_condition(qref, icair)
+
+       qref_value = get_value_from_condition(Qref, icair)
+       factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
+       soe%cturb%qref(icair) = qref_value !* factor
 
        call soe%cturb%ComputeDerivedAtmInputs(icair)
 
-       soe%cturb%qcan(icair) = soe%cturb%qref(icair)
-       soe%cturb%tcan(icair) = soe%cturb%tref(icair)
+       if (istep == 1 .and. isubstep == 1) then
+          soe%cturb%qcan(icair) = qref_value! * factor
+          soe%cturb%tcan(icair) = soe%cturb%tref(icair)
+       else
+          factor = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qcan_value)
+
+          soe%cturb%qcan(icair) = qcan_value/factor
+          soe%cturb%tcan(icair) = tcan_value
+
+          soe%cturb%qcan(icair) = 9.8655635472979404d-003
+          soe%cturb%tcan(icair) = 295.73954699053752d0
+
+       end if
        soe%cturb%tsoi(icair) = get_value_from_condition(soil_t,icair)
 
        soe%cturb%rnsoi(icair) = &
@@ -432,7 +475,7 @@ contains
                gb_count = gb_count + 1
                icell = (icair-1)*(nz_cair+1) + k
 
-               cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbh, gb_count)
+               cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, gb_count)
 
                do ileaf = 1, ntree
                   cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
@@ -564,7 +607,7 @@ contains
    end subroutine get_data_from_mlc_eqn
 
    !------------------------------------------------------------------------
-  subroutine extract_data_from_mlc(mlc_mpp)
+  subroutine extract_data_from_mlc(mlc_mpp, istep, isubstep)
     !
     ! !DESCRIPTION:
     !   Extracts following variables from the MLC model:
@@ -588,27 +631,35 @@ contains
     use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
     use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
+    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
     use petscvec
     !
     ! !ARGUMENTS
     implicit none
     !
     class(mpp_mlc_type)  :: mlc_mpp
+    PetscInt :: istep, isubstep
     !
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
     PetscScalar, pointer :: soln_p(:)
     PetscInt             :: idx_leaf, idx_data, idx_soil, idx_air
     PetscInt             :: ileaf, icair, itree, k, ieqn
     PetscInt             :: ncells
     PetscReal,  pointer  :: tleaf_data(:), tair_data(:), qair_data(:)
     PetscErrorCode       :: ierr
+    PetscReal :: factor
+    character(len=20) :: string
 
     ncells = ncair*ntree*(nz_cair+1)
     allocate(tleaf_data(ncells))
     allocate(tair_data(ncells))
     allocate(qair_data(ncells))
 
+    write(string,*)isubstep
+
     do ileaf = 1, 2
-       ncells = ncair*ntree*(ntop-nbot+1)
+       !ncells = ncair*ntree*(ntop-nbot+1)
        if (ileaf == 1) then
           ieqn = CLEF_TEMP_SUN_GE
        else
@@ -624,7 +675,7 @@ contains
              do k = 1, nz_cair+1
                 if (k>=nbot .and. k<=ntop) then
                    idx_leaf = idx_leaf + 1
-                   idx_data = idx_data + 1
+                   idx_data = (icair-1)*ntree*(nz_cair+1) + (ntree-1)*(nz_cair+1) + k
                    if (ileaf == 1) then
                       call set_value_in_condition(Tleaf_sun, idx_leaf, tleaf_data(idx_data))
                    else
@@ -640,19 +691,40 @@ contains
     call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
     call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, ncells, qair_data)
 
+    base_soe => mlc_mpp%soe
+
+    select type(base_soe)
+    class is (sysofeqns_mlc_type)
+       soe => base_soe
+    class default
+       write(iulog,*) 'Unsupported class type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
     idx_soil = 0
     idx_data = 0
     idx_air = 0
+
     do icair = 1, ncair
        do k = 1, nz_cair+1
           idx_data = idx_data + 1
           if (k == 1) then
              idx_soil = idx_soil + 1
-             call set_value_in_condition(tg, idx_soil, tair_data(idx_data))
+             !call set_value_in_condition(tg, idx_soil, tair_data(idx_data))
           else
              idx_air = idx_air + 1
              call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
+             if (istep == 1 .and. isubstep == 1) then
+                !call set_value_in_condition(qair, idx_air, get_value_from_condition(Qref, icair))
+             else
+                call set_value_in_condition(qair, idx_air, qair_data(idx_data))
+             end if
              call set_value_in_condition(qair, idx_air, qair_data(idx_data))
+             if (istep == 1 .and. isubstep == 1) then
+                call set_value_in_condition(wind, idx_air, soe%cturb%uref(icair) )
+             else
+                call set_value_in_condition(wind, idx_air, soe%cturb%wind(icair,k))
+             end if
           end if
        end do
     end do
@@ -664,12 +736,12 @@ contains
   end subroutine extract_data_from_mlc
 
   !------------------------------------------------------------------------
-  subroutine solve_mlc(mlc_mpp, istep, dt)
+  subroutine solve_mlc(mlc_mpp, istep, isubstep, dt)
     !
     implicit none
     !
     class(mpp_mlc_type) :: mlc_mpp
-    PetscInt            :: istep
+    PetscInt            :: isubstep, istep
     PetscReal           :: dt
     !
     PetscBool           :: converged
@@ -677,7 +749,7 @@ contains
     PetscBool           :: flg
     PetscErrorCode      :: ierr
 
-    call set_boundary_conditions(mlc_mpp)
+    call set_boundary_conditions(mlc_mpp, istep, isubstep)
 
     call mlc_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
