@@ -290,7 +290,7 @@ contains
        this%aux_vars_conn_bc(iconn)%ga     = cturb%ga_prof(icair, k)
        qref_value = cturb%qref(icair)
        factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
-       this%aux_vars_bc(iconn)%water_vapor = qref_value * factor
+       this%aux_vars_bc(iconn)%qair = qref_value * factor
        this%aux_vars_bc(iconn)%pref        = cturb%pref(icair)
     end do
 
@@ -323,7 +323,7 @@ contains
     call VecGetArrayF90(x, x_p, ierr); CHKERRQ(ierr)
 
     do ghosted_id = 1, this%mesh%ncells_local
-       this%aux_vars_in(ghosted_id)%water_vapor = x_p(ghosted_id)
+       this%aux_vars_in(ghosted_id)%qair = x_p(ghosted_id)
     end do
 
     call VecRestoreArrayF90(x, x_p, ierr); CHKERRQ(ierr)
@@ -422,7 +422,7 @@ contains
     select case(var_type)
     case(VAR_WATER_VAPOR)
        do iauxvar = 1,nauxvar
-          var_values(iauxvar) = aux_var(iauxvar)%water_vapor
+          var_values(iauxvar) = aux_var(iauxvar)%qair
        end do
     case default
        write(iulog,*) 'CAirVaporGetRValuesFromAuxVars: Unknown var_type'
@@ -725,7 +725,7 @@ contains
 
           ! The specific humidity (or partial pressure of water vapor) does not change
           ! for gound cell
-          b_p(icell) = this%aux_vars_in(icell)%water_vapor
+          b_p(icell) = this%aux_vars_in(icell)%qair
 
           ! The specific humidity (or partial pressure of water vapor) at ground
           ! contributes to the canopy air cell above the ground
@@ -745,10 +745,10 @@ contains
 
 #ifdef USE_BONAN_FORMULATION
           b_p(icell) = b_p(icell) + &
-               auxvar(icell)%rhomol / this%dtime * auxvar(icell)%water_vapor * this%mesh%vol(icell)
+               auxvar(icell)%rhomol / this%dtime * auxvar(icell)%qair * this%mesh%vol(icell)
 #else
           b_p(icell) = b_p(icell) + &
-               auxvar(icell)%rhomol / this%dtime * auxvar(icell)%water_vapor/this%aux_vars_in(icell)%pref
+               auxvar(icell)%rhomol / this%dtime * auxvar(icell)%qair/this%aux_vars_in(icell)%pref
 #endif
           do ileaf = 1,auxvar(icell)%nleaf
              call SatVap(auxvar(icell)%leaf_temperature(ileaf), esat, desat)
@@ -828,10 +828,10 @@ contains
 
 #ifdef USE_BONAN_FORMULATION
              b_p(cell_id) = b_p(cell_id) + &
-                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%water_vapor
+                  this%aux_vars_conn_bc(sum_conn)%ga * auxvar(sum_conn)%qair
 #else
              b_p(cell_id) = b_p(cell_id) + &
-                  this%aux_vars_conn_bc(sum_conn)%ga/dist * auxvar(sum_conn)%water_vapor
+                  this%aux_vars_conn_bc(sum_conn)%ga/dist * auxvar(sum_conn)%qair
 #endif
 
           case default

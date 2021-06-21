@@ -24,7 +24,7 @@ module CanopyAirTemperatureAuxType
      PetscReal          :: rhomol              ! Molar density (mol/m3)
      PetscReal          :: pref                ! Atmospheric pressure (Pa)
 
-     PetscReal          :: water_vapor         ! Water vapor (mol/mol)
+     PetscReal          :: qair                ! Water vapor (mol/mol)
 
      PetscInt           :: nleaf               ! Number of canopy leaves
      PetscReal, pointer :: leaf_temperature(:) ! Vegetation from previous timestep (K)
@@ -66,7 +66,7 @@ contains
     this%rhomol      = 0.d0
     this%pref        = 0.d0
 
-    this%water_vapor = 0.d0
+    this%qair        = 0.d0
 
     this%nleaf = nleaf
     allocate(this%leaf_temperature(nleaf))

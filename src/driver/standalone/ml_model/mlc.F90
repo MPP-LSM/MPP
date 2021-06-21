@@ -333,7 +333,7 @@ contains
     call base_soe%SetPointerToIthGovEqn(CAIR_VAPR_GE, cur_goveq)
     select type(cur_goveq)
     class is (goveqn_cair_vapor_type)
-       qcan_value = cur_goveq%aux_vars_in(ntop)%water_vapor
+       qcan_value = cur_goveq%aux_vars_in(ntop)%qair
     end select
 
 
