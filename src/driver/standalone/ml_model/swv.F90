@@ -283,6 +283,7 @@ contains
     use ConnectionSetType              , only : connection_set_type
     use ml_model_utils                 , only : get_value_from_condition
     use ml_model_global_vars           , only : dpai, sumpai, cumpai
+    use ml_model_utils                 , only : compute_fssh
     use ShortwaveAuxType               , only : shortwave_auxvar_type
     !
     ! !ARGUMENTS
@@ -326,6 +327,7 @@ contains
                 avars(icell)%Iskyd(2) = get_value_from_condition(Iskyd_nir, icair)
 
                 call compute_kb(xl, sza_value, phi1, phi2, kb) ! xl = xl(icell)
+                call compute_fssh(nbot, ntop, sumpai, kb, fssh)
 
                 ! Direct beam transmittance (tb) and diffuse transmittance (td)
                 ! through a single layer

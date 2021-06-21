@@ -128,6 +128,7 @@ contains
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc
     use ml_model_global_vars         , only : dsai, dlai, dpai, fssh, cumpai, sumpai, leaf_td, ncair, ntree, nz_cair, nbot, ntop
+    use ml_model_global_vars         , only : nz_cair, ntree
     !
     implicit none
     !
@@ -145,7 +146,7 @@ contains
     call read_namelist_file(namelist_filename)
 
     call compute_vertical_veg_structure(dlai, dsai, dpai, cumpai, sumpai, leaf_td)
-    call compute_fssh(nbot, ntop, sumpai, fssh)
+    allocate(fssh(nz_cair*ntree + 1))
 
     call allocate_memory()
     call init_mpps()

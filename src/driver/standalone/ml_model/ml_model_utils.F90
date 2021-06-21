@@ -173,7 +173,7 @@ contains
   end subroutine compute_vertical_veg_structure
 
   !------------------------------------------------------------------------
-  subroutine compute_fssh(nbot, ntop, sumpai, fssh)
+  subroutine compute_fssh(nbot, ntop, sumpai, kb, fssh)
     !
     use ml_model_global_vars, only : nz_cair, ntree
     !
@@ -181,12 +181,12 @@ contains
     !
     PetscInt  , intent(in)          :: nbot, ntop
     PetscReal , pointer, intent(in) :: sumpai(:)
+    PetscReal                       :: kb
     PetscReal , pointer, intent(inout)       :: fssh(:)
     !
     PetscInt :: k
-    PetscReal, parameter :: Kb = 1.7628168203899233d0;
 
-    allocate(fssh  (nz_cair*ntree +1))
+    !allocate(fssh  (nz_cair*ntree +1))
 
     fssh(:) = 0.d0
 
