@@ -104,16 +104,17 @@ contains
   !------------------------------------------------------------------------
   subroutine set_initial_conditions()
     !
-    use mlc                  , only : mlc_set_initial_conditions
-    use ml_model_global_vars , only : nbot, ntop, ncair, ntree, nz_cair
-    use ml_model_global_vars , only : Tleaf_sun, Tleaf_shd, Tair, Wind, Tref, Uref
-    use ml_model_utils       , only : get_value_from_condition
-    use ml_model_utils       , only : set_value_in_condition
+    use mlc                       , only : mlc_set_initial_conditions
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars      , only : Tleaf_sun, Tleaf_shd, Tair, Qair, Wind, Tref, Uref, Qref
+    use ml_model_utils            , only : get_value_from_condition
+    use ml_model_utils            , only : set_value_in_condition
+    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
     !
     implicit none
     !
     PetscInt :: icair, itree, k, idx_leaf, idx_air
-    PetscReal :: tleaf_value, tair_value, wind_value
+    PetscReal :: tleaf_value, tair_value, wind_value, qair_value, factor
 
 
     idx_leaf = 0
@@ -133,10 +134,13 @@ contains
              if (k > 1) then
                 tair_value = get_value_from_condition(Tref, icair)
                 wind_value = get_value_from_condition(Uref, icair)
+                qair_value = get_value_from_condition(Qref, icair)
+                factor = 1.d0/(MM_H2O/MM_DRY_AIR + (1.d0 - MM_H2O/MM_DRY_AIR)*qair_value)
 
                 idx_air = (icair-1)*ncair + (k-1)
                 call set_value_in_condition(Tair, idx_air, tair_value)
                 call set_value_in_condition(Wind, idx_air, wind_value)
+                call set_value_in_condition(qair, idx_air, qair_value*factor)
              end if
 
           end do
@@ -210,9 +214,6 @@ contains
           call solve_lbl(lbl_mpp, istep, isubstep,  dt)
           call extract_data_from_lbl(lbl_mpp, istep, isubstep)
 
-          if (istep == 1 .and. isubstep < 3) then
-             call extract_data_from_mlc(mlc_mpp, istep, isubstep)
-          end if
           write(*,*)'    Solving photosynthesis'
           call solve_photosynthesis(psy_mpp, istep, isubstep, dt)
           call extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
