@@ -319,14 +319,8 @@ contains
 
                 pref_value = get_value_from_condition(pref, icair)
 
-                if (istep == 1 .and. isubstep == 1) then
-                   qair_value = get_value_from_condition(qref, icair)
-                   cur_goveq%aux_vars_in(icell)%eair = &
-                        qair_value * pref_value/(MM_H2O/MM_DRY_AIR + (1.d0 - MM_H2O/MM_DRY_AIR) * qair_value)
-                else
-                   qair_value = get_value_from_condition(qair,  (icair-1)*nz + nbot + k - 2)
-                   cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
-                endif
+                qair_value = get_value_from_condition(qair,  (icair-1)*nz + nbot + k - 2)
+                cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
              end do
           end do
        end do
