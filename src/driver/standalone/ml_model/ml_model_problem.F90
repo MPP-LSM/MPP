@@ -155,28 +155,37 @@ contains
 
     do istep = 1, 1
        call read_boundary_conditions(istep)
+       !write(*,*)'istep: ',istep
 
-       write(*,*)'Solving shortwave radiation'
+       !write(*,*)'  Solving shortwave radiation'
        call solve_swv(swv_mpp, istep, dt)
        call extract_data_from_swv(swv_mpp)
 
        do isubstep = 1, 1
+
+          !write(*,*)' isubstep:',isubstep
           dt = 300.d0 ! [sec]
-          call extract_data_from_mlc(mlc_mpp)
-          write(*,*)'Solving longwave radiation'
-          call solve_lwv(lwv_mpp, istep, dt)
-          call extract_data_from_lwv(lwv_mpp)
 
-          write(*,*)'Solving leaf boundary layer'
-          call solve_lbl(lbl_mpp, istep, dt)
-          call extract_data_from_lbl(lbl_mpp)
+          !write(*,*)'    Solving longwave radiation'
+          if (istep == 1 .and. isubstep < 3) then
+             call extract_data_from_mlc(mlc_mpp, istep, isubstep)
+          end if
 
-          write(*,*)'Solving photosynthesis'
-          call solve_photosynthesis(psy_mpp, istep, dt)
-          call extract_data_from_photosynthesis(psy_mpp)
+          call solve_lwv(lwv_mpp, istep, isubstep, dt)
+          call extract_data_from_lwv(lwv_mpp, istep, isubstep)
 
-          write(*,*)'Solving MLC'
-          call solve_mlc(mlc_mpp, istep, dt)
+          write(*,*)'    Solving leaf boundary layer'
+          call solve_lbl(lbl_mpp, istep, isubstep,  dt)
+          call extract_data_from_lbl(lbl_mpp, istep, isubstep)
+
+          write(*,*)'    Solving photosynthesis'
+          call solve_photosynthesis(psy_mpp, istep, isubstep, dt)
+          call extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
+
+          write(*,*)'    Solving MLC'
+          call solve_mlc(mlc_mpp, istep, isubstep, dt)
+          call extract_data_from_mlc(mlc_mpp, istep, isubstep)
+          call exit(0)
        end do
     end do
 
