@@ -104,12 +104,45 @@ contains
   !------------------------------------------------------------------------
   subroutine set_initial_conditions()
     !
-    use lwv , only : lwv_set_initial_conditions
-    use mlc , only : mlc_set_initial_conditions
+    use mlc                  , only : mlc_set_initial_conditions
+    use ml_model_global_vars , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars , only : Tleaf_sun, Tleaf_shd, Tair, Wind, Tref, Uref
+    use ml_model_utils       , only : get_value_from_condition
+    use ml_model_utils       , only : set_value_in_condition
     !
     implicit none
+    !
+    PetscInt :: icair, itree, k, idx_leaf, idx_air
+    PetscReal :: tleaf_value, tair_value, wind_value
 
-    call lwv_set_initial_conditions(lwv_mpp)
+
+    idx_leaf = 0
+    idx_air  = 0
+    do icair = 1, ncair
+       do itree = 1, ntree
+          do k = 1, nz_cair+1
+             if (k >= nbot .and. k <= ntop) then
+                tleaf_value = get_value_from_condition(Tref, icair)
+
+                idx_leaf = idx_leaf + 1
+                call set_value_in_condition(Tleaf_sun, idx_leaf, tleaf_value)
+                call set_value_in_condition(Tleaf_shd, idx_leaf, tleaf_value)
+
+             end if
+
+             if (k > 1) then
+                tair_value = get_value_from_condition(Tref, icair)
+                wind_value = get_value_from_condition(Uref, icair)
+
+                idx_air = (icair-1)*ncair + (k-1)
+                call set_value_in_condition(Tair, idx_air, tair_value)
+                call set_value_in_condition(Wind, idx_air, wind_value)
+             end if
+
+          end do
+       end do
+    end do
+
     call mlc_set_initial_conditions(mlc_mpp)
 
   end subroutine set_initial_conditions
@@ -173,14 +206,13 @@ contains
           call solve_lwv(lwv_mpp, istep, isubstep, dt)
           call extract_data_from_lwv(lwv_mpp, istep, isubstep)
 
-          if (istep == 1 .and. isubstep < 3) then
-             call extract_data_from_mlc(mlc_mpp, istep, isubstep)
-          end if
-
           write(*,*)'    Solving leaf boundary layer'
           call solve_lbl(lbl_mpp, istep, isubstep,  dt)
           call extract_data_from_lbl(lbl_mpp, istep, isubstep)
 
+          if (istep == 1 .and. isubstep < 3) then
+             call extract_data_from_mlc(mlc_mpp, istep, isubstep)
+          end if
           write(*,*)'    Solving photosynthesis'
           call solve_photosynthesis(psy_mpp, istep, isubstep, dt)
           call extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
