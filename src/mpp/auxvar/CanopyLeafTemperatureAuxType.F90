@@ -20,7 +20,7 @@ module CanopyLeafTemperatureAuxType
 
      PetscReal :: air_temperature    ! Air temperature for previous timestep (K)
      PetscReal :: pref               ! Atmospheric pressure (Pa)
-     PetscReal :: water_vapor_canopy ! Water vapor for previous timestep (mol/mol)
+     PetscReal :: qcanopy            ! Water vapor for previous timestep (mol/mol)
      PetscReal :: cpair              ! Specific heat of air at constant pressure (J/mol/K)
      PetscReal :: gbh                ! Leaf boundary layer conductance, heat (mol/m2 leaf/s)
      PetscReal :: gbv                ! Leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
@@ -52,7 +52,7 @@ contains
 
     this%air_temperature    = 0.d0
     this%pref               = 0.d0
-    this%water_vapor_canopy = 0.d0
+    this%qcanopy            = 0.d0
     this%gbh                = 0.d0
     this%gbv                = 0.d0
     this%gs                 = 0.d0

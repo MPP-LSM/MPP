@@ -17,7 +17,7 @@ module CanopyAirVaporAuxType
   type, public :: cair_vapor_auxvar_type
 
      ! primary unknown independent variable
-     PetscReal          :: water_vapor         ! Water vapor for previous timestep (mol/mol)
+     PetscReal          :: qair                ! Water vapor for previous timestep (mol/mol)
 
      PetscReal          :: temperature         !
      PetscReal          :: gbv                 ! Leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
@@ -65,7 +65,7 @@ contains
     allocate(this%leaf_fssh(nleaf))
     allocate(this%leaf_dpai(nleaf))
 
-    this%water_vapor         = 0.d0
+    this%qair                = 0.d0
 
     this%temperature         = 0.d0
     this%gbv                 = 0.d0

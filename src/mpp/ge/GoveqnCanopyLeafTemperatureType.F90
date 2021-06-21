@@ -319,7 +319,7 @@ contains
        end do
     case(VAR_WATER_VAPOR)
        do iauxvar = 1,nauxvar
-          aux_var(iauxvar)%water_vapor_canopy = var_values(iauxvar)
+          aux_var(iauxvar)%qcanopy = var_values(iauxvar)
        end do
     case default
        write(iulog,*) 'CLeafTempGetSValuesFromAuxVars: Unknown var_type'

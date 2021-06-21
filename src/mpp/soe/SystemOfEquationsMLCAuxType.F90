@@ -24,7 +24,7 @@ module SystemOfEquationsMlcAuxType
   type, public :: sysofeqns_mlc_auxvar_type
 
      PetscReal :: tair
-     PetscReal :: water_vapor
+     PetscReal :: qair
      PetscReal :: tleaf_sun
      PetscReal :: tleaf_shd
 
@@ -54,7 +54,7 @@ contains
     class(sysofeqns_mlc_auxvar_type) :: this
 
     this%tair        = 0.d0
-    this%water_vapor = 0.d0
+    this%qair        = 0.d0
     this%tleaf_sun   = 0.d0
     this%tleaf_shd   = 0.d0
 
