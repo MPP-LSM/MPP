@@ -222,7 +222,7 @@ contains
   end subroutine init_lbl
 
   !------------------------------------------------------------------------
-  subroutine extract_data_from_lbl(lbl_mpp)
+  subroutine extract_data_from_lbl(lbl_mpp, istep, isubstep)
     !
     ! !DESCRIPTION:
     !   Extracts following variables from the LBL model:
@@ -247,6 +247,7 @@ contains
     implicit none
     !
     class(mpp_lbl_type)               :: lbl_mpp
+    PetscInt                          :: istep, isubstep
     !
     PetscScalar             , pointer :: soln_p(:)
     PetscInt                          :: idx_leaf, idx_data, idx_soil, idx_air
@@ -284,12 +285,12 @@ contains
   end subroutine extract_data_from_lbl
  
  !------------------------------------------------------------------------
-  subroutine solve_lbl(lbl_mpp, istep, dt)
+  subroutine solve_lbl(lbl_mpp, istep, isubstep, dt)
     !
     implicit none
     !
     class(mpp_lbl_type) :: lbl_mpp
-    PetscInt                 :: istep
+    PetscInt                 :: istep, isubstep
     PetscReal                :: dt
     !
     PetscBool                :: converged
