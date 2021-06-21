@@ -296,9 +296,7 @@ contains
 
              cur_goveq%aux_vars_in(ileaf          )%apar = Isun_vis * unit_conversion ! [mmol_photon/m2/s]
              cur_goveq%aux_vars_in(ileaf + ncol*nz)%apar = Ishd_vis * unit_conversion ! [mmol_photon/m2/s]
-             if (istep == 1 .and. isubstep > 1) then
-                cur_goveq%aux_vars_in(icell)%eair = get_value_from_condition(qair, (icol-1)*nz + nbot + k - 2) * pref_value
-             endif
+             cur_goveq%aux_vars_in(icell)%eair = get_value_from_condition(qair, (icol-1)*nz + nbot + k - 2) * pref_value
           end do
        end do
 
