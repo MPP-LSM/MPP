@@ -421,6 +421,8 @@ contains
                do ileaf = 1, ntree
                   cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
                   cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(gs_shd, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_fssh(        ileaf) = fssh(k)
+                  cur_goveq%aux_vars_in(icell)%leaf_fssh(ntree + ileaf) = 1.d0 - fssh(k)
                enddo
             end if
          end do ! k-loop
@@ -480,6 +482,8 @@ contains
                do ileaf = 1, ntree
                   cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
                   cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(gs_shd, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_fssh(        ileaf) = fssh(k)
+                  cur_goveq%aux_vars_in(icell)%leaf_fssh(ntree + ileaf) = 1.d0 - fssh(k)
                end do
             end if
          end do
@@ -538,6 +542,7 @@ contains
                       cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, count)
                       cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, count)
                       cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(gs_sun  , count)
+                      cur_goveq%aux_vars_in(icell)%fssh = fssh(k)
 
                       cur_goveq%aux_vars_in(icell)%rn   = &
                            get_value_from_condition(Ileaf_sun_vis, count) + &
@@ -548,6 +553,7 @@ contains
                       cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, count + offset)
                       cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, count + offset)
                       cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(gs_shd, count)
+                      cur_goveq%aux_vars_in(icell)%fssh = 1.d0 - fssh(k)
 
                       cur_goveq%aux_vars_in(icell)%rn   = &
                            get_value_from_condition(Ileaf_shd_vis, count) + &
