@@ -26,6 +26,7 @@ module CanopyTurbulenceAuxType
      PetscReal, pointer :: qref(:)      ! Water vapor at reference height (mol/mol)
      PetscReal, pointer :: tref(:)      ! Air temperature at reference height (K)
      PetscReal, pointer :: rhref(:)     ! Relative humidity at reference height (%)
+     PetscReal, pointer :: eref(:)      ! Water vapor pressure at reference height (Pa)
      !PetscReal, pointer :: shref(:)     ! Specific humidity at reference height (kg/kg)
 
      PetscReal, pointer :: ucan(:)      ! Wind speed at canopy top (m/s)
@@ -96,6 +97,7 @@ contains
     allocate(this%qref      (ncair))
     allocate(this%tref      (ncair))
     allocate(this%rhref     (ncair))
+    allocate(this%eref      (ncair))
     !allocate(this%shref     (ncair))
 
     allocate(this%ucan      (ncair))
@@ -164,6 +166,7 @@ contains
     !this%qref(icair) = eref / this%pref(icair)
 
     eref = this%qref(icair) * this%pref(icair) / (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR) * this%qref(icair))
+    this%eref(icair) = eref
 
     this%rhomol(icair) = this%pref(icair) / (RGAS * this%tref(icair))
     this%rhoair(icair) = this%rhomol(icair) * MM_DRY_AIR * (1.d0 - (1.d0 - MM_H2O/MM_DRY_AIR) * eref / this%pref(icair))

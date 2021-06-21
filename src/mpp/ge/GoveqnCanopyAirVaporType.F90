@@ -245,7 +245,6 @@ contains
     !
     ! !USES:
     use CanopyTurbulenceAuxType, only : canopy_turbulence_auxvar_type 
-    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
     !
     implicit none
     !
@@ -254,7 +253,6 @@ contains
     class(canopy_turbulence_auxvar_type) :: cturb
     !
     PetscInt :: ncair, icair, icell, iconn, k
-    PetscReal :: qref_value, factor
 
     ! all layers
     do icair = 1, cturb%ncair
@@ -288,10 +286,8 @@ contains
     do icair = 1, cturb%ncair
        iconn = icair
        this%aux_vars_conn_bc(iconn)%ga     = cturb%ga_prof(icair, k)
-       qref_value = cturb%qref(icair)
-       factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
-       this%aux_vars_bc(iconn)%qair = qref_value * factor
-       this%aux_vars_bc(iconn)%pref        = cturb%pref(icair)
+       this%aux_vars_bc(iconn)%pref = cturb%pref(icair)
+       this%aux_vars_bc(iconn)%qair = cturb%eref(icair)/cturb%pref(icair)
     end do
 
   end subroutine CAirVaporGetFromSoeAuxVarsCturb
