@@ -228,6 +228,7 @@ contains
                 cur_goveq%aux_vars_in(icell)%soil_temperature = get_value_from_condition(tg, icol)
              else
                 leaf_count = leaf_count + 1
+                cur_goveq%aux_vars_in(icell)%trans      = leaf_td(nbot + k - 2)
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_sun, leaf_count)
                 ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_shd, leaf_count)
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf)        = fssh(nbot + k - 2)
