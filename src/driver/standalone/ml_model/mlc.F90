@@ -312,7 +312,7 @@ contains
     class(sysofeqns_mlc_type)  , pointer :: soe
     class(goveqn_base_type)    , pointer :: cur_goveq
     PetscInt                             :: icair
-    PetscReal                            :: factor, qref_value, tcan_value, qcan_value
+    PetscReal                            :: factor, qref_value, tcan_value, qcan_value, eair
 
     base_soe => mlc_mpp%soe
 
@@ -354,12 +354,10 @@ contains
        else
           factor = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qcan_value)
 
-          soe%cturb%qcan(icair) = qcan_value/factor
+          eair = qcan_value * soe%cturb%pref(icair)
+          factor = (MM_H2O / MM_DRY_AIR) / ( soe%cturb%pref(icair) - (1.d0 - MM_H2O / MM_DRY_AIR)*eair )
+          soe%cturb%qcan(icair) = eair * factor
           soe%cturb%tcan(icair) = tcan_value
-
-          soe%cturb%qcan(icair) = 9.8655635472979404d-003
-          soe%cturb%tcan(icair) = 295.73954699053752d0
-
        end if
        soe%cturb%tsoi(icair) = get_value_from_condition(soil_t,icair)
 
@@ -395,12 +393,13 @@ contains
     class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_mlc_type)  , pointer :: soe
     class(goveqn_base_type)    , pointer :: cur_goveq
-    PetscInt                             :: k, ileaf, icair, icell, gb_count
+    PetscInt                             :: k, ileaf, icair, icell, gb_count, offset
 
     base_soe => mlc_mpp%soe
 
     call base_soe%SetPointerToIthGovEqn(CAIR_TEMP_GE, cur_goveq)
 
+    offset = ncair * ntree * (ntop - nbot + 1)
 
     select type(cur_goveq)
     class is (goveqn_cair_temp_type)
@@ -416,7 +415,8 @@ contains
                gb_count = gb_count + 1
                icell = (icair-1)*(nz_cair+1) + k
 
-               cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, gb_count)
+               cur_goveq%aux_vars_in(icell)%gbh(1)  = get_value_from_condition(gbh, gb_count         )
+               cur_goveq%aux_vars_in(icell)%gbh(2)  = get_value_from_condition(gbh, gb_count + offset)
 
                do ileaf = 1, ntree
                   cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
@@ -456,11 +456,13 @@ contains
     class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_mlc_type)  , pointer :: soe
     class(goveqn_base_type)    , pointer :: cur_goveq
-    PetscInt                             :: k, ileaf, icair, icell, gb_count
+    PetscInt                             :: k, ileaf, icair, icell, gb_count, offset
 
     base_soe => mlc_mpp%soe
 
     call base_soe%SetPointerToIthGovEqn(CAIR_VAPR_GE, cur_goveq)
+
+    offset = ncair * ntree * (ntop - nbot + 1)
 
     select type(cur_goveq)
     class is (goveqn_cair_vapor_type)
@@ -477,7 +479,8 @@ contains
                gb_count = gb_count + 1
                icell = (icair-1)*(nz_cair+1) + k
 
-               cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, gb_count)
+               cur_goveq%aux_vars_in(icell)%gbv(1)  = get_value_from_condition(gbv, gb_count         )
+               cur_goveq%aux_vars_in(icell)%gbv(2)  = get_value_from_condition(gbv, gb_count + offset)
 
                do ileaf = 1, ntree
                   cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
@@ -716,21 +719,12 @@ contains
           idx_data = idx_data + 1
           if (k == 1) then
              idx_soil = idx_soil + 1
-             !call set_value_in_condition(tg, idx_soil, tair_data(idx_data))
+             call set_value_in_condition(tg, idx_soil, tair_data(idx_data))
           else
              idx_air = idx_air + 1
              call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
-             if (istep == 1 .and. isubstep == 1) then
-                !call set_value_in_condition(qair, idx_air, get_value_from_condition(Qref, icair))
-             else
-                call set_value_in_condition(qair, idx_air, qair_data(idx_data))
-             end if
              call set_value_in_condition(qair, idx_air, qair_data(idx_data))
-             if (istep == 1 .and. isubstep == 1) then
-                call set_value_in_condition(wind, idx_air, soe%cturb%uref(icair) )
-             else
-                call set_value_in_condition(wind, idx_air, soe%cturb%wind(icair,k))
-             end if
+             call set_value_in_condition(wind, idx_air, soe%cturb%wind(icair,k))
           end if
        end do
     end do

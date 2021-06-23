@@ -20,7 +20,6 @@ module CanopyAirVaporAuxType
      PetscReal          :: qair                ! Water vapor for previous timestep (mol/mol)
 
      PetscReal          :: temperature         !
-     PetscReal          :: gbv                 ! Leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal          :: cpair               ! Specific heat of air at constant pressure (J/mol/K)
      PetscReal          :: rhomol              ! Molar density (mol/m3)
      PetscReal          :: pref                ! Atmospheric pressure (Pa)
@@ -34,6 +33,7 @@ module CanopyAirVaporAuxType
      PetscReal          :: soil_temperature    ! Soil temperature (K)
 
      PetscInt           :: nleaf
+     PetscReal, pointer :: gbv(:)              ! Leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal, pointer :: leaf_temperature(:) ! Vegetation temperature from previous timestep (K)
      PetscReal, pointer :: leaf_gs(:)          ! Leaf stomatal conductance (mol H2O/m2 leaf/s)
      PetscReal, pointer :: leaf_fwet(:)        ! Fraction of plant area index that is wet
@@ -58,17 +58,17 @@ contains
     PetscInt :: nleaf
 
     this%nleaf = nleaf
-    allocate(this%leaf_temperature(nleaf))
-    allocate(this%leaf_gs(nleaf))
-    allocate(this%leaf_fwet(nleaf))
-    allocate(this%leaf_fdry(nleaf))
-    allocate(this%leaf_fssh(nleaf))
-    allocate(this%leaf_dpai(nleaf))
+    allocate(this%gbv              (nleaf))
+    allocate(this%leaf_temperature (nleaf))
+    allocate(this%leaf_gs          (nleaf))
+    allocate(this%leaf_fwet        (nleaf))
+    allocate(this%leaf_fdry        (nleaf))
+    allocate(this%leaf_fssh        (nleaf))
+    allocate(this%leaf_dpai        (nleaf))
 
     this%qair                = 0.d0
 
     this%temperature         = 0.d0
-    this%gbv                 = 0.d0
     this%cpair               = 0.d0
     this%rhomol              = 0.d0
     this%pref                = 0.d0
@@ -80,6 +80,7 @@ contains
     this%soil_dz             = 0.d0
     this%soil_resis          = 0.d0
 
+    this%gbv(:)              = 0.d0
     this%leaf_temperature(:) = 0.d0
     this%leaf_gs(:)          = 0.d0
     this%leaf_fwet(:)        = 0.d0

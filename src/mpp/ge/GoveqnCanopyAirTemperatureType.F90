@@ -730,12 +730,11 @@ contains
           ! Get soil-air connection id
           iconn = SoilAirIConn(this, icell)
 
-          ! The ground temperatue does not change
-          b_p(icell) = auxvar(icell)%soil_temperature
+          ! The ground temperatue
+          delta0_value = delta0(this, icell, iconn)
+          b_p(icell) = delta0_value
 
           ! The ground temperatue contributes to the canopy air layer above the ground
-          delta0_value = delta0(this, icell, iconn)
-
 #ifdef USE_BONAN_FORMULATION
           b_p(icell+1) = b_p(icell+1) + delta0_value * this%aux_vars_conn_in(iconn)%ga
 #else
@@ -866,8 +865,12 @@ contains
           ! Get soil-air connection id
           iconn = SoilAirIConn(this, icell)
 
-          ! The ground temperature does not change
+          ! The ground temperature
           value = 1.d0
+          call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
+
+          value = -alpha0(this, icell, iconn)
+          row = icell-1; col = icell
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           ! The ground temperature contributes to the canopy air space layer above the ground
@@ -894,11 +897,11 @@ contains
              if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
 
 #ifdef USE_BONAN_FORMULATION
-                value = 2.d0 * this%aux_vars_in(icell)%gbh * &
+                value = 2.d0 * this%aux_vars_in(icell)%gbh(ileaf) * &
                      this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
                      this%aux_vars_in(icell)%leaf_dpai(ileaf)
 #else
-                value = 2.d0 * this%aux_vars_in(icell)%gbh * &
+                value = 2.d0 * this%aux_vars_in(icell)%gbh(ileaf) * &
                      this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
                      this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
                      this%mesh%vol(icell)
@@ -1035,9 +1038,9 @@ contains
              ! Get soil-air connection id
              iconn = SoilAirIConn(this, icell)
 
-             ! The ground temperature does not change
-             value = 0.d0
-             row = icell-1; col = icell-1
+             ! The ground temperature
+             value = -beta0(this, icell, iconn)
+             row = icell-1; col = icell
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
              ! The ground temperature contributes to the canopy air space layer above the ground
@@ -1065,11 +1068,11 @@ contains
           row = cair_auxvar_idx-1; col = ileaf-1
 
 #ifdef USE_BONAN_FORMULATION
-             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
+             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh(geq_leaf_temp_rank) * &
                   this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
                   this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 #else
-             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
+             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh(geq_leaf_temp_rank) * &
                   this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
                   this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) / &
                   this%mesh%vol(cair_auxvar_idx)

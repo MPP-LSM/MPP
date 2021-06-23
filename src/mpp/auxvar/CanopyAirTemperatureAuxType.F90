@@ -19,7 +19,6 @@ module CanopyAirTemperatureAuxType
      ! primary unknown independent variable
      PetscReal          :: temperature         ! Air temperature profile for previous timestep (K)
 
-     PetscReal          :: gbh                 ! Leaf boundary layer conductance, heat (mol/m2 leaf/s)
      PetscReal          :: cpair               ! Specific heat of air at constant pressure (J/mol/K)
      PetscReal          :: rhomol              ! Molar density (mol/m3)
      PetscReal          :: pref                ! Atmospheric pressure (Pa)
@@ -27,6 +26,7 @@ module CanopyAirTemperatureAuxType
      PetscReal          :: qair                ! Water vapor (mol/mol)
 
      PetscInt           :: nleaf               ! Number of canopy leaves
+     PetscReal, pointer :: gbh(:)              ! Leaf boundary layer conductance, heat (mol/m2 leaf/s)
      PetscReal, pointer :: leaf_temperature(:) ! Vegetation from previous timestep (K)
      PetscReal, pointer :: leaf_gs(:)          ! Leaf stomatal conductance (mol H2O/m2 leaf/s)
      PetscReal, pointer :: leaf_fwet(:)        ! Fraction of plant area index that is wet
@@ -61,7 +61,6 @@ contains
     PetscInt                     :: nleaf
 
     this%temperature = 0.d0
-    this%gbh         = 0.d0
     this%cpair       = 0.d0
     this%rhomol      = 0.d0
     this%pref        = 0.d0
@@ -69,13 +68,15 @@ contains
     this%qair        = 0.d0
 
     this%nleaf = nleaf
-    allocate(this%leaf_temperature(nleaf))
-    allocate(this%leaf_gs(nleaf))
-    allocate(this%leaf_fwet(nleaf))
-    allocate(this%leaf_fdry(nleaf))
-    allocate(this%leaf_fssh(nleaf))
-    allocate(this%leaf_dpai(nleaf))
+    allocate(this%gbh              (nleaf))
+    allocate(this%leaf_temperature (nleaf))
+    allocate(this%leaf_gs          (nleaf))
+    allocate(this%leaf_fwet        (nleaf))
+    allocate(this%leaf_fdry        (nleaf))
+    allocate(this%leaf_fssh        (nleaf))
+    allocate(this%leaf_dpai        (nleaf))
 
+    this%gbh(:)              = 0.d0
     this%leaf_temperature(:) = 0.d0
     this%leaf_gs(:)          = 0.d0
     this%leaf_fwet(:)        = 0.d0
