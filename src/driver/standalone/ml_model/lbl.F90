@@ -192,6 +192,9 @@ contains
 
                  cur_goveq%aux_vars_in(icell           )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
                  cur_goveq%aux_vars_in(icell + ncol*nz )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
+
+                 cur_goveq%aux_vars_in(icell           )%tref  = get_value_from_condition(Tref, icair)  ! [Pa]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%tref  = get_value_from_condition(Tref, icair)  ! [Pa]
               endif
             enddo
          enddo
