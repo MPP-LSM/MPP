@@ -754,12 +754,12 @@ contains
              ! Add contribution from leaf, if present in the given layer
              if (auxvar(icell)%leaf_dpai(ileaf) > 0.d0) then
                 gleaf = &
-                     auxvar(icell)%leaf_gs(ileaf) * auxvar(icell)%gbv/ &
-                     (auxvar(icell)%leaf_gs(ileaf) + auxvar(icell)%gbv)
+                     auxvar(icell)%leaf_gs(ileaf)  * auxvar(icell)%gbv(ileaf)/ &
+                     (auxvar(icell)%leaf_gs(ileaf) + auxvar(icell)%gbv(ileaf))
 
                 gleaf_et = &
-                     gleaf             * auxvar(icell)%leaf_fdry(ileaf) + &
-                     auxvar(icell)%gbv * auxvar(icell)%leaf_fwet(ileaf)
+                     gleaf                    * auxvar(icell)%leaf_fdry(ileaf) + &
+                     auxvar(icell)%gbv(ileaf) * auxvar(icell)%leaf_fwet(ileaf)
 
                 gleaf_et = gleaf_et * auxvar(icell)%leaf_fssh(ileaf) * auxvar(icell)%leaf_dpai(ileaf)
 
@@ -907,9 +907,9 @@ contains
           beta0_value = beta0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-          value = gs0_value * dqsat * this%aux_vars_in(icell)%soil_rhg * beta0_value
+          value = -gs0_value * dqsat * this%aux_vars_in(icell)%soil_rhg * beta0_value
 #else
-          value = gs0_value * dqsat * this%aux_vars_in(icell)%soil_rhg * beta0_value/this%mesh%vol(icell+1)
+          value = -gs0_value * dqsat * this%aux_vars_in(icell)%soil_rhg * beta0_value/this%mesh%vol(icell+1)
 #endif
 
           row = icell; col = icell;
@@ -932,19 +932,19 @@ contains
                 dqsat= desat/this%aux_vars_in(icell)%pref
 
                 gleaf = &
-                     this%aux_vars_in(icell)%leaf_gs(ileaf) * this%aux_vars_in(icell)%gbv/ &
-                     (this%aux_vars_in(icell)%leaf_gs(ileaf) + this%aux_vars_in(icell)%gbv)
+                     this%aux_vars_in(icell)%leaf_gs(ileaf) * this%aux_vars_in(icell)%gbv(ileaf)/ &
+                     (this%aux_vars_in(icell)%leaf_gs(ileaf) + this%aux_vars_in(icell)%gbv(ileaf))
 
                 gleaf_et = &
-                     gleaf                       * this%aux_vars_in(icell)%leaf_fdry(ileaf) + &
-                     this%aux_vars_in(icell)%gbv * this%aux_vars_in(icell)%leaf_fwet(ileaf)
+                     gleaf                              * this%aux_vars_in(icell)%leaf_fdry(ileaf) + &
+                     this%aux_vars_in(icell)%gbv(ileaf) * this%aux_vars_in(icell)%leaf_fwet(ileaf)
 
                 gleaf_et = gleaf_et * this%aux_vars_in(icell)%leaf_fssh(ileaf) * this%aux_vars_in(icell)%leaf_dpai(ileaf)
 
 #ifdef USE_BONAN_FORMULATION
                 value = gleaf_et
 #else
-                value = gleaf_et/this%mesh%vol(icell)
+                value = gleaf_et * dqsat /this%mesh%vol(icell)
 #endif
 
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -1142,12 +1142,12 @@ contains
                 dqsat = desat/this%aux_vars_in(cair_auxvar_idx)%pref
 
                 gleaf = &
-                     this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%gbv/ &
-                     (this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) + this%aux_vars_in(cair_auxvar_idx)%gbv)
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank)/ &
+                     (this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) + this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank))
 
                 gleaf_et = &
                      gleaf                       * this%aux_vars_in(cair_auxvar_idx)%leaf_fdry(leaf_idx) + &
-                     this%aux_vars_in(cair_auxvar_idx)%gbv * this%aux_vars_in(cair_auxvar_idx)%leaf_fwet(leaf_idx)
+                     this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank) * this%aux_vars_in(cair_auxvar_idx)%leaf_fwet(leaf_idx)
 
                 gleaf_et = gleaf_et * this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 
