@@ -521,6 +521,8 @@ contains
 
     call psy_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
+    call extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
+
   end subroutine solve_photosynthesis
 
 end module photosynthesis

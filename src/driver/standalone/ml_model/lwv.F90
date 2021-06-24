@@ -412,6 +412,8 @@ contains
 
     call lwv_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
+    call extract_data_from_lwv(lwv_mpp, istep, isubstep)
+
   end subroutine solve_lwv
 
 end module lwv
