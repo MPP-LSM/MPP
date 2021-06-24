@@ -19,7 +19,8 @@ module ml_model_global_vars
   PetscInt  , parameter :: nz_cair  = 92
   PetscReal , parameter :: hc       = 21.d0
   PetscInt  , parameter :: nveg     = 42
-  PetscInt :: nbot, ntop
+  PetscInt              :: nbot, ntop
+  PetscBool             :: output_data
 
   ! Vegetation parameters
   PetscReal, pointer :: dlai(:), dsai(:), dpai(:), sumpai(:), cumpai(:), fssh(:), leaf_td(:)

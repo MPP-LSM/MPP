@@ -322,7 +322,7 @@ contains
     !     - Iabs_soil
     !
     ! !USES:
-    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair, output_data
     use ml_model_global_vars      , only : Labs_leaf_sun, Labs_leaf_shd, Labs_soil
     use GoverningEquationBaseType , only : goveqn_base_type
     use GoveqnLongwaveType        , only : goveqn_longwave_type
@@ -345,6 +345,7 @@ contains
     PetscReal               , pointer   :: Labs_leaf_data(:), Labs_soil_data(:)
     class(goveqn_base_type) , pointer   :: goveq
     PetscErrorCode                      :: ierr
+    character(len=20)                   :: step_string, substep_string
 
     ncells = ncair * ntree * (ntop - nbot + 1 + 1) ! num of canopy airspace x num. of tree x num. of levels
     allocate(Labs_leaf_data(ncells))
@@ -358,6 +359,11 @@ contains
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND, ncells, Labs_soil_data)
     end select
 
+    if (output_data) then
+       write(step_string,*)istep
+       write(substep_string,*)isubstep
+       write(*,*)'mpp.labs{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
+    end if
     count = 0
     leaf_icell = 0
     soil_icell = 0
@@ -372,10 +378,16 @@ contains
                 leaf_icell = leaf_icell + 1
                 call set_value_in_condition(Labs_leaf_sun, leaf_icell, Labs_leaf_data(count))
                 call set_value_in_condition(Labs_leaf_shd, leaf_icell, Labs_leaf_data(count))
+                if (output_data) then
+                   write(*,*)leaf_icell, Labs_leaf_data(count)
+                end if
             end if
           end do
        end do
     end do
+    if (output_data) then
+       write(*,*)'];'
+    end if
 
     deallocate(Labs_leaf_data)
     deallocate(Labs_soil_data)
