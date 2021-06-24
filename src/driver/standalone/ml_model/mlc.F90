@@ -227,14 +227,14 @@ contains
     end select
 
     do icair = 1, ncair
-       soe%cturb%pref(icair) = get_value_from_condition(Pref, icair)
-       soe%cturb%uref(icair) = get_value_from_condition(Uref, icair)
-       soe%cturb%tref(icair) = get_value_from_condition(Tref, icair)
+       soe%cturb%pref(icair) = get_value_from_condition(bnd_cond%pref, icair)
+       soe%cturb%uref(icair) = get_value_from_condition(bnd_cond%uref, icair)
+       soe%cturb%tref(icair) = get_value_from_condition(bnd_cond%tref, icair)
        soe%cturb%rhref(icair)= 80.d0    !get_value_from_condition(Rhref, icair)
 
-       soe%cturb%wind(icair,:) = get_value_from_condition(Uref, icair)
+       soe%cturb%wind(icair,:) = get_value_from_condition(bnd_cond%uref, icair)
 
-       qref_value = get_value_from_condition(Qref, icair)
+       qref_value = get_value_from_condition(bnd_cond%qref, icair)
        factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
        soe%cturb%qref(icair) = qref_value! * factor
        soe%cturb%qcan(icair) = qref_value! * factor
@@ -266,10 +266,10 @@ contains
        call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
 
        if (ii == CAIR_TEMP_GE .or. ii == CLEF_TEMP_SUN_GE .or. ii == CLEF_TEMP_SHD_GE) then
-          v_p(:) = get_value_from_condition(Tref, icair)
+          v_p(:) = get_value_from_condition(bnd_cond%tref, icair)
 
        else if (ii == CAIR_VAPR_GE) then
-          qref_value = get_value_from_condition(Qref, icair)
+          qref_value = get_value_from_condition(bnd_cond%qref, icair)
           factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
           v_p(:) = qref_value * factor
        endif
@@ -338,11 +338,11 @@ contains
 
 
     do icair = 1, ncair
-       soe%cturb%pref(icair) = get_value_from_condition(pref, icair)
-       soe%cturb%uref(icair) = get_value_from_condition(uref, icair)
-       soe%cturb%tref(icair) = get_value_from_condition(tref, icair)
+       soe%cturb%pref(icair) = get_value_from_condition(bnd_cond%pref, icair)
+       soe%cturb%uref(icair) = get_value_from_condition(bnd_cond%uref, icair)
+       soe%cturb%tref(icair) = get_value_from_condition(bnd_cond%tref, icair)
 
-       qref_value = get_value_from_condition(Qref, icair)
+       qref_value = get_value_from_condition(bnd_cond%qref, icair)
        factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
        soe%cturb%qref(icair) = qref_value !* factor
 
@@ -359,7 +359,7 @@ contains
           soe%cturb%qcan(icair) = eair * factor
           soe%cturb%tcan(icair) = tcan_value
        end if
-       soe%cturb%soil_temperature(icair) = get_value_from_condition(soil_t,icair)
+       soe%cturb%soil_temperature(icair) = get_value_from_condition(bnd_cond%soil_t,icair)
 
        soe%cturb%soil_rn(icair) = &
             get_value_from_condition(Isoil_vis, icair) + &
@@ -631,7 +631,7 @@ contains
     use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
     use MultiPhysicsProbMLC             , only : mpp_mlc_type
     use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair, output_data
-    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, tg, Tair
+    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd
     use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
     use GoverningEquationBaseType       , only : goveqn_base_type
     use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
@@ -733,7 +733,7 @@ contains
           idx_data = idx_data + 1
           if (k == 1) then
              idx_soil = idx_soil + 1
-             call set_value_in_condition(tg, idx_soil, tair_data(idx_data))
+             call set_value_in_condition(bnd_cond%tg, idx_soil, tair_data(idx_data))
           else
              idx_air = idx_air + 1
              call set_value_in_condition(Tair, idx_air, tair_data(idx_data))

@@ -283,7 +283,7 @@ contains
        icell = 0
        ileaf = 0
        do icol = 1, ncol
-          pref_value = get_value_from_condition(pref, icol)
+          pref_value = get_value_from_condition(bnd_cond%pref, icol)
           do k = 1, nz
              icell = icell + 1
              ileaf = ileaf + 1
@@ -312,10 +312,10 @@ contains
                 cur_goveq%aux_vars_in(icell)%gbv   = get_value_from_condition(gbv, icell)
                 cur_goveq%aux_vars_in(icell)%gbc   = get_value_from_condition(gbc, icell)
 
-                cur_goveq%aux_vars_in(icell)%cair  = get_value_from_condition(co2ref, icair)
-                cur_goveq%aux_vars_in(icell)%o2ref = get_value_from_condition(o2ref, icair)
+                cur_goveq%aux_vars_in(icell)%cair  = get_value_from_condition(bnd_cond%co2ref, icair)
+                cur_goveq%aux_vars_in(icell)%o2ref = get_value_from_condition(bnd_cond%o2ref, icair)
 
-                pref_value = get_value_from_condition(pref, icair)
+                pref_value = get_value_from_condition(bnd_cond%pref, icair)
 
                 qair_value = get_value_from_condition(qair,  (icair-1)*nz + nbot + k - 2)
                 cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
@@ -415,7 +415,7 @@ contains
           do k = 1, nz
              do ileaf = 1, nleaf
                 icell = icell + 1
-                v_p(icell) = 0.7d0 * get_value_from_condition(co2ref, icair)
+                v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
              end do
           end do
        end do
