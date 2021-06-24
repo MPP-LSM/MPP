@@ -1,10 +1,10 @@
 module mlc
 
-  use mpp_varctl               , only : iulog
-  use mpp_abortutils           , only : endrun
-  use mpp_shr_log_mod          , only : errMsg => shr_log_errMsg
+  use mpp_varctl          , only : iulog
+  use mpp_abortutils      , only : endrun
+  use mpp_shr_log_mod     , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbMLC , only : mpp_mlc_type
-    use ml_model_utils                 , only : get_value_from_condition, set_value_in_condition
+  use ml_model_utils      , only : get_value_from_condition, set_value_in_condition
   use ml_model_global_vars
   use petscsys
   use petscdm
@@ -631,7 +631,7 @@ contains
     use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
     use MultiPhysicsProbMLC             , only : mpp_mlc_type
     use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair, output_data
-    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, tg, Tair, eair
+    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, tg, Tair
     use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
     use GoverningEquationBaseType       , only : goveqn_base_type
     use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
