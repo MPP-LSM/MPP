@@ -203,7 +203,7 @@ contains
                 cur_goveq%aux_vars_in(icell)%leaf_omega(1) = cur_goveq%aux_vars_in(icell)%leaf_rho(1) + cur_goveq%aux_vars_in(icell)%leaf_tau(1)
                 cur_goveq%aux_vars_in(icell)%leaf_omega(2) = cur_goveq%aux_vars_in(icell)%leaf_rho(2) + cur_goveq%aux_vars_in(icell)%leaf_tau(2)
 
-                cur_goveq%aux_vars_in(icell)%leaf_dlai        = dpai(k + nbot - 2)
+                cur_goveq%aux_vars_in(icell)%leaf_dpai        = dpai(k + nbot - 2)
              end if
           end do
        end do

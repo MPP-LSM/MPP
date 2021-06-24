@@ -493,8 +493,8 @@ contains
        ileaf = 1
        do ghosted_id = 1, ncells
           if (.not. aux_var(ghosted_id)%is_soil) then
-             if (aux_var(ghosted_id)%leaf_dlai(ileaf) > 0.d0) then
-                var_values(ghosted_id) = aux_var(ghosted_id)%Iabs/aux_var(ghosted_id)%leaf_dlai(ileaf)
+             if (aux_var(ghosted_id)%leaf_dpai(ileaf) > 0.d0) then
+                var_values(ghosted_id) = aux_var(ghosted_id)%Iabs/aux_var(ghosted_id)%leaf_dpai(ileaf)
              end if
           end if
        end do
