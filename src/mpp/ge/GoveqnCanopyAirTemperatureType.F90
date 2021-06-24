@@ -283,13 +283,12 @@ contains
 
           if (this%aux_vars_in(icell)%is_soil) then
              ! soil-layer
-             !this%aux_vars_in(icell)%temperature      = cturb%tsoi(icair)
-             this%aux_vars_in(icell)%soil_rhg         = cturb%rhgsoi(icair)
-             this%aux_vars_in(icell)%soil_rn          = cturb%rnsoi(icair)
-             this%aux_vars_in(icell)%soil_tk          = cturb%tksoi(icair)
-             this%aux_vars_in(icell)%soil_dz          = cturb%dzsoi(icair)
-             this%aux_vars_in(icell)%soil_resis       = cturb%ressoi(icair)
-             this%aux_vars_in(icell)%soil_temperature = cturb%tsoi(icair)
+             this%aux_vars_in(icell)%soil_rhg         = cturb%soil_rhg(icair)
+             this%aux_vars_in(icell)%soil_rn          = cturb%soil_rn(icair)
+             this%aux_vars_in(icell)%soil_tk          = cturb%soil_tk(icair)
+             this%aux_vars_in(icell)%soil_dz          = cturb%soil_dz(icair)
+             this%aux_vars_in(icell)%soil_resis       = cturb%soil_res(icair)
+             this%aux_vars_in(icell)%soil_temperature = cturb%soil_temperature(icair)
           endif
 
        end do

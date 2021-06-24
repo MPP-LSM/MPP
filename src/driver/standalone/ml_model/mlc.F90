@@ -359,9 +359,9 @@ contains
           soe%cturb%qcan(icair) = eair * factor
           soe%cturb%tcan(icair) = tcan_value
        end if
-       soe%cturb%tsoi(icair) = get_value_from_condition(soil_t,icair)
+       soe%cturb%soil_temperature(icair) = get_value_from_condition(soil_t,icair)
 
-       soe%cturb%rnsoi(icair) = &
+       soe%cturb%soil_rn(icair) = &
             get_value_from_condition(Isoil_vis, icair) + &
             get_value_from_condition(Isoil_nir, icair) + &
             get_value_from_condition(Labs_soil, icair)
