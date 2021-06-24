@@ -317,6 +317,8 @@ contains
 
     call lbl_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
+    call extract_data_from_lbl(lbl_mpp, istep, isubstep)
+
   end subroutine solve_lbl
 
 end module lbl
