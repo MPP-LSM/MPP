@@ -315,16 +315,16 @@ contains
 
        icell = 0
        do icair = 1, ncair
-          sza_value = get_value_from_condition(sza, icair)
+          sza_value = get_value_from_condition(bnd_cond%sza, icair)
 
           do itree = 1, ntree
              do k = 1, nz
                 icell = icell + 1
 
-                avars(icell)%Iskyb(1) = get_value_from_condition(Iskyb_vis, icair)
-                avars(icell)%Iskyb(2) = get_value_from_condition(Iskyb_nir, icair)
-                avars(icell)%Iskyd(1) = get_value_from_condition(Iskyd_vis, icair)
-                avars(icell)%Iskyd(2) = get_value_from_condition(Iskyd_nir, icair)
+                avars(icell)%Iskyb(1) = get_value_from_condition(bnd_cond%Iskyb_vis, icair)
+                avars(icell)%Iskyb(2) = get_value_from_condition(bnd_cond%Iskyb_nir, icair)
+                avars(icell)%Iskyd(1) = get_value_from_condition(bnd_cond%Iskyd_vis, icair)
+                avars(icell)%Iskyd(2) = get_value_from_condition(bnd_cond%Iskyd_nir, icair)
 
                 call compute_kb(xl, sza_value, phi1, phi2, kb) ! xl = xl(icell)
                 call compute_fssh(nbot, ntop, sumpai, kb, fssh)
@@ -383,10 +383,10 @@ contains
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              end if
 
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = get_value_from_condition(Iskyb_vis, sum_conn)
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = get_value_from_condition(Iskyb_nir, sum_conn)
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(1) = get_value_from_condition(Iskyd_vis, sum_conn)
-             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(2) = get_value_from_condition(Iskyd_nir, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(1) = get_value_from_condition(bnd_cond%Iskyb_vis, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyb(2) = get_value_from_condition(bnd_cond%Iskyb_nir, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(1) = get_value_from_condition(bnd_cond%Iskyd_vis, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Iskyd(2) = get_value_from_condition(bnd_cond%Iskyd_nir, sum_conn)
 
           enddo
           cur_cond => cur_cond%next

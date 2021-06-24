@@ -8,6 +8,27 @@ module ml_model_global_vars
      PetscInt :: ndata
      PetscReal, pointer :: data(:)
   end type condition_type
+
+  type, public :: boundary_condition_type
+     type(condition_type) :: iskyb_vis
+     type(condition_type) :: iskyd_vis
+     type(condition_type) :: iskyb_nir
+     type(condition_type) :: iskyd_nir
+     type(condition_type) :: Irsky
+     type(condition_type) :: tref
+     type(condition_type) :: qref
+     type(condition_type) :: pref
+     type(condition_type) :: uref
+     type(condition_type) :: co2ref
+     type(condition_type) :: o2ref
+     type(condition_type) :: albsoib_vis
+     type(condition_type) :: albsoib_nir
+     type(condition_type) :: albsoid_vis
+     type(condition_type) :: albsoid_nir
+     type(condition_type) :: tg
+     type(condition_type) :: soil_t
+     type(condition_type) :: sza
+  end type boundary_condition_type
   
   ! Mesh attributes
   PetscInt  , parameter :: nx       = 1
@@ -30,23 +51,17 @@ module ml_model_global_vars
   PetscInt  :: ntree
 
   ! Boundary conditions
-  type(condition_type) :: Iskyb_vis,  Iskyd_vis, Iskyb_nir,  Iskyd_nir
-  type(condition_type) :: Irsky
+  type(boundary_condition_type) :: bnd_cond
+
   type(condition_type) :: Ileaf_sun_vis, Ileaf_shd_vis
   type(condition_type) :: Ileaf_sun_nir, Ileaf_shd_nir
   type(condition_type) :: Isoil_vis, Isoil_nir
   type(condition_type) :: Labs_leaf_sun, Labs_leaf_shd, Labs_soil
-  type(condition_type) :: Pref, Uref, Tref, Qref
   type(condition_type) :: Tleaf_sun, Tleaf_shd ! dimension = nveg
   type(condition_type) :: Tcan
   type(condition_type) :: Tair, qair, wind ! dimension = ncan
   type(condition_type) :: gs_sun, gs_shd
   type(condition_type) :: gbh, gbv, gbc
-  type(condition_type) :: co2ref, o2ref
-  type(condition_type) :: Albsoib_vis, Albsoib_nir
-  type(condition_type) :: Albsoid_vis, Albsoid_nir
-  type(condition_type) :: tg, soil_t
-  type(condition_type) :: sza
 
   ! Shortwave model
   PetscInt :: SHORTWAVE_MESH

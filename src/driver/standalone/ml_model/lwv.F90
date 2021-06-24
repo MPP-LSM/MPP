@@ -225,7 +225,7 @@ contains
              icell = icell + 1
 
              if (k == 1) then
-                cur_goveq%aux_vars_in(icell)%ground_temperature = get_value_from_condition(tg, icol)
+                cur_goveq%aux_vars_in(icell)%ground_temperature = get_value_from_condition(bnd_cond%tg, icol)
              else
                 leaf_count = leaf_count + 1
                 cur_goveq%aux_vars_in(icell)%trans      = leaf_td(nbot + k - 2)
@@ -249,7 +249,7 @@ contains
 
              icell = cur_conn_set%conn(iconn)%GetIDDn()
 
-             cur_goveq%aux_vars_bc(sum_conn)%Idn = get_value_from_condition(Irsky, sum_conn)
+             cur_goveq%aux_vars_bc(sum_conn)%Idn = get_value_from_condition(bnd_cond%Irsky, sum_conn)
 
           enddo
           cur_cond => cur_cond%next

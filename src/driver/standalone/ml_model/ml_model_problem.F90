@@ -107,7 +107,7 @@ contains
     !
     use mlc                       , only : mlc_set_initial_conditions
     use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
-    use ml_model_global_vars      , only : Tleaf_sun, Tleaf_shd, Tair, Qair, Wind, Tref, Uref, Qref
+    use ml_model_global_vars      , only : Tleaf_sun, Tleaf_shd, Tair, Qair, Wind, bnd_cond
     use ml_model_utils            , only : get_value_from_condition
     use ml_model_utils            , only : set_value_in_condition
     use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
@@ -124,7 +124,7 @@ contains
        do itree = 1, ntree
           do k = 1, nz_cair+1
              if (k >= nbot .and. k <= ntop) then
-                tleaf_value = get_value_from_condition(Tref, icair)
+                tleaf_value = get_value_from_condition(bnd_cond%tref, icair)
 
                 idx_leaf = idx_leaf + 1
                 call set_value_in_condition(Tleaf_sun, idx_leaf, tleaf_value)
@@ -133,9 +133,9 @@ contains
              end if
 
              if (k > 1) then
-                tair_value = get_value_from_condition(Tref, icair)
-                wind_value = get_value_from_condition(Uref, icair)
-                qair_value = get_value_from_condition(Qref, icair)
+                tair_value = get_value_from_condition(bnd_cond%tref, icair)
+                wind_value = get_value_from_condition(bnd_cond%uref, icair)
+                qair_value = get_value_from_condition(bnd_cond%qref, icair)
                 factor = 1.d0/(MM_H2O/MM_DRY_AIR + (1.d0 - MM_H2O/MM_DRY_AIR)*qair_value)
 
                 idx_air = (icair-1)*ncair + (k-1)
