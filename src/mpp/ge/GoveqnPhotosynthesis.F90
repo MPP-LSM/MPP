@@ -170,7 +170,7 @@ contains
           end do
 
        case (VAR_WUE)
-          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof
              term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
@@ -181,7 +181,7 @@ contains
           end do
 
        case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
-          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+          wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof-1
              term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
@@ -253,7 +253,7 @@ contains
 
     do icell = 1, this%mesh%ncells_local
     
-       wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%patm
+       wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
        plant => avars(icell)%plant
 

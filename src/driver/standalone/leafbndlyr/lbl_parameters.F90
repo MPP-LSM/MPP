@@ -44,7 +44,7 @@ contains
        do icair = 1, ncair
           do k = 1, nz_cair+1
              icell = (icair-1)*(nz_cair+1) + k
-             cur_goveq%aux_vars_in(icell)%patm  = 101325.d0                       ! [Pa]
+             cur_goveq%aux_vars_in(icell)%pref  = 101325.d0                       ! [Pa]
              cur_goveq%aux_vars_in(icell)%wind  = 5.d0                            ! [m/s]
              cur_goveq%aux_vars_in(icell)%tair  = 273.15d0 +  25.d0               ! [K]
              cur_goveq%aux_vars_in(icell)%tleaf = 273.15d0 + 11.d0 + (k-1)*0.25d0 ! [K]

@@ -74,7 +74,7 @@ module PhotosynthesisAuxType
      PetscReal           :: gbv        ! leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal           :: gbc        ! leaf boundary layer conductance, CO2 (mol CO2/m2 leaf/s)
      PetscReal           :: eair       ! vapor pressure profile (Pa)
-     PetscReal           :: patm       ! atmospheric pressure (Pa)
+     PetscReal           :: pref       ! atmospheric pressure at reference height (Pa)
 
      PetscReal           :: cair       ! atmospheric CO2 profile (umol/mol)
      PetscReal           :: o2ref      ! atmospheric O2 at reference height (mmol/mol)
@@ -340,7 +340,7 @@ contains
     this%o2ref   = 0.d0
     this%ceair   = 0.d0
     this%esat    = 0.d0
-    this%patm    = 101325.d0
+    this%pref    = 101325.d0
 
     this%pathway_and_stomatal_params_defined = 0
     this%colim  =  1
@@ -781,7 +781,7 @@ contains
           enddo
 
           idof = this%ndof
-          this%etflx = (this%esat - this%eair)/this%patm * this%gleaf_w(idof)
+          this%etflx = (this%esat - this%eair)/this%pref * this%gleaf_w(idof)
 
           plant => this%plant
 
