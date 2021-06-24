@@ -58,8 +58,8 @@ contains
 
           if (k == 1) then
              cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-             cur_goveq%aux_vars_in(icell)%soil_temperature = TFRZ + 20.d0             
-             cur_goveq%aux_vars_in(icell)%soil_emiss = emgrnd             
+             cur_goveq%aux_vars_in(icell)%ground_temperature = TFRZ + 20.d0
+             cur_goveq%aux_vars_in(icell)%ground_emiss = emgrnd
           end if
 
           do ileaf = 1, cur_goveq%aux_vars_in(icell)%nleaf

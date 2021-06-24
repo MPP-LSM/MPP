@@ -30,8 +30,8 @@ module LongwaveAuxType
      
 
      PetscBool          :: is_soil             ! PETSC_TRUE if the grid cell is a soil grid cell
-     PetscReal          :: soil_temperature    ! temperature of soil
-     PetscReal          :: soil_emiss          ! soil_emissivity
+     PetscReal          :: ground_temperature    ! temperature of soil
+     PetscReal          :: ground_emiss          ! ground_emissivity
 
      ! entries of the matrix to setup the matrix and rhs of the linear system
      PetscReal          :: f
@@ -76,8 +76,8 @@ contains
     this%leaf_dpai(:)        = 0.d0
 
     this%is_soil             = PETSC_FALSE
-    this%soil_temperature    = 0.d0
-    this%soil_emiss          = 0.d0
+    this%ground_temperature    = 0.d0
+    this%ground_emiss          = 0.d0
 
     this%f                   = 0.d0
     this%e                   = 0.d0
@@ -106,8 +106,8 @@ contains
        bb = (1.d0 - this%trans) * this%leaf_rho
        this%e = aa/bb
 
-       this%f = 1.d0 - this%soil_emiss
-       this%rad_source = STEFAN_BOLTZMAN_CONSTANT * this%soil_emiss * (this%soil_temperature ** 4.d0)
+       this%f = 1.d0 - this%ground_emiss
+       this%rad_source = STEFAN_BOLTZMAN_CONSTANT * this%ground_emiss * (this%ground_temperature ** 4.d0)
 
     else
 
