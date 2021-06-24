@@ -167,7 +167,7 @@ contains
 
              if (k == 1) then
                 cur_goveq%aux_vars_in(icell)%is_soil     = PETSC_TRUE
-                cur_goveq%aux_vars_in(icell)%soil_emiss = emgrnd
+                cur_goveq%aux_vars_in(icell)%ground_emiss = emgrnd
              else
                 if (cur_goveq%aux_vars_in(icell)%nleaf /= 2) then
                    write(iulog,*)'Longwave model: number of leaves is not 2'
@@ -225,7 +225,7 @@ contains
              icell = icell + 1
 
              if (k == 1) then
-                cur_goveq%aux_vars_in(icell)%soil_temperature = get_value_from_condition(tg, icol)
+                cur_goveq%aux_vars_in(icell)%ground_temperature = get_value_from_condition(tg, icol)
              else
                 leaf_count = leaf_count + 1
                 cur_goveq%aux_vars_in(icell)%trans      = leaf_td(nbot + k - 2)
