@@ -32,7 +32,7 @@ module CanopyAirVaporAuxType
      PetscReal          :: soil_resis          ! Soil evaporative resistance (s/m)
      PetscReal          :: soil_temperature    ! Soil temperature (K)
 
-     PetscInt           :: nleaf
+     PetscInt           :: num_leaves
      PetscReal, pointer :: gbv(:)              ! Leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal, pointer :: leaf_temperature(:) ! Vegetation temperature from previous timestep (K)
      PetscReal, pointer :: leaf_gs(:)          ! Leaf stomatal conductance (mol H2O/m2 leaf/s)
@@ -47,7 +47,7 @@ module CanopyAirVaporAuxType
 contains
 
   !------------------------------------------------------------------------
-  subroutine CAirVaporAuxVarInit(this, nleaf)
+  subroutine CAirVaporAuxVarInit(this, num_leaves)
     !
     ! !DESCRIPTION:
     !
@@ -55,16 +55,16 @@ contains
     !
     ! !ARGUMENTS
     class(cair_vapor_auxvar_type)   :: this
-    PetscInt :: nleaf
+    PetscInt :: num_leaves
 
-    this%nleaf = nleaf
-    allocate(this%gbv              (nleaf))
-    allocate(this%leaf_temperature (nleaf))
-    allocate(this%leaf_gs          (nleaf))
-    allocate(this%leaf_fwet        (nleaf))
-    allocate(this%leaf_fdry        (nleaf))
-    allocate(this%leaf_fssh        (nleaf))
-    allocate(this%leaf_dpai        (nleaf))
+    this%num_leaves = num_leaves
+    allocate(this%gbv              (num_leaves))
+    allocate(this%leaf_temperature (num_leaves))
+    allocate(this%leaf_gs          (num_leaves))
+    allocate(this%leaf_fwet        (num_leaves))
+    allocate(this%leaf_fdry        (num_leaves))
+    allocate(this%leaf_fssh        (num_leaves))
+    allocate(this%leaf_dpai        (num_leaves))
 
     this%qair                = 0.d0
 
