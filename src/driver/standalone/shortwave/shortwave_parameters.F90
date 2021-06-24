@@ -93,7 +93,7 @@ contains
              sumlai = 6.d0 - (k-1)*lai_inc + lai_inc/2.d0
              cumlai = 6.d0 - (k-1)*lai_inc
 
-             cur_goveq%aux_vars_in(icell)%leaf_dlai        = lai_inc
+             cur_goveq%aux_vars_in(icell)%leaf_dpai        = lai_inc
              cur_goveq%aux_vars_in(icell)%leaf_fssh(1) = clumpfac * exp(-Kb * sumlai * clumpfac)
              cur_goveq%aux_vars_in(icell)%leaf_fssh(2) = 1.d0 - clumpfac * exp(-Kb * sumlai * clumpfac) 
 

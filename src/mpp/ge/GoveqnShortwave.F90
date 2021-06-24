@@ -583,14 +583,14 @@ contains
                 sun   = diffuse * avars(ghosted_id)%leaf_fssh(1) + direct
                 shade = diffuse * avars(ghosted_id)%leaf_fssh(2)
 
-                denom = avars(ghosted_id)%leaf_fssh(1)*avars(ghosted_id)%leaf_dlai
+                denom = avars(ghosted_id)%leaf_fssh(1)*avars(ghosted_id)%leaf_dpai
                 if (denom > 0.d0) then
                    avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = sun/denom ! equation 14.53*
                 else
                    avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = 0.d0
                 end if
 
-                denom = avars(ghosted_id)%leaf_fssh(2)*avars(ghosted_id)%leaf_dlai
+                denom = avars(ghosted_id)%leaf_fssh(2)*avars(ghosted_id)%leaf_dpai
                 if (denom > 0.d0) then
                    avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = shade/denom ! equation 14.52*
                 else

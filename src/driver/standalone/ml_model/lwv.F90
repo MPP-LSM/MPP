@@ -175,8 +175,8 @@ contains
                 end if
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = fssh(nbot + k - 2)
                 ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = 1.d0 -fssh(nbot + k - 2)
-                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_dlai(ileaf) = dpai(k + nbot - 2)
-                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_dlai(ileaf) = dpai(k + nbot - 2)
+                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_dpai(ileaf) = dpai(k + nbot - 2)
+                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_dpai(ileaf) = dpai(k + nbot - 2)
              end if
           end do
        end do
