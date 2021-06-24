@@ -465,8 +465,8 @@ contains
 
     do icair = 1, ncair
 
-       soe%cturb%tsoi(icair)   = tg(icair)
-       soe%cturb%rnsoi(icair)  = rn_soil(icair)
+       soe%cturb%soil_temperature(icair) = tg(icair)
+       soe%cturb%soil_rn(icair)          = rn_soil(icair)
     end do
 
   end subroutine set_soil_boundary_conditions

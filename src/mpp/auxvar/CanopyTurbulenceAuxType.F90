@@ -57,12 +57,12 @@ module CanopyTurbulenceAuxType
 
      PetscReal, pointer :: pai(:)       ! Canopy plant area index (m2/m2): LAI + SAI
 
-     PetscReal, pointer :: tksoi(:)     ! Soil thermal conductivity (W/m/K)
-     PetscReal, pointer :: dzsoi(:)     ! Soil layer depth (m)
-     PetscReal, pointer :: tsoi(:)      ! Soil temperature (K)
-     PetscReal, pointer :: ressoi(:)    ! Soil evaporative resistance (s/m)
-     PetscReal, pointer :: rhgsoi(:)    ! Relative humidity of airspace at soil surface (fraction)
-     PetscReal, pointer :: rnsoi(:)     ! Net radiation at ground (W/m2)
+     PetscReal, pointer :: soil_tk(:)          ! Soil thermal conductivity (W/m/K)
+     PetscReal, pointer :: soil_dz(:)          ! Soil layer depth (m)
+     PetscReal, pointer :: soil_temperature(:) ! Soil temperature (K)
+     PetscReal, pointer :: soil_res(:)         ! Soil evaporative resistance (s/m)
+     PetscReal, pointer :: soil_rhg(:)         ! Relative humidity of airspace at soil surface (fraction)
+     PetscReal, pointer :: soil_rn(:)          ! Net radiation at ground (W/m2)
 
      PetscReal, pointer :: zs(:,:)
      PetscReal, pointer :: wind(:,:)
@@ -128,12 +128,12 @@ contains
 
     allocate(this%pai       (ncair))
 
-    allocate(this%tksoi     (ncair))
-    allocate(this%dzsoi     (ncair))
-    allocate(this%tsoi      (ncair))
-    allocate(this%ressoi    (ncair))
-    allocate(this%rhgsoi    (ncair))
-    allocate(this%rnsoi     (ncair))
+    allocate(this%soil_tk          (ncair))
+    allocate(this%soil_dz          (ncair))
+    allocate(this%soil_temperature (ncair))
+    allocate(this%soil_res         (ncair))
+    allocate(this%soil_rhg         (ncair))
+    allocate(this%soil_rn          (ncair))
 
     allocate(this%zs(ncair, this%ncan_lev))
     allocate(this%wind(ncair,this%ncan_lev))
