@@ -234,7 +234,7 @@ contains
     !     - gbc
     !
     ! !USES:
-    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair, output_data
     use ml_model_global_vars            , only : gbh, gbv, gbc
     use ml_model_meshes                 , only : nleaf
     use GoverningEquationBaseType       , only : goveqn_base_type
@@ -259,6 +259,7 @@ contains
     PetscReal               , pointer :: gbh_data(:), gbv_data(:), gbc_data(:)
     class(goveqn_base_type) , pointer :: goveq
     PetscErrorCode                    :: ierr
+    character(len=20)                 :: step_string, substep_string
 
     ncells = ncair * ntree * (ntop - nbot + 1) * nleaf
 
@@ -275,11 +276,22 @@ contains
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_CO2 , ncells, gbc_data)
     end select
 
+    if (output_data) then
+       write(step_string,*)istep
+       write(substep_string,*)isubstep
+       write(*,*)'mpp.gbhvc{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
+    end if
     do icell = 1, ncells
        call set_value_in_condition(gbh, icell, gbh_data(icell))
        call set_value_in_condition(gbv, icell, gbv_data(icell))
        call set_value_in_condition(gbc, icell, gbc_data(icell))
+       if (output_data) then
+          write(*,*)icell, gbh_data(icell), gbv_data(icell), gbc_data(icell)
+       end if
     end do
+    if (output_data) then
+       write(*,*)'];'
+    end if
 
     deallocate(gbh_data)
     deallocate(gbv_data)

@@ -70,7 +70,7 @@ contains
   !------------------------------------------------------------------------
   subroutine read_command_options()
     !
-    use ml_model_global_vars, only : ncair, ntree
+    use ml_model_global_vars, only : ncair, ntree, output_data
     !
     implicit none
     !
@@ -79,6 +79,7 @@ contains
 
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_data',output_data,flg,ierr)
 
   end subroutine read_command_options
 
@@ -167,7 +168,7 @@ contains
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc
     use ml_model_global_vars         , only : dsai, dlai, dpai, fssh, cumpai, sumpai, leaf_td, ncair, ntree, nz_cair, nbot, ntop
-    use ml_model_global_vars         , only : nz_cair, ntree
+    use ml_model_global_vars         , only : nz_cair, ntree, output_data
     !
     implicit none
     !
@@ -180,6 +181,7 @@ contains
 
     ncair = 1;
     ntree = 1;
+    output_data = PETSC_FALSE
 
     call read_command_options()
     call read_namelist_file(namelist_filename)
@@ -195,33 +197,33 @@ contains
 
     do istep = 1, 1
        call read_boundary_conditions(istep)
-       !write(*,*)'istep: ',istep
+       write(*,*)'%istep: ',istep
 
-       !write(*,*)'  Solving shortwave radiation'
+       write(*,*)'%  Solving shortwave radiation'
        call solve_swv(swv_mpp, istep, dt)
        call extract_data_from_swv(swv_mpp)
 
-       do isubstep = 1, 1
+       do isubstep = 1, 12
 
-          !write(*,*)' isubstep:',isubstep
+          write(*,*)'%    isubstep:',isubstep
           dt = 300.d0 ! [sec]
 
-          !write(*,*)'    Solving longwave radiation'
+          write(*,*)'%    Solving longwave radiation'
           call solve_lwv(lwv_mpp, istep, isubstep, dt)
           call extract_data_from_lwv(lwv_mpp, istep, isubstep)
 
-          write(*,*)'    Solving leaf boundary layer'
+          write(*,*)'%    Solving leaf boundary layer'
           call solve_lbl(lbl_mpp, istep, isubstep,  dt)
           call extract_data_from_lbl(lbl_mpp, istep, isubstep)
 
-          write(*,*)'    Solving photosynthesis'
+          write(*,*)'%    Solving photosynthesis'
           call solve_photosynthesis(psy_mpp, istep, isubstep, dt)
           call extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
 
-          write(*,*)'    Solving MLC'
+          write(*,*)'%    Solving MLC'
           call solve_mlc(mlc_mpp, istep, isubstep, dt)
           call extract_data_from_mlc(mlc_mpp, istep, isubstep)
-          call exit(0)
+          write(*,*)''
        end do
     end do
 

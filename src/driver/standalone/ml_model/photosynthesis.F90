@@ -444,7 +444,7 @@ contains
     !     - gs
     !
     ! !USES:
-    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair, output_data
     use ml_model_meshes           , only : nleaf
     use ml_model_global_vars      , only : gs_sun, gs_shd
     use GoverningEquationBaseType , only : goveqn_base_type
@@ -466,6 +466,7 @@ contains
     PetscReal               , pointer   :: gs_data(:)
     class(goveqn_base_type) , pointer   :: goveq
     PetscErrorCode                      :: ierr
+    character(len=20)                   :: step_string, substep_string
 
     ncells = ncair * ntree * (ntop - nbot + 1) * nleaf
 
@@ -478,11 +479,22 @@ contains
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_STOMATAL_CONDUCTANCE, ncells, gs_data)
     end select
 
+    if (output_data) then
+       write(step_string,*)istep
+       write(substep_string,*)isubstep
+       write(*,*)'mpp.gs{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
+    end if
     offset = ncair * ntree * (ntop - nbot + 1)
     do icell = 1, ncair * ntree * (ntop - nbot + 1)
        call set_value_in_condition(gs_sun, icell, gs_data(icell         ))
        call set_value_in_condition(gs_shd, icell, gs_data(icell + offset))
+       if (output_data) then
+          write(*,*)icell, gs_data(icell), gs_data(icell + offset)
+       end if
     end do
+    if (output_data) then
+       write(*,*)'];'
+    endif
 
     deallocate(gs_data)
 

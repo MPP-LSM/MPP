@@ -630,7 +630,7 @@ contains
     use SystemOfEquationsBaseType       , only : sysofeqns_base_type
     use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
     use MultiPhysicsProbMLC             , only : mpp_mlc_type
-    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair
+    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair, output_data
     use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd, tg, Tair, eair
     use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
     use GoverningEquationBaseType       , only : goveqn_base_type
@@ -646,27 +646,30 @@ contains
     ! !ARGUMENTS
     implicit none
     !
-    class(mpp_mlc_type)  :: mlc_mpp
-    PetscInt :: istep, isubstep
+    class(mpp_mlc_type)                  :: mlc_mpp
+    PetscInt                             :: istep, isubstep
     !
     class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_mlc_type)  , pointer :: soe
-    PetscScalar, pointer :: soln_p(:)
-    PetscInt             :: idx_leaf, idx_data, idx_soil, idx_air
-    PetscInt             :: ileaf, icair, itree, k, ieqn
-    PetscInt             :: ncells
-    PetscReal,  pointer  :: tleaf_data(:), tair_data(:), qair_data(:)
-    PetscErrorCode       :: ierr
-    PetscReal :: factor
-    character(len=20) :: string
+    PetscScalar                , pointer :: soln_p(:)
+    PetscInt                             :: idx_leaf, idx_data, idx_soil, idx_air
+    PetscInt                             :: ileaf, icair, itree, k, ieqn
+    PetscInt                             :: ncells
+    PetscReal,  pointer                  :: tleaf_data(:), tair_data(:), qair_data(:)
+    PetscErrorCode                       :: ierr
+    PetscReal                            :: factor
+    character(len=20)                    :: step_string, substep_string
 
     ncells = ncair*ntree*(nz_cair+1)
     allocate(tleaf_data(ncells))
     allocate(tair_data(ncells))
     allocate(qair_data(ncells))
 
-    write(string,*)isubstep
-
+    if (output_data) then
+       write(step_string,*)istep
+       write(substep_string,*)isubstep
+       write(*,*)'mpp.tleaf{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
+    end if
     do ileaf = 1, 2
        !ncells = ncair*ntree*(ntop-nbot+1)
        if (ileaf == 1) then
@@ -685,6 +688,9 @@ contains
                 if (k>=nbot .and. k<=ntop) then
                    idx_leaf = idx_leaf + 1
                    idx_data = (icair-1)*ntree*(nz_cair+1) + (ntree-1)*(nz_cair+1) + k
+                   if (output_data) then
+                      write(*,*)idx_data, tleaf_data(idx_data)
+                   endif
                    if (ileaf == 1) then
                       call set_value_in_condition(Tleaf_sun, idx_leaf, tleaf_data(idx_data))
                    else
@@ -695,6 +701,9 @@ contains
           end do
        end do
     end do
+    if (output_data) then
+       write(*,*)'];'
+    end if
 
     ncells = ncair*(nz_cair+1)
     call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
@@ -714,6 +723,11 @@ contains
     idx_data = 0
     idx_air = 0
 
+    if (output_data) then
+       write(step_string,*)istep
+       write(substep_string,*)isubstep
+       write(*,*)'mpp.air{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
+    end if
     do icair = 1, ncair
        do k = 1, nz_cair+1
           idx_data = idx_data + 1
@@ -724,10 +738,16 @@ contains
              idx_air = idx_air + 1
              call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
              call set_value_in_condition(qair, idx_air, qair_data(idx_data))
+             if (output_data) then
+                write(*,*)idx_data,tair_data(idx_data),qair_data(idx_data)
+             end if
              call set_value_in_condition(wind, idx_air, soe%cturb%wind(icair,k))
           end if
        end do
     end do
+    if (output_data) then
+       write(*,*)'];'
+    endif
 
     deallocate(tleaf_data)
     deallocate(tair_data)
