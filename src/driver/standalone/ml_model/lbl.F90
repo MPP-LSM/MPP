@@ -190,8 +190,8 @@ contains
                  cur_goveq%aux_vars_in(icell           )%wind  = get_value_from_condition(wind, idx_data)  ! [m/s]
                  cur_goveq%aux_vars_in(icell + ncol*nz )%wind  = get_value_from_condition(wind, idx_data)  ! [m/s]
 
-                 cur_goveq%aux_vars_in(icell           )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
-                 cur_goveq%aux_vars_in(icell + ncol*nz )%patm  = get_value_from_condition(Pref, icair)  ! [Pa]
+                 cur_goveq%aux_vars_in(icell           )%pref  = get_value_from_condition(Pref, icair)  ! [Pa]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%pref  = get_value_from_condition(Pref, icair)  ! [Pa]
 
                  cur_goveq%aux_vars_in(icell           )%tref  = get_value_from_condition(Tref, icair)  ! [Pa]
                  cur_goveq%aux_vars_in(icell + ncol*nz )%tref  = get_value_from_condition(Tref, icair)  ! [Pa]
