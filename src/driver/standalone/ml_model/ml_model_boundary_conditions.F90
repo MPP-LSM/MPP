@@ -32,8 +32,6 @@ contains
     call allocate_memory_for_condition(Tref  , ncair)
     call allocate_memory_for_condition(Qref  , ncair)
     call allocate_memory_for_condition(Pref  , ncair)
-    call allocate_memory_for_condition(Rhref , ncair)
-    call allocate_memory_for_condition(Eair  , ncair)
 
     call allocate_memory_for_condition(co2ref , ncair)
     call allocate_memory_for_condition(o2ref , ncair)
@@ -114,7 +112,6 @@ contains
 
        ! 11
        call set_value_in_condition(Uref, icair, 5.1689999999999996d0)
-!       call set_value_in_condition(Rhref, icair    , 80.d0)
 
        ! 12-15
        call set_value_in_condition(Albsoib_vis, icair, 0.13634140074253082d0)

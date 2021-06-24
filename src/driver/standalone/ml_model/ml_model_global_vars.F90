@@ -36,7 +36,7 @@ module ml_model_global_vars
   type(condition_type) :: Ileaf_sun_nir, Ileaf_shd_nir
   type(condition_type) :: Isoil_vis, Isoil_nir
   type(condition_type) :: Labs_leaf_sun, Labs_leaf_shd, Labs_soil
-  type(condition_type) :: Pref, Uref, Tref, Rhref, Qref, eair
+  type(condition_type) :: Pref, Uref, Tref, Qref
   type(condition_type) :: Tleaf_sun, Tleaf_shd ! dimension = nveg
   type(condition_type) :: Tcan
   type(condition_type) :: Tair, qair, wind ! dimension = ncan
