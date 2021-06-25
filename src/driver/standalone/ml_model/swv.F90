@@ -181,14 +181,6 @@ contains
 
              if (k == 1) then
                 cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-
-                inc = max(0.11d0 - 0.4d0*h2osoi_vol, 0.d0)
-                cur_goveq%aux_vars_in(icell)%soil_albedo_b(1) = min(albedo_sat_vis + inc, albedo_dry_vis)
-                cur_goveq%aux_vars_in(icell)%soil_albedo_b(2) = min(albedo_sat_nir + inc, albedo_dry_nir)
-
-                cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = min(albedo_sat_vis + inc, albedo_dry_vis)
-                cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = min(albedo_sat_nir + inc, albedo_dry_nir)
-
              else
                 idx = nbot + k - 2
                 wl = dlai(idx)/dpai(idx)
@@ -341,6 +333,12 @@ contains
 
                    cumpai_value = cumpai(nbot) ! i-th
                    avars(icell)%leaf_tbcum = exp(-kb * cumpai_value * clump_fac)
+
+                   cur_goveq%aux_vars_in(icell)%soil_albedo_b(1) = get_value_from_condition(bnd_cond%albsoib_vis, icair)
+                   cur_goveq%aux_vars_in(icell)%soil_albedo_b(2) = get_value_from_condition(bnd_cond%albsoib_nir, icair)
+
+                   cur_goveq%aux_vars_in(icell)%soil_albedo_d(1) = get_value_from_condition(bnd_cond%albsoid_vis, icair)
+                   cur_goveq%aux_vars_in(icell)%soil_albedo_d(2) = get_value_from_condition(bnd_cond%albsoid_nir, icair)
                 else
                    dpai_value   = dpai  (nbot + k - 2) ! i-th
                    call compute_transmittance_coefficents(xl, sza_value, dpai_value, clump_fac, tb, td)
