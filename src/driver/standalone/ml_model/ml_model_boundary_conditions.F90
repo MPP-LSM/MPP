@@ -47,6 +47,9 @@ contains
 
     call allocate_memory_for_condition(bnd_cond%sza, ncair)
 
+    call allocate_memory_for_condition(bnd_cond%rhg, ncair)
+    call allocate_memory_for_condition(bnd_cond%soilres, ncair)
+
     call allocate_memory_for_condition(int_cond%gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(int_cond%gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(int_cond%gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
@@ -127,7 +130,10 @@ contains
        ! 18
        call set_value_in_condition(bnd_cond%sza, icair, 1.3473335314944674d0)
 
-  end do
+       ! 19-20
+       call set_value_in_condition(bnd_cond%rhg    , icair, 0.9984057411945876d0)
+       call set_value_in_condition(bnd_cond%soilres, icair, 3361.509423807650d0)
+    end do
 
   end subroutine read_boundary_conditions
 
