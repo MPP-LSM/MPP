@@ -201,7 +201,6 @@ contains
 
        write(*,*)'%  Solving shortwave radiation'
        call solve_swv(swv_mpp, istep, dt)
-       call extract_data_from_swv(swv_mpp)
 
        do isubstep = 1, 12
 
