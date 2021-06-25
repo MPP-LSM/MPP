@@ -365,6 +365,9 @@ contains
             get_value_from_condition(int_cond%Isoil_vis, icair) + &
             get_value_from_condition(int_cond%Isoil_nir, icair) + &
             get_value_from_condition(int_cond%Labs_soil, icair)
+
+       soe%cturb%soil_rhg(icair) = get_value_from_condition(bnd_cond%rhg, icair)
+       soe%cturb%soil_res(icair) = get_value_from_condition(bnd_cond%soilres, icair)
     end do
 
     call set_air_temp_ge_parameters(mlc_mpp)
