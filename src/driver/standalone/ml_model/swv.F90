@@ -451,7 +451,7 @@ contains
   end subroutine init_swv
 
   !------------------------------------------------------------------------
-  subroutine extract_data_from_swv(swv_mpp)
+  subroutine extract_data_from_swv(swv_mpp, istep)
     !
     ! !DESCRIPTION:
     !   Extracts following variables from the LBL model:
@@ -480,6 +480,7 @@ contains
     implicit none
     !
     class(mpp_shortwave_type)           :: swv_mpp
+    PetscInt                            :: istep
     !
     PetscInt                            :: idx_leaf, idx_data, idx_soil, idx_air
     PetscInt                            :: ileaf, icair, itree, k, ieqn, icell, iband
@@ -488,6 +489,7 @@ contains
     class(goveqn_base_type) , pointer   :: goveq
     PetscInt                , parameter :: nband = 2      ! Visible + NIR
     PetscErrorCode                      :: ierr
+    character(len=20)                   :: step_string
 
     nctz   = ncair * ntree * (ntop - nbot + 1 + 1) ! num of canopy airspace x num. of tree x num. of levels
     ncells = nctz  * nleaf * nband
@@ -504,6 +506,10 @@ contains
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND, nctz, Iabs_soil)
     end select
 
+    if (output_data) then
+       write(step_string,*)istep
+       write(*,*)'mpp.iabs{' // trim(adjustl(step_string)) // '} = ['
+    end if
     count = 0
     icell = 0
     do icair = 1, ncair
@@ -515,12 +521,18 @@ contains
                 count = count + 1; call set_value_in_condition(int_cond%Ileaf_shd_vis, icell, Iabs_leaf(count))
                 count = count + 1; call set_value_in_condition(int_cond%Ileaf_sun_nir, icell, Iabs_leaf(count))
                 count = count + 1; call set_value_in_condition(int_cond%Ileaf_shd_nir, icell, Iabs_leaf(count))
+                if (output_data) then
+                   write(*,*)icell, Iabs_leaf(count-3), Iabs_leaf(count-2), Iabs_leaf(count-1), Iabs_leaf(count)
+                end if
              else
                 count = count + 4
              end if
           end do
        end do
     end do
+    if (output_data) then
+       write(*,*)'];'
+    end if
 
     count = 0
     icell = 0
@@ -561,6 +573,8 @@ contains
     call swv_set_boundary_conditions(swv_mpp)
 
     call swv_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
+
+    call extract_data_from_swv(swv_mpp, istep)
 
   end subroutine solve_swv
 
