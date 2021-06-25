@@ -66,6 +66,8 @@ module ml_model_global_vars
 
   end type internal_condition_type
   
+  character(len=1024) :: bc_file
+
   ! Mesh attributes
   PetscInt  , parameter :: nx       = 1
   PetscInt  , parameter :: ny       = 1
