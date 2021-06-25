@@ -47,32 +47,32 @@ contains
 
     call allocate_memory_for_condition(bnd_cond%sza, ncair)
 
-    call allocate_memory_for_condition(gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
-    call allocate_memory_for_condition(gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
-    call allocate_memory_for_condition(gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(int_cond%gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(int_cond%gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(int_cond%gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
 
-    call allocate_memory_for_condition(gs_sun, ncair*ntree*(ntop-nbot+1))
-    call allocate_memory_for_condition(gs_shd, ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(int_cond%gs_sun, ncair*ntree*(ntop-nbot+1))
+    call allocate_memory_for_condition(int_cond%gs_shd, ncair*ntree*(ntop-nbot+1))
 
-    call allocate_memory_for_condition(Tcan      , ncair)
+    call allocate_memory_for_condition(int_cond%Tcan      , ncair)
 
-    call allocate_memory_for_condition(Tair      , ncair*nz_cair)
-    call allocate_memory_for_condition(Qair      , ncair*nz_cair)
-    call allocate_memory_for_condition(Wind      , ncair*nz_cair)
+    call allocate_memory_for_condition(int_cond%Tair      , ncair*nz_cair)
+    call allocate_memory_for_condition(int_cond%Qair      , ncair*nz_cair)
+    call allocate_memory_for_condition(int_cond%Wind      , ncair*nz_cair)
 
-    call allocate_memory_for_condition(Tleaf_sun , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(Tleaf_shd , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(Labs_leaf_sun, ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(Labs_leaf_shd, ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(gs_shd    , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(Ileaf_sun_vis    , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(Ileaf_shd_vis    , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(Ileaf_sun_nir    , ncair*(ntop-nbot+1) )
-    call allocate_memory_for_condition(Ileaf_shd_nir    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Tleaf_sun , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Tleaf_shd , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Labs_leaf_sun, ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Labs_leaf_shd, ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%gs_shd    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Ileaf_sun_vis    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Ileaf_shd_vis    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Ileaf_sun_nir    , ncair*(ntop-nbot+1) )
+    call allocate_memory_for_condition(int_cond%Ileaf_shd_nir    , ncair*(ntop-nbot+1) )
     
-    call allocate_memory_for_condition(Labs_soil, ncair)
-    call allocate_memory_for_condition(Isoil_vis, ncair)
-    call allocate_memory_for_condition(Isoil_nir, ncair)
+    call allocate_memory_for_condition(int_cond%Labs_soil, ncair)
+    call allocate_memory_for_condition(int_cond%Isoil_vis, ncair)
+    call allocate_memory_for_condition(int_cond%Isoil_nir, ncair)
 
   end subroutine allocate_memory
 

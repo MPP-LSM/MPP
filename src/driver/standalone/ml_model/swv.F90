@@ -466,9 +466,6 @@ contains
     !
     ! !USES:
     use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
-    use ml_model_global_vars      , only : Ileaf_sun_vis, Ileaf_shd_vis
-    use ml_model_global_vars      , only : Ileaf_sun_nir, Ileaf_shd_nir
-    use ml_model_global_vars      , only : Isoil_vis, Isoil_nir
     use ml_model_meshes           , only : nleaf
     use GoverningEquationBaseType , only : goveqn_base_type
     use GoveqnShortwaveType       , only : goveqn_shortwave_type
@@ -514,10 +511,10 @@ contains
           do k = 1, ntop - nbot + 1 + 1
              if (k > 1) then
                 icell = icell + 1
-                count = count + 1; call set_value_in_condition(Ileaf_sun_vis, icell, Iabs_leaf(count))
-                count = count + 1; call set_value_in_condition(Ileaf_shd_vis, icell, Iabs_leaf(count))
-                count = count + 1; call set_value_in_condition(Ileaf_sun_nir, icell, Iabs_leaf(count))
-                count = count + 1; call set_value_in_condition(Ileaf_shd_nir, icell, Iabs_leaf(count))
+                count = count + 1; call set_value_in_condition(int_cond%Ileaf_sun_vis, icell, Iabs_leaf(count))
+                count = count + 1; call set_value_in_condition(int_cond%Ileaf_shd_vis, icell, Iabs_leaf(count))
+                count = count + 1; call set_value_in_condition(int_cond%Ileaf_sun_nir, icell, Iabs_leaf(count))
+                count = count + 1; call set_value_in_condition(int_cond%Ileaf_shd_nir, icell, Iabs_leaf(count))
              else
                 count = count + 4
              end if
@@ -533,8 +530,8 @@ contains
                 if (k == 1) then
                    icell = icell + 1;
 
-                   count = count + 1; call set_value_in_condition(Isoil_vis, icell, Iabs_soil(count))
-                   count = count + 1; call set_value_in_condition(Isoil_nir, icell, Iabs_soil(count))
+                   count = count + 1; call set_value_in_condition(int_cond%Isoil_vis, icell, Iabs_soil(count))
+                   count = count + 1; call set_value_in_condition(int_cond%Isoil_nir, icell, Iabs_soil(count))
                 else
                    count = count + 2
                 end if

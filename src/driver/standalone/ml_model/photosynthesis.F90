@@ -250,7 +250,6 @@ contains
     use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants           , only : TFRZ
-    use ml_model_global_vars                , only : Tleaf_sun, Tleaf_shd, Tair, gbh, gbc, Ileaf_sun_vis, Ileaf_shd_vis
     use WaterVaporMod                       , only : SatVap
     use ml_model_utils                      , only : get_value_from_condition
     use ml_model_meshes                     , only : nleaf
@@ -288,15 +287,15 @@ contains
              icell = icell + 1
              ileaf = ileaf + 1
 
-             tleaf_local(ileaf           ) = get_value_from_condition(Tleaf_sun, ileaf) ! [K]
-             tleaf_local(ileaf + ncol*nz ) = get_value_from_condition(Tleaf_shd, ileaf) ! [K]
+             tleaf_local(ileaf           ) = get_value_from_condition(int_cond%Tleaf_sun, ileaf) ! [K]
+             tleaf_local(ileaf + ncol*nz ) = get_value_from_condition(int_cond%Tleaf_shd, ileaf) ! [K]
 
-             Isun_vis = get_value_from_condition(Ileaf_sun_vis, icell) ! w/m2
-             Ishd_vis = get_value_from_condition(Ileaf_shd_vis, icell) ! w/m2
+             Isun_vis = get_value_from_condition(int_cond%Ileaf_sun_vis, icell) ! w/m2
+             Ishd_vis = get_value_from_condition(int_cond%Ileaf_shd_vis, icell) ! w/m2
 
              cur_goveq%aux_vars_in(ileaf          )%apar = Isun_vis * unit_conversion ! [mmol_photon/m2/s]
              cur_goveq%aux_vars_in(ileaf + ncol*nz)%apar = Ishd_vis * unit_conversion ! [mmol_photon/m2/s]
-             cur_goveq%aux_vars_in(icell)%eair = get_value_from_condition(qair, (icol-1)*nz + nbot + k - 2) * pref_value
+             cur_goveq%aux_vars_in(icell)%eair = get_value_from_condition(int_cond%qair, (icol-1)*nz + nbot + k - 2) * pref_value
           end do
        end do
 
@@ -309,15 +308,15 @@ contains
 
                 cur_goveq%aux_vars_in(icell)%tleaf = tleaf_local(icell)
 
-                cur_goveq%aux_vars_in(icell)%gbv   = get_value_from_condition(gbv, icell)
-                cur_goveq%aux_vars_in(icell)%gbc   = get_value_from_condition(gbc, icell)
+                cur_goveq%aux_vars_in(icell)%gbv   = get_value_from_condition(int_cond%gbv, icell)
+                cur_goveq%aux_vars_in(icell)%gbc   = get_value_from_condition(int_cond%gbc, icell)
 
                 cur_goveq%aux_vars_in(icell)%cair  = get_value_from_condition(bnd_cond%co2ref, icair)
                 cur_goveq%aux_vars_in(icell)%o2ref = get_value_from_condition(bnd_cond%o2ref, icair)
 
                 pref_value = get_value_from_condition(bnd_cond%pref, icair)
 
-                qair_value = get_value_from_condition(qair,  (icair-1)*nz + nbot + k - 2)
+                qair_value = get_value_from_condition(int_cond%qair,  (icair-1)*nz + nbot + k - 2)
                 cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
              end do
           end do
@@ -446,7 +445,6 @@ contains
     ! !USES:
     use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair, output_data
     use ml_model_meshes           , only : nleaf
-    use ml_model_global_vars      , only : gs_sun, gs_shd
     use GoverningEquationBaseType , only : goveqn_base_type
     use GoveqnPhotosynthesisType  , only : goveqn_photosynthesis_type
     use MultiPhysicsProbPhotosynthesis  , only : mpp_photosynthesis_type
@@ -486,8 +484,8 @@ contains
     end if
     offset = ncair * ntree * (ntop - nbot + 1)
     do icell = 1, ncair * ntree * (ntop - nbot + 1)
-       call set_value_in_condition(gs_sun, icell, gs_data(icell         ))
-       call set_value_in_condition(gs_shd, icell, gs_data(icell + offset))
+       call set_value_in_condition(int_cond%gs_sun, icell, gs_data(icell         ))
+       call set_value_in_condition(int_cond%gs_shd, icell, gs_data(icell + offset))
        if (output_data) then
           write(*,*)icell, gs_data(icell), gs_data(icell + offset)
        end if

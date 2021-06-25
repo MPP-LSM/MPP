@@ -362,9 +362,9 @@ contains
        soe%cturb%soil_temperature(icair) = get_value_from_condition(bnd_cond%soil_t,icair)
 
        soe%cturb%soil_rn(icair) = &
-            get_value_from_condition(Isoil_vis, icair) + &
-            get_value_from_condition(Isoil_nir, icair) + &
-            get_value_from_condition(Labs_soil, icair)
+            get_value_from_condition(int_cond%Isoil_vis, icair) + &
+            get_value_from_condition(int_cond%Isoil_nir, icair) + &
+            get_value_from_condition(int_cond%Labs_soil, icair)
     end do
 
     call set_air_temp_ge_parameters(mlc_mpp)
@@ -415,12 +415,12 @@ contains
                gb_count = gb_count + 1
                icell = (icair-1)*(nz_cair+1) + k
 
-               cur_goveq%aux_vars_in(icell)%gbh(1)  = get_value_from_condition(gbh, gb_count         )
-               cur_goveq%aux_vars_in(icell)%gbh(2)  = get_value_from_condition(gbh, gb_count + offset)
+               cur_goveq%aux_vars_in(icell)%gbh(1)  = get_value_from_condition(int_cond%gbh, gb_count         )
+               cur_goveq%aux_vars_in(icell)%gbh(2)  = get_value_from_condition(int_cond%gbh, gb_count + offset)
 
                do ileaf = 1, ntree
-                  cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
-                  cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(gs_shd, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(int_cond%gs_sun, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(int_cond%gs_shd, gb_count)
                   cur_goveq%aux_vars_in(icell)%leaf_fssh(        ileaf) = fssh(k)
                   cur_goveq%aux_vars_in(icell)%leaf_fssh(ntree + ileaf) = 1.d0 - fssh(k)
                enddo
@@ -479,12 +479,12 @@ contains
                gb_count = gb_count + 1
                icell = (icair-1)*(nz_cair+1) + k
 
-               cur_goveq%aux_vars_in(icell)%gbv(1)  = get_value_from_condition(gbv, gb_count         )
-               cur_goveq%aux_vars_in(icell)%gbv(2)  = get_value_from_condition(gbv, gb_count + offset)
+               cur_goveq%aux_vars_in(icell)%gbv(1)  = get_value_from_condition(int_cond%gbv, gb_count         )
+               cur_goveq%aux_vars_in(icell)%gbv(2)  = get_value_from_condition(int_cond%gbv, gb_count + offset)
 
                do ileaf = 1, ntree
-                  cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(gs_sun, gb_count)
-                  cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(gs_shd, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(        ileaf) = get_value_from_condition(int_cond%gs_sun, gb_count)
+                  cur_goveq%aux_vars_in(icell)%leaf_gs(ntree + ileaf) = get_value_from_condition(int_cond%gs_shd, gb_count)
                   cur_goveq%aux_vars_in(icell)%leaf_fssh(        ileaf) = fssh(k)
                   cur_goveq%aux_vars_in(icell)%leaf_fssh(ntree + ileaf) = 1.d0 - fssh(k)
                end do
@@ -542,26 +542,26 @@ contains
 
                    count = count + 1
                    if (cur_goveq%rank_in_soe_list == CLEF_TEMP_SUN_GE) then
-                      cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, count)
-                      cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, count)
-                      cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(gs_sun  , count)
+                      cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(int_cond%gbh, count)
+                      cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(int_cond%gbv, count)
+                      cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(int_cond%gs_sun  , count)
                       cur_goveq%aux_vars_in(icell)%fssh = fssh(k)
 
                       cur_goveq%aux_vars_in(icell)%rn   = &
-                           get_value_from_condition(Ileaf_sun_vis, count) + &
-                           get_value_from_condition(Ileaf_sun_nir, count) + &
-                           get_value_from_condition(Labs_leaf_sun       , count)
+                           get_value_from_condition(int_cond%Ileaf_sun_vis, count) + &
+                           get_value_from_condition(int_cond%Ileaf_sun_nir, count) + &
+                           get_value_from_condition(int_cond%Labs_leaf_sun       , count)
 
                    else
-                      cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(gbh, count + offset)
-                      cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(gbv, count + offset)
-                      cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(gs_shd, count)
+                      cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(int_cond%gbh, count + offset)
+                      cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(int_cond%gbv, count + offset)
+                      cur_goveq%aux_vars_in(icell)%gs   = get_value_from_condition(int_cond%gs_shd, count)
                       cur_goveq%aux_vars_in(icell)%fssh = 1.d0 - fssh(k)
 
                       cur_goveq%aux_vars_in(icell)%rn   = &
-                           get_value_from_condition(Ileaf_shd_vis, count) + &
-                           get_value_from_condition(Ileaf_shd_nir, count) + &
-                           get_value_from_condition(Labs_leaf_shd       , count)
+                           get_value_from_condition(int_cond%Ileaf_shd_vis, count) + &
+                           get_value_from_condition(int_cond%Ileaf_shd_nir, count) + &
+                           get_value_from_condition(int_cond%Labs_leaf_shd       , count)
                    end if
                 end if
 
@@ -631,7 +631,6 @@ contains
     use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
     use MultiPhysicsProbMLC             , only : mpp_mlc_type
     use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair, output_data
-    use ml_model_global_vars            , only : Tleaf_sun, Tleaf_shd
     use ml_model_global_vars            , only : CLEF_TEMP_SUN_GE, CLEF_TEMP_SHD_GE, CAIR_TEMP_GE, CAIR_VAPR_GE
     use GoverningEquationBaseType       , only : goveqn_base_type
     use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
@@ -692,9 +691,9 @@ contains
                       write(*,*)idx_data, tleaf_data(idx_data)
                    endif
                    if (ileaf == 1) then
-                      call set_value_in_condition(Tleaf_sun, idx_leaf, tleaf_data(idx_data))
+                      call set_value_in_condition(int_cond%Tleaf_sun, idx_leaf, tleaf_data(idx_data))
                    else
-                      call set_value_in_condition(Tleaf_shd, idx_leaf, tleaf_data(idx_data))
+                      call set_value_in_condition(int_cond%Tleaf_shd, idx_leaf, tleaf_data(idx_data))
                    endif
                 end if
              end do
@@ -736,12 +735,12 @@ contains
              call set_value_in_condition(bnd_cond%tg, idx_soil, tair_data(idx_data))
           else
              idx_air = idx_air + 1
-             call set_value_in_condition(Tair, idx_air, tair_data(idx_data))
-             call set_value_in_condition(qair, idx_air, qair_data(idx_data))
+             call set_value_in_condition(int_cond%Tair, idx_air, tair_data(idx_data))
+             call set_value_in_condition(int_cond%qair, idx_air, qair_data(idx_data))
              if (output_data) then
                 write(*,*)idx_data,tair_data(idx_data),qair_data(idx_data)
              end if
-             call set_value_in_condition(wind, idx_air, soe%cturb%wind(icair,k))
+             call set_value_in_condition(int_cond%wind, idx_air, soe%cturb%wind(icair,k))
           end if
        end do
     end do

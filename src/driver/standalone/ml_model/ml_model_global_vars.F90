@@ -29,6 +29,40 @@ module ml_model_global_vars
      type(condition_type) :: soil_t
      type(condition_type) :: sza
   end type boundary_condition_type
+
+  type, public :: internal_condition_type
+
+     ! shortwave model
+     type(condition_type) :: ileaf_sun_vis
+     type(condition_type) :: ileaf_shd_vis
+     type(condition_type) :: ileaf_sun_nir
+     type(condition_type) :: ileaf_shd_nir
+     type(condition_type) :: isoil_vis
+     type(condition_type) :: isoil_nir
+
+     ! longwave model
+     type(condition_type) :: Labs_leaf_sun
+     type(condition_type) :: Labs_leaf_shd
+     type(condition_type) :: Labs_soil
+
+     ! leaf boundary layer model
+     type(condition_type) :: gbh
+     type(condition_type) :: gbv
+     type(condition_type) :: gbc
+
+     ! photosynthesis model
+     type(condition_type) :: gs_sun
+     type(condition_type) :: gs_shd
+
+     ! multi-layer canopy model
+     type(condition_type) :: Tcan
+     type(condition_type) :: Tleaf_sun
+     type(condition_type) :: Tleaf_shd
+     type(condition_type) :: Tair
+     type(condition_type) :: qair
+     type(condition_type) :: wind
+
+  end type internal_condition_type
   
   ! Mesh attributes
   PetscInt  , parameter :: nx       = 1
@@ -52,16 +86,8 @@ module ml_model_global_vars
 
   ! Boundary conditions
   type(boundary_condition_type) :: bnd_cond
+  type(internal_condition_type) :: int_cond
 
-  type(condition_type) :: Ileaf_sun_vis, Ileaf_shd_vis
-  type(condition_type) :: Ileaf_sun_nir, Ileaf_shd_nir
-  type(condition_type) :: Isoil_vis, Isoil_nir
-  type(condition_type) :: Labs_leaf_sun, Labs_leaf_shd, Labs_soil
-  type(condition_type) :: Tleaf_sun, Tleaf_shd ! dimension = nveg
-  type(condition_type) :: Tcan
-  type(condition_type) :: Tair, qair, wind ! dimension = ncan
-  type(condition_type) :: gs_sun, gs_shd
-  type(condition_type) :: gbh, gbv, gbc
 
   ! Shortwave model
   PetscInt :: SHORTWAVE_MESH
