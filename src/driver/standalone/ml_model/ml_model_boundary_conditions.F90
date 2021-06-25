@@ -80,60 +80,79 @@ contains
   end subroutine allocate_memory
 
   !------------------------------------------------------------------------
-  subroutine read_boundary_conditions(istep)
+  subroutine read_boundary_conditions(istep, bc_data)
     !
     use ml_model_utils, only : set_value_in_condition
+    use petscsys
+    use petscvec
     !
     implicit none
     !
-    PetscInt :: istep
+    PetscInt            :: istep
+    Vec                 :: bc_data
     !
-    PetscInt :: icair
+    PetscInt, parameter :: ncol = 20
+    PetscInt            :: icair, offset, size
+    PetscReal, pointer  :: bc_p(:)
+    PetscErrorCode      :: ierr
+
+    offset = (istep-1)*ncol
+
+    call VecGetSize(bc_data, size, ierr); CHKERRQ(ierr)
+    if (istep*ncol > size) then
+       write(*,*)'ERROR: Time step exceeds the boundary condition dataset'
+       call exit(0)
+    end if
+
+    call VecGetArrayF90(bc_data, bc_p, ierr); CHKERRQ(ierr)
 
     do icair = 1, ncair
 
-      ! 1-2
-      call set_value_in_condition(bnd_cond%Iskyb_vis, icair, 58.634213093025487d0)
-      call set_value_in_condition(bnd_cond%Iskyb_nir, icair, 80.957228667870822d0)
+       ! 1-2
+       call set_value_in_condition(bnd_cond%Iskyb_vis   , icair, bc_p(offset +  1))
+       call set_value_in_condition(bnd_cond%Iskyb_nir   , icair, bc_p(offset +  2))
 
-      ! 3-4
-       call set_value_in_condition(bnd_cond%Iskyd_vis, icair, 56.857286906974515d0)
-       call set_value_in_condition(bnd_cond%Iskyd_nir, icair, 34.534271332129173d0)
+       ! 3-4
+       call set_value_in_condition(bnd_cond%Iskyd_vis   , icair, bc_p(offset +  3))
+       call set_value_in_condition(bnd_cond%Iskyd_nir   , icair, bc_p(offset +  4))
 
-      ! 5
-       call set_value_in_condition(bnd_cond%Irsky, icair, 329.34600000000000d0)
+       ! 5
+       call set_value_in_condition(bnd_cond%Irsky       , icair, bc_p(offset +  5))
 
-      ! 6-9
-       call set_value_in_condition(bnd_cond%tref, icair, 295.93499389648440d0)
-       call set_value_in_condition(bnd_cond%qref, icair, 9.4800086099820265d-3)
-       call set_value_in_condition(bnd_cond%pref, icair, 98620.000000000000d0)
-       call set_value_in_condition(bnd_cond%uref, icair, 5.1689999999999996d0)
+       ! 6-9
+       call set_value_in_condition(bnd_cond%tref        , icair, bc_p(offset +  6))
+       call set_value_in_condition(bnd_cond%qref        , icair, bc_p(offset +  7))
+       call set_value_in_condition(bnd_cond%pref        , icair, bc_p(offset +  8))
+       call set_value_in_condition(bnd_cond%uref        , icair, bc_p(offset +  9))
 
        ! 10-11
-       call set_value_in_condition(bnd_cond%co2ref, icair, 367.00000000000000d0)
-       call set_value_in_condition(bnd_cond%o2ref, icair, 209.00000000000000d0)
+       call set_value_in_condition(bnd_cond%co2ref      , icair, bc_p(offset +  10))
+       call set_value_in_condition(bnd_cond%o2ref       , icair, bc_p(offset +  11))
 
        ! 12-15
-       call set_value_in_condition(bnd_cond%Albsoib_vis, icair, 0.13634140074253082d0)
-       call set_value_in_condition(bnd_cond%Albsoib_nir, icair, 0.20634140074253082d0)
-       call set_value_in_condition(bnd_cond%Albsoid_vis, icair, 0.13634140074253082d0)
-       call set_value_in_condition(bnd_cond%Albsoid_nir, icair, 0.20634140074253082d0)
+       call set_value_in_condition(bnd_cond%Albsoib_vis , icair, bc_p(offset +  12))
+       call set_value_in_condition(bnd_cond%Albsoib_nir , icair, bc_p(offset +  13))
+       call set_value_in_condition(bnd_cond%Albsoid_vis , icair, bc_p(offset +  14))
+       call set_value_in_condition(bnd_cond%Albsoid_nir , icair, bc_p(offset +  15))
 
        ! 16
        if (istep == 1) then
-          call set_value_in_condition(bnd_cond%tg, icair, 295.93499389648440d0)
+          call set_value_in_condition(bnd_cond%tg       , icair, bc_p(offset +  16))
        endif
 
        ! 17
-       call set_value_in_condition(bnd_cond%soil_t, icair, 294.84927368164062d0)
+       call set_value_in_condition(bnd_cond%soil_t      , icair, bc_p(offset +  17))
 
        ! 18
-       call set_value_in_condition(bnd_cond%sza, icair, 1.3473335314944674d0)
+       call set_value_in_condition(bnd_cond%sza         , icair, bc_p(offset +  18))
 
        ! 19-20
-       call set_value_in_condition(bnd_cond%rhg    , icair, 0.9984057411945876d0)
-       call set_value_in_condition(bnd_cond%soilres, icair, 3361.509423807650d0)
+       call set_value_in_condition(bnd_cond%rhg         , icair, bc_p(offset +  19))
+       call set_value_in_condition(bnd_cond%soilres     , icair, bc_p(offset +  20))
+
     end do
+
+    call VecRestoreArrayF90(bc_data, bc_p, ierr)
 
   end subroutine read_boundary_conditions
 

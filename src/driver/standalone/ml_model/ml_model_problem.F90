@@ -70,7 +70,7 @@ contains
   !------------------------------------------------------------------------
   subroutine read_command_options()
     !
-    use ml_model_global_vars, only : ncair, ntree, output_data
+    use ml_model_global_vars, only : ncair, ntree, output_data, bc_file
     !
     implicit none
     !
@@ -80,6 +80,11 @@ contains
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_data',output_data,flg,ierr)
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
+    if (.not.flg) then
+       write(*,*)'ERROR: Need to specify the boundary condition file via -bc_file <filename>'
+       call exit(0)
+    end if
 
   end subroutine read_command_options
 
@@ -168,16 +173,20 @@ contains
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc
     use ml_model_global_vars         , only : dsai, dlai, dpai, fssh, cumpai, sumpai, leaf_td, ncair, ntree, nz_cair, nbot, ntop
-    use ml_model_global_vars         , only : nz_cair, ntree, output_data
+    use ml_model_global_vars         , only : nz_cair, ntree, output_data, bc_file
+    use petscvec
     !
     implicit none
     !
     character(len=256), optional :: namelist_filename
     !
-    PetscReal                    :: dt
-    PetscBool                    :: converged
-    PetscInt                     :: istep, isubstep
-    PetscInt                     :: converged_reason
+    PetscReal      :: dt
+    PetscBool      :: converged
+    PetscInt       :: istep, isubstep
+    PetscInt       :: converged_reason
+    Vec            :: bc_data
+    PetscViewer    :: viewer
+    PetscErrorCode :: ierr
 
     ncair = 1;
     ntree = 1;
@@ -192,11 +201,18 @@ contains
     call allocate_memory()
     call init_mpps()
 
-    call read_boundary_conditions(istep)
+    ! Load boundary condition data
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, bc_file, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
+    call VecCreate(PETSC_COMM_WORLD, bc_data, ierr);CHKERRQ(ierr)
+    call VecLoad(bc_data, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
+
+    istep = 1
+    call read_boundary_conditions(istep, bc_data)
     call set_initial_conditions()
 
     do istep = 1, 1
-       call read_boundary_conditions(istep)
+       call read_boundary_conditions(istep, bc_data)
        write(*,*)'%istep: ',istep
 
        write(*,*)'%  Solving shortwave radiation'
