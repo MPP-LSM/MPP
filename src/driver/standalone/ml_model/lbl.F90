@@ -144,7 +144,7 @@ contains
     use GoveqnLeafBoundaryLayer   , only : goveqn_leaf_bnd_lyr_type
     use ConditionType             , only : condition_type
     use ConnectionSetType         , only : connection_set_type
-    use ml_model_global_vars      , only : Tleaf_sun, Tleaf_shd, Tair
+    use ml_model_global_vars      , only : bnd_cond, int_cond
     use ml_model_utils            , only : get_value_from_condition
     !
     ! !ARGUMENTS
@@ -171,8 +171,8 @@ contains
           do k = 1, nz
              icell = icell + 1
              ileaf = ileaf + 1
-             cur_goveq%aux_vars_in(icell           )%tleaf = get_value_from_condition(Tleaf_sun, ileaf) ! [K]
-             cur_goveq%aux_vars_in(icell + ncol*nz )%tleaf = get_value_from_condition(Tleaf_shd, ileaf) ! [K]
+             cur_goveq%aux_vars_in(icell           )%tleaf = get_value_from_condition(int_cond%Tleaf_sun, ileaf) ! [K]
+             cur_goveq%aux_vars_in(icell + ncol*nz )%tleaf = get_value_from_condition(int_cond%Tleaf_shd, ileaf) ! [K]
           end do
        end do
 
@@ -184,11 +184,11 @@ contains
               if (k >= nbot-1 .and. k<=ntop-1) then
                  icell = icell + 1
 
-                 cur_goveq%aux_vars_in(icell           )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
-                 cur_goveq%aux_vars_in(icell + ncol*nz )%tair  = get_value_from_condition(Tair, idx_data)  ! [K]
+                 cur_goveq%aux_vars_in(icell           )%tair  = get_value_from_condition(int_cond%Tair, idx_data)  ! [K]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%tair  = get_value_from_condition(int_cond%Tair, idx_data)  ! [K]
 
-                 cur_goveq%aux_vars_in(icell           )%wind  = get_value_from_condition(wind, idx_data)  ! [m/s]
-                 cur_goveq%aux_vars_in(icell + ncol*nz )%wind  = get_value_from_condition(wind, idx_data)  ! [m/s]
+                 cur_goveq%aux_vars_in(icell           )%wind  = get_value_from_condition(int_cond%wind, idx_data)  ! [m/s]
+                 cur_goveq%aux_vars_in(icell + ncol*nz )%wind  = get_value_from_condition(int_cond%wind, idx_data)  ! [m/s]
 
                  cur_goveq%aux_vars_in(icell           )%pref  = get_value_from_condition(bnd_cond%pref, icair)  ! [Pa]
                  cur_goveq%aux_vars_in(icell + ncol*nz )%pref  = get_value_from_condition(bnd_cond%pref, icair)  ! [Pa]
@@ -235,7 +235,6 @@ contains
     !
     ! !USES:
     use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair, output_data
-    use ml_model_global_vars            , only : gbh, gbv, gbc
     use ml_model_meshes                 , only : nleaf
     use GoverningEquationBaseType       , only : goveqn_base_type
     use GoveqnLeafBoundaryLayer         , only : goveqn_leaf_bnd_lyr_type
@@ -282,9 +281,9 @@ contains
        write(*,*)'mpp.gbhvc{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
     end if
     do icell = 1, ncells
-       call set_value_in_condition(gbh, icell, gbh_data(icell))
-       call set_value_in_condition(gbv, icell, gbv_data(icell))
-       call set_value_in_condition(gbc, icell, gbc_data(icell))
+       call set_value_in_condition(int_cond%gbh, icell, gbh_data(icell))
+       call set_value_in_condition(int_cond%gbv, icell, gbv_data(icell))
+       call set_value_in_condition(int_cond%gbc, icell, gbc_data(icell))
        if (output_data) then
           write(*,*)icell, gbh_data(icell), gbv_data(icell), gbc_data(icell)
        end if

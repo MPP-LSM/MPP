@@ -107,7 +107,7 @@ contains
     !
     use mlc                       , only : mlc_set_initial_conditions
     use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair
-    use ml_model_global_vars      , only : Tleaf_sun, Tleaf_shd, Tair, Qair, Wind, bnd_cond
+    use ml_model_global_vars      , only : bnd_cond, int_cond
     use ml_model_utils            , only : get_value_from_condition
     use ml_model_utils            , only : set_value_in_condition
     use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
@@ -127,8 +127,8 @@ contains
                 tleaf_value = get_value_from_condition(bnd_cond%tref, icair)
 
                 idx_leaf = idx_leaf + 1
-                call set_value_in_condition(Tleaf_sun, idx_leaf, tleaf_value)
-                call set_value_in_condition(Tleaf_shd, idx_leaf, tleaf_value)
+                call set_value_in_condition(int_cond%Tleaf_sun, idx_leaf, tleaf_value)
+                call set_value_in_condition(int_cond%Tleaf_shd, idx_leaf, tleaf_value)
 
              end if
 
@@ -139,9 +139,9 @@ contains
                 factor = 1.d0/(MM_H2O/MM_DRY_AIR + (1.d0 - MM_H2O/MM_DRY_AIR)*qair_value)
 
                 idx_air = (icair-1)*ncair + (k-1)
-                call set_value_in_condition(Tair, idx_air, tair_value)
-                call set_value_in_condition(Wind, idx_air, wind_value)
-                call set_value_in_condition(qair, idx_air, qair_value*factor)
+                call set_value_in_condition(int_cond%Tair, idx_air, tair_value)
+                call set_value_in_condition(int_cond%Wind, idx_air, wind_value)
+                call set_value_in_condition(int_cond%qair, idx_air, qair_value*factor)
              end if
 
           end do

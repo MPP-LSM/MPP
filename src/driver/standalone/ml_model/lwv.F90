@@ -229,8 +229,8 @@ contains
              else
                 leaf_count = leaf_count + 1
                 cur_goveq%aux_vars_in(icell)%trans      = leaf_td(nbot + k - 2)
-                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_sun, leaf_count)
-                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(Tleaf_shd, leaf_count)
+                ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(int_cond%Tleaf_sun, leaf_count)
+                ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_temperature(ileaf) = get_value_from_condition(int_cond%Tleaf_shd, leaf_count)
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf)        = fssh(nbot + k - 2)
                 ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf)        = 1.d0 - fssh(nbot + k - 2)
              end if
@@ -323,7 +323,6 @@ contains
     !
     ! !USES:
     use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair, output_data
-    use ml_model_global_vars      , only : Labs_leaf_sun, Labs_leaf_shd, Labs_soil
     use GoverningEquationBaseType , only : goveqn_base_type
     use GoveqnLongwaveType        , only : goveqn_longwave_type
     use MultiPhysicsProbLongwave  , only : mpp_longwave_type
@@ -373,11 +372,11 @@ contains
              count = count + 1;
              if (k == 1) then
                 soil_icell = soil_icell + 1
-                call set_value_in_condition(Labs_soil, soil_icell, Labs_soil_data(count))
+                call set_value_in_condition(int_cond%Labs_soil, soil_icell, Labs_soil_data(count))
              else
                 leaf_icell = leaf_icell + 1
-                call set_value_in_condition(Labs_leaf_sun, leaf_icell, Labs_leaf_data(count))
-                call set_value_in_condition(Labs_leaf_shd, leaf_icell, Labs_leaf_data(count))
+                call set_value_in_condition(int_cond%Labs_leaf_sun, leaf_icell, Labs_leaf_data(count))
+                call set_value_in_condition(int_cond%Labs_leaf_shd, leaf_icell, Labs_leaf_data(count))
                 if (output_data) then
                    write(*,*)leaf_icell, Labs_leaf_data(count)
                 end if
