@@ -265,16 +265,17 @@ contains
      PetscReal :: psim, psi_m_zref, psi_m_hc, psi_m_rsl_zref, psi_m_rsl_hc
      PetscReal :: psic, psi_c_zref, psi_c_hc, psi_c_rsl_zref, psi_c_rsl_hc
      PetscReal :: zlog, tvstar
-     PetscReal :: c1
+     PetscReal :: c1, zeta, obu_cur
 
+     obu_cur = obu_val
      ! Limit the value of Obukhov length
-     if (abs(obu_val) < 0.1d0) obu_val = 0.1d0
+     if (abs(obu_cur) < 0.1d0) obu_cur = 0.1d0
 
      ! neutral value of beta
      c1 = (VKC / log((cturb%hc(icair) + z0mg)/z0mg))**2.d0
      beta_neutral = min(sqrt(c1 + cr*cturb%pai(icair)), beta_neutral_max)
 
-     LcL = cturb%Lc(icair)/obu_val
+     LcL = cturb%Lc(icair)/obu_cur
 
      if (LcL <= 0.d0) then
 
@@ -304,12 +305,20 @@ contains
      h_minus_d = cturb%hc(icair)   - cturb%disp(icair)
 
      ! Prandtl (Schmidt) number at canopy top
-     cturb%PrSc(icair) = Pr0 + Pr1 * tanh(Pr2*cturb%Lc(icair)/obu_val);
+     cturb%PrSc(icair) = Pr0 + Pr1 * tanh(Pr2*cturb%Lc(icair)/obu_cur);
      cturb%PrSc(icair) = (1.d0 - beta_neutral/beta_neutral_max) * 1.d0 + (beta_neutral/beta_neutral_max) * cturb%PrSc(icair)
 
+     zeta = (cturb%zref(icair) - cturb%disp(icair)) / obu_cur
+     if (zeta >= 0.d0) then
+        zeta = min(zeta_max, max(zeta,0.01d0))
+     else
+        zeta = max(zeta_min, min(zeta,-0.01d0))
+     end if
+     obu_cur = (cturb%zref(icair) - cturb%disp(icair)) / zeta
+
      ! Compute Monin-Obokhov phi functions for momentum and scalar
-     phi_m_hc = phim_monin_obukhov(h_minus_d / obu_val)
-     phi_c_hc = phic_monin_obukhov(h_minus_d / obu_val)
+     phi_m_hc = phim_monin_obukhov(h_minus_d / obu_cur)
+     phi_c_hc = phic_monin_obukhov(h_minus_d / obu_cur)
 
      cturb%c2(icair)  = c2;
      cturb%c1m(icair) = (1.d0 - VKC/ (2.d0 * beta * phi_m_hc)) * exp(0.5d0 * cturb%c2(icair))
@@ -323,11 +332,11 @@ contains
 
      ! Compute the Monin-Obukhov psi functions for momentum and scalar
      ! at the reference height and the canopy top
-     psi_m_zref = psim_monin_obukhov (z_minus_d / obu_val);
-     psi_m_hc   = psim_monin_obukhov (h_minus_d / obu_val);
+     psi_m_zref = psim_monin_obukhov (z_minus_d / obu_cur);
+     psi_m_hc   = psim_monin_obukhov (h_minus_d / obu_cur);
 
-     psi_c_zref = psic_monin_obukhov (z_minus_d / obu_val);
-     psi_c_hc   = psic_monin_obukhov (h_minus_d / obu_val);
+     psi_c_zref = psic_monin_obukhov (z_minus_d / obu_cur);
+     psi_c_hc   = psic_monin_obukhov (h_minus_d / obu_cur);
 
      ! Calculate u*, T*, q* and Tv*
      zlog = log(z_minus_d/h_minus_d);
@@ -337,7 +346,7 @@ contains
      cturb%ustar(icair)     =  cturb%uref(icair)                       * VKC / (zlog + psim)
      cturb%tstar(icair)     = (cturb%thref(icair) - cturb%tcan(icair)) * VKC / (zlog + psic)
      cturb%qstar(icair)     = (cturb%qref(icair)  - cturb%qcan(icair)) * VKC / (zlog + psic)
-     cturb%obu_ustar(icair) = obu_val
+     cturb%obu_ustar(icair) = obu_cur
 
      ! Aerodynamic conductance
      cturb%gac(icair) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
