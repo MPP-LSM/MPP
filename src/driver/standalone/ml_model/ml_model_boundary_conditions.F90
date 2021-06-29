@@ -49,6 +49,7 @@ contains
 
     call allocate_memory_for_condition(bnd_cond%rhg, ncair)
     call allocate_memory_for_condition(bnd_cond%soilres, ncair)
+    call allocate_memory_for_condition(bnd_cond%soil_tk, ncair)
 
     call allocate_memory_for_condition(int_cond%gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(int_cond%gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
@@ -91,7 +92,7 @@ contains
     PetscInt            :: istep
     Vec                 :: bc_data
     !
-    PetscInt, parameter :: ncol = 20
+    PetscInt, parameter :: ncol = 21
     PetscInt            :: icair, offset, size
     PetscReal, pointer  :: bc_p(:)
     PetscErrorCode      :: ierr
@@ -150,6 +151,8 @@ contains
        call set_value_in_condition(bnd_cond%rhg         , icair, bc_p(offset +  19))
        call set_value_in_condition(bnd_cond%soilres     , icair, bc_p(offset +  20))
 
+       ! 21
+       call set_value_in_condition(bnd_cond%soil_tk     , icair, bc_p(offset +  21))
     end do
 
     call VecRestoreArrayF90(bc_data, bc_p, ierr)

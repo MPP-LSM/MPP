@@ -368,12 +368,13 @@ contains
 
        soe%cturb%soil_rhg(icair) = get_value_from_condition(bnd_cond%rhg, icair)
        soe%cturb%soil_res(icair) = get_value_from_condition(bnd_cond%soilres, icair)
+       soe%cturb%soil_tk(icair) = get_value_from_condition(bnd_cond%soil_tk, icair)
     end do
 
     call set_air_temp_ge_parameters(mlc_mpp)
     call set_air_vapor_ge_parameters(mlc_mpp)
-    call set_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SUN_GE)
-    call set_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SHD_GE)
+    call set_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SUN_GE, istep, isubstep)
+    call set_canopy_leaf_parameters(mlc_mpp, CLEF_TEMP_SHD_GE, istep, isubstep)
 
   end subroutine set_boundary_conditions
 
@@ -504,7 +505,7 @@ contains
   end subroutine set_air_vapor_ge_parameters
 
   !------------------------------------------------------------------------
-  subroutine set_canopy_leaf_parameters(mlc_mpp, ge_rank)
+  subroutine set_canopy_leaf_parameters(mlc_mpp, ge_rank, istep, isubstep)
     !
     ! !DESCRIPTION:
     !
@@ -524,11 +525,18 @@ contains
     class(sysofeqns_mlc_type)  , pointer :: soe
     class(goveqn_base_type)    , pointer :: cur_goveq
     PetscInt                             :: k, i, num_int, icell, icair, itree, offset, count
+    character(len=20)                    :: step_string, substep_string
+    PetscInt :: istep, isubstep
 
     base_soe => mlc_mpp%soe
 
     call base_soe%SetPointerToIthGovEqn(ge_rank, cur_goveq)
 
+    if (output_data .and. ge_rank == CLEF_TEMP_SUN_GE) then
+       write(step_string,*)istep
+       write(substep_string,*)isubstep
+       write(*,*)'mpp.rn{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
+    end if
     select type(cur_goveq)
     class is (goveqn_cleaf_temp_type)
 
@@ -555,6 +563,10 @@ contains
                            get_value_from_condition(int_cond%Ileaf_sun_nir, count) + &
                            get_value_from_condition(int_cond%Labs_leaf_sun       , count)
 
+                      if (output_data) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
+                           get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
+                           get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
+                           get_value_from_condition(int_cond%Labs_leaf_shd       , count)
                    else
                       cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(int_cond%gbh, count + offset)
                       cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(int_cond%gbv, count + offset)
@@ -565,12 +577,17 @@ contains
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count) + &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count) + &
                            get_value_from_condition(int_cond%Labs_leaf_shd       , count)
+                      if (output_data) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
+                           get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
+                           get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
+                           get_value_from_condition(int_cond%Labs_leaf_shd       , count)
                    end if
                 end if
 
              end do
           end do
        end do
+       if (output_data .and. ge_rank == CLEF_TEMP_SHD_GE) write(*,*)'];'
 
     end select
 
