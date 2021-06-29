@@ -51,6 +51,8 @@ contains
     call allocate_memory_for_condition(bnd_cond%soilres, ncair)
     call allocate_memory_for_condition(bnd_cond%soil_tk, ncair)
 
+    call allocate_memory_for_condition(bnd_cond%pref_prev, ncair)
+
     call allocate_memory_for_condition(int_cond%gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(int_cond%gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(int_cond%gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
@@ -83,7 +85,7 @@ contains
   !------------------------------------------------------------------------
   subroutine read_boundary_conditions(istep, bc_data)
     !
-    use ml_model_utils, only : set_value_in_condition
+    use ml_model_utils, only : set_value_in_condition, get_value_from_condition
     use petscsys
     use petscvec
     !
@@ -95,6 +97,7 @@ contains
     PetscInt, parameter :: ncol = 21
     PetscInt            :: icair, offset, size
     PetscReal, pointer  :: bc_p(:)
+    PetscReal           :: pref_prev
     PetscErrorCode      :: ierr
 
     offset = (istep-1)*ncol
@@ -108,6 +111,11 @@ contains
     call VecGetArrayF90(bc_data, bc_p, ierr); CHKERRQ(ierr)
 
     do icair = 1, ncair
+
+       if (istep > 1) then
+          pref_prev = get_value_from_condition(bnd_cond%pref, icair)
+          call set_value_in_condition(bnd_cond%pref_prev, icair, pref_prev)
+       end if
 
        ! 1-2
        call set_value_in_condition(bnd_cond%Iskyb_vis   , icair, bc_p(offset +  1))
@@ -153,6 +161,12 @@ contains
 
        ! 21
        call set_value_in_condition(bnd_cond%soil_tk     , icair, bc_p(offset +  21))
+
+       if (istep == 1) then
+          pref_prev = get_value_from_condition(bnd_cond%pref, icair)
+          call set_value_in_condition(bnd_cond%pref_prev, icair, pref_prev)
+       end if
+
     end do
 
     call VecRestoreArrayF90(bc_data, bc_p, ierr)

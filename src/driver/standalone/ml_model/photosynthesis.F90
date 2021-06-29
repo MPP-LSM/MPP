@@ -315,6 +315,9 @@ contains
                 cur_goveq%aux_vars_in(icell)%o2ref = get_value_from_condition(bnd_cond%o2ref, icair)
 
                 pref_value = get_value_from_condition(bnd_cond%pref, icair)
+                if (isubstep == 1) then
+                   pref_value = get_value_from_condition(bnd_cond%pref_prev, icair)
+                end if
 
                 qair_value = get_value_from_condition(int_cond%qair,  (icair-1)*nz + nbot + k - 2)
                 cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
