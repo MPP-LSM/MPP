@@ -30,6 +30,7 @@ module ml_model_global_vars
      type(condition_type) :: sza
      type(condition_type) :: rhg
      type(condition_type) :: soilres
+     type(condition_type) :: soil_tk
   end type boundary_condition_type
 
   type, public :: internal_condition_type
