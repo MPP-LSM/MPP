@@ -28,7 +28,6 @@ module GoveqnShortwaveType
 
      ! For post-processing of the data to copmute absorbed diffuse radiation:
      ! I_absorbed_d = I_mat_d * Solution + I_rhs
-     PetscBool :: postproc_data_is_set
      Vec :: I_absorbed_d
      Vec :: I_up_dn
      Mat :: I_mat_d
@@ -71,7 +70,6 @@ contains
     nullify(this%aux_vars_in)
     nullify(this%aux_vars_bc)
 
-    this%postproc_data_is_set = PETSC_FALSE
     this%nLeaf = 2
 
   end subroutine ShortwaveSetup
@@ -205,10 +203,7 @@ contains
        end if
     enddo
 
-    if (.not.this%postproc_data_is_set) then
-       call ShortwaveSetupAbsorbedFluxMatAndVec(this)
-       this%postproc_data_is_set = PETSC_TRUE
-    end if
+    call ShortwaveSetupAbsorbedFluxMatAndVec(this)
 
   end subroutine ShortwaveUpdateAuxVars
 
