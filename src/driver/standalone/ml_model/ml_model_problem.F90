@@ -73,7 +73,7 @@ contains
   subroutine read_command_options()
     !
     use ml_model_global_vars, only : ncair, ntree, output_data, bc_file
-    use ml_model_global_vars, only : checkpoint_data, nstep, nsubstep
+    use ml_model_global_vars, only : checkpoint_data, beg_step, end_step, nsubstep
     !
     implicit none
     !
@@ -82,7 +82,8 @@ contains
 
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
-    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-beg_step',beg_step,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-end_step',end_step,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nsubstep',nsubstep,flg,ierr)
 
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_data',output_data,flg,ierr)
@@ -182,7 +183,7 @@ contains
     use mlc                          , only : solve_mlc, checkpoint_mlc
     use ml_model_global_vars         , only : dsai, dlai, dpai, fssh, cumpai, sumpai, leaf_td, ncair, ntree, nz_cair, nbot, ntop
     use ml_model_global_vars         , only : nz_cair, ntree, output_data, bc_file, checkpoint_data
-    use ml_model_global_vars         , only : nstep, nsubstep
+    use ml_model_global_vars         , only : beg_step, end_step, nsubstep
     use petscvec
     !
     implicit none
@@ -212,7 +213,8 @@ contains
 
     ncair           = 1;
     ntree           = 1;
-    nstep           = 1
+    beg_step        = 1
+    end_step        = 1
     nsubstep        = 12
     output_data     = PETSC_FALSE
     checkpoint_data = PETSC_FALSE
@@ -233,11 +235,11 @@ contains
     call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
 
     dt = 3600.d0/nsubstep
-    istep = 1
+    istep = beg_step
     call read_boundary_conditions(istep, bc_data)
     call set_initial_conditions()
 
-    do istep = 1, nstep
+    do istep = beg_step, end_step
        call read_boundary_conditions(istep, bc_data)
        write(*,*)'%istep: ',istep
 

@@ -92,7 +92,7 @@ module ml_model_global_vars
   ! Problem parameters
   PetscInt  :: ncair
   PetscInt  :: ntree
-  PetscInt  :: nstep, nsubstep
+  PetscInt  :: beg_step, end_step, nsubstep
 
   ! Boundary conditions
   type(boundary_condition_type) :: bnd_cond
