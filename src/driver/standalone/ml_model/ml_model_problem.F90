@@ -1,5 +1,9 @@
 module ml_model_problem
 
+#include <petsc/finclude/petsc.h>
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petsclog.h>
+  
   use mpp_varctl                     , only : iulog
   use mpp_abortutils                 , only : endrun
   use mpp_shr_log_mod                , only : errMsg => shr_log_errMsg
@@ -19,8 +23,6 @@ module ml_model_problem
   type(mpp_lbl_type)            :: lbl_mpp
   type(mpp_photosynthesis_type) :: psy_mpp
   type(mpp_mlc_type)            :: mlc_mpp
-
-#include <petsc/finclude/petsc.h>
 
   public :: run_ml_model_problem
 
@@ -187,6 +189,19 @@ contains
     Vec            :: bc_data
     PetscViewer    :: viewer
     PetscErrorCode :: ierr
+    PetscLogEvent :: event_swv
+    PetscLogEvent :: event_lwv
+    PetscLogEvent :: event_lbl
+    PetscLogEvent :: event_phy
+    PetscLogEvent :: event_mlc
+    PetscClassId  :: classid
+
+    classid = 0
+    call PetscLogEventRegister('SWV', classid, event_swv, ierr)
+    call PetscLogEventRegister('LWV', classid, event_lwv, ierr)
+    call PetscLogEventRegister('LBL', classid, event_lbl, ierr)
+    call PetscLogEventRegister('PHY', classid, event_phy, ierr)
+    call PetscLogEventRegister('MLC', classid, event_mlc, ierr)
 
     ncair = 1;
     ntree = 1;
@@ -216,7 +231,9 @@ contains
        write(*,*)'%istep: ',istep
 
        write(*,*)'%  Solving shortwave radiation'
+       call PetscLogEventBegin(event_swv, ierr)
        call solve_swv(swv_mpp, istep, dt)
+       call PetscLogEventEnd(event_swv, ierr)
 
        do isubstep = 1, 12
 
@@ -224,16 +241,24 @@ contains
           dt = 300.d0 ! [sec]
 
           write(*,*)'%    Solving longwave radiation'
+          call PetscLogEventBegin(event_lwv, ierr)
           call solve_lwv(lwv_mpp, istep, isubstep, dt)
+          call PetscLogEventEnd(event_lwv, ierr)
 
           write(*,*)'%    Solving leaf boundary layer'
+          call PetscLogEventBegin(event_lbl, ierr)
           call solve_lbl(lbl_mpp, istep, isubstep,  dt)
+          call PetscLogEventEnd(event_lbl, ierr)
 
           write(*,*)'%    Solving photosynthesis'
+          call PetscLogEventBegin(event_phy, ierr)
           call solve_photosynthesis(psy_mpp, istep, isubstep, dt)
+          call PetscLogEventEnd(event_phy, ierr)
 
           write(*,*)'%    Solving MLC'
+          call PetscLogEventBegin(event_mlc, ierr)
           call solve_mlc(mlc_mpp, istep, isubstep, dt)
+          call PetscLogEventEnd(event_mlc, ierr)
           write(*,*)''
        end do
     end do
