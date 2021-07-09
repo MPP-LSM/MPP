@@ -53,6 +53,9 @@ contains
 
     call allocate_memory_for_condition(bnd_cond%pref_prev, ncair)
 
+    call allocate_memory_for_condition(bnd_cond%fwet, ncair*ntree*(ntop-nbot+1)*nleaf)
+    call allocate_memory_for_condition(bnd_cond%fdry, ncair*ntree*(ntop-nbot+1)*nleaf)
+
     call allocate_memory_for_condition(int_cond%gbh , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(int_cond%gbv , ncair*ntree*(ntop-nbot+1)*nleaf)
     call allocate_memory_for_condition(int_cond%gbc , ncair*ntree*(ntop-nbot+1)*nleaf)
@@ -95,7 +98,7 @@ contains
     Vec                 :: bc_data
     !
     PetscInt, parameter :: ncol = 21
-    PetscInt            :: icair, offset, size
+    PetscInt            :: icair, offset, size, k
     PetscReal, pointer  :: bc_p(:)
     PetscReal           :: pref_prev
     PetscErrorCode      :: ierr
@@ -161,6 +164,19 @@ contains
 
        ! 21
        call set_value_in_condition(bnd_cond%soil_tk     , icair, bc_p(offset +  21))
+
+#if 0
+       idx = offset + 21
+       do k = 1, ncair*ntree*(ntop-nbot+1)*nleaf
+          idx = idx + 1
+          call set_value_in_condition(bnd_cond%fwet, k, bc_p(idx)
+       end do
+
+       do k = 1, ncair*ntree*(ntop-nbot+1)*nleaf
+          idx = idx + 1
+          call set_value_in_condition(bnd_cond%fdry, k, bc_p(idx)
+       end do
+#endif
 
        if (istep == 1) then
           pref_prev = get_value_from_condition(bnd_cond%pref, icair)
