@@ -84,6 +84,7 @@ module ml_model_global_vars
   PetscInt  , parameter :: nveg     = 42
   PetscInt              :: nbot, ntop
   PetscBool             :: output_data
+  PetscBool             :: checkpoint_data
 
   ! Vegetation parameters
   PetscReal, pointer :: dlai(:), dsai(:), dpai(:), sumpai(:), cumpai(:), fssh(:), leaf_td(:)
@@ -91,6 +92,7 @@ module ml_model_global_vars
   ! Problem parameters
   PetscInt  :: ncair
   PetscInt  :: ntree
+  PetscInt  :: nstep, nsubstep
 
   ! Boundary conditions
   type(boundary_condition_type) :: bnd_cond

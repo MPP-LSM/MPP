@@ -73,6 +73,7 @@ contains
   subroutine read_command_options()
     !
     use ml_model_global_vars, only : ncair, ntree, output_data, bc_file
+    use ml_model_global_vars, only : checkpoint_data, nstep, nsubstep
     !
     implicit none
     !
@@ -81,7 +82,12 @@ contains
 
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nstep',nstep,flg,ierr)
+    call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-nsubstep',nsubstep,flg,ierr)
+
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_data',output_data,flg,ierr)
+    call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-checkpoint_data',checkpoint_data,flg,ierr)
+
     call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
     if (.not.flg) then
        write(*,*)'ERROR: Need to specify the boundary condition file via -bc_file <filename>'
@@ -173,9 +179,10 @@ contains
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
     use photosynthesis               , only : solve_photosynthesis
-    use mlc                          , only : solve_mlc
+    use mlc                          , only : solve_mlc, checkpoint_mlc
     use ml_model_global_vars         , only : dsai, dlai, dpai, fssh, cumpai, sumpai, leaf_td, ncair, ntree, nz_cair, nbot, ntop
-    use ml_model_global_vars         , only : nz_cair, ntree, output_data, bc_file
+    use ml_model_global_vars         , only : nz_cair, ntree, output_data, bc_file, checkpoint_data
+    use ml_model_global_vars         , only : nstep, nsubstep
     use petscvec
     !
     implicit none
@@ -203,9 +210,12 @@ contains
     call PetscLogEventRegister('PHY', classid, event_phy, ierr)
     call PetscLogEventRegister('MLC', classid, event_mlc, ierr)
 
-    ncair = 1;
-    ntree = 1;
-    output_data = PETSC_FALSE
+    ncair           = 1;
+    ntree           = 1;
+    nstep           = 1
+    nsubstep        = 12
+    output_data     = PETSC_FALSE
+    checkpoint_data = PETSC_FALSE
 
     call read_command_options()
     call read_namelist_file(namelist_filename)
@@ -222,11 +232,12 @@ contains
     call VecLoad(bc_data, viewer, ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
 
+    dt = 3600.d0/nsubstep
     istep = 1
     call read_boundary_conditions(istep, bc_data)
     call set_initial_conditions()
 
-    do istep = 1, 1
+    do istep = 1, nstep
        call read_boundary_conditions(istep, bc_data)
        write(*,*)'%istep: ',istep
 
@@ -235,7 +246,7 @@ contains
        call solve_swv(swv_mpp, istep, dt)
        call PetscLogEventEnd(event_swv, ierr)
 
-       do isubstep = 1, 12
+       do isubstep = 1, nsubstep
 
           write(*,*)'%    isubstep:',isubstep
           dt = 300.d0 ! [sec]
@@ -261,6 +272,10 @@ contains
           call PetscLogEventEnd(event_mlc, ierr)
           write(*,*)''
        end do
+
+       if (checkpoint_data) then
+          call checkpoint_mlc(mlc_mpp, istep, isubstep-1)
+       end if
     end do
 
   end subroutine run_ml_model_problem
