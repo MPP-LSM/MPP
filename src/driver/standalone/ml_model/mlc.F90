@@ -17,6 +17,7 @@ module mlc
   public :: init_mlc
   public :: mlc_set_initial_conditions
   public :: extract_data_from_mlc
+  public :: checkpoint_mlc
 
 contains
 
@@ -796,5 +797,27 @@ contains
 
   end subroutine solve_mlc
 
+  !------------------------------------------------------------------------
+  subroutine checkpoint_mlc(mlc_mpp, istep, isubstep)
+    !
+    implicit none
+    !
+    class(mpp_mlc_type) :: mlc_mpp
+    PetscInt            :: isubstep, istep
+    !
+    character(len=240)  :: step_string, substep_string, filename
+    PetscViewer         :: viewer
+    PetscErrorCode      :: ierr
+
+    write(step_string,*)istep
+    write(substep_string,*)isubstep
+    write(filename,*)'mlc_checkpoint.' // trim(adjustl(step_string)) // '.' //trim(adjustl(substep_string)) // '.bin'
+    write(*,*)'filename: ',trim(adjustl(filename))
+    
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(adjustl(filename)), FILE_MODE_WRITE, viewer, ierr); CHKERRA(ierr)
+    call VecView(mlc_mpp%soe%solver%soln, viewer, ierr); CHKERRA(ierr)
+    call PetscViewerDestroy(viewer, ierr); CHKERRA(ierr)
+
+  end subroutine checkpoint_mlc
 
 end module mlc
