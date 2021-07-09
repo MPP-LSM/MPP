@@ -239,8 +239,7 @@ contains
        factor     = 1.d0/ (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR)*qref_value)
        soe%cturb%qref(icair) = qref_value! * factor
        soe%cturb%qcan(icair) = qref_value! * factor
-
-
+       
        call soe%cturb%ComputeDerivedAtmInputs(icair)
 
        soe%cturb%tcan(icair) = soe%cturb%tref(icair)
@@ -800,22 +799,88 @@ contains
   !------------------------------------------------------------------------
   subroutine checkpoint_mlc(mlc_mpp, istep, isubstep)
     !
+    use SystemOfEquationsBaseType       , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
+    use ml_model_global_vars            , only : nbot, ntop, ncair, ntree, nz_cair, output_data
     implicit none
     !
     class(mpp_mlc_type) :: mlc_mpp
     PetscInt            :: isubstep, istep
     !
-    character(len=240)  :: step_string, substep_string, filename
-    PetscViewer         :: viewer
-    PetscErrorCode      :: ierr
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
+    PetscViewer                          :: viewer
+    PetscErrorCode                       :: ierr
+    PetscInt                             :: nDM
+    DM                         , pointer :: dms(:)
+    Vec                        , pointer :: soln_subvecs(:)
+    PetscReal                  , pointer :: c_p(:), s_p(:)
+    character(len=240)                   :: step_string , substep_string, filename
+    Vec                                  :: checkpoint_vec
+    PetscInt                             :: ii, kk, icair, offset
 
     write(step_string,*)istep
     write(substep_string,*)isubstep
     write(filename,*)'mlc_checkpoint.' // trim(adjustl(step_string)) // '.' //trim(adjustl(substep_string)) // '.bin'
     write(*,*)'filename: ',trim(adjustl(filename))
     
+    base_soe => mlc_mpp%soe
+
+    select type(base_soe)
+    class is (sysofeqns_mlc_type)
+       soe => base_soe
+    class default
+       write(iulog,*) 'Unsupported class type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    call VecCreate(PETSC_COMM_SELF, checkpoint_vec, ierr); CHKERRA(ierr)
+    call VecSetSizes(checkpoint_vec, 93*5, PETSC_DECIDE, ierr); CHKERRA(ierr)
+    call VecSetFromOptions(checkpoint_vec, ierr); CHKERRA(ierr)
+
+    call VecGetArrayF90(checkpoint_vec, c_p, ierr)
+    icair = 1;
+    offset = 0
+    do kk = 1, nz_cair + 1
+       c_p(kk + offset) = soe%cturb%wind(icair,kk)
+    end do
+
+    ! Find number of GEs packed within the SoE
+    call DMCompositeGetNumberDM(mlc_mpp%soe%solver%dm, nDM, ierr)
+
+    ! Get DMs for each GE
+    allocate (dms(nDM))
+    call DMCompositeGetEntriesArray(mlc_mpp%soe%solver%dm, dms, ierr)
+
+    ! Allocate vectors for individual GEs
+    allocate(soln_subvecs(nDM))
+
+    ! Get solution vectors for individual GEs
+    call DMCompositeGetAccessArray(mlc_mpp%soe%solver%dm, &
+         mlc_mpp%soe%solver%soln, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    offset = nz_cair + 1
+    do ii = 1, nDM
+       call VecGetArrayF90(soln_subvecs(ii), s_p, ierr)
+       do kk = 1, nz_cair + 1
+          c_p(kk + offset) = s_p(kk)
+       end do
+       offset = offset + nz_cair + 1
+       call VecRestoreArrayF90(soln_subvecs(ii), s_p, ierr)
+    enddo
+
+    ! Restore solution vectors for individual GEs
+    call DMCompositeRestoreAccessArray(mlc_mpp%soe%solver%dm, &
+         mlc_mpp%soe%solver%soln, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    deallocate(dms)
+
+    call VecRestoreArrayF90(checkpoint_vec, c_p, ierr)
+
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(adjustl(filename)), FILE_MODE_WRITE, viewer, ierr); CHKERRA(ierr)
-    call VecView(mlc_mpp%soe%solver%soln, viewer, ierr); CHKERRA(ierr)
+    call VecView(checkpoint_vec, viewer, ierr); CHKERRA(ierr)
     call PetscViewerDestroy(viewer, ierr); CHKERRA(ierr)
 
   end subroutine checkpoint_mlc
