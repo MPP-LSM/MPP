@@ -115,11 +115,6 @@ contains
 
     do icair = 1, ncair
 
-       if (istep > 1) then
-          pref_prev = get_value_from_condition(bnd_cond%pref, icair)
-          call set_value_in_condition(bnd_cond%pref_prev, icair, pref_prev)
-       end if
-
        ! 1-2
        call set_value_in_condition(bnd_cond%Iskyb_vis   , icair, bc_p(offset +  1))
        call set_value_in_condition(bnd_cond%Iskyb_nir   , icair, bc_p(offset +  2))
@@ -180,8 +175,10 @@ contains
 
        if (istep == 1) then
           pref_prev = get_value_from_condition(bnd_cond%pref, icair)
-          call set_value_in_condition(bnd_cond%pref_prev, icair, pref_prev)
+       else
+          pref_prev = bc_p( (istep - 2)*ncol + 8)
        end if
+       call set_value_in_condition(bnd_cond%pref_prev, icair, pref_prev)
 
     end do
 
