@@ -71,6 +71,7 @@ module ml_model_global_vars
   end type internal_condition_type
   
   character(len=1024) :: bc_file
+  character(len=1024) :: ic_file
 
   ! Mesh attributes
   PetscInt  , parameter :: nx       = 1
@@ -85,6 +86,7 @@ module ml_model_global_vars
   PetscInt              :: nbot, ntop
   PetscBool             :: output_data
   PetscBool             :: checkpoint_data
+  PetscBool             :: use_ic
 
   ! Vegetation parameters
   PetscReal, pointer :: dlai(:), dsai(:), dpai(:), sumpai(:), cumpai(:), fssh(:), leaf_td(:)
