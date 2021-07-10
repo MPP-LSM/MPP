@@ -72,7 +72,7 @@ contains
   !------------------------------------------------------------------------
   subroutine read_command_options()
     !
-    use ml_model_global_vars, only : ncair, ntree, output_data, bc_file
+    use ml_model_global_vars, only : ncair, ntree, output_data, bc_file, ic_file, use_ic
     use ml_model_global_vars, only : checkpoint_data, beg_step, end_step, nsubstep
     !
     implicit none
@@ -88,6 +88,8 @@ contains
 
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_data',output_data,flg,ierr)
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-checkpoint_data',checkpoint_data,flg,ierr)
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ic_file',ic_file,flg,ierr)
+    if (flg) use_ic = PETSC_TRUE
 
     call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
     if (.not.flg) then
@@ -167,6 +169,63 @@ contains
   end subroutine set_initial_conditions
 
   !------------------------------------------------------------------------
+  subroutine initialize_from_checkpoint()
+    !
+    use mlc                       , only : mlc_initialize_from_checkpoint
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair, ic_file
+    use ml_model_global_vars      , only : bnd_cond, int_cond
+    use ml_model_utils            , only : get_value_from_condition
+    use ml_model_utils            , only : set_value_in_condition
+    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
+    !
+    implicit none
+    !
+    PetscInt           :: icair, itree, k, idx_leaf, idx_air
+    PetscReal          :: tsun_value, tsha_value, tair_value, wind_value, qair_value, factor
+    Vec                :: ic_data
+    PetscInt           :: offset
+    PetscViewer        :: viewer
+    PetscErrorCode     :: ierr
+    PetscReal, pointer :: ic_p(:)
+
+    ! Load boundary condition data
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, ic_file, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
+    call VecCreate(PETSC_COMM_WORLD, ic_data, ierr);CHKERRQ(ierr)
+    call VecLoad(ic_data, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
+
+    call VecGetArrayF90(ic_data, ic_p, ierr); CHKERRA(ierr)
+
+    idx_leaf = 0
+    idx_air  = 0
+    icair = 1;
+    do k = 1, nz_cair+1
+       if (k > 1) then
+          idx_air = (icair-1)*ncair + (k-1)
+          offset = 0            ; wind_value = ic_p(k + offset);
+          offset = (nz_cair+1)  ; tair_value = ic_p(k + offset);
+          offset = (nz_cair+1)*2; qair_value = ic_p(k + offset);
+          offset = (nz_cair+1)*3; tsun_value = ic_p(k + offset);
+          offset = (nz_cair+1)*4; tsha_value = ic_p(k + offset);
+
+          call set_value_in_condition(int_cond%Tair, idx_air, tair_value)
+          call set_value_in_condition(int_cond%Wind, idx_air, wind_value)
+          call set_value_in_condition(int_cond%qair, idx_air, qair_value)
+          if (k >= nbot .and. k <= ntop) then
+             idx_leaf = idx_leaf + 1
+             call set_value_in_condition(int_cond%Tleaf_sun, idx_leaf, tsun_value)
+             call set_value_in_condition(int_cond%Tleaf_shd, idx_leaf, tsha_value)
+          end if
+       end if
+    end do
+
+    call VecRestoreArrayF90(ic_data, ic_p, ierr); CHKERRA(ierr)
+
+    call mlc_initialize_from_checkpoint(mlc_mpp)
+
+  end subroutine initialize_from_checkpoint
+
+  !------------------------------------------------------------------------
   subroutine run_ml_model_problem(namelist_filename)
     !
     use ml_model_boundary_conditions , only : read_boundary_conditions, allocate_memory
@@ -182,7 +241,7 @@ contains
     use photosynthesis               , only : solve_photosynthesis
     use mlc                          , only : solve_mlc, checkpoint_mlc
     use ml_model_global_vars         , only : dsai, dlai, dpai, fssh, cumpai, sumpai, leaf_td, ncair, ntree, nz_cair, nbot, ntop
-    use ml_model_global_vars         , only : nz_cair, ntree, output_data, bc_file, checkpoint_data
+    use ml_model_global_vars         , only : nz_cair, ntree, output_data, bc_file, checkpoint_data, use_ic
     use ml_model_global_vars         , only : beg_step, end_step, nsubstep
     use petscvec
     !
@@ -218,6 +277,7 @@ contains
     nsubstep        = 12
     output_data     = PETSC_FALSE
     checkpoint_data = PETSC_FALSE
+    use_ic          = PETSC_FALSE
 
     call read_command_options()
     call read_namelist_file(namelist_filename)
@@ -237,7 +297,12 @@ contains
     dt = 3600.d0/nsubstep
     istep = beg_step
     call read_boundary_conditions(istep, bc_data)
-    call set_initial_conditions()
+
+    if (.not.use_ic) then
+       call set_initial_conditions()
+    else
+       call initialize_from_checkpoint()
+    end if
 
     do istep = beg_step, end_step
        call read_boundary_conditions(istep, bc_data)

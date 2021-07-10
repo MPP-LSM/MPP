@@ -16,6 +16,7 @@ module mlc
 
   public :: init_mlc
   public :: mlc_set_initial_conditions
+  public :: mlc_initialize_from_checkpoint
   public :: extract_data_from_mlc
   public :: checkpoint_mlc
 
@@ -290,6 +291,153 @@ contains
     call mlc_mpp%soe%PreSolve()
 
   end subroutine mlc_set_initial_conditions
+
+  !------------------------------------------------------------------------
+  subroutine mlc_initialize_from_checkpoint(mlc_mpp)
+    !
+    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
+    use ml_model_global_vars      , only : ic_file
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType      , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType       , only : sysofeqns_mlc_type
+    use ml_model_utils                 , only : get_value_from_condition
+    use GoverningEquationBaseType      , only : goveqn_base_type
+    use GoveqnCanopyAirVaporType       , only : goveqn_cair_vapor_type
+    use GoveqnCanopyAirTemperatureType , only : goveqn_cair_temp_type
+    use ml_model_global_vars           , only : nz_cair
+    !
+    ! !ARGUMENTS
+    implicit none
+    !
+    type(mpp_mlc_type) :: mlc_mpp
+    !
+    class(sysofeqns_base_type) , pointer :: base_soe
+    class(sysofeqns_mlc_type)  , pointer :: soe
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscReal                            :: relhum, eref, esat, desatdt
+    PetscInt                             :: icair
+    PetscInt                             :: nDM
+    DM                         , pointer :: dms(:)
+    Vec                        , pointer :: soln_subvecs(:)
+    PetscReal                  , pointer :: v_p(:), ic_p(:)
+    Vec                                  :: ic_data
+    PetscInt                             :: ii, k, offset_ic
+    PetscViewer                          :: viewer
+    PetscInt                             :: soe_auxvar_id
+    PetscErrorCode                       :: ierr
+    PetscReal                            :: qref_value, factor
+
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, ic_file, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
+    call VecCreate(PETSC_COMM_WORLD, ic_data, ierr);CHKERRQ(ierr)
+    call VecLoad(ic_data, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
+
+    call VecGetArrayF90(ic_data, ic_p, ierr); CHKERRA(ierr)
+
+    base_soe => mlc_mpp%soe
+
+    select type(base_soe)
+    class is (sysofeqns_mlc_type)
+       soe => base_soe
+    class default
+       write(iulog,*) 'Unsupported class type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+    call base_soe%SetPointerToIthGovEqn(CAIR_TEMP_GE, cur_goveq)
+    select type(cur_goveq)
+    class is (goveqn_cair_temp_type)
+       cur_goveq%aux_vars_in(ntop)%temperature = get_value_from_condition(int_cond%Tair, ntop)
+    end select
+
+    call base_soe%SetPointerToIthGovEqn(CAIR_VAPR_GE, cur_goveq)
+    select type(cur_goveq)
+    class is (goveqn_cair_vapor_type)
+       cur_goveq%aux_vars_in(ntop)%qair = get_value_from_condition(int_cond%qair, ntop)
+    end select
+
+    do icair = 1, ncair
+       soe%cturb%pref(icair) = get_value_from_condition(bnd_cond%pref, icair)
+       soe%cturb%uref(icair) = get_value_from_condition(bnd_cond%uref, icair)
+       soe%cturb%tref(icair) = get_value_from_condition(bnd_cond%tref, icair)
+       soe%cturb%rhref(icair)= 80.d0
+
+       offset_ic = 0
+       do k = 1, nz_cair + 1
+          soe%cturb%wind(icair,k) = ic_p(offset_ic + k)
+       end do
+
+       qref_value = get_value_from_condition(bnd_cond%qref, icair)
+       soe%cturb%qref(icair) = qref_value
+       soe%cturb%qcan(icair) = get_value_from_condition(int_cond%qair, ntop)
+
+       call soe%cturb%ComputeDerivedAtmInputs(icair)
+
+       soe%cturb%tcan(icair) = get_value_from_condition(int_cond%tair, ntop)
+    end do
+
+    ! Find number of GEs packed within the SoE
+    call DMCompositeGetNumberDM(mlc_mpp%soe%solver%dm, nDM, ierr)
+
+    ! Get DMs for each GE
+    allocate (dms(nDM))
+    call DMCompositeGetEntriesArray(mlc_mpp%soe%solver%dm, dms, ierr)
+
+    ! Allocate vectors for individual GEs
+    allocate(soln_subvecs(nDM))
+
+    ! Get solution vectors for individual GEs
+    call DMCompositeGetAccessArray(mlc_mpp%soe%solver%dm, &
+         mlc_mpp%soe%solver%soln, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    icair = 1;
+    do ii = 1, nDM
+       call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
+
+       if (ii == CAIR_TEMP_GE) then
+          offset_ic = (nz_cair + 1)*1
+          do k = 1, nz_cair + 1
+             v_p(k) = ic_p(offset_ic + k)
+          end do
+          call set_value_in_condition(bnd_cond%tg, icair, v_p(1))
+       else if (ii == CAIR_VAPR_GE) then
+          offset_ic = (nz_cair + 1)*2
+          do k = 1, nz_cair + 1
+             v_p(k) = ic_p(offset_ic + k)
+          end do
+       else if (ii == CLEF_TEMP_SUN_GE) then
+          offset_ic = (nz_cair + 1)*3
+          do k = 1, nz_cair + 1
+             v_p(k) = ic_p(offset_ic + k)
+          end do
+       else if (ii == CLEF_TEMP_SHD_GE) then
+          offset_ic = (nz_cair + 1)*4
+          do k = 1, nz_cair + 1
+             v_p(k) = ic_p(offset_ic + k)
+          end do
+       endif
+       call VecRestoreArrayF90(soln_subvecs(ii), v_p, ierr)
+    enddo
+
+    ! Restore solution vectors for individual GEs
+    call DMCompositeRestoreAccessArray(mlc_mpp%soe%solver%dm, &
+         mlc_mpp%soe%solver%soln, nDM, &
+         PETSC_NULL_INTEGER, soln_subvecs, ierr)
+
+    deallocate(dms)
+
+    call VecRestoreArrayF90(ic_data, ic_p, ierr); CHKERRA(ierr)
+
+    call VecCopy(mlc_mpp%soe%solver%soln, mlc_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call VecCopy(mlc_mpp%soe%solver%soln, mlc_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
+
+    call mlc_mpp%soe%PreSolve()
+
+  end subroutine mlc_initialize_from_checkpoint
 
  !------------------------------------------------------------------------
   subroutine set_boundary_conditions(mlc_mpp, istep, isubstep)
