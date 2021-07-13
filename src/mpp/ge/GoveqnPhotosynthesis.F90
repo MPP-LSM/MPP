@@ -149,7 +149,12 @@ contains
     call VecGetArrayF90(F, f_p, ierr); CHKERRQ(ierr)
 
     do icell = 1, this%mesh%ncells_local
-    
+
+       if (.not. this%mesh%is_active(icell)) then
+          f_p(icell) = 0.d0
+          cycle
+       end if
+
        select case (avars(icell)%gstype)
        case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
           do idof = 1,this%dof
@@ -344,6 +349,10 @@ contains
           end select
 
           idx = (icell-1)*this%dof + idof
+
+          if (.not.this%mesh%is_active(icell)) then
+             value = 1.d0
+          end if
           call MatSetValuesLocal(B, 1, idx - 1, 1, idx - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
        enddo
     end do
