@@ -103,6 +103,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
     use WaterVaporMod        , only : SatVap
     use ml_model_meshes      , only : nleaf
     !
@@ -122,6 +123,8 @@ contains
     c3psn  = VAR_PHOTOSYNTHETIC_PATHWAY_C4
     c3psn  = VAR_PHOTOSYNTHETIC_PATHWAY_C3
     gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    gstype = VAR_STOMATAL_CONDUCTANCE_BBERRY
+    gstype = VAR_WUE
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 
@@ -248,7 +251,7 @@ contains
     use ConditionType                       , only : condition_type
     use ConnectionSetType                   , only : connection_set_type
     use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
-    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
     use MultiPhysicsProbConstants           , only : TFRZ
     use WaterVaporMod                       , only : SatVap
     use ml_model_utils                      , only : get_value_from_condition
@@ -268,6 +271,7 @@ contains
     PetscReal                              :: qair_value , pref_value
     PetscReal                  , pointer   :: tleaf_local(:)
     PetscReal                  , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
+    PetscBool                              :: bounded
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 
@@ -318,9 +322,19 @@ contains
                 if (isubstep == 1) then
                    pref_value = get_value_from_condition(bnd_cond%pref_prev, icair)
                 end if
+                cur_goveq%aux_vars_in(icell)%pref = pref_value
 
                 qair_value = get_value_from_condition(int_cond%qair,  (icair-1)*nz + nbot + k - 2)
                 cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
+
+                cur_goveq%aux_vars_in(icell)%ci = get_value_from_condition(bnd_cond%co2ref, icair)
+
+                if (cur_goveq%aux_vars_in(icell)%gstype == VAR_WUE) then
+                   ! Set cell active/inactive if the solution is bounded/unbounded
+                   call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
+                   cur_goveq%mesh%is_active(icell) = bounded
+                end if
+
              end do
           end do
        end do
@@ -363,6 +377,8 @@ contains
     use SystemOfEquationsBaseType , only : sysofeqns_base_type
     use ml_model_utils            , only : get_value_from_condition
     use ml_model_meshes           , only : nleaf
+    use ml_model_global_vars      , only : gstype
+    use MultiPhysicsProbConstants , only : VAR_WUE
     !
     ! !ARGUMENTS
     implicit none
@@ -417,7 +433,11 @@ contains
           do k = 1, nz
              do ileaf = 1, nleaf
                 icell = icell + 1
-                v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
+                if (gstype == VAR_WUE) then
+                   v_p(icell) = 0.002d0
+                else
+                   v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
+                endif
              end do
           end do
        end do
