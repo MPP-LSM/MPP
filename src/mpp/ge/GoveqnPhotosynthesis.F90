@@ -178,11 +178,7 @@ contains
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof
-             term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
-             term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-             term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
-
-             f_p(icell) = avars(icell)%iota - term1 * term2 * term3
+             f_p(icell) = avars(icell)%residual_wue(idof)
           end do
 
        case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
@@ -248,7 +244,8 @@ contains
     PetscReal                                 :: term1_2, term2_2, term3_2
     PetscReal                                 :: dterm1_dci, dterm2_dci, dterm3_dci
     PetscReal, pointer                        :: f_p(:)
-    PetscReal                                 :: ci_perturb
+    PetscReal                                 :: ci_perturb, gs_perturb
+    PetscReal                                 :: res_1, res_2, gs_1, gs_2
 
     ! F(ci) = An(ci) - gleaf(ci) * (ca - ci)
     !
@@ -267,36 +264,40 @@ contains
                (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) .or. &
                (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
              ci_perturb = -1.e-14
+             gs_perturb = -1.e-14
           else
              ci_perturb = -1.e-7
+             gs_perturb = -1.e-8
           endif
 
-          an_1    = avars(icell)%an(idof)
-          ci_1    = avars(icell)%ci(idof)
-          gleaf_1 = avars(icell)%gleaf_c(idof)
+          if (.not. (avars(icell)%gstype == VAR_WUE)) then
+             an_1    = avars(icell)%an(idof)
+             ci_1    = avars(icell)%ci(idof)
+             gleaf_1 = avars(icell)%gleaf_c(idof)
 
-          term1_1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
-          term2_1 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-          term3_1 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+             term1_1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+             term2_1 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+             term3_1 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-          ileaf = 1
-          psi_term_1 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
+             ileaf = 1
+             psi_term_1 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
 
-          avars(icell)%ci(idof) = ci_1 - ci_perturb
-          call avars(icell)%AuxVarCompute()
+             avars(icell)%ci(idof) = ci_1 - ci_perturb
+             call avars(icell)%AuxVarCompute()
 
-          an_2    = avars(icell)%an(idof)
-          ci_2    = avars(icell)%ci(idof)
-          gleaf_2 = avars(icell)%gleaf_c(idof)
+             an_2    = avars(icell)%an(idof)
+             ci_2    = avars(icell)%ci(idof)
+             gleaf_2 = avars(icell)%gleaf_c(idof)
 
-          term1_2 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
-          term2_2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-          term3_2 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
+             term1_2 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
+             term2_2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
+             term3_2 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-          psi_term_2 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
+             psi_term_2 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
 
-          avars(icell)%ci(idof) = ci_1
-          call avars(icell)%AuxVarCompute()
+             avars(icell)%ci(idof) = ci_1
+             call avars(icell)%AuxVarCompute()
+          endif
 
           select case (avars(icell)%gstype)
           case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
@@ -319,16 +320,16 @@ contains
              end if
 
           case (VAR_WUE)
+             res_1 = avars(icell)%residual_wue(idof)
+             gs_1  = avars(icell)%gs(idof)
 
-             dterm1_dci = (term1_1 - term1_2)/ci_perturb
-             dterm2_dci = (term2_1 - term2_2)/ci_perturb
-             dterm3_dci = (term3_1 - term3_2)/ci_perturb
+             avars(icell)%gs = gs_1 - gs_perturb
+             call avars(icell)%AuxVarCompute()
+             res_2 = avars(icell)%residual_wue(idof)
+             value = (res_1 - res_2)/gs_perturb
 
-             !f_p = iota - term1 * term2 * term3
-             value = &
-                  - dterm1_dci * term2_1    * term3_1    &
-                  - term1_1    * dterm2_dci * term3_1    &
-                  - term1_1    * term2_1    * dterm3_dci
+             avars(icell)%gs = gs_1
+             call avars(icell)%AuxVarCompute()
 
           case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
@@ -373,7 +374,12 @@ contains
    !
    ! !USES:
    !
-   implicit none
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants, only : VAR_WUE
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    !
+    implicit none
    !
    ! !ARGUMENTS
    class(goveqn_photosynthesis_type) :: this
@@ -392,9 +398,25 @@ contains
    call VecGetArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)
 
    do ghosted_id = 1, this%mesh%ncells_local
-      do idof = 1, this%dof
-         this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
-      end do
+
+      select case (this%aux_vars_in(ghosted_id)%gstype)
+      case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+         do idof = 1, this%dof
+            this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+         end do
+      case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+         do idof = 1, this%dof
+            this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+         end do
+      case (VAR_WUE)
+         do idof = 1, this%dof
+            this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
+         end do
+      case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+         do idof = 1, this%dof
+            this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+         end do
+      end select
    end do
 
    call VecRestoreArrayReadF90(x, x_p, ierr); CHKERRQ(ierr)

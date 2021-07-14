@@ -157,6 +157,7 @@ module PhotosynthesisAuxType
      PetscReal           :: etflx      ! Leaf transpiration flux (mol H2O/m2 leaf/s)
 
      PetscReal           :: iota       ! stomatal efficiency (umol CO2/ mol H2O)
+     PetscReal , pointer :: residual_wue(:) ! residual for WUE equation (umol CO2/ mol H2O)
 
      PetscReal , pointer :: dac_dci(:) ! deriavate of leaf rubisco-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
      PetscReal , pointer :: daj_dci(:) ! deriavate of leaf RuBP-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
@@ -172,8 +173,9 @@ module PhotosynthesisAuxType
 
    contains
 
-     procedure, public :: Init          => PhotosynthesisInit
-     procedure, public :: AuxVarCompute => PhotosynthesisAuxVarCompute
+     procedure, public :: Init                 => PhotosynthesisInit
+     procedure, public :: AuxVarCompute        => PhotosynthesisAuxVarCompute
+     procedure, public :: IsWUESolutionBounded => PhotosynthesisIsWUESolutionBounded
 
   end type photosynthesis_auxvar_type
 
@@ -182,6 +184,9 @@ module PhotosynthesisAuxType
   private :: fth25 ! scaling factor for photosynthesis temperature inhibition
 
   PetscReal, parameter :: gs_min = 1.d-6
+  PetscReal, parameter :: gs_min_wue = 0.002d0
+  PetscReal, parameter :: gs_max_wue = 2.0d0
+  PetscReal, parameter :: gs_delta_wue = 0.001d0
 
 contains
 
@@ -418,6 +423,7 @@ contains
     this%etflx   = 0.d0
 
     this%iota    = 750.d0
+    allocate(this%residual_wue(ndof))
 
     allocate(this%dac_dci(ndof))
     allocate(this%daj_dci(ndof))
@@ -658,6 +664,56 @@ contains
     implicit none
     !
     ! !ARGUMENTS
+    class(photosynthesis_auxvar_type)    :: this
+    !
+    class(plant_auxvar_type) , pointer   :: plant
+    PetscInt                             :: ileaf, idof
+    PetscReal                            :: t1, t2, t3, a, b, dy, head
+    PetscReal                            :: an, gbc, delta_c
+    PetscReal                            :: gs_val, an_low, an_high, check
+    PetscReal                , parameter :: g = 9.80665d0
+    PetscReal                , parameter :: denh2o = 1000.d0
+
+    select case (this%gstype)
+    case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+       call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
+
+    case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+       call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
+
+    case (VAR_WUE)
+       idof = 1
+       gs_val = this%gs(idof)
+
+       this%gs(idof) = gs_val - gs_delta_wue
+       call PhotosynthesisAuxVarCompute_WUE(this)
+       an_low = this%an(idof)
+
+       this%gs(idof) = gs_val
+       call PhotosynthesisAuxVarCompute_WUE(this)
+       an_high = this%an(idof)
+
+       this%residual_wue(idof) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
+    case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+       call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
+
+    end select
+  end subroutine PhotosynthesisAuxVarCompute
+
+    !------------------------------------------------------------------------
+  subroutine PhotosynthesisAuxVarCompute_SemiEmpirical(this)
+    !
+    ! !DESCRIPTION:
+    ! Computes various secondary quantities (sat, den, etc) based on
+    ! the primary quantity (pressure).
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : TFRZ
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
     class(photosynthesis_auxvar_type) :: this
     !
     PetscReal                            :: t1, t2, t3, a, b, dy, head
@@ -715,7 +771,7 @@ contains
 
           do idof = 1, this%ndof
              if (this%gs(idof) > 0.d0) then
-                This%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
+                this%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
                 this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
              else
                 this%gleaf_c(idof) = 0.d0
@@ -736,27 +792,6 @@ contains
                 this%gleaf_w(idof) = 0.d0
              end if
           enddo
-
-      case (VAR_WUE)
-
-         do idof = 1, this%ndof
-            an = this%an(idof)
-            if (an > 0.d0) then
-               delta_c = this%cair - this%ci(idof)
-               gbc = this%gbc
-               this%gs(idof) = 1.6d0/ (delta_c/an - 1.d0/gbc )
-            else
-               this%gs(idof) = gs_min
-            end if
-
-            if (this%gs(idof) > 0.d0) then
-               this%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
-               this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
-            else
-               this%gleaf_c(idof) = 0.d0
-               this%gleaf_w(idof) = 0.d0
-            end if
-         enddo
 
        case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
@@ -801,7 +836,83 @@ contains
        call exit(0)
     end if
 
-  end subroutine PhotosynthesisAuxVarCompute
+  end subroutine PhotosynthesisAuxVarCompute_SemiEmpirical
+
+    !------------------------------------------------------------------------
+  subroutine PhotosynthesisAuxVarCompute_WUE(this)
+    !
+    ! !DESCRIPTION:
+    ! Computes various secondary quantities (sat, den, etc) based on
+    ! the primary quantity (pressure).
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants , only : TFRZ
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type) :: this
+    !
+    PetscReal                            :: t1, t2, t3, a, b, dy, head
+    PetscReal                            :: an, gbc, delta_c
+    PetscInt                             :: ileaf, idof
+    class(plant_auxvar_type) , pointer   :: plant
+    PetscReal                , parameter :: g = 9.80665d0
+    PetscReal                , parameter :: denh2o = 1000.d0
+
+    if (this%pathway_and_stomatal_params_defined  == 0) then
+       call SetPathwayParameters(this)
+       call SetStomatalConductanceParameters(this)
+       this%pathway_and_stomatal_params_defined = 1
+    end if
+
+    if (this%dpai > 0.d0) then
+
+       call ComputeSoilResistance(this)
+
+       select case(this%c3psn)
+       case (VAR_PHOTOSYNTHETIC_PATHWAY_C4)
+          write(*,*)'PhotosynthesisAuxVarCompute2 not implemented for C4'
+          call exit(0)
+
+       case (VAR_PHOTOSYNTHETIC_PATHWAY_C3)
+
+          call C3_Temperature_Response(this)
+          call Compute_Electron_Transport_Rate(this)
+          call C3_Net_Assimilation_From_Gs(this)
+
+       end select
+
+       ! CO2 at leaf surface
+       do idof = 1, this%ndof
+          this%cs = max(this%cair - this%an(idof)/this%gbc, 1.d0)
+       end do
+
+       ! Saturation vapor pressure at leaf temperature
+       call SatVap (this%tleaf, this%esat, this%desat)
+
+       ! Constrain eair >= 0.05*esat[tleaf] so that solution does not blow up. This 
+       ! ensures that hs does not go to zero. Also eair <= esat[tleaf] so that hs <= 1. 
+       this%ceair = min( max(this%eair, 0.20d0*this%esat), this%esat )
+
+       ! Constrain the vapor pressure to be less than equal to leaf esat
+       this%ceair = min( this%eair, this%esat )
+
+       select case(this%gstype)
+       case (VAR_WUE)
+          do idof = 1, this%ndof
+             this%hs = (this%gbv * this%eair + this%gs(idof) * this%esat)/((this%gbv + this%gs(idof)) * this%esat)
+             this%vpd = max((this%esat - this%hs * this%esat), 0.1d0)/this%pref
+          end do
+       end select
+
+    else
+       write(iulog,*)'PhotosynthesisAuxVarCompute: Add code when dapi = 0.d0'
+       call exit(0)
+    end if
+
+  end subroutine PhotosynthesisAuxVarCompute_WUE
 
   !------------------------------------------------------------------------
 
@@ -1117,6 +1228,93 @@ contains
   end subroutine C3_Net_Assimilation
 
   !------------------------------------------------------------------------
+
+  subroutine C3_Net_Assimilation_From_Gs(this)
+    !
+    use MathUtilsMod, only : quadratic
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type) :: this
+    !
+    PetscReal                         :: a, b
+    PetscReal                         :: aquad, bquad, cquad
+    PetscReal                         :: root1, root2, denom
+    PetscInt                          :: idof
+    PetscReal, parameter              :: ci_min = 1.d0
+
+    do idof = 1, this%ndof
+
+       this%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
+       this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
+
+       ! Rubisco-limited photosynthesis
+       a = this%vcmax
+       b = this%kc*(1.d0 + this%o2ref/this%ko)
+
+       aquad = 1.d0/this%gleaf_c(idof)
+       bquad = -(this%cair + b) - (a - this%rd)/this%gleaf_c(idof)
+       cquad = a * (this%cair - this%cp) - this%rd * (this%cair + b)
+
+       call quadratic(aquad, bquad, cquad, root1, root2)
+
+       this%ac(idof) = min(root1, root2) + this%rd
+
+       ! RuBP-limited photosynthesis
+       a = this%je/4.d0
+       b = 2.d0*this%cp
+
+       aquad = 1.d0/this%gleaf_c(idof)
+       bquad = -(this%cair + b) - (a - this%rd)/this%gleaf_c(idof)
+       cquad = a * (this%cair - this%cp) - this%rd * (this%cair + b)
+
+       call quadratic(aquad, bquad, cquad, root1, root2)
+
+       this%aj(idof) = min(root1, root2) + this%rd
+
+       select case(this%colim)
+       case (1)
+          aquad = this%colim_c3
+          bquad = -(this%ac(idof) + this%aj(idof))
+          cquad =   this%ac(idof) * this%aj(idof)
+
+          call quadratic(aquad, bquad, cquad, root1, root2)
+
+          this%ag(idof) = min(root1, root2)
+
+       case (0)
+
+          this%ag(idof) = min(this%ac(idof), this%aj(idof))
+       end select
+
+       if (this%ac(idof) < 0.d0) then
+          this%ac(idof) = 0.d0
+       endif
+
+       if (this%aj(idof) < 0.d0) then
+          this%aj(idof) = 0.d0
+       endif
+
+       if (this%ap(idof) < 0.d0) then
+          this%ap(idof) = 0.d0
+       endif
+
+       if (this%ag(idof) < 0.d0) then
+          this%ag(idof) = 0.d0
+       end if
+
+       ! Net photosynthesis
+       this%an(idof) = this%ag(idof) - this%rd
+
+       this%ci(idof) = this%cair - this%an(idof)/this%gleaf_c(idof)
+       this%ci(idof) = max(this%ci(idof), ci_min)
+
+    enddo
+
+  end subroutine C3_Net_Assimilation_From_Gs
+
+  !------------------------------------------------------------------------
   subroutine GsBallBerry(this)
     ! !USES:
     !
@@ -1193,6 +1391,33 @@ contains
     enddo
 
   end subroutine GsMedlyn
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisIsWUESolutionBounded(this, bounded)
+    !
+    implicit none
+    !
+    class(photosynthesis_auxvar_type) :: this
+    PetscBool                         :: bounded
+    !
+    PetscInt                          :: idof
+    PetscReal                         :: res_1, res_2
+
+    idof = 1
+    this%gs(idof) = gs_min_wue
+    call this%AuxVarCompute()
+    res_1 = this%residual_wue(idof)
+
+    this%gs(idof) = gs_max_wue
+    call this%AuxVarCompute()
+    res_2 = this%residual_wue(idof)
+
+    if (res_1 * res_2 > 0.d0) then
+       bounded = PETSC_FALSE
+    else
+       bounded = PETSC_TRUE
+    end if
+  end subroutine PhotosynthesisIsWUESolutionBounded
 
 #endif
 
