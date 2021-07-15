@@ -967,7 +967,7 @@ contains
     Vec                                  :: checkpoint_vec
     PetscInt                             :: ii, kk, icair, offset
 
-    write(step_string,*)istep
+    write(step_string,'(I0.3)')istep
     write(substep_string,*)isubstep
     write(filename,*)'mlc_checkpoint.' // trim(adjustl(step_string)) // '.' //trim(adjustl(substep_string)) // '.bin'
     write(*,*)'filename: ',trim(adjustl(filename))
