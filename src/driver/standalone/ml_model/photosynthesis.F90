@@ -122,9 +122,6 @@ contains
 
     c3psn  = VAR_PHOTOSYNTHETIC_PATHWAY_C4
     c3psn  = VAR_PHOTOSYNTHETIC_PATHWAY_C3
-    gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    gstype = VAR_STOMATAL_CONDUCTANCE_BBERRY
-    gstype = VAR_WUE
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 

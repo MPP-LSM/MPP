@@ -72,13 +72,18 @@ contains
   !------------------------------------------------------------------------
   subroutine read_command_options()
     !
-    use ml_model_global_vars, only : ncair, ntree, output_data, bc_file, ic_file, use_ic
-    use ml_model_global_vars, only : checkpoint_data, beg_step, end_step, nsubstep
+    use ml_model_global_vars      , only : ncair, ntree, output_data, bc_file, ic_file, use_ic
+    use ml_model_global_vars      , only : checkpoint_data, beg_step, end_step, nsubstep, gstype
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_WUE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     implicit none
     !
-    PetscBool      :: flg
-    PetscErrorCode :: ierr
+    character(len=256) :: stomatal_conductance_model
+    PetscBool          :: flg
+    PetscErrorCode     :: ierr
 
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
@@ -96,6 +101,23 @@ contains
        write(*,*)'ERROR: Need to specify the boundary condition file via -bc_file <filename>'
        call exit(0)
     end if
+
+    stomatal_conductance_model = 'medlyn'
+    call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-stomatal_conductance_model', stomatal_conductance_model, flg, ierr)
+
+    select case(trim(stomatal_conductance_model))
+    case ('ball-berry')
+       gstype = VAR_STOMATAL_CONDUCTANCE_BBERRY
+    case ('medlyn')
+       gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    case ('wue')
+       gstype = VAR_WUE
+    case ('bonan14')
+       gstype = VAR_STOMATAL_CONDUCTANCE_BONAN14
+    case default
+       write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn, wue'
+       call exit(0)
+    end select
 
   end subroutine read_command_options
 
