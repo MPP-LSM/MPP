@@ -104,6 +104,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
+    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     use WaterVaporMod        , only : SatVap
     use ml_model_meshes      , only : nleaf
     !
@@ -148,6 +149,9 @@ contains
                 cur_goveq%aux_vars_in(icell)%btran = 1.d0
                 cur_goveq%aux_vars_in(icell)%dpai  = dpai(nbot-1 + k)
                 cur_goveq%aux_vars_in(icell)%dpai  = 1.d0
+                
+                cur_goveq%aux_vars_in(icell)%fwet  = 0.d0
+                cur_goveq%aux_vars_in(icell)%fdry  = 0.8218390792391702d0
 
                 ! Root parameters
                 cur_goveq%aux_vars_in(icell)%root%biomass = 500.d0
@@ -162,11 +166,11 @@ contains
                 cur_goveq%aux_vars_in(icell)%plant%nleaf = 1
                 call cur_goveq%aux_vars_in(icell)%plant%AllocateMemory()
 
-                cur_goveq%aux_vars_in(icell)%plant%leaf_psi(:)    = -1.5d0
-                cur_goveq%aux_vars_in(icell)%plant%leaf_height(:) = 15.d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_psi(:)    = -2.4d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_height(:) = (k-1)*0.5d0 + 2.75d0
                 cur_goveq%aux_vars_in(icell)%plant%leaf_capc(:)   = 2500.d0
                 cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -2.d0
-                cur_goveq%aux_vars_in(icell)%plant%leaf_lai(:)    = 500.d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_lai(:)    = 4.1516127586364746d0
                 cur_goveq%aux_vars_in(icell)%plant%k_stem2leaf(:) = 4.d0
 
                end do
@@ -186,49 +190,59 @@ contains
    !
    type(soil_auxvar_type), pointer :: soil
    !
-   PetscInt  :: j, texture
-   PetscReal :: beta_param, z1, z2
+   PetscInt                            :: j, texture
+   PetscReal                           :: beta_param, z1, z2
    PetscReal, parameter, dimension(11) :: theta_sat = [0.395d0, 0.410d0, 0.435d0, 0.485d0, 0.451d0, 0.420d0, 0.477d0, 0.476d0, 0.426d0, 0.492d0, 0.482d0]
    PetscReal, parameter, dimension(11) :: psi_sat   = [-121.d0, -90.d0, -218d0, -786.d0, -478.d0, -299.d0, -356.d0, -630.d0, -153.d0, -490.d0, -405.d0]
    PetscReal, parameter, dimension(11) :: b         = [4.05d0, 4.38d0, 4.90d0, 5.30d0, 5.39d0, 7.12d0, 7.75d0, 8.52d0, 10.40d0, 10.40d0, 11.40d0];
    PetscReal, parameter, dimension(11) :: k_sat     = [1.056d0, 0.938d0, 0.208d0, 0.0432d0, 0.0417d0, 0.0378d0, 0.0102d0, 0.0147d0, 0.0130d0, 0.0062d0, 0.0077d0];
+   PetscReal                           :: zi(0:10)
+   PetscReal, parameter                :: m_to_cm = 1.d2
 
-   texture = 5;
+   texture = 1;
 
    soil%nlevsoi = 11
+   soil%nlevsoi = 10
 
    call soil%AllocateMemory()
 
-   soil%dz(01) = 0.05d0
-   soil%dz(02) = 0.05d0
-   soil%dz(03) = 0.10d0
-   soil%dz(04) = 0.10d0
-   soil%dz(05) = 0.20d0
-   soil%dz(06) = 0.20d0
-   soil%dz(07) = 0.20d0
-   soil%dz(08) = 0.30d0
-   soil%dz(09) = 0.40d0
-   soil%dz(10) = 0.40d0
-   soil%dz(11) = 0.50d0
+   soil%dz( 1 ) =  1.7512817916255204d-002
+   soil%dz( 2 ) =  2.7578969259676251d-002
+   soil%dz( 3 ) =  4.5470033242413201d-002
+   soil%dz( 4 ) =  7.4967410986208557d-002
+   soil%dz( 5 ) =  0.12360036510228053d0
+   soil%dz( 6 ) =  0.20378255101043175d0
+   soil%dz( 7 ) =  0.33598062644843263d0
+   soil%dz( 8 ) =  0.55393840536868488d0
+   soil%dz( 9 ) =  0.91329003158906108d0
+   soil%dz(10 ) =  1.5057607013992766d0
+
+   zi(           0 ) =    0.0000000000000000d0
+   zi(           1 ) =    1.7512817916255204d-002
+   zi(           2 ) =    4.5091787175931458d-002
+   zi(           3 ) =    9.0561820418344652d-002
+   zi(           4 ) =   0.16552923140455322d0
+   zi(           5 ) =   0.28912959650683373d0
+   zi(           6 ) =   0.49291214751726548d0
+   zi(           7 ) =   0.82889277396569816d0
+   zi(           8 ) =    1.3828311793343830d0
+   zi(           9 ) =    2.2961212109234443d0
+   zi(          10 ) =    3.8018819123227208d0
 
    beta_param = 0.90d0;  ! root profile parameter: shallow profile
    !beta_param = 0.97d0;  ! root profile parameter: deep profile
+   beta_param  = 0.966d0
 
    do j = 1, soil%nlevsoi
-      if (j == 1) then
-         z2 = soil%dz(j) * 100;
-         soil%rootfr(j) = 1 - beta_param**z2;
-      else
-         z1 = z2;
-         z2 = z1 + soil%dz(j) * 100;
-         soil%rootfr(j) = beta_param**z1 - beta_param**z2;
-      end if
+
+      soil%rootfr(j) = ( beta_param ** (zi(j-1)*m_to_cm) - beta_param ** (zi(j)*m_to_cm) )
 
       soil%watsat(j)     = theta_sat(texture)
       soil%hksat(j)      = k_sat(texture) * 10.d0/60.d0
       soil%bsw(j)        = b(texture)
 
       soil%h2osoi_vol(j) = 0.5d0*soil%watsat(j)
+      soil%psi_sat(j)    = psi_sat(texture)
       soil%psi(j)        = psi_sat(texture) * (soil%h2osoi_vol(j)/soil%watsat(j))**(-soil%bsw(j))
    end do
 
@@ -249,6 +263,7 @@ contains
     use ConnectionSetType                   , only : connection_set_type
     use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
+    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     use MultiPhysicsProbConstants           , only : TFRZ
     use WaterVaporMod                       , only : SatVap
     use ml_model_utils                      , only : get_value_from_condition
@@ -263,11 +278,12 @@ contains
     class(goveqn_base_type)    , pointer   :: cur_goveq
     class(connection_set_type) , pointer   :: cur_conn_set
     class(condition_type)      , pointer   :: cur_cond
-    PetscInt                               :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf, idx_data, icair
+    PetscInt                               :: k, icol, icell, iconn, sum_conn, nz, ncol, leaf_count, ileaf, idx_data, icair, j
     PetscReal                              :: Isun_vis, Ishd_vis
-    PetscReal                              :: qair_value , pref_value
+    PetscReal                              :: qair_value , pref_value, esat, desat
     PetscReal                  , pointer   :: tleaf_local(:)
     PetscReal                  , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
+    PetscInt                   , parameter :: nlev = 10
     PetscBool                              :: bounded
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
@@ -324,12 +340,20 @@ contains
                 qair_value = get_value_from_condition(int_cond%qair,  (icair-1)*nz + nbot + k - 2)
                 cur_goveq%aux_vars_in(icell)%eair = qair_value * pref_value
 
+                cur_goveq%aux_vars_in(icell)%tleaf     = tleaf_local(icell)
+
                 cur_goveq%aux_vars_in(icell)%ci = get_value_from_condition(bnd_cond%co2ref, icair)
+
+                do j = 1, nlev
+                   cur_goveq%aux_vars_in(icell)%soil%h2osoi_vol(j) = get_value_from_condition(bnd_cond%h2osoi_vol, j)
+                end do
 
                 if (cur_goveq%aux_vars_in(icell)%gstype == VAR_WUE) then
                    ! Set cell active/inactive if the solution is bounded/unbounded
                    call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
                    cur_goveq%mesh%is_active(icell) = bounded
+                elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+                   call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
                 end if
 
              end do
@@ -342,6 +366,9 @@ contains
 
   !------------------------------------------------------------------------
   subroutine init_photosynthesis(psy_mpp)
+    !
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use ml_model_global_vars      , only : gstype
     !
     implicit none
     !
@@ -357,6 +384,9 @@ contains
 
     call add_goveqns(psy_mpp)
 
+    if (gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+       call psy_mpp%soe%SetDofsForGovEqn(PHOTOSYNTHESIS_GE,2)
+    end if
     call psy_mpp%AllocateAuxVars()
 
     call psy_mpp%SetupProblem()
@@ -376,6 +406,7 @@ contains
     use ml_model_meshes           , only : nleaf
     use ml_model_global_vars      , only : gstype
     use MultiPhysicsProbConstants , only : VAR_WUE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     ! !ARGUMENTS
     implicit none
@@ -424,6 +455,7 @@ contains
 
     do ii = 1, nDM
        call VecGetArrayF90(soln_subvecs(ii), v_p, ierr)
+       call VecGetLocalSize(soln_subvecs(ii), icair, ierr)
 
        icell = 0
        do icair = 1, ncair
@@ -432,6 +464,9 @@ contains
                 icell = icell + 1
                 if (gstype == VAR_WUE) then
                    v_p(icell) = 0.002d0
+                elseif (gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+                   v_p((icell-1)*2 + 1) = 0.002d0
+                   v_p((icell-1)*2 + 2) = 0.002d0
                 else
                    v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
                 endif

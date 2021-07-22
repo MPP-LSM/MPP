@@ -50,6 +50,7 @@ contains
     call allocate_memory_for_condition(bnd_cond%rhg, ncair)
     call allocate_memory_for_condition(bnd_cond%soilres, ncair)
     call allocate_memory_for_condition(bnd_cond%soil_tk, ncair)
+    call allocate_memory_for_condition(bnd_cond%h2osoi_vol, ncair*10)
 
     call allocate_memory_for_condition(bnd_cond%pref_prev, ncair)
 
@@ -98,10 +99,11 @@ contains
     Vec                 :: bc_data
     !
     PetscInt, parameter :: ncol = 21
-    PetscInt            :: icair, offset, size, k
+    PetscInt            :: icair, offset, size, k, j
     PetscReal, pointer  :: bc_p(:)
     PetscReal           :: pref_prev
     PetscErrorCode      :: ierr
+    PetscInt, parameter :: nlev = 10
 
     offset = (istep-1)*ncol
 
@@ -160,6 +162,10 @@ contains
        ! 21
        call set_value_in_condition(bnd_cond%soil_tk     , icair, bc_p(offset +  21))
 
+       ! 22-31
+       do j = 1, nlev
+          call set_value_in_condition(bnd_cond%h2osoi_vol, (icair-1)*nlev + j, bc_p(offset +  21 + j))
+       end do
 #if 0
        idx = offset + 21
        do k = 1, ncair*ntree*(ntop-nbot+1)*nleaf
