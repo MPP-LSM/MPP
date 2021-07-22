@@ -32,6 +32,7 @@ module PhotosynthesisAuxType
 
      PetscReal, pointer :: h2osoi_vol(:) ! volumetric water content (m^3/m^3)
      PetscReal, pointer :: watsat(:)     ! volumetric content at saturation (i.e. porosity) (m^3/m^3)
+     PetscReal, pointer :: psi_sat(:)    ! saturated matric potential
      PetscReal, pointer :: psi(:)        ! matric potential (mm)
      PetscReal, pointer :: hksat(:)      ! hydraulic conductivity at saturation (mm H2O/s)
      PetscReal, pointer :: bsw(:)        ! Capp and Hornberger 'b' parameter
@@ -57,6 +58,8 @@ module PhotosynthesisAuxType
      PetscReal, pointer :: resist_soil(:) ! hydraulic resistance (MPa.s.m2/mmol H2O)
      PetscReal, pointer :: psi_soil(:)    ! weighted water potential (MPa)
      PetscReal, pointer :: dpsi_soil(:)   ! change in weighted water potential (MPa)
+
+     PetscReal          :: dtime          ! Time step for plant hydraulics
    contains
 
      procedure, public :: AllocateMemory => PlantAuxVarAllocateMemory
@@ -71,6 +74,7 @@ module PhotosynthesisAuxType
      PetscInt            :: ndof       ! no. of unknowns. 1 for BB, Medlyn, and WUE; 2 for Bonan14
 
      PetscReal           :: tleaf      ! leaf temperature (K)
+
      PetscReal           :: gbv        ! leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal           :: gbc        ! leaf boundary layer conductance, CO2 (mol CO2/m2 leaf/s)
      PetscReal           :: eair       ! vapor pressure profile (Pa)
@@ -154,10 +158,24 @@ module PhotosynthesisAuxType
      PetscReal , pointer :: gs(:)      ! leaf stomatal conductance (mol H2O/m2 leaf/s)
      PetscReal , pointer :: gleaf_c(:) ! leaf-to-air conductance to CO2 (mol CO2/m2 leaf/s)
      PetscReal , pointer :: gleaf_w(:) ! leaf-to-air conductance to H2O (mol H2O/m2 leaf/s)
-     PetscReal           :: etflx      ! Leaf transpiration flux (mol H2O/m2 leaf/s)
+     PetscReal           :: etflx_mlc  ! Leaf transpiration flux from MLC model (mol H2O/m2 leaf/s)
 
-     PetscReal           :: iota       ! stomatal efficiency (umol CO2/ mol H2O)
-     PetscReal , pointer :: residual_wue(:) ! residual for WUE equation (umol CO2/ mol H2O)
+     PetscReal           :: ac_soln      ! leaf rubisco-limited gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal           :: aj_soln      ! leaf RuBP-limited gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal           :: ap_soln      ! leaf product-limited (C3), CO2-limited (C4) gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal           :: ag_soln      ! leaf gross photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal           :: an_soln      ! leaf net photosynthesis (umol CO2/m2 leaf/s)
+     PetscReal           :: gs_soln      ! leaf stomatal conductance (mol H2O/m2 leaf/s)
+     PetscReal           :: gleaf_c_soln ! leaf-to-air conductance to CO2 (mol CO2/m2 leaf/s)
+     PetscReal           :: gleaf_w_soln ! leaf-to-air conductance to H2O (mol H2O/m2 leaf/s)
+
+     PetscReal           :: iota               ! stomatal efficiency (umol CO2/ mol H2O)
+     PetscReal , pointer :: residual_wue(:)    ! residual for WUE equation (umol CO2/ mol H2O)
+     PetscReal , pointer :: residual_hyd(:)    ! residual for plant hydraulics equation (Pa)
+     PetscBool , pointer :: soln_is_bounded(:) ! Is 0 if solution is not bounded between gs_min_wue and gs_max_wue otherwise 1
+
+     PetscReal           :: fdry       ! Fraction of plant area index that is green and dry
+     PetscReal           :: fwet       ! Fraction of plant area index that is wet
 
      PetscReal , pointer :: dac_dci(:) ! deriavate of leaf rubisco-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
      PetscReal , pointer :: daj_dci(:) ! deriavate of leaf RuBP-limited gross photosynthesis wrt leaf CO2 (mol/m2 leaf/s)
@@ -173,9 +191,12 @@ module PhotosynthesisAuxType
 
    contains
 
-     procedure, public :: Init                 => PhotosynthesisInit
-     procedure, public :: AuxVarCompute        => PhotosynthesisAuxVarCompute
-     procedure, public :: IsWUESolutionBounded => PhotosynthesisIsWUESolutionBounded
+     procedure, public :: Init                         => PhotosynthesisInit
+     procedure, public :: AuxVarCompute                => PhotosynthesisAuxVarCompute
+     procedure, public :: IsWUESolutionBounded         => PhotosynthesisIsWUESolutionBounded
+     procedure, public :: DetermineIfSolutionIsBounded => PhotosynthesisDetermineIfSolutionIsBounded
+     procedure, public :: PreSolve                     => PhotosynthesisPreSolve
+     procedure, public :: PostSolve                    => PhotosynthesisPostSolve
 
   end type photosynthesis_auxvar_type
 
@@ -204,6 +225,7 @@ contains
 
     allocate(this%h2osoi_vol( this%nlevsoi))
     allocate(this%watsat(     this%nlevsoi))
+    allocate(this%psi_sat(    this%nlevsoi))
     allocate(this%psi(        this%nlevsoi))
     allocate(this%hksat(      this%nlevsoi))
     allocate(this%bsw(        this%nlevsoi))
@@ -338,9 +360,9 @@ contains
     allocate(this%ci(ndof))
     this%ci(:) = 0.d0
 
-    this%tleaf   = 0.d0
-    this%gbv     = 0.d0
-    this%gbc     = 0.d0
+    this%tleaf     = 0.d0
+    this%gbv       = 0.d0
+    this%gbc       = 0.d0
 
     this%o2ref   = 0.d0
     this%ceair   = 0.d0
@@ -420,10 +442,15 @@ contains
     this%gleaf_w(:) = 0.d0
 
     this%cs      = 0.d0
-    this%etflx   = 0.d0
+    this%etflx_mlc   = 0.d0
 
     this%iota    = 750.d0
     allocate(this%residual_wue(ndof))
+    allocate(this%residual_hyd(ndof))
+    allocate(this%soln_is_bounded(ndof))
+
+    this%fdry = 0.d0
+    this%fwet = 0.d0
 
     allocate(this%dac_dci(ndof))
     allocate(this%daj_dci(ndof))
@@ -448,6 +475,7 @@ contains
 
     this%soil%nlevsoi = 0
     this%plant%nleaf  = 0
+    this%plant%dtime  = 300.d0
 
   end subroutine PhotosynthesisInit
 
@@ -561,7 +589,7 @@ contains
     PetscInt                             :: ileaf, j
     PetscReal                            :: s, hk, head, totevap
     PetscReal                            :: root_biomass_density, root_length_density, root_dist, root_cross_sec_area
-    PetscReal                            :: soilr, soilr1, soilr2, blw_grnd_conductance
+    PetscReal                            :: soilr, soilr1, soilr2, blw_grnd_conductance, vwc
     PetscReal                , pointer   :: psi_mpa(:), evap(:)
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
@@ -583,13 +611,16 @@ contains
 
        do j = 1, soil%nlevsoi
 
-          s = max(min(soil%h2osoi_vol(j)/soil%watsat(j), 1.d0), 0.01d0);
+          vwc = max(soil%h2osoi_vol(j),1.0d-6)/(soil%dz(j)*denh2o)
+
+          s = max(min(vwc/soil%watsat(j), 1.d0), 0.01d0);
 
           hk = soil%hksat(j) * s**(2.d0 * soil%bsw(j) + 3.d0); ! mm/s
-          hk = hk * 1e-03 / head;                              ! mm/s -> m/s -> m2/s/MPa
+          hk = hk * 1d-03 / head;                              ! mm/s -> m/s -> m2/s/MPa
           hk = hk * denh2o / MM_H2O * 1000.d0;                  ! m2/s/MPa -> mmol/m/s/MPa
 
           ! Matric potential for each layer (MPa)
+          soil%psi(j) = soil%psi_sat(j)* s**(-soil%bsw(j))
           psi_mpa(j) = soil%psi(j) * 1e-03 * head;          ! mm -> m -> MPa
 
           ! Root biomass density (g biomass / m3 soil)
@@ -667,12 +698,14 @@ contains
     class(photosynthesis_auxvar_type)    :: this
     !
     class(plant_auxvar_type) , pointer   :: plant
-    PetscInt                             :: ileaf, idof
-    PetscReal                            :: t1, t2, t3, a, b, dy, head
+    PetscReal                            :: t1, t2, t3, etflx
     PetscReal                            :: an, gbc, delta_c
-    PetscReal                            :: gs_val, an_low, an_high, check
+    PetscReal                            :: gs_val_wue, gs_val_hyd, an_low, an_high, check
+    PetscInt                 , parameter :: ileaf = 1 ! Currently only one leaf is supported
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
+    PetscInt , parameter :: idof_wue = 1
+    PetscInt , parameter :: idof_hyd = 2
 
     select case (this%gstype)
     case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
@@ -682,23 +715,69 @@ contains
        call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
 
     case (VAR_WUE)
-       idof = 1
-       gs_val = this%gs(idof)
+       gs_val_wue = this%gs(idof_wue)
 
-       this%gs(idof) = gs_val - gs_delta_wue
+       this%gs(idof_wue) = gs_val_wue - gs_delta_wue
        call PhotosynthesisAuxVarCompute_WUE(this)
-       an_low = this%an(idof)
+       an_low = this%an(idof_wue)
 
-       this%gs(idof) = gs_val
+       this%gs(idof_wue) = gs_val_wue
        call PhotosynthesisAuxVarCompute_WUE(this)
-       an_high = this%an(idof)
+       an_high = this%an(idof_wue)
 
-       this%residual_wue(idof) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
+       this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
+
     case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
-       call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
+       gs_val_wue = this%gs(idof_wue)
+       gs_val_hyd = this%gs(idof_hyd)
+
+       this%gs(idof_wue) = gs_val_wue - gs_delta_wue
+       this%gs(idof_hyd) = gs_val_hyd - gs_delta_wue
+       call PhotosynthesisAuxVarCompute_WUE(this)
+       an_low = this%an(idof_wue)
+
+       this%gs(idof_wue) = gs_val_wue
+       this%gs(idof_hyd) = gs_val_hyd
+       call PhotosynthesisAuxVarCompute_WUE(this)
+       an_high = this%an(idof_wue)
+
+       this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
+
+       !
+       ! Residual for hydraulics equation =  psi_{t} + dpsi_{t+1} - leaf_minlwp
+       !
+       call ComputeSoilResistance(this)
+
+       etflx = (this%esat - this%eair)/this%pref * this%gleaf_w(idof_hyd)
+
+       plant => this%plant
+       call ComputeChangeInPsi(plant, etflx)
+
+       this%residual_hyd(idof_hyd) =  (plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf))!*1.0e5
 
     end select
   end subroutine PhotosynthesisAuxVarCompute
+
+  !------------------------------------------------------------------------
+  subroutine ComputeChangeInPsi(plant, etflx)
+    !
+    type(plant_auxvar_type) , pointer   :: plant
+    PetscReal                            :: etflx, dtime
+    !
+    PetscReal                , parameter :: g = 9.80665d0
+    PetscReal                , parameter :: denh2o = 1000.d0
+    PetscReal                            :: head, a, b
+    PetscInt                 , parameter :: ileaf = 1 ! Currently only one leaf is supported
+
+    head = g * denh2o * 1.d-6 ! MPa/m
+
+    a  = plant%psi_soil(ileaf) - head * plant%leaf_height(ileaf) - 1.d3 * etflx/plant%leaf_lsc(ileaf)
+    b  = plant%leaf_capc(ileaf) / plant%leaf_lsc(ileaf)
+
+    plant%dpsi_soil(ileaf) = (a - plant%leaf_psi(ileaf)) * (1.d0 - exp(-plant%dtime/b));
+
+  end subroutine ComputeChangeInPsi
+
 
     !------------------------------------------------------------------------
   subroutine PhotosynthesisAuxVarCompute_SemiEmpirical(this)
@@ -730,8 +809,6 @@ contains
     end if
 
     if (this%dpai > 0.d0) then
-
-       call ComputeSoilResistance(this)
 
        select case(this%c3psn)
        case (VAR_PHOTOSYNTHETIC_PATHWAY_C4)
@@ -793,42 +870,6 @@ contains
              end if
           enddo
 
-       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
-
-          do idof = 1, this%ndof
-            an = this%an(idof)
-            if (an > 0.d0) then
-               delta_c = this%cair - this%ci(idof)
-               an = this%an(idof)
-               gbc = this%gbc
-               this%gs(idof) = 1.6d0/ (delta_c/an - 1.d0/gbc )
-             else
-                this%gs(idof) = gs_min
-             end if
-
-             if (this%gs(idof) > 0.d0) then
-                this%gleaf_c(idof) = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs(idof))
-                this%gleaf_w(idof) = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs(idof))
-             else
-                this%gleaf_c(idof) = 0.d0
-                this%gleaf_w(idof) = 0.d0
-             end if
-          enddo
-
-          idof = this%ndof
-          this%etflx = (this%esat - this%eair)/this%pref * this%gleaf_w(idof)
-
-          plant => this%plant
-
-          head = g * denh2o * 1.d-6 ! MPa/m
-
-          ileaf = 1 ! Currently only one leaf is supported
-
-          a  = plant%psi_soil(ileaf) - head * plant%leaf_height(ileaf) - 1.d3 * this%etflx/plant%leaf_lsc(ileaf)
-          b  = plant%leaf_capc(ileaf) / plant%leaf_lsc(ileaf)
-
-          plant%dpsi_soil(ileaf) = (a - plant%leaf_psi(ileaf)) * (1.d0 - exp(-1800.d0/b));
-
        end select
 
     else
@@ -869,8 +910,6 @@ contains
 
     if (this%dpai > 0.d0) then
 
-       call ComputeSoilResistance(this)
-
        select case(this%c3psn)
        case (VAR_PHOTOSYNTHETIC_PATHWAY_C4)
           write(*,*)'PhotosynthesisAuxVarCompute2 not implemented for C4'
@@ -905,6 +944,13 @@ contains
              this%hs = (this%gbv * this%eair + this%gs(idof) * this%esat)/((this%gbv + this%gs(idof)) * this%esat)
              this%vpd = max((this%esat - this%hs * this%esat), 0.1d0)/this%pref
           end do
+
+       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+
+          idof = 1
+          this%hs = (this%gbv * this%eair + this%gs(idof) * this%esat)/((this%gbv + this%gs(idof)) * this%esat)
+          this%vpd = max((this%esat - this%hs * this%esat), 0.1d0)/this%pref
+
        end select
 
     else
@@ -1417,8 +1463,130 @@ contains
     else
        bounded = PETSC_TRUE
     end if
+    this%soln_is_bounded(idof) = bounded
+
   end subroutine PhotosynthesisIsWUESolutionBounded
 
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisDetermineIfSolutionIsBounded(this)
+    !
+    implicit none
+    !
+    class(photosynthesis_auxvar_type) :: this
+    PetscBool                         :: bounded
+    !
+    PetscInt, parameter               :: idof_wue = 1
+    PetscInt, parameter               :: idof_hyd = 2
+    PetscReal                         :: res_wue_1, res_wue_2
+    PetscReal                         :: res_hyd_1, res_hyd_2
+
+    ! Residual at minimum gs
+    this%gs(idof_wue) = gs_min_wue
+    this%gs(idof_hyd) = gs_min_wue
+
+    call this%AuxVarCompute()
+
+    res_wue_1 = this%residual_wue(idof_wue)
+    res_hyd_1 = this%residual_hyd(idof_hyd)
+
+    ! Residual at maximum gs
+    this%gs(idof_wue) = gs_max_wue
+    this%gs(idof_hyd) = gs_max_wue
+
+    call this%AuxVarCompute()
+
+    res_wue_2 = this%residual_wue(idof_wue)
+    res_hyd_2 = this%residual_hyd(idof_hyd)
+
+    if ( min(res_wue_1,res_hyd_1) * min(res_wue_2,res_hyd_2) > 0.d0) then
+       ! If residual at max and minimum gs have the same sign, then the
+       ! function does not intersect with the x-axis and the solution
+       ! is not bounded
+       this%soln_is_bounded(idof_wue) = PETSC_FALSE
+       this%soln_is_bounded(idof_hyd) = PETSC_FALSE
+    else
+       ! Determine if each DOF is bounded by checking if the residual at
+       ! min and max gs are of different sign to imply that function intersect
+       ! with the x-axis
+       this%soln_is_bounded(idof_wue) = (res_wue_1 * res_wue_2 <= 0.d0)
+       this%soln_is_bounded(idof_hyd) = (res_hyd_1 * res_hyd_2 <= 0.d0)
+    end if
+
+  end subroutine PhotosynthesisDetermineIfSolutionIsBounded
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisPreSolve(this)
+    !
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    !
+    implicit none
+    !
+    class(photosynthesis_auxvar_type) :: this
+
+    if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+       call ComputeChangeInPsi(this%plant, this%etflx_mlc)
+    end if
+
+  end subroutine PhotosynthesisPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisPostSolve(this)
+    !
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use WaterVaporMod             , only : SatVap
+    !
+    implicit none
+    !
+    class(photosynthesis_auxvar_type)    :: this
+    !
+    class(plant_auxvar_type) , pointer   :: plant
+    PetscInt                 , parameter :: idof_wue = 1
+    PetscInt                 , parameter :: idof_hyd = 2
+    PetscInt                             :: ileaf, idof
+    PetscReal                            :: a, b, head
+    PetscReal                , parameter :: g = 9.80665d0
+    PetscReal                , parameter :: denh2o = 1000.d0
+
+    if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+
+       ! Determine solution for which DOF (wue or hydrualics) is the solution
+       ! based on co-optimization
+       if ( this%soln_is_bounded(idof_wue) .and. &
+            this%soln_is_bounded(idof_hyd)) then
+
+          if (this%gs(idof_wue) < this%gs(idof_hyd)) then
+             idof = idof_wue
+          else
+             idof = idof_hyd
+          end if
+
+       elseif (      this%soln_is_bounded(idof_wue) .and. &
+            (.not.this%soln_is_bounded(idof_hyd))) then
+
+          idof = idof_wue
+
+       elseif ((.not.this%soln_is_bounded(idof_wue)) .and. &
+            (     this%soln_is_bounded(idof_hyd))) then
+
+          idof = idof_wue
+
+       else
+          idof = idof_wue
+       end if
+    else
+       idof = idof_wue
+    end if
+
+    this%ac_soln      = this%ac(idof)
+    this%aj_soln      = this%aj(idof)
+    this%ap_soln      = this%ap(idof)
+    this%ag_soln      = this%ag(idof)
+    this%an_soln      = this%an(idof)
+    this%gs_soln      = this%gs(idof)
+    this%gleaf_c_soln = this%gleaf_c(idof)
+    this%gleaf_w_soln = this%gleaf_w(idof)
+
+  end subroutine PhotosynthesisPostSolve
 #endif
 
 end module PhotosynthesisAuxType

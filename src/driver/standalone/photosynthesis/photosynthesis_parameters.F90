@@ -175,6 +175,7 @@ contains
        soil%bsw(j)        = b(texture)
 
        soil%h2osoi_vol(j) = 0.5*soil%watsat(j)
+       soil%psi_sat(j)    = psi_sat(texture)
        soil%psi(j)        = psi_sat(texture) * (soil%h2osoi_vol(j)/soil%watsat(j))**(-soil%bsw(j))
     end do
 

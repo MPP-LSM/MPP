@@ -33,6 +33,7 @@ module SystemOfEquationsPhotosynthesisType
      procedure, public :: Init                  => PhotosynthesisSoeInit
      procedure, public :: AllocateAuxVars       => PhotosynthesisSoeAllocateAuxVars
      procedure, public :: PreSolve              => PhotosynthesisSoePreSolve
+     procedure, public :: PostSolve             => PhotosynthesisSoePostSolve
      procedure, public :: Residual              => PhotosynthesisSoeResidual
      procedure, public :: Jacobian              => PhotosynthesisSoeJacobian
 
@@ -89,14 +90,85 @@ contains
     ! Initializes module variables and data structures
     !
     ! !USES:
-    use SystemOfEquationsBaseType, only : SOEBaseInit
+    use SystemOfEquationsBaseType , only : SOEBaseInit
+    use MultiPhysicsProbConstants , only : SOE_PHOTOSYNTHESIS
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use GoveqnPhotosynthesisType  , only : goveqn_photosynthesis_type
     !
     implicit none
     !
     ! !ARGUMENTS
     class(sysofeqns_photosynthesis_type) :: this
+    !
+    class(goveqn_base_type),pointer :: cur_goveq
+    PetscErrorCode :: ierr
+
+    select case (this%itype)
+    case(SOE_PHOTOSYNTHESIS)
+
+       cur_goveq => this%goveqns
+       do
+          if (.not.associated(cur_goveq)) exit
+          select type(cur_goveq)
+          class is (goveqn_photosynthesis_type)
+
+             call cur_goveq%PreSolve()
+
+          end select
+          cur_goveq => cur_goveq%next
+       enddo
+
+    case default
+       write(iulog,*) 'PhotosysnthesisSoE: Unknown soe_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
 
   end subroutine PhotosynthesisSoePreSolve
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisSoePostSolve (this)
+    !
+    ! !DESCRIPTION:
+    ! Initializes module variables and data structures
+    !
+    ! !USES:
+    use SystemOfEquationsBaseType , only : SOEBaseInit
+    use MultiPhysicsProbConstants , only : SOE_PHOTOSYNTHESIS
+    use GoverningEquationBaseType , only : goveqn_base_type
+    use GoveqnPhotosynthesisType  , only : goveqn_photosynthesis_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_photosynthesis_type) :: this
+    !
+    class(goveqn_base_type),pointer :: cur_goveq
+    PetscErrorCode :: ierr
+
+    call VecCopy(this%solver%soln, this%solver%soln_prev, ierr); CHKERRQ(ierr)
+    call this%SavePrimaryIndependentVar(this%solver%soln)
+
+    select case (this%itype)
+    case(SOE_PHOTOSYNTHESIS)
+
+       cur_goveq => this%goveqns
+       do
+          if (.not.associated(cur_goveq)) exit
+          select type(cur_goveq)
+          class is (goveqn_photosynthesis_type)
+
+             call cur_goveq%PostSolve()
+
+          end select
+          cur_goveq => cur_goveq%next
+       enddo
+
+    case default
+       write(iulog,*) 'PhotosysnthesisSoE: Unknown soe_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine PhotosynthesisSoePostSolve
 
   !------------------------------------------------------------------------
   subroutine PhotosynthesisSoeResidual(this, snes, X, F, ierr)

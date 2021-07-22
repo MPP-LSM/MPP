@@ -32,6 +32,8 @@ module GoveqnPhotosynthesisType
      !procedure, public :: ComputeOperatorsDiag     => PhotosynthesisComputeOperatorsDiag
      procedure, public :: GetRValues               => PhotosynthesisGetRValues
      procedure, public :: SavePrimaryIndependentVar => PhotosynthesisSavePrmIndepVar
+     procedure, public :: PreSolve                  => PhotosynthesisPreSolve
+     procedure, public :: PostSolve                 => PhotosynthesisPostSolve
 
   end type goveqn_photosynthesis_type
 
@@ -185,12 +187,14 @@ contains
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof-1
-             term1 = (avars(icell)%cair - avars(icell)%ci(idof))/wl
-             term2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
-             term3 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
-
              idx = (icell-1)*this%dof + idof
-             f_p(idx) = avars(icell)%iota - term1 * term2 * term3
+
+             if (avars(icell)%soln_is_bounded(idof)) then
+                f_p(idx) = avars(icell)%residual_wue(idof)
+             else
+                f_p(idx) = 0.d0
+             end if
+
           end do
 
           if (this%dof > 1) then
@@ -201,7 +205,11 @@ contains
              ileaf = 1
 
              ! psi_{t} + dpsi_{t+1} - leaf_minlwp
-             f_p(idx) =  (plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf))*1.0e5
+             if (avars(icell)%soln_is_bounded(idof)) then
+                f_p(idx) =  avars(icell)%residual_hyd(idof)
+             else
+                f_p(idx) = 0.d0
+             end if
           end if
        end select
     end do
@@ -334,17 +342,29 @@ contains
           case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
 
              if (idof == 1) then
-                dterm1_dci = (term1_1 - term1_2)/ci_perturb
-                dterm2_dci = (term2_1 - term2_2)/ci_perturb
-                dterm3_dci = (term3_1 - term3_2)/ci_perturb
+                res_1 = avars(icell)%residual_wue(idof)
+                gs_1  = avars(icell)%gs(idof)
 
-                !f_p = iota - term1 * term2 * term3
-                value = &
-                     - dterm1_dci * term2_1    * term3_1    &
-                     - term1_1    * dterm2_dci * term3_1    &
-                     - term1_1    * term2_1    * dterm3_dci
+                avars(icell)%gs = gs_1 - gs_perturb
+                call avars(icell)%AuxVarCompute()
+                res_2 = avars(icell)%residual_wue(idof)
+                value = (res_1 - res_2)/gs_perturb
+
+                avars(icell)%gs = gs_1
+                call avars(icell)%AuxVarCompute()
              else
-                value = (psi_term_1 - psi_term_2)/ci_perturb * 1.e5
+                res_1 = avars(icell)%residual_hyd(idof)
+                gs_1  = avars(icell)%gs(idof)
+
+                avars(icell)%gs = gs_1 - gs_perturb
+                call avars(icell)%AuxVarCompute()
+                res_2 = avars(icell)%residual_hyd(idof)
+
+                value = (res_1 - res_2)/gs_perturb
+
+                avars(icell)%gs = gs_1
+                call avars(icell)%AuxVarCompute()
+
              endif
 
           end select
@@ -354,9 +374,13 @@ contains
           if (.not.this%mesh%is_active(icell)) then
              value = 1.d0
           end if
+
+          if (.not. avars(icell)%soln_is_bounded(idof)) value = 1.d0
+
           call MatSetValuesLocal(B, 1, idx - 1, 1, idx - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
        enddo
     end do
+    !call exit(0)
 
     call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
@@ -414,7 +438,7 @@ contains
          end do
       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
          do idof = 1, this%dof
-            this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+            this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
       end select
    end do
@@ -448,7 +472,7 @@ contains
 
     select case(auxvar_type)
     case(AUXVAR_INTERNAL)
-       call PhotosynthesisGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, this%dof, var_values)
+       call PhotosynthesisGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
     case default
        write(*,*)'Unknown auxvar_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -457,12 +481,13 @@ contains
   end subroutine PhotosynthesisGetRValues
 
   !------------------------------------------------------------------------
-  subroutine PhotosynthesisGetRValuesFromAuxVars (aux_var, var_type, ncells, ndof, var_values)
+  subroutine PhotosynthesisGetRValuesFromAuxVars (aux_var, var_type, ncells, var_values)
     !
     ! !DESCRIPTION:
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     implicit none
     !
@@ -470,7 +495,6 @@ contains
     type(photosynthesis_auxvar_type) , pointer :: aux_var(:)
     PetscInt                                   :: var_type
     PetscInt                                   :: ncells
-    PetscInt                                   :: ndof
     PetscReal                        , pointer :: var_values(:)
     !
     PetscInt                                   :: ghosted_id, idof
@@ -479,9 +503,7 @@ contains
     case(VAR_STOMATAL_CONDUCTANCE)
 
        do ghosted_id = 1, ncells
-          do idof = 1, ndof
-             var_values(ghosted_id) = aux_var(ghosted_id)%gs(idof)
-          end do
+          var_values(ghosted_id) = aux_var(ghosted_id)%gs_soln
        end do
 
     case default
@@ -490,6 +512,65 @@ contains
     end select
 
   end subroutine PhotosynthesisGetRValuesFromAuxVars
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisPreSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Default setup of governing equation
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_photosynthesis_type)            :: this
+
+    ! !ARGUMENTS
+    type(photosynthesis_auxvar_type) , pointer   :: avar(:)
+    !
+    PetscInt                                     :: icell, idof
+    PetscInt                         , parameter :: idof_wue = 1
+    PetscInt                         , parameter :: idof_hyd = 2
+
+    avar => this%aux_vars_in
+
+    do icell = 1, this%mesh%ncells_all
+       call avar(icell)%PreSolve()
+    end do
+
+  end subroutine PhotosynthesisPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine PhotosynthesisPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Default setup of governing equation
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_photosynthesis_type)            :: this
+
+    ! !ARGUMENTS
+    type(photosynthesis_auxvar_type) , pointer   :: avar(:)
+    !
+    PetscInt                                     :: icell, idof
+    PetscInt                         , parameter :: idof_wue = 1
+    PetscInt                         , parameter :: idof_hyd = 2
+
+    avar => this%aux_vars_in
+
+    do icell = 1, this%mesh%ncells_all
+
+       call avar(icell)%PostSolve()
+    end do
+
+  end subroutine PhotosynthesisPostSolve
 
 #endif
 
