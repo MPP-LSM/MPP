@@ -486,8 +486,6 @@ contains
     call VecCopy(psy_mpp%soe%solver%soln, psy_mpp%soe%solver%soln_prev, ierr); CHKERRQ(ierr)
     call VecCopy(psy_mpp%soe%solver%soln, psy_mpp%soe%solver%soln_prev_clm, ierr); CHKERRQ(ierr)
 
-    call psy_mpp%soe%PreSolve()
-
   end subroutine set_initial_conditions
 
   !------------------------------------------------------------------------
@@ -572,7 +570,7 @@ contains
 
     call photosynthesis_set_boundary_conditions(psy_mpp, istep, isubstep)
 
-    call psy_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
+    call psy_mpp%soe%StepDT(dt, (istep-1)*12 + isubstep, converged, converged_reason, ierr)
 
     call extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
 

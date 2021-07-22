@@ -158,7 +158,6 @@ module PhotosynthesisAuxType
      PetscReal , pointer :: gs(:)      ! leaf stomatal conductance (mol H2O/m2 leaf/s)
      PetscReal , pointer :: gleaf_c(:) ! leaf-to-air conductance to CO2 (mol CO2/m2 leaf/s)
      PetscReal , pointer :: gleaf_w(:) ! leaf-to-air conductance to H2O (mol H2O/m2 leaf/s)
-     PetscReal           :: etflx_mlc  ! Leaf transpiration flux from MLC model (mol H2O/m2 leaf/s)
 
      PetscReal           :: ac_soln      ! leaf rubisco-limited gross photosynthesis (umol CO2/m2 leaf/s)
      PetscReal           :: aj_soln      ! leaf RuBP-limited gross photosynthesis (umol CO2/m2 leaf/s)
@@ -442,7 +441,6 @@ contains
     this%gleaf_w(:) = 0.d0
 
     this%cs      = 0.d0
-    this%etflx_mlc   = 0.d0
 
     this%iota    = 750.d0
     allocate(this%residual_wue(ndof))
@@ -1522,9 +1520,14 @@ contains
     implicit none
     !
     class(photosynthesis_auxvar_type) :: this
+    !
+    PetscReal                         :: etflx
+    PetscInt, parameter               :: ileaf = 1
 
     if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
-       call ComputeChangeInPsi(this%plant, this%etflx_mlc)
+       etflx = (this%esat - this%eair)/this%pref * this%gleaf_w_soln
+       call ComputeChangeInPsi(this%plant, etflx)
+       this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_soil(ileaf)
     end if
 
   end subroutine PhotosynthesisPreSolve
