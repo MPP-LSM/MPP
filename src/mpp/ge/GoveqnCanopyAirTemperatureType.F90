@@ -242,18 +242,21 @@ contains
   subroutine CAirTempPreSolve(this)
     !
     ! !DESCRIPTION:
-    ! Default setup of governing equation
+    ! Perform computation before solving the equations
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : GE_CANOPY_AIR_TEMP
     !
     implicit none
     !
     ! !ARGUMENTS
     class(goveqn_cair_temp_type) :: this
+    !
+    PetscInt                     :: icell
 
-    write(*,*)' In CAirTempPreSolve'
-    call exit(0)
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%PreSolve()
+    end do
+
   end subroutine CAirTempPreSolve
 
   !------------------------------------------------------------------------

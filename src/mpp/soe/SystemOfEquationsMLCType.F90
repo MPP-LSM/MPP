@@ -116,12 +116,15 @@ contains
 
        class is (goveqn_cair_temp_type)
           call cur_goveq%GetFromSOEAuxVarsCturb(this%cturb)
+          call cur_goveq%PreSolve()
 
        class is (goveqn_cair_vapor_type)
           call cur_goveq%GetFromSOEAuxVarsCturb(this%cturb)
+          call cur_goveq%PreSolve()
 
        class is (goveqn_cleaf_temp_type)
           call cur_goveq%GetFromSOEAuxVarsCturb(this%cturb)
+          call cur_goveq%PreSolve()
        end select
 
        cur_goveq => cur_goveq%next
