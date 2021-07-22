@@ -17,8 +17,9 @@ module CanopyAirTemperatureAuxType
   type, public :: cair_temp_auxvar_type
 
      ! primary unknown independent variable
-     PetscReal          :: temperature         ! Air temperature profile for previous timestep (K)
+     PetscReal          :: temperature         ! Air temperature (K)
 
+     PetscReal          :: temperature_prev    ! Air temperature from previous timestep (K)
      PetscReal          :: cpair               ! Specific heat of air at constant pressure (J/mol/K)
      PetscReal          :: rhomol              ! Molar density (mol/m3)
      PetscReal          :: pref                ! Atmospheric pressure (Pa)
@@ -43,7 +44,8 @@ module CanopyAirTemperatureAuxType
      PetscReal          :: soil_temperature    ! Soil temperature (K)
    contains
 
-     procedure, public :: Init => CAirTempAuxVarInit
+     procedure, public :: Init     => CAirTempAuxVarInit
+     procedure, public :: PreSolve => CAirTempAuxVarPreSolve
 
   end type cair_temp_auxvar_type
 
@@ -93,6 +95,20 @@ contains
 
   end subroutine CAirTempAuxVarInit
 
+  !------------------------------------------------------------------------
+  subroutine CAirTempAuxVarPreSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Make a copy of solution from previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(cair_temp_auxvar_type) :: this
+
+    this%temperature_prev = this%temperature
+
+  end subroutine CAirTempAuxVarPreSolve
 #endif
 
 end module CanopyAirTemperatureAuxType

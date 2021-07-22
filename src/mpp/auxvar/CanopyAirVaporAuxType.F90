@@ -17,9 +17,10 @@ module CanopyAirVaporAuxType
   type, public :: cair_vapor_auxvar_type
 
      ! primary unknown independent variable
-     PetscReal          :: qair                ! Water vapor for previous timestep (mol/mol)
+     PetscReal          :: qair                ! Water vapor (mol/mol)
 
-     PetscReal          :: temperature         !
+     PetscReal          :: qair_prev           ! Water vapor for previous timestep (mol/mol)
+     PetscReal          :: temperature         ! Air temperature (K)
      PetscReal          :: cpair               ! Specific heat of air at constant pressure (J/mol/K)
      PetscReal          :: rhomol              ! Molar density (mol/m3)
      PetscReal          :: pref                ! Atmospheric pressure (Pa)
@@ -41,7 +42,8 @@ module CanopyAirVaporAuxType
      PetscReal, pointer :: leaf_fssh(:)        ! Sunlit or shaded fraction of canopy layer
      PetscReal, pointer :: leaf_dpai(:)        ! Layer plant area index (m2/m2)
    contains
-     procedure, public :: Init => CAirVaporAuxVarInit
+     procedure, public :: Init     => CAirVaporAuxVarInit
+     procedure, public :: PreSolve => CAirVaporAuxVarPreSolve
   end type cair_vapor_auxvar_type
 
 contains
@@ -90,6 +92,20 @@ contains
 
   end subroutine CAirVaporAuxVarInit
 
+  !------------------------------------------------------------------------
+  subroutine CAirVaporAuxVarPreSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Make a copy of solution from previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(cair_vapor_auxvar_type)   :: this
+
+    this%qair_prev = this%qair
+
+  end subroutine CAirVaporAuxVarPreSolve
 #endif
 
 end module CanopyAirVaporAuxType

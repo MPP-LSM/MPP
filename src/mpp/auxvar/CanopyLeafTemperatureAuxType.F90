@@ -16,8 +16,9 @@ module CanopyLeafTemperatureAuxType
   type, public :: cleaf_temp_auxvar_type
 
      ! primary unknown independent variable
-     PetscReal :: temperature        ! Vegetation temperature from previous timestep (K)
+     PetscReal :: temperature        ! Vegetation temperature (K)
 
+     PetscReal :: temperature_prev   ! Vegetation temperature from previous timestep (K)
      PetscReal :: air_temperature    ! Air temperature for previous timestep (K)
      PetscReal :: pref               ! Atmospheric pressure (Pa)
      PetscReal :: qcanopy            ! Water vapor for previous timestep (mol/mol)
@@ -33,7 +34,8 @@ module CanopyLeafTemperatureAuxType
      PetscReal :: fdry               ! Fraction of plant area index that is green and dry
 
    contains
-     procedure, public :: Init => CLeafTempAuxVarInit
+     procedure, public :: Init     => CLeafTempAuxVarInit
+     procedure, public :: PreSolve => CLeafTempAuxVarPreSolve
   end type cleaf_temp_auxvar_type
 
 contains
@@ -65,6 +67,20 @@ contains
 
   end subroutine CLeafTempAuxVarInit
 
+  !------------------------------------------------------------------------
+  subroutine CLeafTempAuxVarPreSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Make a copy of solution from previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(cleaf_temp_auxvar_type)   :: this
+
+    this%temperature_prev = this%temperature
+
+  end subroutine CLeafTempAuxVarPreSolve
 #endif
 
 end module CanopyLeafTemperatureAuxType
