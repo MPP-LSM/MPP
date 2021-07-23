@@ -28,6 +28,7 @@ module GoveqnCanopyLeafTemperatureType
      procedure, public :: Setup                     => CLeafTempSetup
      procedure, public :: AllocateAuxVars           => CLeafTempAllocateAuxVars
      procedure, public :: PreSolve                  => CLeafTempPreSolve
+     procedure, public :: PostSolve                 => CLeafTempPostSolve
      procedure, public :: GetFromSoeAuxVarsCturb    => CLeafTempGetFromSoeAuxVarsCturb
      procedure, public :: SavePrimaryIndependentVar => CLeafTempSavePrmIndepVar
      procedure, public :: GetRValues                => CLeafTempGetRValues
@@ -158,6 +159,21 @@ contains
     end do
 
   end subroutine CLeafTempPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine CLeafTempPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Perform computation before solving the equations
+    !
+    ! !USES:
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cleaf_temp_type) :: this
+
+  end subroutine CLeafTempPostSolve
 
   !------------------------------------------------------------------------
   subroutine CLeafTempGetFromSoeAuxVarsCturb(this, cturb)
