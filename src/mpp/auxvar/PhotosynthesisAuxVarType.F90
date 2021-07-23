@@ -746,7 +746,7 @@ contains
        !
        call ComputeSoilResistance(this)
 
-       etflx = (this%esat - this%eair)/this%pref * this%gleaf_w(idof_hyd)
+       etflx = (this%esat - this%eair)/this%pref * this%gleaf_w(idof_hyd) * this%fdry
 
        plant => this%plant
        call ComputeChangeInPsi(plant, etflx)
@@ -1525,7 +1525,7 @@ contains
     PetscInt, parameter               :: ileaf = 1
 
     if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
-       etflx = (this%esat - this%eair)/this%pref * this%gleaf_w_soln
+       etflx = (this%esat - this%eair)/this%pref * this%gleaf_w_soln * this%fdry
        call ComputeChangeInPsi(this%plant, etflx)
        this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_soil(ileaf)
     end if
