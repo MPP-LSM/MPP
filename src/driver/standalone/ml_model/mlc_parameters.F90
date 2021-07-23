@@ -66,7 +66,7 @@ contains
 
 
        do icair = 1, ncair
-          do k = 1, nz_cair
+          do k = 1, nz_cair+1
              icell = (icair-1)*(nz_cair+1) + k
 
              cur_goveq%aux_vars_in(icell)%leaf_dpai(:) = dpai(k)
@@ -114,9 +114,8 @@ contains
     class is (goveqn_cair_vapor_type)
 
       do icair = 1, ncair
-         do k = 1, nz_cair
+         do k = 1, nz_cair+1
             icell = (icair-1)*(nz_cair+1) + k
-            cur_goveq%aux_vars_in(icell)%gbv  = 2.496430918408511d0
 
             cur_goveq%aux_vars_in(icell)%leaf_dpai(:) = dpai(k)
             cur_goveq%aux_vars_in(icell)%leaf_fwet(:) = 0.d0

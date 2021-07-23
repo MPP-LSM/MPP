@@ -579,10 +579,6 @@ contains
             end if
          end do ! k-loop
 
-         icell = (nz_cair+1)*(icair-1)+1
-         cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-         cur_goveq%aux_vars_in(icell)%gbh     = 2.268731551029694d0
-
       enddo
 
     end select
@@ -642,10 +638,6 @@ contains
                end do
             end if
          end do
-
-         icell = (nz_cair+1)*(icair-1)+1
-         cur_goveq%aux_vars_in(icell)%is_soil = PETSC_TRUE
-         cur_goveq%aux_vars_in(icell)%gbv     = 2.496430918408511d0
 
       end do
    end select
