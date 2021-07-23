@@ -36,6 +36,7 @@ module GoveqnCanopyAirTemperatureType
      procedure, public :: Setup                     => CAirTempSetup
      procedure, public :: AllocateAuxVars           => CAirTempAllocateAuxVars
      procedure, public :: PreSolve                  => CAirTempPreSolve
+     procedure, public :: PostSolve                  => CAirTempPostSolve
      procedure, public :: GetFromSoeAuxVarsCturb    => CAirTempGetFromSoeAuxVarsCtrub
      procedure, public :: SavePrimaryIndependentVar => CAirTempSavePrmIndepVar
      procedure, public :: GetRValues                => CAirTempGetRValues
@@ -258,6 +259,27 @@ contains
     end do
 
   end subroutine CAirTempPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine CAirTempPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Perform computation after solving the equations
+    !
+    ! !USES:
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cair_temp_type) :: this
+    !
+    PetscInt                     :: icell
+
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%PostSolve()
+    end do
+
+  end subroutine CAirTempPostSolve
 
   !------------------------------------------------------------------------
   subroutine CAirTempGetFromSoeAuxVarsCtrub(this, cturb)
