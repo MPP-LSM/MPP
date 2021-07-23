@@ -164,7 +164,7 @@ contains
   subroutine CLeafTempPostSolve(this)
     !
     ! !DESCRIPTION:
-    ! Perform computation before solving the equations
+    ! Perform computation after solving the equations
     !
     ! !USES:
     !
