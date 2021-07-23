@@ -98,7 +98,7 @@ contains
     PetscInt            :: istep
     Vec                 :: bc_data
     !
-    PetscInt, parameter :: ncol = 21
+    PetscInt, parameter :: ncol = 31
     PetscInt            :: icair, offset, size, k, j
     PetscReal, pointer  :: bc_p(:)
     PetscReal           :: pref_prev
