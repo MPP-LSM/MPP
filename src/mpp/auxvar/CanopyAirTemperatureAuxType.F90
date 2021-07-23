@@ -34,6 +34,7 @@ module CanopyAirTemperatureAuxType
      PetscReal, pointer :: leaf_fdry(:)        ! Fraction of plant area index that is green and dry
      PetscReal, pointer :: leaf_fssh(:)        ! Sunlit or shaded fraction of canopy layer
      PetscReal, pointer :: leaf_dpai(:)        ! Layer plant area index (m2/m2)
+     PetscReal, pointer :: leaf_sh_flux(:)     ! Leaf sensible heat flux (W/m2 leaf)
 
      PetscBool          :: is_soil             ! PETSC_TRUE if the grid cell is a soil grid cell
      PetscReal          :: soil_rhg            ! Relative humidity of airspace at soil surface (fraction)
@@ -44,8 +45,9 @@ module CanopyAirTemperatureAuxType
      PetscReal          :: soil_temperature    ! Soil temperature (K)
    contains
 
-     procedure, public :: Init     => CAirTempAuxVarInit
-     procedure, public :: PreSolve => CAirTempAuxVarPreSolve
+     procedure, public :: Init      => CAirTempAuxVarInit
+     procedure, public :: PreSolve  => CAirTempAuxVarPreSolve
+     procedure, public :: PostSolve => CAirTempAuxVarPostSolve
 
   end type cair_temp_auxvar_type
 
@@ -77,6 +79,7 @@ contains
     allocate(this%leaf_fdry        (num_leaves))
     allocate(this%leaf_fssh        (num_leaves))
     allocate(this%leaf_dpai        (num_leaves))
+    allocate(this%leaf_sh_flux     (num_leaves))
 
     this%gbh(:)              = 0.d0
     this%leaf_temperature(:) = 0.d0
@@ -109,6 +112,28 @@ contains
     this%temperature_prev = this%temperature
 
   end subroutine CAirTempAuxVarPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine CAirTempAuxVarPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Perform computation after the solution is avaiable
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(cair_temp_auxvar_type) :: this
+    !
+    PetscInt ileaf
+
+    do ileaf = 1, this%num_leaves
+       if (this%leaf_dpai(ileaf) > 0.d0) then
+          this%leaf_sh_flux(ileaf) = 2.d0 * this%cpair * this%gbh(ileaf) * &
+               (this%leaf_temperature(ileaf) - this%temperature)
+       end if
+    end do
+
+  end subroutine CAirTempAuxVarPostSolve
 #endif
 
 end module CanopyAirTemperatureAuxType
