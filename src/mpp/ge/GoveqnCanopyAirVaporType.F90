@@ -36,6 +36,7 @@ module GoveqnCanopyAirVaporType
      procedure, public :: Setup                     => CAirVaporSetup
      procedure, public :: AllocateAuxVars           => CAirVaporAllocateAuxVars
      procedure, public :: PreSolve                  => CAirVaporPreSolve
+     procedure, public :: PostSolve                 => CAirVaporPostSolve
      procedure, public :: GetFromSoeAuxVarsCturb    => CAirVaporGetFromSoeAuxVarsCturb
      procedure, public :: SavePrimaryIndependentVar => CAirVaporSavePrmIndepVar
      procedure, public :: GetRValues                => CAirVaporGetRValues
@@ -261,6 +262,27 @@ contains
   end subroutine CAirVaporPreSolve
 
   !------------------------------------------------------------------------
+  subroutine CAirVaporPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Perform computation before solving the equations
+    !
+    ! !USES:
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cair_vapor_type) :: this
+    !
+    PetscInt                      :: icell
+
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%PostSolve()
+    end do
+
+  end subroutine CAirVaporPostSolve
+
+  !------------------------------------------------------------------------
   subroutine CAirVaporGetFromSoeAuxVarsCturb(this, cturb)
     !
     ! !DESCRIPTION:
@@ -331,7 +353,7 @@ contains
     PetscScalar, pointer :: x_p(:)
     PetscInt             :: ghosted_id, size
     PetscErrorCode       :: ierr
-    
+
     call VecGetLocalSize(x, size, ierr); CHKERRQ(ierr)
 
     if (size /= this%mesh%ncells_local) then
