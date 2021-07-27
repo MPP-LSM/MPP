@@ -169,7 +169,7 @@ contains
                 cur_goveq%aux_vars_in(icell)%plant%leaf_psi(:)    = -2.4d0
                 cur_goveq%aux_vars_in(icell)%plant%leaf_height(:) = (k-1)*0.5d0 + 2.75d0
                 cur_goveq%aux_vars_in(icell)%plant%leaf_capc(:)   = 2500.d0
-                cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -2.d0
+                cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -1.2d0
                 cur_goveq%aux_vars_in(icell)%plant%leaf_lai(:)    = 4.1516127586364746d0
                 cur_goveq%aux_vars_in(icell)%plant%k_stem2leaf(:) = 4.d0
 
