@@ -45,6 +45,7 @@ module SystemOfEquationsMlcType
     procedure, public :: PostSolve             => MlcSoePostSolve
     procedure, public :: ComputeRHS            => MlcSoeComputeRhs
     procedure, public :: ComputeOperators      => MlcSoeComputeOperators
+    procedure, public :: ExchangeAuxVars       => MlcSoeExchangeAuxVars
 
  end type sysofeqns_mlc_type
 
@@ -104,6 +105,7 @@ contains
     PetscErrorCode                    :: ierr
 
     call this%SavePrimaryIndependentVar(this%solver%soln)
+    call this%ExchangeAuxVars()
 
     call ObukhovLength(this%cturb)
     call WindProfile(this%cturb)
@@ -180,15 +182,7 @@ contains
          B, nDM, &
          PETSC_NULL_INTEGER, B_subvecs, ierr)
 
-    ! 1) GE_1 <---> GE_2 exchange AuxVars()
-    do row = 1,nDM
-       do col = row+1,nDM
-          call this%SetPointerToIthGovEqn(row, cur_goveq_1)
-          call this%SetPointerToIthGovEqn(col, cur_goveq_2)
-          call GovEqnExchangeAuxVars(this, cur_goveq_1, cur_goveq_2)
-          call GovEqnExchangeAuxVars(this, cur_goveq_2, cur_goveq_1)
-       enddo
-    enddo
+    call this%ExchangeAuxVars()
 
     ii = 0
     cur_goveqn => this%goveqns
@@ -477,30 +471,50 @@ contains
 
     call VecCopy(this%solver%soln, this%solver%soln_prev,ierr); CHKERRQ(ierr)
 
-    ! Find number of GEs packed within the SoE
-    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
+    call this%SavePrimaryIndependentVar(this%solver%soln)
+    call this%ExchangeAuxVars()
 
-    ! Allocate vectors for individual GEs
-    allocate(soln_subvecs(nDM))
-
-    ! Get solution vectors for individual GEs
-    call DMCompositeGetAccessArray(this%solver%dm, &
-         this%solver%soln, nDM, &
-         PETSC_NULL_INTEGER, soln_subvecs, ierr)
-
-    ii = 0
     cur_goveqn => this%goveqns
     do
        if (.not.associated(cur_goveqn)) exit
-       ii = ii + 1
-       call cur_goveqn%SavePrimaryIndependentVar(soln_subvecs(ii))
+       call cur_goveqn%PostSolve()
        cur_goveqn => cur_goveqn%next
     enddo
 
-    deallocate(soln_subvecs)
-
   end subroutine MlcSoePostSolve
 
+  !------------------------------------------------------------------------
+  subroutine MlcSoeExchangeAuxVars(this)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use GoverningEquationBaseType     , only : goveqn_base_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(sysofeqns_mlc_type) :: this
+    !
+    class(goveqn_base_type) , pointer :: cur_goveq_1
+    class(goveqn_base_type) , pointer :: cur_goveq_2
+    PetscInt                          :: row, col, nDM
+    PetscErrorCode                    :: ierr
+
+    ! Find number of GEs packed within the SoE
+    call DMCompositeGetNumberDM(this%solver%dm, nDM, ierr)
+
+    ! GE_1 <---> GE_2 exchange AuxVars()
+    do row = 1,nDM
+       do col = row+1,nDM
+          call this%SetPointerToIthGovEqn(row, cur_goveq_1)
+          call this%SetPointerToIthGovEqn(col, cur_goveq_2)
+          call GovEqnExchangeAuxVars(this, cur_goveq_1, cur_goveq_2)
+          call GovEqnExchangeAuxVars(this, cur_goveq_2, cur_goveq_1)
+       enddo
+    enddo
+
+  end subroutine MlcSoeExchangeAuxVars
 #endif
 
 end module SystemOfEquationsMlcType
