@@ -103,26 +103,6 @@ contains
     class(goveqn_base_type),pointer :: cur_goveq
     PetscErrorCode :: ierr
 
-    select case (this%itype)
-    case(SOE_PHOTOSYNTHESIS)
-
-       cur_goveq => this%goveqns
-       do
-          if (.not.associated(cur_goveq)) exit
-          select type(cur_goveq)
-          class is (goveqn_photosynthesis_type)
-
-             call cur_goveq%PreSolve()
-
-          end select
-          cur_goveq => cur_goveq%next
-       enddo
-
-    case default
-       write(iulog,*) 'PhotosysnthesisSoE: Unknown soe_type'
-       call endrun(msg=errMsg(__FILE__, __LINE__))
-    end select
-
   end subroutine PhotosynthesisSoePreSolve
 
   !------------------------------------------------------------------------
