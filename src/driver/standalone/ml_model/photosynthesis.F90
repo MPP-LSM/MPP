@@ -353,6 +353,7 @@ contains
                    call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
                    cur_goveq%mesh%is_active(icell) = bounded
                 elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+                   if (.not.(istep == 1 .and. isubstep == 1))  call cur_goveq%aux_vars_in(icell)%PreSolve()
                    call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
                 end if
 
