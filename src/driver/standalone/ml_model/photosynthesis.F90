@@ -264,6 +264,7 @@ contains
     use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
     use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
     use MultiPhysicsProbConstants           , only : TFRZ
     use WaterVaporMod                       , only : SatVap
     use ml_model_utils                      , only : get_value_from_condition
@@ -323,6 +324,9 @@ contains
              do k = 1, nz
                 icell = icell + 1
 
+                if (.not.(istep == 1 .and. isubstep == 1)) then
+                   cur_goveq%aux_vars_in(icell)%tleaf_prev = cur_goveq%aux_vars_in(icell)%tleaf
+                endif
                 cur_goveq%aux_vars_in(icell)%tleaf = tleaf_local(icell)
 
                 cur_goveq%aux_vars_in(icell)%gbv   = get_value_from_condition(int_cond%gbv, icell)
@@ -348,12 +352,16 @@ contains
                    cur_goveq%aux_vars_in(icell)%soil%h2osoi_vol(j) = get_value_from_condition(bnd_cond%h2osoi_vol, j)
                 end do
 
-                if (cur_goveq%aux_vars_in(icell)%gstype == VAR_WUE) then
+                if (.not.(istep == 1 .and. isubstep == 1))  then
+                   call cur_goveq%aux_vars_in(icell)%PreSolve()
+                endif
+                if (cur_goveq%aux_vars_in(icell)%gstype == VAR_WUE .or. &
+                     cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11 ) then
                    ! Set cell active/inactive if the solution is bounded/unbounded
                    call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
                    cur_goveq%mesh%is_active(icell) = bounded
                 elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
-                   if (.not.(istep == 1 .and. isubstep == 1))  call cur_goveq%aux_vars_in(icell)%PreSolve()
+                   !if (.not.(istep == 1 .and. isubstep == 1))  call cur_goveq%aux_vars_in(icell)%PreSolve()
                    call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
                 end if
 
@@ -362,6 +370,7 @@ contains
        end do
 
     end select
+    write(*,*)'photosynthesis_set_boundary_conditions done'
 
   end subroutine photosynthesis_set_boundary_conditions
 

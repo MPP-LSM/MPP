@@ -13,6 +13,7 @@ module PhotosynthesisAuxType
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
   use MultiPhysicsProbConstants , only : VAR_WUE
   use petscsys
 
@@ -74,6 +75,7 @@ module PhotosynthesisAuxType
      PetscInt            :: ndof       ! no. of unknowns. 1 for BB, Medlyn, and WUE; 2 for Bonan14
 
      PetscReal           :: tleaf      ! leaf temperature (K)
+     PetscReal           :: tleaf_prev ! leaf temperature at previous time step (K)
 
      PetscReal           :: gbv        ! leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal           :: gbc        ! leaf boundary layer conductance, CO2 (mol CO2/m2 leaf/s)
@@ -172,6 +174,7 @@ module PhotosynthesisAuxType
      PetscReal , pointer :: residual_wue(:)    ! residual for WUE equation (umol CO2/ mol H2O)
      PetscReal , pointer :: residual_hyd(:)    ! residual for plant hydraulics equation (Pa)
      PetscBool , pointer :: soln_is_bounded(:) ! Is 0 if solution is not bounded between gs_min_wue and gs_max_wue otherwise 1
+     PetscReal           :: manzoni11_beta
 
      PetscReal           :: fdry       ! Fraction of plant area index that is green and dry
      PetscReal           :: fwet       ! Fraction of plant area index that is wet
@@ -360,6 +363,7 @@ contains
     this%ci(:) = 0.d0
 
     this%tleaf     = 0.d0
+    this%tleaf_prev= 0.d0
     this%gbv       = 0.d0
     this%gbc       = 0.d0
 
@@ -443,6 +447,7 @@ contains
     this%cs      = 0.d0
 
     this%iota    = 750.d0
+    this%manzoni11_beta = 0.5d0
     allocate(this%residual_wue(ndof))
     allocate(this%residual_hyd(ndof))
     allocate(this%soln_is_bounded(ndof))
@@ -543,6 +548,8 @@ contains
 
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
 
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
+
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
           call exit(0)
@@ -563,6 +570,8 @@ contains
        elseif (this%gstype == VAR_WUE) then
 
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
 
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
@@ -699,6 +708,7 @@ contains
     PetscReal                            :: t1, t2, t3, etflx
     PetscReal                            :: an, gbc, delta_c
     PetscReal                            :: gs_val_wue, gs_val_hyd, an_low, an_high, check
+    PetscReal                            :: factor
     PetscInt                 , parameter :: ileaf = 1 ! Currently only one leaf is supported
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
@@ -708,11 +718,13 @@ contains
     select case (this%gstype)
     case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
        call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
+       call ComputeSoilResistance(this)
 
     case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
        call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
+       call ComputeSoilResistance(this)
 
-    case (VAR_WUE)
+    case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
        gs_val_wue = this%gs(idof_wue)
 
        this%gs(idof_wue) = gs_val_wue - gs_delta_wue
@@ -723,6 +735,12 @@ contains
        call PhotosynthesisAuxVarCompute_WUE(this)
        an_high = this%an(idof_wue)
 
+       call ComputeSoilResistance(this)
+
+       factor = 1.d0
+       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
+          factor = exp(this%manzoni11_beta * plant%leaf_psi(ileaf))
+       end if
        this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
 
     case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
@@ -937,7 +955,7 @@ contains
        this%ceair = min( this%eair, this%esat )
 
        select case(this%gstype)
-       case (VAR_WUE)
+       case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
           do idof = 1, this%ndof
              this%hs = (this%gbv * this%eair + this%gs(idof) * this%esat)/((this%gbv + this%gs(idof)) * this%esat)
              this%vpd = max((this%esat - this%hs * this%esat), 0.1d0)/this%pref
@@ -1516,19 +1534,20 @@ contains
   subroutine PhotosynthesisPreSolve(this)
     !
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use WaterVaporMod             , only : SatVap
     !
     implicit none
     !
     class(photosynthesis_auxvar_type) :: this
     !
-    PetscReal                         :: etflx
+    PetscReal                         :: etflx, esat, desat
     PetscInt, parameter               :: ileaf = 1
 
-    if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
-       etflx = (this%esat - this%eair)/this%pref * this%gleaf_w_soln * this%fdry
-       call ComputeChangeInPsi(this%plant, etflx)
-       this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_soil(ileaf)
-    end if
+    call SatVap (this%tleaf_prev, esat, desat)
+
+    etflx = (esat + desat * (this%tleaf - this%tleaf_prev) - this%eair)/this%pref * this%gleaf_w_soln * this%fdry
+    call ComputeChangeInPsi(this%plant, etflx)
+    this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_soil(ileaf)
 
   end subroutine PhotosynthesisPreSolve
 

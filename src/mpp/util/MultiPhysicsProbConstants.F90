@@ -158,6 +158,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI     = 661
   PetscInt, parameter, public :: VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND  = 662
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_BONAN14           = 663
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_MANZONI11         = 664
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
