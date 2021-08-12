@@ -20,6 +20,8 @@ contains
 
     call allocate_memory_for_bc()
     call allocate_memory_for_ic()
+    call allocate_memory_for_canopy_level_vars()
+    call allocate_memory_for_vertical_level_vars()
 
   end subroutine allocate_memory
 
@@ -108,11 +110,65 @@ contains
   end subroutine allocate_memory_for_ic
 
   !------------------------------------------------------------------------
+  subroutine allocate_memory_for_canopy_level_vars()
+    !
+    use ml_model_utils      , only : allocate_memory_for_condition
+    use ml_model_global_vars, only : ncair, canp_lev_vars
+    !
+    implicit none
+    !
+    call allocate_memory_for_condition(canp_lev_vars%ustar     , ncair)
+    call allocate_memory_for_condition(canp_lev_vars%lup       , ncair)
+
+    call allocate_memory_for_condition(canp_lev_vars%labs_soi  , ncair)
+    call allocate_memory_for_condition(canp_lev_vars%rnabs_soi , ncair)
+    call allocate_memory_for_condition(canp_lev_vars%sh_soi    , ncair)
+    call allocate_memory_for_condition(canp_lev_vars%lh_soi    , ncair)
+    call allocate_memory_for_condition(canp_lev_vars%et_soi    , ncair)
+    call allocate_memory_for_condition(canp_lev_vars%g_soi     , ncair)
+    call allocate_memory_for_condition(canp_lev_vars%gac0_soi  , ncair)
+
+  end subroutine allocate_memory_for_canopy_level_vars
+
+  !------------------------------------------------------------------------
+  subroutine allocate_memory_for_vertical_level_vars()
+    !
+    use ml_model_utils      , only : allocate_memory_for_condition
+    use ml_model_global_vars, only : ncair, nbot, ntop, ntree, vert_lev_vars
+    use ml_model_meshes     , only : nleaf
+    !
+    implicit none
+    !
+    PetscInt :: size
+
+    size = ncair*(ntop-nbot+1)
+
+    call allocate_memory_for_condition(vert_lev_vars%sh_air      , size)
+    call allocate_memory_for_condition(vert_lev_vars%et_air      , size)
+    call allocate_memory_for_condition(vert_lev_vars%st_air      , size)
+    call allocate_memory_for_condition(vert_lev_vars%gac_air     , size)
+
+    size = ncair*(ntop-nbot+1)*ntree*nleaf
+
+    call allocate_memory_for_condition(vert_lev_vars%labs_leaf   , size)
+    call allocate_memory_for_condition(vert_lev_vars%rn_leaf     , size)
+    call allocate_memory_for_condition(vert_lev_vars%sh_leaf     , size)
+    call allocate_memory_for_condition(vert_lev_vars%lh_leaf     , size)
+    call allocate_memory_for_condition(vert_lev_vars%tr_leaf     , size)
+    call allocate_memory_for_condition(vert_lev_vars%st_leaf     , size)
+    call allocate_memory_for_condition(vert_lev_vars%anet_leaf   , size)
+    call allocate_memory_for_condition(vert_lev_vars%agross_leaf , size)
+    call allocate_memory_for_condition(vert_lev_vars%gs_leaf     , size)
+
+  end subroutine allocate_memory_for_vertical_level_vars
+
+  !------------------------------------------------------------------------
   subroutine read_boundary_conditions(istep, bc_data)
     !
     use ml_model_utils, only : set_value_in_condition, get_value_from_condition
     use petscsys
     use petscvec
+    use ml_model_global_vars, only : bnd_cond, ncair
     !
     implicit none
     !

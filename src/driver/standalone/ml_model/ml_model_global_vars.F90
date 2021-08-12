@@ -70,7 +70,38 @@ module ml_model_global_vars
      type(condition_type) :: wind
 
   end type internal_condition_type
-  
+
+  type, public :: canopy_level_accumulator
+     type(condition_type) :: ustar       ! friction velocity [m/s]
+     type(condition_type) :: lup         ! upward longwave radiation above canopy [W/m^2]
+
+     type(condition_type) :: labs_soi    ! absorbed longwave radiation [W/m^2]
+     type(condition_type) :: rnabs_soi   ! net radiation [W/m^2]
+     type(condition_type) :: sh_soi      ! sensible heat flux [W/m^2]
+     type(condition_type) :: lh_soi      ! latent heat flux [W/m^2]
+     type(condition_type) :: et_soi      ! water vapor flux [mol H2O/m^2/s]
+     type(condition_type) :: g_soi       ! ground heat flux [W/m^2]
+     type(condition_type) :: gac0_soi    ! aerodynamic conductance for soil [mol/m^2/s]
+  end type canopy_level_accumulator
+
+  type, public :: vertical_level_accumulator
+     type(condition_type) :: sh_air      ! sensible heat flux [W/m^2]
+     type(condition_type) :: et_air      ! water vapor flux [mol H2O/m^2/s]
+     type(condition_type) :: st_air      ! heat storage [W/m^2]
+     type(condition_type) :: gac_air     ! aerodynamic conductance [mol/m^2/s]
+
+     type(condition_type) :: labs_leaf   ! absorbed longwave radiation [W/m^2]
+     type(condition_type) :: rn_leaf     ! net radiation [W/m^2]
+     type(condition_type) :: sh_leaf     ! sensible heat flux [W/m^2]
+     type(condition_type) :: lh_leaf     ! latent heat flux [W/m^2]
+     type(condition_type) :: tr_leaf     ! transpiration flux [mol H2O/m^2_leaf/s]
+     type(condition_type) :: st_leaf     ! heat storage [W/m^2]
+     type(condition_type) :: anet_leaf   ! net photosynthesis [umol CO2/m^2_leaf/s]
+     type(condition_type) :: agross_leaf ! gross photosynthesis [umo CO2/m^2_leaf/s]
+     type(condition_type) :: gs_leaf     ! stomatal conductance [mol H2O/m^2_leaf/s]
+  end type vertical_level_accumulator
+
+
   character(len=1024) :: bc_file
   character(len=1024) :: ic_file
 
@@ -98,8 +129,10 @@ module ml_model_global_vars
   PetscInt  :: beg_step, end_step, nsubstep
 
   ! Boundary conditions
-  type(boundary_condition_type) :: bnd_cond
-  type(internal_condition_type) :: int_cond
+  type(boundary_condition_type)    :: bnd_cond
+  type(internal_condition_type)    :: int_cond
+  type(canopy_level_accumulator)   :: canp_lev_vars
+  type(vertical_level_accumulator) :: vert_lev_vars
 
 
   ! Shortwave model
