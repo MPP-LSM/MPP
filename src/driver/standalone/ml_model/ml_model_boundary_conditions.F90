@@ -148,18 +148,27 @@ contains
     call allocate_memory_for_condition(vert_lev_vars%st_air      , size)
     call allocate_memory_for_condition(vert_lev_vars%gac_air     , size)
 
-    size = ncair*(ntop-nbot+1)*ntree*nleaf
+    size = ncair*(ntop-nbot+1)*ntree
 
-    call allocate_memory_for_condition(vert_lev_vars%labs_leaf   , size)
-    call allocate_memory_for_condition(vert_lev_vars%rn_leaf     , size)
-    call allocate_memory_for_condition(vert_lev_vars%sh_leaf     , size)
-    call allocate_memory_for_condition(vert_lev_vars%lh_leaf     , size)
-    call allocate_memory_for_condition(vert_lev_vars%tr_leaf     , size)
-    call allocate_memory_for_condition(vert_lev_vars%st_leaf     , size)
-    call allocate_memory_for_condition(vert_lev_vars%anet_leaf   , size)
-    call allocate_memory_for_condition(vert_lev_vars%agross_leaf , size)
-    call allocate_memory_for_condition(vert_lev_vars%gs_leaf     , size)
+    call allocate_memory_for_condition(vert_lev_vars%labs_leaf_sun   , size)
+    call allocate_memory_for_condition(vert_lev_vars%rn_leaf_sun     , size)
+    call allocate_memory_for_condition(vert_lev_vars%sh_leaf_sun     , size)
+    call allocate_memory_for_condition(vert_lev_vars%lh_leaf_sun     , size)
+    call allocate_memory_for_condition(vert_lev_vars%tr_leaf_sun     , size)
+    call allocate_memory_for_condition(vert_lev_vars%st_leaf_sun     , size)
+    call allocate_memory_for_condition(vert_lev_vars%anet_leaf_sun   , size)
+    call allocate_memory_for_condition(vert_lev_vars%agross_leaf_sun , size)
+    call allocate_memory_for_condition(vert_lev_vars%gs_leaf_sun     , size)
 
+    call allocate_memory_for_condition(vert_lev_vars%labs_leaf_shd   , size)
+    call allocate_memory_for_condition(vert_lev_vars%rn_leaf_shd     , size)
+    call allocate_memory_for_condition(vert_lev_vars%sh_leaf_shd     , size)
+    call allocate_memory_for_condition(vert_lev_vars%lh_leaf_shd     , size)
+    call allocate_memory_for_condition(vert_lev_vars%tr_leaf_shd     , size)
+    call allocate_memory_for_condition(vert_lev_vars%st_leaf_shd     , size)
+    call allocate_memory_for_condition(vert_lev_vars%anet_leaf_shd   , size)
+    call allocate_memory_for_condition(vert_lev_vars%agross_leaf_shd , size)
+    call allocate_memory_for_condition(vert_lev_vars%gs_leaf_shd     , size)
   end subroutine allocate_memory_for_vertical_level_vars
 
   !------------------------------------------------------------------------
