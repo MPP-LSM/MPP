@@ -134,14 +134,14 @@ contains
   subroutine allocate_memory_for_vertical_level_vars()
     !
     use ml_model_utils      , only : allocate_memory_for_condition
-    use ml_model_global_vars, only : ncair, nbot, ntop, ntree, vert_lev_vars
+    use ml_model_global_vars, only : ncair, nbot, ntop, ntree, vert_lev_vars, nz_cair
     use ml_model_meshes     , only : nleaf
     !
     implicit none
     !
     PetscInt :: size
 
-    size = ncair*(ntop-nbot+1)
+    size = ncair*nz_cair
 
     call allocate_memory_for_condition(vert_lev_vars%sh_air      , size)
     call allocate_memory_for_condition(vert_lev_vars%et_air      , size)
