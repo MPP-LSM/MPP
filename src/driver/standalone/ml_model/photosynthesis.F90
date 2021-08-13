@@ -560,11 +560,11 @@ contains
        call accumulate_data(vert_lev_vars%gs_leaf_sun, gs_data(icell         ), icell, isubstep)
        call accumulate_data(vert_lev_vars%gs_leaf_shd, gs_data(icell + offset), icell, isubstep)
 
-       call accumulate_data(vert_lev_vars%ag_leaf_sun, ag_data(icell         ), icell, isubstep)
-       call accumulate_data(vert_lev_vars%ag_leaf_shd, ag_data(icell + offset), icell, isubstep)
+       call accumulate_data(vert_lev_vars%agross_leaf_sun, ag_data(icell         ), icell, isubstep)
+       call accumulate_data(vert_lev_vars%agross_leaf_shd, ag_data(icell + offset), icell, isubstep)
 
-       call accumulate_data(vert_lev_vars%an_leaf_sun, an_data(icell         ), icell, isubstep)
-       call accumulate_data(vert_lev_vars%an_leaf_shd, an_data(icell + offset), icell, isubstep)
+       call accumulate_data(vert_lev_vars%anet_leaf_sun, an_data(icell         ), icell, isubstep)
+       call accumulate_data(vert_lev_vars%anet_leaf_shd, an_data(icell + offset), icell, isubstep)
 
        if (output_data) then
           write(*,*)icell, gs_data(icell), gs_data(icell + offset)
