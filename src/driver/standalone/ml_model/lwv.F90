@@ -329,7 +329,7 @@ contains
     use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants , only : VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI
     use MultiPhysicsProbConstants , only : VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND
-    use ml_model_utils            , only : set_value_in_condition
+    use ml_model_utils            , only : set_value_in_condition, accumulate_data
     use petscvec
     !
     ! !ARGUMENTS
@@ -373,10 +373,16 @@ contains
              if (k == 1) then
                 soil_icell = soil_icell + 1
                 call set_value_in_condition(int_cond%Labs_soil, soil_icell, Labs_soil_data(count))
+                call accumulate_data(canp_lev_vars%labs_soi, Labs_soil_data(count), soil_icell, isubstep)
              else
+
                 leaf_icell = leaf_icell + 1
                 call set_value_in_condition(int_cond%Labs_leaf_sun, leaf_icell, Labs_leaf_data(count))
                 call set_value_in_condition(int_cond%Labs_leaf_shd, leaf_icell, Labs_leaf_data(count))
+
+                call accumulate_data(vert_lev_vars%labs_leaf_sun, Labs_leaf_data(count), leaf_icell, isubstep)
+                call accumulate_data(vert_lev_vars%labs_leaf_shd, Labs_leaf_data(count), leaf_icell, isubstep)
+
                 if (output_data) then
                    write(*,*)leaf_icell, Labs_leaf_data(count)
                 end if
