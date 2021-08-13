@@ -513,7 +513,10 @@ contains
     use MultiPhysicsProbPhotosynthesis  , only : mpp_photosynthesis_type
     use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE
-    use ml_model_utils            , only : set_value_in_condition
+    use MultiPhysicsProbConstants , only : VAR_GROSS_PHOTOSYNTHESIS
+    use MultiPhysicsProbConstants , only : VAR_NET_PHOTOSYNTHESIS
+    use ml_model_utils            , only : set_value_in_condition, accumulate_data
+    use ml_model_global_vars      , only : vert_lev_vars
     use petscvec
     !
     ! !ARGUMENTS
@@ -524,7 +527,7 @@ contains
     !
     PetscInt                            :: icell, offset
     PetscInt                            :: ncells
-    PetscReal               , pointer   :: gs_data(:)
+    PetscReal               , pointer   :: gs_data(:), ag_data(:), an_data(:)
     class(goveqn_base_type) , pointer   :: goveq
     PetscErrorCode                      :: ierr
     character(len=20)                   :: step_string, substep_string
@@ -532,12 +535,16 @@ contains
     ncells = ncair * ntree * (ntop - nbot + 1) * nleaf
 
     allocate(gs_data(ncells))
+    allocate(ag_data(ncells))
+    allocate(an_data(ncells))
 
     call psy_mpp%soe%SetPointerToIthGovEqn(1, goveq)
 
     select type(goveq)
     class is (goveqn_photosynthesis_type)
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_STOMATAL_CONDUCTANCE, ncells, gs_data)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_GROSS_PHOTOSYNTHESIS, ncells, ag_data)
+       call goveq%GetRValues(AUXVAR_INTERNAL, VAR_NET_PHOTOSYNTHESIS  , ncells, an_data)
     end select
 
     if (output_data) then
@@ -549,6 +556,16 @@ contains
     do icell = 1, ncair * ntree * (ntop - nbot + 1)
        call set_value_in_condition(int_cond%gs_sun, icell, gs_data(icell         ))
        call set_value_in_condition(int_cond%gs_shd, icell, gs_data(icell + offset))
+
+       call accumulate_data(vert_lev_vars%gs_leaf_sun, gs_data(icell         ), icell, isubstep)
+       call accumulate_data(vert_lev_vars%gs_leaf_shd, gs_data(icell + offset), icell, isubstep)
+
+       call accumulate_data(vert_lev_vars%ag_leaf_sun, ag_data(icell         ), icell, isubstep)
+       call accumulate_data(vert_lev_vars%ag_leaf_shd, ag_data(icell + offset), icell, isubstep)
+
+       call accumulate_data(vert_lev_vars%an_leaf_sun, an_data(icell         ), icell, isubstep)
+       call accumulate_data(vert_lev_vars%an_leaf_shd, an_data(icell + offset), icell, isubstep)
+
        if (output_data) then
           write(*,*)icell, gs_data(icell), gs_data(icell + offset)
        end if
@@ -558,6 +575,8 @@ contains
     endif
 
     deallocate(gs_data)
+    deallocate(ag_data)
+    deallocate(an_data)
 
   end subroutine extract_data_from_photosynthesis
 

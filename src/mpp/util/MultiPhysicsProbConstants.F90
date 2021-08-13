@@ -159,6 +159,8 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND  = 662
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_BONAN14           = 663
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_MANZONI11         = 664
+  PetscInt, parameter, public :: VAR_GROSS_PHOTOSYNTHESIS                   = 665
+  PetscInt, parameter, public :: VAR_NET_PHOTOSYNTHESIS                     = 666
 
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701

@@ -487,7 +487,9 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants, only : VAR_GROSS_PHOTOSYNTHESIS
+    use MultiPhysicsProbConstants, only : VAR_NET_PHOTOSYNTHESIS
     !
     implicit none
     !
@@ -501,11 +503,17 @@ contains
 
     select case(var_type)
     case(VAR_STOMATAL_CONDUCTANCE)
-
        do ghosted_id = 1, ncells
           var_values(ghosted_id) = aux_var(ghosted_id)%gs_soln
        end do
-
+    case(VAR_GROSS_PHOTOSYNTHESIS)
+       do ghosted_id = 1, ncells
+          var_values(ghosted_id) = aux_var(ghosted_id)%ag_soln
+       end do
+    case(VAR_NET_PHOTOSYNTHESIS)
+       do ghosted_id = 1, ncells
+          var_values(ghosted_id) = aux_var(ghosted_id)%an_soln
+       end do
     case default
        write(iulog,*) 'PhotosynthesisGetRValuesFromAuxVars: Unknown var_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))
