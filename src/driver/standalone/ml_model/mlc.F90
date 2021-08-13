@@ -442,13 +442,15 @@ contains
  !------------------------------------------------------------------------
   subroutine set_boundary_conditions(mlc_mpp, istep, isubstep)
     !
-    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
-    use SystemOfEquationsBaseType , only : sysofeqns_base_type
-    use SystemOfEquationsMLCType  , only : sysofeqns_mlc_type
-    use ml_model_utils            , only : get_value_from_condition
+    use MultiPhysicsProbConstants      , only : MM_H2O, MM_DRY_AIR, RGAS
+    use SystemOfEquationsBaseType      , only : sysofeqns_base_type
+    use SystemOfEquationsMLCType       , only : sysofeqns_mlc_type
+    use ml_model_utils                 , only : get_value_from_condition
     use GoverningEquationBaseType      , only : goveqn_base_type
-    use GoveqnCanopyAirVaporType  , only : goveqn_cair_vapor_type
-    use GoveqnCanopyAirTemperatureType  , only : goveqn_cair_temp_type
+    use GoveqnCanopyAirVaporType       , only : goveqn_cair_vapor_type
+    use GoveqnCanopyAirTemperatureType , only : goveqn_cair_temp_type
+    use ml_model_utils                 , only : accumulate_data
+    use ml_model_global_vars           , only : canp_lev_vars
     !
     ! !ARGUMENTS
     implicit none
@@ -461,6 +463,7 @@ contains
     class(goveqn_base_type)    , pointer :: cur_goveq
     PetscInt                             :: icair
     PetscReal                            :: factor, qref_value, tcan_value, qcan_value, eair
+    PetscReal                            :: rhomol
 
     base_soe => mlc_mpp%soe
 
@@ -517,6 +520,12 @@ contains
        soe%cturb%soil_rhg(icair) = get_value_from_condition(bnd_cond%rhg, icair)
        soe%cturb%soil_res(icair) = get_value_from_condition(bnd_cond%soilres, icair)
        soe%cturb%soil_tk(icair) = get_value_from_condition(bnd_cond%soil_tk, icair)
+
+       call accumulate_data(canp_lev_vars%rnabs_soi, soe%cturb%soil_rn(icair), icair, isubstep)
+
+       rhomol = soe%cturb%pref(icair) / (RGAS * soe%cturb%tref(icair))
+       call accumulate_data(canp_lev_vars%gac0_soi, rhomol/soe%cturb%soil_res(icair), icair, isubstep)
+
     end do
 
     call set_air_temp_ge_parameters(mlc_mpp)
@@ -654,6 +663,8 @@ contains
     use SystemOfEquationsMLCType        , only : sysofeqns_mlc_type
     use GoverningEquationBaseType       , only : goveqn_base_type
     use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
+    use ml_model_utils                  , only : accumulate_data
+    use ml_model_global_vars            , only : vert_lev_vars
     !
     ! !ARGUMENTS
     implicit none
@@ -703,6 +714,9 @@ contains
                            get_value_from_condition(int_cond%Ileaf_sun_nir, count) + &
                            get_value_from_condition(int_cond%Labs_leaf_sun       , count)
 
+                      call accumulate_data(vert_lev_vars%rn_leaf_sun, &
+                           cur_goveq%aux_vars_in(icell)%rn, count, isubstep)
+
                       if (output_data) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
@@ -717,6 +731,10 @@ contains
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count) + &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count) + &
                            get_value_from_condition(int_cond%Labs_leaf_shd       , count)
+
+                      call accumulate_data(vert_lev_vars%rn_leaf_shd, &
+                           cur_goveq%aux_vars_in(icell)%rn, count, isubstep)
+
                       if (output_data) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
