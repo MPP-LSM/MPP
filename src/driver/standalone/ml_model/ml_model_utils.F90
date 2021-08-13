@@ -16,6 +16,7 @@ module ml_model_utils
   public :: compute_fssh
   public :: set_value_in_condition
   public :: get_value_from_condition
+  public :: accumulate_data
 
 contains
 
@@ -253,5 +254,32 @@ contains
     value = cond%data(idata)
 
   end function get_value_from_condition
+
+  !------------------------------------------------------------------------
+  subroutine accumulate_data(cond, cur_value, idata, isubstep)
+    !
+    use ml_model_global_vars, only : condition_type, nsubstep
+    !
+    implicit none
+    !
+    type(condition_type) :: cond
+    PetscInt             :: idata, isubstep
+    PetscReal            :: cur_value
+    !
+    PetscReal            :: old_value, new_value
+
+    if (isubstep == 1) then
+       new_value = cur_value
+    else
+       old_value = get_value_from_condition(cond, idata)
+       new_value = old_value + cur_value
+       if (isubstep == nsubstep) then
+          new_value = new_value / nsubstep
+       end if
+    end if
+
+    call set_value_in_condition(cond, idata, new_value)
+
+  end subroutine accumulate_data
 
 end module ml_model_utils
