@@ -161,7 +161,10 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_MANZONI11         = 664
   PetscInt, parameter, public :: VAR_GROSS_PHOTOSYNTHESIS                   = 665
   PetscInt, parameter, public :: VAR_NET_PHOTOSYNTHESIS                     = 666
-
+  PetscInt, parameter, public :: VAR_LEAF_HEAT_STORAGE                      = 667
+  PetscInt, parameter, public :: VAR_LATENT_HEAT_FLUX                       = 668
+  PetscInt, parameter, public :: VAR_SENSIBLE_HEAT_FLUX                     = 669
+  PetscInt, parameter, public :: VAR_LEAF_TRANSPIRATION                     = 670
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
   PetscInt, parameter, public :: AUXVAR_BC                         = 702
@@ -200,6 +203,7 @@ module MultiPhysicsProbConstants
   PetscReal, parameter, public :: MM_H2O                           = 18.02d-3      ! [kgmol{-1}]
   PetscReal, parameter, public :: MM_DRY_AIR                       = 28.97d-3      ! [kg mol^{-1}]
   PetscReal, parameter, public :: HVAP                             = 2.501e6       ! [J/kg]
+  PetscReal, parameter, public :: HSUB                             = 2.8347d6      ! latent heat of evaporation (J/kg)
   PetscReal, parameter, public :: CPD                              = 1005.d0       ! [J/kg/K]
   PetscReal, parameter, public :: CPW                              = 1846.d0       ! [J/kg/K]
   PetscReal, parameter, public :: RGAS                             = 8.31446d0     ! [J/K/mol]
