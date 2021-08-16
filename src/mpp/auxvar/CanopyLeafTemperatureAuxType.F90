@@ -27,6 +27,7 @@ module CanopyLeafTemperatureAuxType
      PetscReal :: gbv                ! Leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal :: gs                 ! Leaf stomatal conductance (mol H2O/m2 leaf/s)
      PetscReal :: rn                 ! Leaf net radiation (W/m2 leaf)
+     PetscReal :: heat_storage       ! Leaf heat storage (W/m2 leaf)
      PetscReal :: cp                 ! Leaf heat capacity (J/m2 leaf/K)
      PetscReal :: fssh               ! Sunlit or shaded fraction of canopy layer
      PetscReal :: dpai               ! Layer plant area index (m2/m2)
@@ -34,8 +35,9 @@ module CanopyLeafTemperatureAuxType
      PetscReal :: fdry               ! Fraction of plant area index that is green and dry
 
    contains
-     procedure, public :: Init     => CLeafTempAuxVarInit
-     procedure, public :: PreSolve => CLeafTempAuxVarPreSolve
+     procedure, public :: Init      => CLeafTempAuxVarInit
+     procedure, public :: PreSolve  => CLeafTempAuxVarPreSolve
+     procedure, public :: PostSolve => CLeafTempAuxVarPostSolve
   end type cleaf_temp_auxvar_type
 
 contains
@@ -81,6 +83,22 @@ contains
     this%temperature_prev = this%temperature
 
   end subroutine CLeafTempAuxVarPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine CLeafTempAuxVarPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Make a copy of solution from previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(cleaf_temp_auxvar_type)   :: this
+
+    this%heat_storage = (this%temperature - this%temperature_prev)*this%cp
+
+  end subroutine CLeafTempAuxVarPostSolve
+
 #endif
 
 end module CanopyLeafTemperatureAuxType
