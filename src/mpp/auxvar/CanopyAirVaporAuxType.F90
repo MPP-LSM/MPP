@@ -43,6 +43,7 @@ module CanopyAirVaporAuxType
      PetscReal, pointer :: leaf_fssh(:)             ! Sunlit or shaded fraction of canopy layer
      PetscReal, pointer :: leaf_dpai(:)             ! Layer plant area index (m2/m2)
      PetscReal, pointer :: leaf_trans_flux(:)       ! Leaf transpiration flux (mol H2O/m2 leaf/s)
+     PetscReal, pointer :: leaf_lh(:)               ! Leaf latent heat flux (W/m2)
    contains
      procedure, public :: Init     => CAirVaporAuxVarInit
      procedure, public :: PreSolve => CAirVaporAuxVarPreSolve
@@ -148,6 +149,8 @@ contains
           delta = qsat + dqsat * (this%leaf_temperature(ileaf) - this%leaf_temperature_prev(ileaf)) - this%qair
 
           this%leaf_trans_flux(ileaf) = gleaf_et * delta
+
+          this%leaf_lh(ileaf) = this%leaf_trans_flux(ileaf)
        end if
     end do
 
