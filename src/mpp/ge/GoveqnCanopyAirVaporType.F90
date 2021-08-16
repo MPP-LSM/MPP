@@ -447,7 +447,7 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : VAR_WATER_VAPOR
+    use MultiPhysicsProbConstants, only : VAR_WATER_VAPOR, VAR_LATENT_HEAT_FLUX, VAR_LEAF_TRANSPIRATION
     !
     implicit none
     !
@@ -457,13 +457,32 @@ contains
     PetscInt                               :: nauxvar
     PetscReal                   , pointer  :: var_values(:)
     !
-    PetscInt :: iauxvar
+    PetscInt :: iauxvar, ileaf, count
 
     select case(var_type)
     case(VAR_WATER_VAPOR)
        do iauxvar = 1,nauxvar
           var_values(iauxvar) = aux_var(iauxvar)%qair
        end do
+
+    case(VAR_LATENT_HEAT_FLUX)
+       count = 0
+       do iauxvar = 1,nauxvar
+          do ileaf = 1, aux_var(iauxvar)%num_leaves
+             count = count + 1
+             var_values(count) = aux_var(iauxvar)%leaf_lh(ileaf)
+          end do
+       end do
+
+    case(VAR_LEAF_TRANSPIRATION)
+       count = 0
+       do iauxvar = 1,nauxvar
+          do ileaf = 1, aux_var(iauxvar)%num_leaves
+             count = count + 1
+             var_values(count) = aux_var(iauxvar)%leaf_trans_flux(ileaf)
+          end do
+       end do
+
     case default
        write(iulog,*) 'CAirVaporGetRValuesFromAuxVars: Unknown var_type'
        call endrun(msg=errMsg(__FILE__, __LINE__))

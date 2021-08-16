@@ -173,6 +173,12 @@ contains
     ! !ARGUMENTS
     class(goveqn_cleaf_temp_type) :: this
 
+    PetscInt                      :: icell
+
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%PostSolve()
+    end do
+
   end subroutine CLeafTempPostSolve
 
   !------------------------------------------------------------------------
@@ -308,6 +314,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : VAR_LEAF_TEMPERATURE
+    use MultiPhysicsProbConstants, only : VAR_LEAF_HEAT_STORAGE
     !
     implicit none
     !
@@ -323,6 +330,10 @@ contains
     case(VAR_LEAF_TEMPERATURE)
        do iauxvar = 1,nauxvar
           var_values(iauxvar) = aux_var(iauxvar)%temperature
+       end do
+    case(VAR_LEAF_HEAT_STORAGE)
+       do iauxvar = 1,nauxvar
+          var_values(iauxvar) = aux_var(iauxvar)%heat_storage
        end do
     case default
        write(iulog,*) 'CLeafTempGetRValuesFromAuxVars: Unknown var_type'

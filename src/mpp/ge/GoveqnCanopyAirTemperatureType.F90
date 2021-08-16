@@ -449,6 +449,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : VAR_TEMPERATURE
+    use MultiPhysicsProbConstants, only : VAR_SENSIBLE_HEAT_FLUX
     !
     implicit none
     !
@@ -458,12 +459,20 @@ contains
     PetscInt                              :: nauxvar
     PetscReal                   , pointer :: var_values(:)
     !
-    PetscInt :: iauxvar
+    PetscInt :: iauxvar, ileaf, count
 
     select case(var_type)
     case(VAR_TEMPERATURE)
        do iauxvar = 1,nauxvar
           var_values(iauxvar) = aux_var(iauxvar)%temperature
+       end do
+    case(VAR_SENSIBLE_HEAT_FLUX)
+       count = 0
+       do iauxvar = 1,nauxvar
+          do ileaf = 1, aux_var(iauxvar)%num_leaves
+             count = count + 1
+             var_values(count) = aux_var(iauxvar)%leaf_sh_flux(ileaf)
+          end do
        end do
     case default
        write(iulog,*) 'CAirTempGetRValuesFromAuxVars: Unknown var_type'
