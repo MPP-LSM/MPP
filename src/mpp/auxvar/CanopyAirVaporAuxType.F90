@@ -73,6 +73,7 @@ contains
     allocate(this%leaf_fssh             (num_leaves))
     allocate(this%leaf_dpai             (num_leaves))
     allocate(this%leaf_trans_flux       (num_leaves))
+    allocate(this%leaf_lh               (num_leaves))
 
     this%qair                = 0.d0
 
@@ -95,6 +96,8 @@ contains
     this%leaf_fdry(:)        = 0.d0
     this%leaf_fssh(:)        = 0.d0
     this%leaf_dpai(:)        = 0.d0
+    this%leaf_trans_flux(:)  = 0.d0
+    this%leaf_lh(:)          = 0.d0
 
   end subroutine CAirVaporAuxVarInit
 
