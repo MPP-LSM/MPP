@@ -752,7 +752,7 @@ contains
   end subroutine set_canopy_leaf_parameters
 
  !------------------------------------------------------------------------
-  subroutine get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, data)
+  subroutine get_data_from_mlc_eqn(mlc_mpp, ieqn, var_id, ncells, data)
    !
    ! !DESCRIPTION:
    !
@@ -765,15 +765,13 @@ contains
    use GoveqnCanopyAirVaporType        , only : goveqn_cair_vapor_type
    use GoveqnCanopyLeafTemperatureType , only : goveqn_cleaf_temp_type
    use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
-   use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
-   use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
-   use MultiPhysicsProbConstants       , only : VAR_WATER_VAPOR
     !
     ! !ARGUMENTS
    implicit none
    !
    class(mpp_mlc_type)  :: mlc_mpp
    PetscInt             :: ieqn
+   PetscInt             :: var_id
    PetscInt             :: ncells
    PetscReal,  pointer  :: data(:)
    !
@@ -784,17 +782,17 @@ contains
 
    select type(goveq)
    class is (goveqn_cair_temp_type)
-      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_TEMPERATURE, ncells, data)
+      call goveq%GetRValues(AUXVAR_INTERNAL, var_id, ncells, data)
    class is (goveqn_cair_vapor_type)
-      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_WATER_VAPOR, ncells, data)
+      call goveq%GetRValues(AUXVAR_INTERNAL, var_id, ncells, data)
    class is (goveqn_cleaf_temp_type)
-      call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_TEMPERATURE, ncells, data)
+      call goveq%GetRValues(AUXVAR_INTERNAL, var_id, ncells, data)
    end select
 
    end subroutine get_data_from_mlc_eqn
 
    !------------------------------------------------------------------------
-  subroutine extract_data_from_mlc(mlc_mpp, istep, isubstep)
+  subroutine extract_data_from_mlc(mlc_mpp, istep, isubstep, dt)
     !
     ! !DESCRIPTION:
     !   Extracts following variables from the MLC model:
@@ -817,7 +815,14 @@ contains
     use MultiPhysicsProbConstants       , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants       , only : VAR_TEMPERATURE
     use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
-    use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_HEAT_STORAGE
+    use MultiPhysicsProbConstants       , only : MM_H2O, MM_DRY_AIR
+    use MultiPhysicsProbConstants       , only : VAR_SENSIBLE_HEAT_FLUX
+    use MultiPhysicsProbConstants       , only : VAR_LATENT_HEAT_FLUX
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_TEMPERATURE
+    use MultiPhysicsProbConstants       , only : VAR_LEAF_TRANSPIRATION
+    use MultiPhysicsProbConstants       , only : VAR_WATER_VAPOR
+    use ml_model_utils                  , only : accumulate_data
     use petscvec
     !
     ! !ARGUMENTS
@@ -825,6 +830,7 @@ contains
     !
     class(mpp_mlc_type)                  :: mlc_mpp
     PetscInt                             :: istep, isubstep
+    PetscReal                            :: dt
     !
     class(sysofeqns_base_type) , pointer :: base_soe
     class(sysofeqns_mlc_type)  , pointer :: soe
@@ -833,15 +839,25 @@ contains
     PetscInt                             :: ileaf, icair, itree, k, ieqn
     PetscInt                             :: ncells
     PetscReal,  pointer                  :: tleaf_data(:), tair_data(:), qair_data(:)
+    PetscReal,  pointer                  :: sh_data(:), lh_data(:), st_data(:), tr_data(:)
     PetscErrorCode                       :: ierr
     PetscReal                            :: factor
     character(len=20)                    :: step_string, substep_string
 
-    ncells = ncair*ntree*(nz_cair+1)
-    allocate(tleaf_data(ncells))
-    allocate(tair_data(ncells))
-    allocate(qair_data(ncells))
+    ncells = ncair*ntree*(ntop-nbot+1)
+    allocate(tleaf_data (ncells))
 
+    ncells = ncair*ntree*(nz_cair+1)
+    allocate(tair_data  (ncells))
+    allocate(qair_data  (ncells))
+
+    ncells = ncair*ntree*(nz_cair+1)*2
+    allocate(sh_data    (ncells))
+    allocate(lh_data    (ncells))
+    allocate(st_data    (ncells))
+    allocate(tr_data    (ncells))
+
+    ncells = ncair*ntree*(ntop-nbot+1)
     if (output_data) then
        write(step_string,*)istep
        write(substep_string,*)isubstep
@@ -855,7 +871,8 @@ contains
           ieqn = CLEF_TEMP_SHD_GE
        end if
 
-       call get_data_from_mlc_eqn(mlc_mpp, ieqn, ncells, tleaf_data)
+       call get_data_from_mlc_eqn(mlc_mpp, ieqn, VAR_LEAF_TEMPERATURE , ncells, tleaf_data)
+       call get_data_from_mlc_eqn(mlc_mpp, ieqn, VAR_LEAF_HEAT_STORAGE, ncells, st_data)
 
        idx_leaf = 0
        idx_data = 0
@@ -870,8 +887,12 @@ contains
                    endif
                    if (ileaf == 1) then
                       call set_value_in_condition(int_cond%Tleaf_sun, idx_leaf, tleaf_data(idx_data))
+
+                      call accumulate_data(vert_lev_vars%sh_leaf_sun, sh_data(idx_data)/dt, idx_leaf, isubstep)
                    else
                       call set_value_in_condition(int_cond%Tleaf_shd, idx_leaf, tleaf_data(idx_data))
+
+                      call accumulate_data(vert_lev_vars%sh_leaf_shd, sh_data(idx_data)/dt, idx_leaf, isubstep)
                    endif
                 end if
              end do
@@ -883,8 +904,12 @@ contains
     end if
 
     ncells = ncair*(nz_cair+1)
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, ncells, tair_data)
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, ncells, qair_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, VAR_TEMPERATURE       , ncells, tair_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, VAR_SENSIBLE_HEAT_FLUX, ncells, sh_data)
+
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_WATER_VAPOR       , ncells, qair_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_LATENT_HEAT_FLUX  , ncells, lh_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_LEAF_TRANSPIRATION, ncells, tr_data)
 
     base_soe => mlc_mpp%soe
 
@@ -898,7 +923,8 @@ contains
 
     idx_soil = 0
     idx_data = 0
-    idx_air = 0
+    idx_air  = 0
+    idx_leaf = 0
 
     if (output_data) then
        write(step_string,*)istep
@@ -920,6 +946,18 @@ contains
              end if
              call set_value_in_condition(int_cond%wind, idx_air, soe%cturb%wind(icair,k))
           end if
+          if (k >= nbot .and. k <= ntop) then
+             idx_leaf = idx_leaf + 1
+
+             call accumulate_data(vert_lev_vars%sh_leaf_sun, sh_data((idx_data-1)*2 + 1)   , idx_leaf, isubstep)
+             call accumulate_data(vert_lev_vars%sh_leaf_shd, sh_data((idx_data-1)*2 + 2)   , idx_leaf, isubstep)
+
+             call accumulate_data(vert_lev_vars%lh_leaf_sun, lh_data((idx_data-1)*2 + 1)   , idx_leaf, isubstep)
+             call accumulate_data(vert_lev_vars%lh_leaf_shd, lh_data((idx_data-1)*2 + 2)   , idx_leaf, isubstep)
+
+             call accumulate_data(vert_lev_vars%tr_leaf_sun, tr_data((idx_data-1)*2 + 1)   , idx_leaf, isubstep)
+             call accumulate_data(vert_lev_vars%tr_leaf_shd, tr_data((idx_data-1)*2 + 2)   , idx_leaf, isubstep)
+          end if
        end do
     end do
     if (output_data) then
@@ -929,6 +967,9 @@ contains
     deallocate(tleaf_data)
     deallocate(tair_data)
     deallocate(qair_data)
+    deallocate(sh_data)
+    deallocate(lh_data)
+    deallocate(tr_data)
 
   end subroutine extract_data_from_mlc
 
@@ -950,7 +991,7 @@ contains
 
     call mlc_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
-    call extract_data_from_mlc(mlc_mpp, istep, isubstep)
+    call extract_data_from_mlc(mlc_mpp, istep, isubstep, dt)
 
   end subroutine solve_mlc
 
