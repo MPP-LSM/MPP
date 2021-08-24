@@ -288,7 +288,7 @@ contains
              term3_1 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
              ileaf = 1
-             psi_term_1 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
+             psi_term_1 = plant%leaf_psi(ileaf) + plant%dpsi_leaf(ileaf) - plant%leaf_minlwp(ileaf)
 
              avars(icell)%ci(idof) = ci_1 - ci_perturb
              call avars(icell)%AuxVarCompute()
@@ -301,7 +301,7 @@ contains
              term2_2 = avars(icell)%dan_dci(idof) / (avars(icell)%dan_dci(idof) + avars(icell)%gleaf_c(idof))
              term3_2 = 1.6d0 * (avars(icell)%gleaf_c(idof)/avars(icell)%gleaf_w(idof))**2.d0
 
-             psi_term_2 = plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf)
+             psi_term_2 = plant%leaf_psi(ileaf) + plant%dpsi_leaf(ileaf) - plant%leaf_minlwp(ileaf)
 
              avars(icell)%ci(idof) = ci_1
              call avars(icell)%AuxVarCompute()

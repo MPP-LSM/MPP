@@ -58,7 +58,7 @@ module PhotosynthesisAuxType
 
      PetscReal, pointer :: resist_soil(:) ! hydraulic resistance (MPa.s.m2/mmol H2O)
      PetscReal, pointer :: psi_soil(:)    ! weighted water potential (MPa)
-     PetscReal, pointer :: dpsi_soil(:)   ! change in weighted water potential (MPa)
+     PetscReal, pointer :: dpsi_leaf(:)   ! change in weighted water potential (MPa)
 
      PetscReal          :: dtime          ! Time step for plant hydraulics
    contains
@@ -265,7 +265,7 @@ contains
     allocate(this%k_stem2leaf (this%nleaf))
     allocate(this%resist_soil (this%nleaf))
     allocate(this%psi_soil    (this%nleaf))
-    allocate(this%dpsi_soil   (this%nleaf))
+    allocate(this%dpsi_leaf   (this%nleaf))
 
     this%leaf_psi    (:) = 0.d0
     this%leaf_height (:) = 0.d0
@@ -276,7 +276,7 @@ contains
     this%k_stem2leaf (:) = 0.d0
     this%resist_soil (:) = 0.d0
     this%psi_soil    (:) = 0.d0
-    this%dpsi_soil   (:) = 0.d0
+    this%dpsi_leaf   (:) = 0.d0
 
   end subroutine PlantAuxVarAllocateMemory
 
@@ -769,7 +769,7 @@ contains
        plant => this%plant
        call ComputeChangeInPsi(plant, etflx)
 
-       this%residual_hyd(idof_hyd) =  (plant%leaf_psi(ileaf) + plant%dpsi_soil(ileaf) - plant%leaf_minlwp(ileaf))!*1.0e5
+       this%residual_hyd(idof_hyd) =  (plant%leaf_psi(ileaf) + plant%dpsi_leaf(ileaf) - plant%leaf_minlwp(ileaf))!*1.0e5
 
     end select
   end subroutine PhotosynthesisAuxVarCompute
@@ -790,7 +790,7 @@ contains
     a  = plant%psi_soil(ileaf) - head * plant%leaf_height(ileaf) - 1.d3 * etflx/plant%leaf_lsc(ileaf)
     b  = plant%leaf_capc(ileaf) / plant%leaf_lsc(ileaf)
 
-    plant%dpsi_soil(ileaf) = (a - plant%leaf_psi(ileaf)) * (1.d0 - exp(-plant%dtime/b));
+    plant%dpsi_leaf(ileaf) = (a - plant%leaf_psi(ileaf)) * (1.d0 - exp(-plant%dtime/b));
 
   end subroutine ComputeChangeInPsi
 
@@ -1547,7 +1547,7 @@ contains
 
     etflx = (esat + desat * (this%tleaf - this%tleaf_prev) - this%eair)/this%pref * this%gleaf_w_soln * this%fdry
     call ComputeChangeInPsi(this%plant, etflx)
-    this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_soil(ileaf)
+    this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_leaf(ileaf)
 
   end subroutine PhotosynthesisPreSolve
 
