@@ -12,6 +12,11 @@ module photosynthesis
   use petscsys
   use petscdm
   use petscdmda
+  use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
+  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
+  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
+  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
 
   implicit none
 
@@ -100,11 +105,6 @@ contains
     use ConditionType        , only : condition_type
     use ConnectionSetType    , only : connection_set_type
     use ml_model_global_vars , only : PHOTOSYNTHESIS_MESH, PHOTOSYNTHESIS_GE, c3psn, gstype
-    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
-    use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
-    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     use WaterVaporMod        , only : SatVap
     use ml_model_meshes      , only : nleaf
     !
@@ -261,10 +261,6 @@ contains
     use GoveqnPhotosynthesisType            , only : goveqn_photosynthesis_type
     use ConditionType                       , only : condition_type
     use ConnectionSetType                   , only : connection_set_type
-    use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
-    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
-    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-    use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
     use MultiPhysicsProbConstants           , only : TFRZ
     use WaterVaporMod                       , only : SatVap
     use ml_model_utils                      , only : get_value_from_condition
@@ -355,29 +351,33 @@ contains
                 if (.not.(istep == 1 .and. isubstep == 1))  then
                    call cur_goveq%aux_vars_in(icell)%PreSolve()
                 endif
-                if (cur_goveq%aux_vars_in(icell)%gstype == VAR_WUE .or. &
-                     cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11 ) then
-                   ! Set cell active/inactive if the solution is bounded/unbounded
-                   call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
-                   cur_goveq%mesh%is_active(icell) = bounded
-                elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
-                   !if (.not.(istep == 1 .and. isubstep == 1))  call cur_goveq%aux_vars_in(icell)%PreSolve()
-                   call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
-                end if
+                select case (cur_goveq%aux_vars_in(icell)%gstype)
+                   case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+                      ! Set cell active/inactive if the solution is bounded/unbounded
+                      call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
+                      cur_goveq%mesh%is_active(icell) = bounded
+
+                   case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+                      call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
+
+                   case (VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+                      ! Do nothing
+                   case default
+                      write(*,*)'Unknown stomatal model'
+                      call endrun(msg=errMsg(__FILE__, __LINE__))
+                end select
 
              end do
           end do
        end do
 
     end select
-    write(*,*)'photosynthesis_set_boundary_conditions done'
 
   end subroutine photosynthesis_set_boundary_conditions
 
   !------------------------------------------------------------------------
   subroutine init_photosynthesis(psy_mpp)
     !
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     use ml_model_global_vars      , only : gstype
     !
     implicit none
@@ -394,9 +394,13 @@ contains
 
     call add_goveqns(psy_mpp)
 
-    if (gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+    select case(gstype)
+    case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
        call psy_mpp%soe%SetDofsForGovEqn(PHOTOSYNTHESIS_GE,2)
-    end if
+
+    case (VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_STOMATAL_CONDUCTANCE_MEDLYN,VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+        call psy_mpp%soe%SetDofsForGovEqn(PHOTOSYNTHESIS_GE,1)
+    end select
     call psy_mpp%AllocateAuxVars()
 
     call psy_mpp%SetupProblem()
@@ -415,8 +419,6 @@ contains
     use ml_model_utils            , only : get_value_from_condition
     use ml_model_meshes           , only : nleaf
     use ml_model_global_vars      , only : gstype
-    use MultiPhysicsProbConstants , only : VAR_WUE
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
     !
     ! !ARGUMENTS
     implicit none
@@ -472,14 +474,17 @@ contains
           do k = 1, nz
              do ileaf = 1, nleaf
                 icell = icell + 1
-                if (gstype == VAR_WUE) then
-                   v_p(icell) = 0.002d0
-                elseif (gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
-                   v_p((icell-1)*2 + 1) = 0.002d0
-                   v_p((icell-1)*2 + 2) = 0.002d0
-                else
-                   v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
-                endif
+                select case(gstype)
+                   case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+                      v_p(icell) = 0.002d0
+                   case (VAR_STOMATAL_CONDUCTANCE_BONAN14,VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+                      v_p((icell-1)*2 + 1) = 0.002d0
+                      v_p((icell-1)*2 + 2) = 0.002d0
+                   case (VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY)
+                      v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
+                   case default
+                      write(*,*)'Unknown gstype to set initial condition'
+                   end select
              end do
           end do
        end do

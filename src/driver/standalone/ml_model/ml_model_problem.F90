@@ -78,6 +78,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants , only : VAR_WUE
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
     !
     implicit none
@@ -115,10 +116,18 @@ contains
        gstype = VAR_WUE
     case ('bonan14')
        gstype = VAR_STOMATAL_CONDUCTANCE_BONAN14
+    case ('modified_bonan14')
+       gstype = VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
     case ('manzoni11')
        gstype = VAR_STOMATAL_CONDUCTANCE_MANZONI11
     case default
-       write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn, wue'
+       write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: '
+       write(iulog,*) '  ball-berry'
+       write(iulog,*) '  medlyn'
+       write(iulog,*) '  wue'
+       write(iulog,*) '  bonan14'
+       write(iulog,*) '  modified_bonan14'
+       write(iulog,*) '  manzoni'
        call exit(0)
     end select
 

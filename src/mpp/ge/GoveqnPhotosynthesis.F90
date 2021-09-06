@@ -128,6 +128,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants , only : VAR_WUE
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
     !
     implicit none
     !
@@ -183,7 +184,7 @@ contains
              f_p(icell) = avars(icell)%residual_wue(idof)
           end do
 
-       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+       case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof-1
@@ -211,6 +212,9 @@ contains
                 f_p(idx) = 0.d0
              end if
           end if
+       case default
+          write(*,*)'Unknown stomatal conductance model'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        end select
     end do
 
@@ -228,6 +232,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
     use MultiPhysicsProbConstants , only : VAR_WUE
     use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
     !
@@ -339,7 +344,7 @@ contains
              avars(icell)%gs = gs_1
              call avars(icell)%AuxVarCompute()
 
-          case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+          case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
 
              if (idof == 1) then
                 res_1 = avars(icell)%residual_wue(idof)
@@ -364,6 +369,7 @@ contains
 
                 avars(icell)%gs = gs_1
                 call avars(icell)%AuxVarCompute()
+                value = 1.d0
 
              endif
 
@@ -380,7 +386,6 @@ contains
           call MatSetValuesLocal(B, 1, idx - 1, 1, idx - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
        enddo
     end do
-    !call exit(0)
 
     call MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr); CHKERRQ(ierr)
@@ -402,6 +407,7 @@ contains
     use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
     use MultiPhysicsProbConstants, only : VAR_WUE
     use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
     !
     implicit none
    !
@@ -436,7 +442,7 @@ contains
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+      case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do

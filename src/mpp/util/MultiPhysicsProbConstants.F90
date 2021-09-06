@@ -165,6 +165,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_LATENT_HEAT_FLUX                       = 668
   PetscInt, parameter, public :: VAR_SENSIBLE_HEAT_FLUX                     = 669
   PetscInt, parameter, public :: VAR_LEAF_TRANSPIRATION                     = 670
+  PetscInt, parameter, public :: VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14  = 671
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
   PetscInt, parameter, public :: AUXVAR_BC                         = 702

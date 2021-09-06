@@ -13,6 +13,7 @@ module PhotosynthesisAuxType
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
   use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
   use MultiPhysicsProbConstants , only : VAR_WUE
   use petscsys
@@ -447,7 +448,7 @@ contains
     this%cs      = 0.d0
 
     this%iota    = 750.d0
-    this%manzoni11_beta = 0.5d0
+    this%manzoni11_beta = -1.5d0 ! Liu et al. (2020) Nature Climate Change
     allocate(this%residual_wue(ndof))
     allocate(this%residual_hyd(ndof))
     allocate(this%soln_is_bounded(ndof))
@@ -548,6 +549,8 @@ contains
 
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
 
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14) then
+
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
 
        else
@@ -570,6 +573,8 @@ contains
        elseif (this%gstype == VAR_WUE) then
 
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+
+       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14) then
 
        elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
 
@@ -707,7 +712,7 @@ contains
     class(plant_auxvar_type) , pointer   :: plant
     PetscReal                            :: t1, t2, t3, etflx
     PetscReal                            :: an, gbc, delta_c
-    PetscReal                            :: gs_val_wue, gs_val_hyd, an_low, an_high, check
+    PetscReal                            :: gs_val_wue, gs_val_hyd, an_low, an_high, check, psi_new
     PetscReal                            :: factor
     PetscInt                 , parameter :: ileaf = 1 ! Currently only one leaf is supported
     PetscReal                , parameter :: g = 9.80665d0
@@ -743,7 +748,7 @@ contains
        end if
        this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
 
-    case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+    case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
        gs_val_wue = this%gs(idof_wue)
        gs_val_hyd = this%gs(idof_hyd)
 
@@ -767,9 +772,15 @@ contains
        etflx = (this%esat - this%eair)/this%pref * this%gleaf_w(idof_hyd) * this%fdry
 
        plant => this%plant
-       call ComputeChangeInPsi(plant, etflx)
-
-       this%residual_hyd(idof_hyd) =  (plant%leaf_psi(ileaf) + plant%dpsi_leaf(ileaf) - plant%leaf_minlwp(ileaf))!*1.0e5
+       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+          call ComputeChangeInPsi(plant, etflx)
+          this%residual_hyd(idof_hyd) =  plant%leaf_psi(ileaf) + plant%dpsi_leaf(ileaf) - plant%leaf_minlwp(ileaf)
+       else
+          call ComputePsi_ModifiedBonan14(plant, etflx, psi_new)
+          plant%dpsi_leaf(ileaf) = psi_new - plant%leaf_psi(ileaf)
+          this%residual_hyd(idof_hyd) = psi_new - plant%leaf_minlwp(ileaf)
+          !this%residual_hyd(idof_hyd) = 0.d0
+       end if
 
     end select
   end subroutine PhotosynthesisAuxVarCompute
@@ -794,8 +805,42 @@ contains
 
   end subroutine ComputeChangeInPsi
 
+  !------------------------------------------------------------------------
+  subroutine ComputePsi_ModifiedBonan14(plant, etflx, psi_new)
+    !
+    use MathUtilsMod, only : quadratic
+    !
+    type(plant_auxvar_type) , pointer     :: plant
+    PetscReal                             :: etflx
+    PetscReal               , intent(out) :: psi_new
+    !
+    PetscInt                , parameter :: ileaf = 1 ! Currently only one leaf is supported
+    PetscReal               , parameter :: g = 9.80665d0
+    PetscReal               , parameter :: denh2o = 1000.d0
+    PetscReal               , parameter :: w_b = 2 ! [MPa]
+    PetscReal               , parameter :: w_c = 5 ! [-]
+    PetscReal               , parameter :: pert = 1.d-2 ! [MPa]
+    PetscReal                           :: dK_dpsi, Cp, dt, K, Kmax, psi_old, psi_soil, h, E, head
+    PetscReal                           :: Kl, Kl_pert, dKl_dpsi
+    PetscReal                           :: aquad, bquad, cquad
+    PetscReal                           :: root1, root2
 
-    !------------------------------------------------------------------------
+    head    = g * denh2o * 1.d-6 ! MPa/m
+    Cp      = plant%leaf_capc(ileaf)
+    dt      = plant%dtime
+    Kmax    = plant%leaf_lsc(ileaf)
+    psi_old = plant%leaf_psi(ileaf)
+    psi_soil= plant%psi_soil(ileaf)
+    h       = plant%leaf_height(ileaf)
+    E       = 1.d3*etflx
+
+    Kl       = Kmax*exp(-(-psi_old/w_b)**w_c)
+
+    psi_new = ( (Cp/dt) * psi_old + Kl*(psi_soil - head) - E )/ ( Cp/dt + Kl)
+
+  end subroutine ComputePsi_ModifiedBonan14
+
+  !------------------------------------------------------------------------
   subroutine PhotosynthesisAuxVarCompute_SemiEmpirical(this)
     !
     ! !DESCRIPTION:
@@ -961,7 +1006,7 @@ contains
              this%vpd = max((this%esat - this%hs * this%esat), 0.1d0)/this%pref
           end do
 
-       case (VAR_STOMATAL_CONDUCTANCE_BONAN14)
+       case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
 
           idof = 1
           this%hs = (this%gbv * this%eair + this%gs(idof) * this%esat)/((this%gbv + this%gs(idof)) * this%esat)
@@ -1524,8 +1569,16 @@ contains
        ! Determine if each DOF is bounded by checking if the residual at
        ! min and max gs are of different sign to imply that function intersect
        ! with the x-axis
-       this%soln_is_bounded(idof_wue) = (res_wue_1 * res_wue_2 <= 0.d0)
-       this%soln_is_bounded(idof_hyd) = (res_hyd_1 * res_hyd_2 <= 0.d0)
+       if (res_wue_1 == 0.d0 .and. res_wue_2 == 0.d0) then
+          this%soln_is_bounded(idof_wue) = PETSC_FALSE
+       else
+          this%soln_is_bounded(idof_wue) = (res_wue_1 * res_wue_2 <= 0.d0)
+       end if
+       if (res_hyd_1 == 0.d0 .and. res_hyd_2 == 0.d0) then
+          this%soln_is_bounded(idof_hyd) = PETSC_FALSE
+       else
+          this%soln_is_bounded(idof_hyd) = (res_hyd_1 * res_hyd_2 <= 0.d0)
+       end if
     end if
 
   end subroutine PhotosynthesisDetermineIfSolutionIsBounded
@@ -1546,16 +1599,19 @@ contains
     call SatVap (this%tleaf_prev, esat, desat)
 
     etflx = (esat + desat * (this%tleaf - this%tleaf_prev) - this%eair)/this%pref * this%gleaf_w_soln * this%fdry
-    call ComputeChangeInPsi(this%plant, etflx)
-    this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_leaf(ileaf)
+    if (this%gstype == VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14) then
+       call ComputePsi_ModifiedBonan14(this%plant, etflx, this%plant%leaf_psi(ileaf))
+    else
+       call ComputeChangeInPsi(this%plant, etflx)
+       this%plant%leaf_psi(ileaf) = this%plant%leaf_psi(ileaf) + this%plant%dpsi_leaf(ileaf)
+    end if
 
   end subroutine PhotosynthesisPreSolve
 
   !------------------------------------------------------------------------
   subroutine PhotosynthesisPostSolve(this)
     !
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-    use WaterVaporMod             , only : SatVap
+   use WaterVaporMod             , only : SatVap
     !
     implicit none
     !
@@ -1569,7 +1625,8 @@ contains
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
 
-    if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+    select case(this%gstype)
+    case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
 
        ! Determine solution for which DOF (wue or hydrualics) is the solution
        ! based on co-optimization
@@ -1595,9 +1652,12 @@ contains
        else
           idof = idof_wue
        end if
-    else
+    case (VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_STOMATAL_CONDUCTANCE_MANZONI11, VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_WUE)
        idof = idof_wue
-    end if
+    case default
+        write(*,*)'Unknown stomatal conductance model'
+        call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
 
     this%ac_soln      = this%ac(idof)
     this%aj_soln      = this%aj(idof)
