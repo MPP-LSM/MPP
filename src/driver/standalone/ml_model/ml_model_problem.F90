@@ -101,7 +101,7 @@ contains
     call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
     if (.not.flg) then
        write(*,*)'ERROR: Need to specify the boundary condition file via -bc_file <filename>'
-       call exit(0)
+       call exit(-1)
     end if
 
     stomatal_conductance_model = 'medlyn'
@@ -128,7 +128,7 @@ contains
        write(iulog,*) '  bonan14'
        write(iulog,*) '  modified_bonan14'
        write(iulog,*) '  manzoni'
-       call exit(0)
+       call exit(-1)
     end select
 
   end subroutine read_command_options

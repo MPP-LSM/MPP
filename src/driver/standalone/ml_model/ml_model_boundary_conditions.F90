@@ -196,7 +196,7 @@ contains
     call VecGetSize(bc_data, size, ierr); CHKERRQ(ierr)
     if (istep*ncol > size) then
        write(*,*)'ERROR: Time step exceeds the boundary condition dataset'
-       call exit(0)
+       call exit(-1)
     end if
 
     call VecGetArrayF90(bc_data, bc_p, ierr); CHKERRQ(ierr)

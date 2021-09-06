@@ -145,7 +145,7 @@ contains
        c3psn = VAR_PHOTOSYNTHETIC_PATHWAY_C4
     case default
        write(iulog,*) 'Invalid value for -photosynthesis_pathway and valid values are: c3, c4'
-       call exit(0)
+       call exit(-1)
     end select
 
     select case(trim(stomatal_conductance_model))
@@ -159,7 +159,7 @@ contains
        gstype = VAR_STOMATAL_CONDUCTANCE_BONAN14
     case default
        write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn, wue'
-       call exit(0)
+       call exit(-1)
     end select
 
   end subroutine read_command_line_options

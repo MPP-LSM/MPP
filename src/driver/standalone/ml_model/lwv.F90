@@ -171,7 +171,7 @@ contains
              else
                 if (cur_goveq%aux_vars_in(icell)%nleaf /= 2) then
                    write(iulog,*)'Longwave model: number of leaves is not 2'
-                   call exit(0)
+                   call exit(-1)
                 end if
                 ileaf = 1; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = fssh(nbot + k - 2)
                 ileaf = 2; cur_goveq%aux_vars_in(icell)%leaf_fssh(ileaf) = 1.d0 -fssh(nbot + k - 2)
