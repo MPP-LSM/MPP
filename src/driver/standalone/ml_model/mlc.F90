@@ -844,7 +844,7 @@ contains
     PetscReal                            :: factor
     character(len=20)                    :: step_string, substep_string
 
-    ncells = ncair*ntree*(ntop-nbot+1)
+    ncells = ncair*ntree*(nz_cair+1)
     allocate(tleaf_data (ncells))
 
     ncells = ncair*ntree*(nz_cair+1)
@@ -857,14 +857,13 @@ contains
     allocate(st_data    (ncells))
     allocate(tr_data    (ncells))
 
-    ncells = ncair*ntree*(ntop-nbot+1)
     if (output_data) then
        write(step_string,*)istep
        write(substep_string,*)isubstep
        write(*,*)'mpp.tleaf{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
     end if
+    ncells = ncair*ntree*(nz_cair+1)
     do ileaf = 1, 2
-       !ncells = ncair*ntree*(ntop-nbot+1)
        if (ileaf == 1) then
           ieqn = CLEF_TEMP_SUN_GE
        else
