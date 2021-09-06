@@ -720,6 +720,7 @@ contains
     PetscInt , parameter :: idof_wue = 1
     PetscInt , parameter :: idof_hyd = 2
 
+    plant => this%plant
     select case (this%gstype)
     case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
        call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
