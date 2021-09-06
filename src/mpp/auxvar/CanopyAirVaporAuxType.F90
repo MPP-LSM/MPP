@@ -89,15 +89,16 @@ contains
     this%soil_dz             = 0.d0
     this%soil_resis          = 0.d0
 
-    this%gbv(:)              = 0.d0
-    this%leaf_temperature(:) = 0.d0
-    this%leaf_gs(:)          = 0.d0
-    this%leaf_fwet(:)        = 0.d0
-    this%leaf_fdry(:)        = 0.d0
-    this%leaf_fssh(:)        = 0.d0
-    this%leaf_dpai(:)        = 0.d0
-    this%leaf_trans_flux(:)  = 0.d0
-    this%leaf_lh(:)          = 0.d0
+    this%gbv(:)                   = 0.d0
+    this%leaf_temperature(:)      = 0.d0
+    this%leaf_temperature_prev(:) = 0.d0
+    this%leaf_gs(:)               = 0.d0
+    this%leaf_fwet(:)             = 0.d0
+    this%leaf_fdry(:)             = 0.d0
+    this%leaf_fssh(:)             = 0.d0
+    this%leaf_dpai(:)             = 0.d0
+    this%leaf_trans_flux(:)       = 0.d0
+    this%leaf_lh(:)               = 0.d0
 
   end subroutine CAirVaporAuxVarInit
 
