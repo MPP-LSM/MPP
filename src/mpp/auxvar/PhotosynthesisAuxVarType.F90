@@ -513,7 +513,7 @@ contains
 
     case default
        write(iulog,*)'Unsupported photosynthesis pathway: ',this%c3psn
-       call exit(0)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
   end subroutine SetPathwayParameters
@@ -555,7 +555,7 @@ contains
 
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
-          call exit(0)
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        end if
 
     case (VAR_PHOTOSYNTHETIC_PATHWAY_C3) ! C3
@@ -580,7 +580,7 @@ contains
 
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
-          call exit(0)
+          call endrun(msg=errMsg(__FILE__, __LINE__))
        end if
 
     end select
@@ -935,7 +935,7 @@ contains
 
     else
        write(iulog,*)'PhotosynthesisAuxVarCompute: Add code when dapi = 0.d0'
-       call exit(0)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
     end if
 
   end subroutine PhotosynthesisAuxVarCompute_SemiEmpirical
@@ -974,7 +974,7 @@ contains
        select case(this%c3psn)
        case (VAR_PHOTOSYNTHETIC_PATHWAY_C4)
           write(*,*)'PhotosynthesisAuxVarCompute2 not implemented for C4'
-          call exit(0)
+          call endrun(msg=errMsg(__FILE__, __LINE__))
 
        case (VAR_PHOTOSYNTHETIC_PATHWAY_C3)
 
@@ -1016,7 +1016,7 @@ contains
 
     else
        write(iulog,*)'PhotosynthesisAuxVarCompute: Add code when dapi = 0.d0'
-       call exit(0)
+       call endrun(msg=errMsg(__FILE__, __LINE__))
     end if
 
   end subroutine PhotosynthesisAuxVarCompute_WUE
