@@ -13,10 +13,10 @@ module photosynthesis
   use petscdm
   use petscdmda
   use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
-  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_WUE
-  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
-  use MultiPhysicsProbConstants           , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
+  use MultiPhysicsProbConstants           , only : VAR_SCM_MEDLYN, VAR_SCM_BBERRY, VAR_SCM_WUE
+  use MultiPhysicsProbConstants           , only : VAR_SCM_BONAN14
+  use MultiPhysicsProbConstants           , only : VAR_SCM_MODIFIED_BONAN14
+  use MultiPhysicsProbConstants           , only : VAR_SCM_MANZONI11
 
   implicit none
 
@@ -352,15 +352,15 @@ contains
                    call cur_goveq%aux_vars_in(icell)%PreSolve()
                 endif
                 select case (cur_goveq%aux_vars_in(icell)%gstype)
-                   case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+                   case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
                       ! Set cell active/inactive if the solution is bounded/unbounded
                       call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
                       cur_goveq%mesh%is_active(icell) = bounded
 
-                   case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+                   case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
                       call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
 
-                   case (VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+                   case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
                       ! Do nothing
                    case default
                       write(*,*)'Unknown stomatal model'
@@ -395,10 +395,10 @@ contains
     call add_goveqns(psy_mpp)
 
     select case(gstype)
-    case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+    case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
        call psy_mpp%soe%SetDofsForGovEqn(PHOTOSYNTHESIS_GE,2)
 
-    case (VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_STOMATAL_CONDUCTANCE_MEDLYN,VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+    case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN,VAR_SCM_WUE, VAR_SCM_MANZONI11)
         call psy_mpp%soe%SetDofsForGovEqn(PHOTOSYNTHESIS_GE,1)
     end select
     call psy_mpp%AllocateAuxVars()
@@ -475,12 +475,12 @@ contains
              do ileaf = 1, nleaf
                 icell = icell + 1
                 select case(gstype)
-                   case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+                   case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
                       v_p(icell) = 0.002d0
-                   case (VAR_STOMATAL_CONDUCTANCE_BONAN14,VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+                   case (VAR_SCM_BONAN14,VAR_SCM_MODIFIED_BONAN14)
                       v_p((icell-1)*2 + 1) = 0.002d0
                       v_p((icell-1)*2 + 2) = 0.002d0
-                   case (VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_STOMATAL_CONDUCTANCE_BBERRY)
+                   case (VAR_SCM_MEDLYN, VAR_SCM_BBERRY)
                       v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
                    case default
                       write(*,*)'Unknown gstype to set initial condition'

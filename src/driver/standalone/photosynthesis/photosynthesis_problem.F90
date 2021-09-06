@@ -80,10 +80,10 @@ contains
     !
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-    use MultiPhysicsProbConstants , only : VAR_WUE
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_SCM_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_SCM_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_SCM_WUE
+    use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
     !
     implicit none
     !
@@ -108,7 +108,7 @@ contains
     stomatal_conductance_model = 'medlyn'
 
     c3psn = VAR_PHOTOSYNTHETIC_PATHWAY_C4
-    gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+    gstype = VAR_SCM_MEDLYN
 
     call PetscOptionsGetString (PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-photosynthesis_pathway', photosynthesis_pathway, flag, ierr)
 
@@ -150,13 +150,13 @@ contains
 
     select case(trim(stomatal_conductance_model))
     case ('ball-berry')
-       gstype = VAR_STOMATAL_CONDUCTANCE_BBERRY
+       gstype = VAR_SCM_BBERRY
     case ('medlyn')
-       gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+       gstype = VAR_SCM_MEDLYN
     case ('wue')
-       gstype = VAR_WUE
+       gstype = VAR_SCM_WUE
     case ('bonan14')
-       gstype = VAR_STOMATAL_CONDUCTANCE_BONAN14
+       gstype = VAR_SCM_BONAN14
     case default
        write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: ball-berry, medlyn, wue'
        call exit(-1)
@@ -196,7 +196,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : GE_PHOTOSYNTHESIS
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
     !
     ! !ARGUMENTS
     implicit none
@@ -207,7 +207,7 @@ contains
 
     call phtsyn_mpp%AddGovEqnWithMeshRank(GE_PHOTOSYNTHESIS, 'Photosynthesis model', PHTSYN_MESH)
 
-    if (gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+    if (gstype == VAR_SCM_BONAN14) then
        call phtsyn_mpp%SetDofsForGovEqn(PHTSYN_GE, 2)
     end if
     

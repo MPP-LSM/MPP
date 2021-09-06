@@ -10,12 +10,12 @@ module PhotosynthesisAuxType
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
   use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
-  use MultiPhysicsProbConstants , only : VAR_WUE
+  use MultiPhysicsProbConstants , only : VAR_SCM_MEDLYN
+  use MultiPhysicsProbConstants , only : VAR_SCM_BBERRY
+  use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
+  use MultiPhysicsProbConstants , only : VAR_SCM_WUE
   use petscsys
 
   implicit none
@@ -535,23 +535,23 @@ contains
     select case (this%c3psn)
     case (VAR_PHOTOSYNTHETIC_PATHWAY_C4) ! C4
 
-       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY) then
+       if (this%gstype == VAR_SCM_BBERRY) then
 
           this%g0opt = 0.04d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 4.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
+       elseif (this%gstype == VAR_SCM_MEDLYN) then
 
           this%g0opt = 1.0d-4;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 1.62d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_WUE) then
+       elseif (this%gstype == VAR_SCM_WUE) then
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+       elseif (this%gstype == VAR_SCM_BONAN14) then
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14) then
+       elseif (this%gstype == VAR_SCM_MODIFIED_BONAN14) then
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
+       elseif (this%gstype == VAR_SCM_MANZONI11) then
 
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
@@ -560,23 +560,23 @@ contains
 
     case (VAR_PHOTOSYNTHETIC_PATHWAY_C3) ! C3
 
-       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY) then
+       if (this%gstype == VAR_SCM_BBERRY) then
 
           this%g0opt = 0.01d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 9.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN) then
+       elseif (this%gstype == VAR_SCM_MEDLYN) then
 
           this%g0opt = 1.0d-4;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 4.45d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_WUE) then
+       elseif (this%gstype == VAR_SCM_WUE) then
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+       elseif (this%gstype == VAR_SCM_BONAN14) then
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14) then
+       elseif (this%gstype == VAR_SCM_MODIFIED_BONAN14) then
 
-       elseif (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
+       elseif (this%gstype == VAR_SCM_MANZONI11) then
 
        else
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
@@ -722,15 +722,15 @@ contains
 
     plant => this%plant
     select case (this%gstype)
-    case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+    case (VAR_SCM_BBERRY)
        call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
        call ComputeSoilResistance(this)
 
-    case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+    case (VAR_SCM_MEDLYN)
        call PhotosynthesisAuxVarCompute_SemiEmpirical(this)
        call ComputeSoilResistance(this)
 
-    case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+    case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
        gs_val_wue = this%gs(idof_wue)
 
        this%gs(idof_wue) = gs_val_wue - gs_delta_wue
@@ -744,12 +744,12 @@ contains
        call ComputeSoilResistance(this)
 
        factor = 1.d0
-       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11) then
+       if (this%gstype == VAR_SCM_MANZONI11) then
           factor = exp(this%manzoni11_beta * plant%leaf_psi(ileaf))
        end if
        this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
 
-    case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+    case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
        gs_val_wue = this%gs(idof_wue)
        gs_val_hyd = this%gs(idof_hyd)
 
@@ -773,7 +773,7 @@ contains
        etflx = (this%esat - this%eair)/this%pref * this%gleaf_w(idof_hyd) * this%fdry
 
        plant => this%plant
-       if (this%gstype == VAR_STOMATAL_CONDUCTANCE_BONAN14) then
+       if (this%gstype == VAR_SCM_BONAN14) then
           call ComputeChangeInPsi(plant, etflx)
           this%residual_hyd(idof_hyd) =  plant%leaf_psi(ileaf) + plant%dpsi_leaf(ileaf) - plant%leaf_minlwp(ileaf)
        else
@@ -904,7 +904,7 @@ contains
        this%ceair = min( this%eair, this%esat )
 
        select case(this%gstype)
-       case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+       case (VAR_SCM_BBERRY)
 
           call GsBallBerry(this)
 
@@ -918,7 +918,7 @@ contains
              end if
           enddo
 
-      case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+      case (VAR_SCM_MEDLYN)
 
           call GsMedlyn(this)
 
@@ -1001,13 +1001,13 @@ contains
        this%ceair = min( this%eair, this%esat )
 
        select case(this%gstype)
-       case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+       case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
           do idof = 1, this%ndof
              this%hs = (this%gbv * this%eair + this%gs(idof) * this%esat)/((this%gbv + this%gs(idof)) * this%esat)
              this%vpd = max((this%esat - this%hs * this%esat), 0.1d0)/this%pref
           end do
 
-       case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+       case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
 
           idof = 1
           this%hs = (this%gbv * this%eair + this%gs(idof) * this%esat)/((this%gbv + this%gs(idof)) * this%esat)
@@ -1587,7 +1587,7 @@ contains
   !------------------------------------------------------------------------
   subroutine PhotosynthesisPreSolve(this)
     !
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
     use WaterVaporMod             , only : SatVap
     !
     implicit none
@@ -1600,7 +1600,7 @@ contains
     call SatVap (this%tleaf_prev, esat, desat)
 
     etflx = (esat + desat * (this%tleaf - this%tleaf_prev) - this%eair)/this%pref * this%gleaf_w_soln * this%fdry
-    if (this%gstype == VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14) then
+    if (this%gstype == VAR_SCM_MODIFIED_BONAN14) then
        call ComputePsi_ModifiedBonan14(this%plant, etflx, this%plant%leaf_psi(ileaf))
     else
        call ComputeChangeInPsi(this%plant, etflx)
@@ -1627,7 +1627,7 @@ contains
     PetscReal                , parameter :: denh2o = 1000.d0
 
     select case(this%gstype)
-    case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+    case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
 
        ! Determine solution for which DOF (wue or hydrualics) is the solution
        ! based on co-optimization
@@ -1653,7 +1653,7 @@ contains
        else
           idof = idof_wue
        end if
-    case (VAR_STOMATAL_CONDUCTANCE_BBERRY, VAR_STOMATAL_CONDUCTANCE_MANZONI11, VAR_STOMATAL_CONDUCTANCE_MEDLYN, VAR_WUE)
+    case (VAR_SCM_BBERRY, VAR_SCM_MANZONI11, VAR_SCM_MEDLYN, VAR_SCM_WUE)
        idof = idof_wue
     case default
         write(*,*)'Unknown stomatal conductance model'

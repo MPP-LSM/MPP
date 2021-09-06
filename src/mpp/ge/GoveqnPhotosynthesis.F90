@@ -14,12 +14,12 @@ module GoveqnPhotosynthesisType
   use petscvec
   use petscmat
   use petscsys
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-  use MultiPhysicsProbConstants , only : VAR_WUE
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_SCM_MEDLYN
+  use MultiPhysicsProbConstants , only : VAR_SCM_BBERRY
+  use MultiPhysicsProbConstants , only : VAR_SCM_WUE
+  use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
+  use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
   !
   implicit none
   private
@@ -159,7 +159,7 @@ contains
        end if
 
        select case (avars(icell)%gstype)
-       case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+       case (VAR_SCM_BBERRY)
           do idof = 1,this%dof
              if (avars(icell)%an(idof) > 0.d0) then
                 f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
@@ -168,7 +168,7 @@ contains
              end if
           end do
 
-       case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+       case (VAR_SCM_MEDLYN)
           do idof = 1,this%dof
              if (avars(icell)%an(idof) > 0.d0) then
                 f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
@@ -177,14 +177,14 @@ contains
              endif
           end do
 
-       case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+       case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof
              f_p(icell) = avars(icell)%residual_wue(idof)
           end do
 
-       case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+       case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof-1
@@ -269,8 +269,8 @@ contains
 
        do idof = 1,this%dof
           if ( &
-               (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_BBERRY .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) .or. &
-               (avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
+               (avars(icell)%gstype == VAR_SCM_BBERRY .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) .or. &
+               (avars(icell)%gstype == VAR_SCM_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
              ci_perturb = -1.e-14
              gs_perturb = -1.e-14
           else
@@ -278,7 +278,7 @@ contains
              gs_perturb = -1.e-8
           endif
 
-          if (.not. (avars(icell)%gstype == VAR_WUE .or. avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11)) then
+          if (.not. (avars(icell)%gstype == VAR_SCM_WUE .or. avars(icell)%gstype == VAR_SCM_MANZONI11)) then
              an_1    = avars(icell)%an(idof)
              ci_1    = avars(icell)%ci(idof)
              gleaf_1 = avars(icell)%gleaf_c(idof)
@@ -308,7 +308,7 @@ contains
           endif
 
           select case (avars(icell)%gstype)
-          case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+          case (VAR_SCM_BBERRY)
 
              if (avars(icell)%an(idof) > 0.d0) then
                 value = (an_1 - an_2)/ci_perturb &
@@ -318,7 +318,7 @@ contains
                 value = 1.d0
              end if
 
-          case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+          case (VAR_SCM_MEDLYN)
              if (avars(icell)%an(idof) > 0.d0) then
                 value = (an_1 - an_2)/ci_perturb &
                      - (gleaf_1 - gleaf_2)/ci_perturb * (avars(icell)%cair - ci_1) &
@@ -327,7 +327,7 @@ contains
                 value = 1.d0
              end if
 
-          case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+          case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
              res_1 = avars(icell)%residual_wue(idof)
              gs_1  = avars(icell)%gs(idof)
 
@@ -339,7 +339,7 @@ contains
              avars(icell)%gs = gs_1
              call avars(icell)%AuxVarCompute()
 
-          case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+          case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
 
              if (idof == 1) then
                 res_1 = avars(icell)%residual_wue(idof)
@@ -419,19 +419,19 @@ contains
    do ghosted_id = 1, this%mesh%ncells_local
 
       select case (this%aux_vars_in(ghosted_id)%gstype)
-      case (VAR_STOMATAL_CONDUCTANCE_BBERRY)
+      case (VAR_SCM_BBERRY)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_STOMATAL_CONDUCTANCE_MEDLYN)
+      case (VAR_SCM_MEDLYN)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
+      case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_STOMATAL_CONDUCTANCE_BONAN14, VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14)
+      case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
@@ -482,7 +482,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE
-    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants, only : VAR_SCM_BONAN14
     use MultiPhysicsProbConstants, only : VAR_GROSS_PHOTOSYNTHESIS
     use MultiPhysicsProbConstants, only : VAR_NET_PHOTOSYNTHESIS
     !
@@ -523,7 +523,7 @@ contains
     ! Default setup of governing equation
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants, only : VAR_SCM_BONAN14
     !
     implicit none
     !
@@ -552,7 +552,7 @@ contains
     ! Default setup of governing equation
     !
     ! !USES:
-    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+    use MultiPhysicsProbConstants, only : VAR_SCM_BONAN14
     !
     implicit none
     !

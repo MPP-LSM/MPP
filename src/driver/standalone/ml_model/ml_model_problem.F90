@@ -74,12 +74,12 @@ contains
     !
     use ml_model_global_vars      , only : ncair, ntree, output_data, bc_file, ic_file, use_ic
     use ml_model_global_vars      , only : checkpoint_data, beg_step, end_step, nsubstep, gstype
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-    use MultiPhysicsProbConstants , only : VAR_WUE
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
+    use MultiPhysicsProbConstants , only : VAR_SCM_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_SCM_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_SCM_WUE
+    use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
     !
     implicit none
     !
@@ -109,17 +109,17 @@ contains
 
     select case(trim(stomatal_conductance_model))
     case ('ball-berry')
-       gstype = VAR_STOMATAL_CONDUCTANCE_BBERRY
+       gstype = VAR_SCM_BBERRY
     case ('medlyn')
-       gstype = VAR_STOMATAL_CONDUCTANCE_MEDLYN
+       gstype = VAR_SCM_MEDLYN
     case ('wue ')
-       gstype = VAR_WUE
+       gstype = VAR_SCM_WUE
     case ('bonan14')
-       gstype = VAR_STOMATAL_CONDUCTANCE_BONAN14
+       gstype = VAR_SCM_BONAN14
     case ('modified_bonan14')
-       gstype = VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
+       gstype = VAR_SCM_MODIFIED_BONAN14
     case ('manzoni11')
-       gstype = VAR_STOMATAL_CONDUCTANCE_MANZONI11
+       gstype = VAR_SCM_MANZONI11
     case default
        write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: '
        write(iulog,*) '  ball-berry'
