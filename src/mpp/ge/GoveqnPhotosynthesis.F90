@@ -14,6 +14,12 @@ module GoveqnPhotosynthesisType
   use petscvec
   use petscmat
   use petscsys
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
+  use MultiPhysicsProbConstants , only : VAR_WUE
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MANZONI11
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
   !
   implicit none
   private
@@ -124,12 +130,6 @@ contains
     ! !DESCRIPTION:
     ! Computes the residual equation for the discretized Richards equation
     !
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-    use MultiPhysicsProbConstants , only : VAR_WUE
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
-    !
     implicit none
     !
     ! !ARGUMENTS
@@ -177,7 +177,7 @@ contains
              endif
           end do
 
-       case (VAR_WUE)
+       case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
           do idof = 1,this%dof
@@ -228,11 +228,6 @@ contains
     ! !DESCRIPTION:
     ! Computes the jacobian matrix for the discretized Richards equation
     !
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-    use MultiPhysicsProbConstants , only : VAR_WUE
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-    use MultiPhysicsProbConstants , only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3
     use MultiPhysicsProbConstants , only : VAR_PHOTOSYNTHETIC_PATHWAY_C4
     !
@@ -283,7 +278,7 @@ contains
              gs_perturb = -1.e-8
           endif
 
-          if (.not. (avars(icell)%gstype == VAR_WUE)) then
+          if (.not. (avars(icell)%gstype == VAR_WUE .or. avars(icell)%gstype == VAR_STOMATAL_CONDUCTANCE_MANZONI11)) then
              an_1    = avars(icell)%an(idof)
              ci_1    = avars(icell)%ci(idof)
              gleaf_1 = avars(icell)%gleaf_c(idof)
@@ -332,7 +327,7 @@ contains
                 value = 1.d0
              end if
 
-          case (VAR_WUE)
+          case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
              res_1 = avars(icell)%residual_wue(idof)
              gs_1  = avars(icell)%gs(idof)
 
@@ -403,12 +398,6 @@ contains
    !
    ! !USES:
    !
-    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BBERRY
-    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_MEDLYN
-    use MultiPhysicsProbConstants, only : VAR_WUE
-    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_BONAN14
-    use MultiPhysicsProbConstants, only : VAR_STOMATAL_CONDUCTANCE_MODIFIED_BONAN14
-    !
     implicit none
    !
    ! !ARGUMENTS
@@ -438,7 +427,7 @@ contains
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_WUE)
+      case (VAR_WUE, VAR_STOMATAL_CONDUCTANCE_MANZONI11)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
