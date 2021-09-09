@@ -674,8 +674,10 @@ contains
 
        soe%cturb%soil_tk(icair)  = 1.261326601469150d0
        soe%cturb%soil_dz(icair)  = 7.1006354171935350d-003
+       soe%cturb%soil_temperature(icair)   = 294.8492736816406d0
        soe%cturb%soil_res(icair) = 3361.509423807650d0
        soe%cturb%soil_rhg(icair) = 0.9984057411945876d0
+       soe%cturb%soil_rn(icair)  = 1.896127799819662d0
     end do
 
   end subroutine set_soil_parameters
