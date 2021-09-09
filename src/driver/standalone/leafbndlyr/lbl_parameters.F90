@@ -47,6 +47,7 @@ contains
              cur_goveq%aux_vars_in(icell)%pref  = 101325.d0                       ! [Pa]
              cur_goveq%aux_vars_in(icell)%wind  = 5.d0                            ! [m/s]
              cur_goveq%aux_vars_in(icell)%tair  = 273.15d0 +  25.d0               ! [K]
+             cur_goveq%aux_vars_in(icell)%tref  = 273.15d0 +  25.d0               ! [K]
              cur_goveq%aux_vars_in(icell)%tleaf = 273.15d0 + 11.d0 + (k-1)*0.25d0 ! [K]
              cur_goveq%aux_vars_in(icell)%dleaf = 0.05d0                          ! [m]
           end do
