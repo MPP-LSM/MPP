@@ -452,6 +452,7 @@ contains
     allocate(this%residual_wue(ndof))
     allocate(this%residual_hyd(ndof))
     allocate(this%soln_is_bounded(ndof))
+    this%soln_is_bounded(:) = PETSC_TRUE
 
     this%fdry = 0.d0
     this%fwet = 0.d0

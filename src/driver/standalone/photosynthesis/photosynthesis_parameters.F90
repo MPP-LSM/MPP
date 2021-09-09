@@ -29,6 +29,7 @@ contains
     use PhotosynthesisAuxType               , only : photosynthesis_auxvar_type
     use MultiPhysicsProbConstants           , only : VAR_PHOTOSYNTHETIC_PATHWAY_C3, VAR_PHOTOSYNTHETIC_PATHWAY_C4
     use MultiPhysicsProbConstants           , only : VAR_SCM_MEDLYN, VAR_SCM_BBERRY
+    use MultiPhysicsProbConstants           , only : VAR_SCM_BONAN14
     use MultiPhysicsProbConstants           , only : VAR_SCM_WUE
     use MultiPhysicsProbConstants           , only : TFRZ
     !
@@ -47,6 +48,7 @@ contains
     PetscReal :: esat_25C, desat_25C, eair
     PetscReal :: esat_current, desat_current
     PetscInt                                              :: k , icair, icell
+    PetscBool                              :: bounded
 
     call phtsyn_mpp%soe%SetPointerToIthGovEqn(PHTSYN_GE, cur_goveq)
 
@@ -92,6 +94,14 @@ contains
                 cur_goveq%aux_vars_in(icell)%eair = esat_current - vpd_tleaf
              else
                 cur_goveq%aux_vars_in(icell)%eair = esat_current * relhum/100.d0
+             end if
+
+             if (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_WUE) then
+                ! Set cell active/inactive if the solution is bounded/unbounded
+                call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
+                cur_goveq%mesh%is_active(icell) = bounded
+             elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_BONAN14) then
+                call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
              end if
 
              cur_goveq%aux_vars_in(icell)%btran = 1.d0

@@ -153,36 +153,49 @@ contains
 
     do icell = 1, this%mesh%ncells_local
 
-       if (.not. this%mesh%is_active(icell)) then
-          f_p(icell) = 0.d0
-          cycle
-       end if
-
        select case (avars(icell)%gstype)
        case (VAR_SCM_BBERRY)
           do idof = 1,this%dof
-             if (avars(icell)%an(idof) > 0.d0) then
-                f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
-             else
+             if ( (.not. this%mesh%is_active(icell)) .or. &
+                  (.not. avars(icell)%soln_is_bounded(idof))) then
                 f_p(icell) = 0.d0
+             else
+                if (avars(icell)%an(idof) > 0.d0) then
+                   f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+                else
+                   f_p(icell) = 0.d0
+                end if
              end if
           end do
 
        case (VAR_SCM_MEDLYN)
           do idof = 1,this%dof
-             if (avars(icell)%an(idof) > 0.d0) then
-                f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
-             else
+             idx = (icell-1)*this%dof + idof
+
+             if ( (.not. this%mesh%is_active(icell)) .or. &
+                  (.not. avars(icell)%soln_is_bounded(idof))) then
                 f_p(icell) = 0.d0
-             endif
+             else
+                if (avars(icell)%an(idof) > 0.d0) then
+                   f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+                else
+                   f_p(icell) = 0.d0
+                endif
+             end if
           end do
 
        case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
 
-          do idof = 1,this%dof
-             f_p(icell) = avars(icell)%residual_wue(idof)
-          end do
+          if ( (.not. this%mesh%is_active(icell)) .or. &
+               (.not. avars(icell)%soln_is_bounded(idof))) then
+             f_p(icell) = 0.d0
+          else
+             do idof = 1,this%dof
+                idx = (icell-1)*this%dof + idof
+                f_p(icell) = avars(icell)%residual_wue(idof)
+             end do
+          end if
 
        case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
@@ -190,10 +203,11 @@ contains
           do idof = 1,this%dof-1
              idx = (icell-1)*this%dof + idof
 
-             if (avars(icell)%soln_is_bounded(idof)) then
-                f_p(idx) = avars(icell)%residual_wue(idof)
+             if ( (.not. this%mesh%is_active(icell)) .or. &
+                  (.not. avars(icell)%soln_is_bounded(idof))) then
+                f_p(icell) = 0.d0
              else
-                f_p(idx) = 0.d0
+                f_p(idx) = avars(icell)%residual_wue(idof)
              end if
 
           end do
@@ -205,11 +219,12 @@ contains
              idx = (icell-1)*this%dof + idof
              ileaf = 1
 
-             ! psi_{t} + dpsi_{t+1} - leaf_minlwp
-             if (avars(icell)%soln_is_bounded(idof)) then
-                f_p(idx) =  avars(icell)%residual_hyd(idof)
+             if ( (.not. this%mesh%is_active(icell)) .or. &
+                  (.not. avars(icell)%soln_is_bounded(idof))) then
+                f_p(icell) = 0.d0
              else
-                f_p(idx) = 0.d0
+                ! psi_{t} + dpsi_{t+1} - leaf_minlwp
+                f_p(idx) =  avars(icell)%residual_hyd(idof)
              end if
           end if
        case default
@@ -376,7 +391,10 @@ contains
              value = 1.d0
           end if
 
-          if (.not. avars(icell)%soln_is_bounded(idof)) value = 1.d0
+          if ( (.not. this%mesh%is_active(icell)) .or. &
+               (.not. avars(icell)%soln_is_bounded(idof))) then
+             value = 0.d0
+          end if
 
           call MatSetValuesLocal(B, 1, idx - 1, 1, idx - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
        enddo
