@@ -156,14 +156,15 @@ contains
        select case (avars(icell)%gstype)
        case (VAR_SCM_BBERRY)
           do idof = 1,this%dof
+             idx = (icell-1)*this%dof + idof
              if ( (.not. this%mesh%is_active(icell)) .or. &
                   (.not. avars(icell)%soln_is_bounded(idof))) then
-                f_p(icell) = 0.d0
+                f_p(idx) = 0.d0
              else
                 if (avars(icell)%an(idof) > 0.d0) then
-                   f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+                   f_p(idx) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
                 else
-                   f_p(icell) = 0.d0
+                   f_p(idx) = 0.d0
                 end if
              end if
           end do
@@ -174,28 +175,28 @@ contains
 
              if ( (.not. this%mesh%is_active(icell)) .or. &
                   (.not. avars(icell)%soln_is_bounded(idof))) then
-                f_p(icell) = 0.d0
+                f_p(idx) = 0.d0
              else
                 if (avars(icell)%an(idof) > 0.d0) then
-                   f_p(icell) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
+                   f_p(idx) = avars(icell)%an(idof) - avars(icell)%gleaf_c(idof) * (avars(icell)%cair - avars(icell)%ci(idof))
                 else
-                   f_p(icell) = 0.d0
+                   f_p(idx) = 0.d0
                 endif
              end if
           end do
 
        case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
+          do idof = 1,this%dof
+             idx = (icell-1)*this%dof + idof
 
-          if ( (.not. this%mesh%is_active(icell)) .or. &
-               (.not. avars(icell)%soln_is_bounded(idof))) then
-             f_p(icell) = 0.d0
-          else
-             do idof = 1,this%dof
-                idx = (icell-1)*this%dof + idof
-                f_p(icell) = avars(icell)%residual_wue(idof)
-             end do
-          end if
+             if ( (.not. this%mesh%is_active(icell)) .or. &
+                  (.not. avars(icell)%soln_is_bounded(idof))) then
+                f_p(idx) = 0.d0
+             else
+                f_p(idx) = avars(icell)%residual_wue(idof)
+             end if
+          end do
 
        case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
           wl = (avars(icell)%esat - avars(icell)%eair)/avars(icell)%pref
@@ -205,7 +206,7 @@ contains
 
              if ( (.not. this%mesh%is_active(icell)) .or. &
                   (.not. avars(icell)%soln_is_bounded(idof))) then
-                f_p(icell) = 0.d0
+                f_p(idx) = 0.d0
              else
                 f_p(idx) = avars(icell)%residual_wue(idof)
              end if
@@ -221,7 +222,7 @@ contains
 
              if ( (.not. this%mesh%is_active(icell)) .or. &
                   (.not. avars(icell)%soln_is_bounded(idof))) then
-                f_p(icell) = 0.d0
+                f_p(idx) = 0.d0
              else
                 ! psi_{t} + dpsi_{t+1} - leaf_minlwp
                 f_p(idx) =  avars(icell)%residual_hyd(idof)
@@ -387,13 +388,9 @@ contains
 
           idx = (icell-1)*this%dof + idof
 
-          if (.not.this%mesh%is_active(icell)) then
-             value = 1.d0
-          end if
-
           if ( (.not. this%mesh%is_active(icell)) .or. &
                (.not. avars(icell)%soln_is_bounded(idof))) then
-             value = 0.d0
+             value = 1.d0
           end if
 
           call MatSetValuesLocal(B, 1, idx - 1, 1, idx - 1, value, ADD_VALUES, ierr); CHKERRQ(ierr)
