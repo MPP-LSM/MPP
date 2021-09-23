@@ -99,14 +99,6 @@ contains
              cur_goveq%aux_vars_in(icell)%btran = 1.d0
              cur_goveq%aux_vars_in(icell)%dpai  = 1.d0
 
-             if (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_WUE) then
-                ! Set cell active/inactive if the solution is bounded/unbounded
-                call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
-                cur_goveq%mesh%is_active(icell) = bounded
-             elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_BONAN14) then
-                call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
-             end if
-
              ! Root parameters
              auxvar%root%biomass = 500.d0
              auxvar%root%radius  = 0.29d-3
@@ -126,6 +118,15 @@ contains
              auxvar%plant%leaf_minlwp(:) = -2.d0
              auxvar%plant%leaf_lai(:)    = 500.d0
              auxvar%plant%k_stem2leaf(:) = 4.d0
+
+             if (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_WUE) then
+                ! Set cell active/inactive if the solution is bounded/unbounded
+                call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
+                cur_goveq%mesh%is_active(icell) = bounded
+             elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_BONAN14) then
+                call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
+             end if
+
 
           end do
        end do
