@@ -96,6 +96,9 @@ contains
                 cur_goveq%aux_vars_in(icell)%eair = esat_current * relhum/100.d0
              end if
 
+             cur_goveq%aux_vars_in(icell)%btran = 1.d0
+             cur_goveq%aux_vars_in(icell)%dpai  = 1.d0
+
              if (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_WUE) then
                 ! Set cell active/inactive if the solution is bounded/unbounded
                 call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
@@ -103,9 +106,6 @@ contains
              elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_BONAN14) then
                 call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
              end if
-
-             cur_goveq%aux_vars_in(icell)%btran = 1.d0
-             cur_goveq%aux_vars_in(icell)%dpai  = 1.d0
 
              ! Root parameters
              auxvar%root%biomass = 500.d0
