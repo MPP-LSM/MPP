@@ -282,6 +282,7 @@ contains
     PetscReal                  , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
     PetscInt                   , parameter :: nlev = 10
     PetscBool                              :: bounded
+    character(len=20)                      :: step_string, substep_string
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
 
@@ -315,6 +316,9 @@ contains
 
        icell = 0
 
+       write(step_string,*)istep
+       write(substep_string,*)isubstep
+       write(*,*)'mpp.is_active{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
        do icair = 1, ncair
           do ileaf = 1, nleaf
              do k = 1, nz
@@ -344,13 +348,14 @@ contains
 
                 cur_goveq%aux_vars_in(icell)%ci = get_value_from_condition(bnd_cond%co2ref, icair)
 
+                if (.not.(istep == 1 .and. isubstep == 1))  then
+                   call cur_goveq%aux_vars_in(icell)%PreSolve()
+                endif
+
                 do j = 1, nlev
                    cur_goveq%aux_vars_in(icell)%soil%h2osoi_vol(j) = get_value_from_condition(bnd_cond%h2osoi_vol, j)
                 end do
 
-                if (.not.(istep == 1 .and. isubstep == 1))  then
-                   call cur_goveq%aux_vars_in(icell)%PreSolve()
-                endif
                 select case (cur_goveq%aux_vars_in(icell)%gstype)
                    case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
                       ! Set cell active/inactive if the solution is bounded/unbounded
@@ -359,6 +364,13 @@ contains
 
                    case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
                       call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
+                      if (isubstep == -3) then
+                         if (icell == 1) then
+                            cur_goveq%mesh%is_active(icell) = PETSC_TRUE
+                         else
+                            cur_goveq%mesh%is_active(icell) = PETSC_FALSE
+                         end if
+                      end if
 
                    case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
                       ! Do nothing
@@ -370,6 +382,7 @@ contains
              end do
           end do
        end do
+       write(*,*)'];'
 
     end select
 
