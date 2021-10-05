@@ -1020,7 +1020,7 @@ contains
     write(step_string,'(I0.3)')istep
     write(substep_string,*)isubstep
     write(filename,*)'mlc_checkpoint.' // trim(adjustl(step_string)) // '.' //trim(adjustl(substep_string)) // '.bin'
-    write(*,*)'filename: ',trim(adjustl(filename))
+    write(*,*)'%filename: ',trim(adjustl(filename))
     
     base_soe => mlc_mpp%soe
 
