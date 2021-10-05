@@ -629,12 +629,12 @@ contains
           s = max(min(vwc/soil%watsat(j), 1.d0), 0.01d0);
 
           hk = soil%hksat(j) * s**(2.d0 * soil%bsw(j) + 3.d0); ! mm/s
-          hk = hk * 1d-03 / head;                              ! mm/s -> m/s -> m2/s/MPa
+          hk = hk * 1.d-03 / head;                              ! mm/s -> m/s -> m2/s/MPa
           hk = hk * denh2o / MM_H2O * 1000.d0;                  ! m2/s/MPa -> mmol/m/s/MPa
 
           ! Matric potential for each layer (MPa)
           soil%psi(j) = soil%psi_sat(j)* s**(-soil%bsw(j))
-          psi_mpa(j) = soil%psi(j) * 1e-03 * head;          ! mm -> m -> MPa
+          psi_mpa(j) = soil%psi(j) * 1.d-03 * head;          ! mm -> m -> MPa
 
           ! Root biomass density (g biomass / m3 soil)
           root_biomass_density = root%biomass * soil%rootfr(j) / soil%dz(j);
@@ -748,7 +748,7 @@ contains
        if (this%gstype == VAR_SCM_MANZONI11) then
           factor = exp(this%manzoni11_beta * plant%leaf_psi(ileaf))
        end if
-       this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
+       this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * factor * gs_delta_wue * this%vpd
 
     case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
        gs_val_wue = this%gs(idof_wue)
@@ -1561,26 +1561,20 @@ contains
     res_wue_2 = this%residual_wue(idof_wue)
     res_hyd_2 = this%residual_hyd(idof_hyd)
 
-    if ( min(res_wue_1,res_hyd_1) * min(res_wue_2,res_hyd_2) > 0.d0) then
-       ! If residual at max and minimum gs have the same sign, then the
-       ! function does not intersect with the x-axis and the solution
-       ! is not bounded
+    if ( min(res_wue_1,res_hyd_1) * min(res_wue_2,res_hyd_2) < 0.d0) then
+       if ( res_wue_1 * res_wue_2 < 0.d0) then
+          this%soln_is_bounded(idof_wue) = PETSC_TRUE
+       else
+          this%soln_is_bounded(idof_wue) = PETSC_FALSE
+       end if
+       if ( res_hyd_1 * res_hyd_2 < 0.d0) then
+          this%soln_is_bounded(idof_hyd) = PETSC_TRUE
+       else
+          this%soln_is_bounded(idof_hyd) = PETSC_FALSE
+       end if
+    else
        this%soln_is_bounded(idof_wue) = PETSC_FALSE
        this%soln_is_bounded(idof_hyd) = PETSC_FALSE
-    else
-       ! Determine if each DOF is bounded by checking if the residual at
-       ! min and max gs are of different sign to imply that function intersect
-       ! with the x-axis
-       if (res_wue_1 == 0.d0 .and. res_wue_2 == 0.d0) then
-          this%soln_is_bounded(idof_wue) = PETSC_FALSE
-       else
-          this%soln_is_bounded(idof_wue) = (res_wue_1 * res_wue_2 <= 0.d0)
-       end if
-       if (res_hyd_1 == 0.d0 .and. res_hyd_2 == 0.d0) then
-          this%soln_is_bounded(idof_hyd) = PETSC_FALSE
-       else
-          this%soln_is_bounded(idof_hyd) = (res_hyd_1 * res_hyd_2 <= 0.d0)
-       end if
     end if
 
   end subroutine PhotosynthesisDetermineIfSolutionIsBounded
@@ -1669,6 +1663,10 @@ contains
     this%gs_soln      = this%gs(idof)
     this%gleaf_c_soln = this%gleaf_c(idof)
     this%gleaf_w_soln = this%gleaf_w(idof)
+    if (this%gs_soln > 0.d0) then
+       this%gleaf_c_soln = 1.d0/(1.0d0/this%gbc + 1.6d0/this%gs_soln)
+       this%gleaf_w_soln = 1.d0/(1.0d0/this%gbv + 1.0d0/this%gs_soln)
+    end if
 
   end subroutine PhotosynthesisPostSolve
 #endif
