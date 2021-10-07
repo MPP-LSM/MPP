@@ -717,7 +717,7 @@ contains
                       call accumulate_data(vert_lev_vars%rn_leaf_sun, &
                            cur_goveq%aux_vars_in(icell)%rn, count, isubstep)
 
-                      if (output_data) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
+                      if (output_data .and. isubstep > 0) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
                            get_value_from_condition(int_cond%Labs_leaf_shd       , count)
@@ -735,7 +735,7 @@ contains
                       call accumulate_data(vert_lev_vars%rn_leaf_shd, &
                            cur_goveq%aux_vars_in(icell)%rn, count, isubstep)
 
-                      if (output_data) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
+                      if (output_data .and. isubstep > 0) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
                            get_value_from_condition(int_cond%Labs_leaf_shd       , count)
@@ -857,7 +857,7 @@ contains
     allocate(st_data    (ncells))
     allocate(tr_data    (ncells))
 
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(step_string,*)istep
        write(substep_string,*)isubstep
        write(*,*)'mpp.tleaf{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
@@ -881,7 +881,7 @@ contains
                 if (k>=nbot .and. k<=ntop) then
                    idx_leaf = idx_leaf + 1
                    idx_data = (icair-1)*ntree*(nz_cair+1) + (ntree-1)*(nz_cair+1) + k
-                   if (output_data) then
+                   if (output_data .and. isubstep > 0) then
                       write(*,*)idx_data, tleaf_data(idx_data)
                    endif
                    if (ileaf == 1) then
@@ -898,7 +898,7 @@ contains
           end do
        end do
     end do
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(*,*)'];'
     end if
 
@@ -925,7 +925,7 @@ contains
     idx_air  = 0
     idx_leaf = 0
 
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(step_string,*)istep
        write(substep_string,*)isubstep
        write(*,*)'mpp.air{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
@@ -940,7 +940,7 @@ contains
              idx_air = idx_air + 1
              call set_value_in_condition(int_cond%Tair, idx_air, tair_data(idx_data))
              call set_value_in_condition(int_cond%qair, idx_air, qair_data(idx_data))
-             if (output_data) then
+             if (output_data .and. isubstep > 0) then
                 write(*,*)idx_data,tair_data(idx_data),qair_data(idx_data)
              end if
              call set_value_in_condition(int_cond%wind, idx_air, soe%cturb%wind(icair,k))
@@ -959,9 +959,10 @@ contains
           end if
        end do
     end do
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(*,*)'];'
     endif
+    if (isubstep == 12) call exit(0)
 
     deallocate(tleaf_data)
     deallocate(tair_data)

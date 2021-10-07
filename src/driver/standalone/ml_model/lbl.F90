@@ -275,7 +275,7 @@ contains
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_LEAF_BDN_LYR_COND_CO2 , ncells, gbc_data)
     end select
 
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(step_string,*)istep
        write(substep_string,*)isubstep
        write(*,*)'mpp.gbhvc{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
@@ -284,11 +284,11 @@ contains
        call set_value_in_condition(int_cond%gbh, icell, gbh_data(icell))
        call set_value_in_condition(int_cond%gbv, icell, gbv_data(icell))
        call set_value_in_condition(int_cond%gbc, icell, gbc_data(icell))
-       if (output_data) then
+       if (output_data .and. isubstep > 0) then
           write(*,*)icell, gbh_data(icell), gbv_data(icell), gbc_data(icell)
        end if
     end do
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(*,*)'];'
     end if
 

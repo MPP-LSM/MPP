@@ -358,7 +358,7 @@ contains
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND, ncells, Labs_soil_data)
     end select
 
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(step_string,*)istep
        write(substep_string,*)isubstep
        write(*,*)'mpp.labs{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
@@ -383,14 +383,14 @@ contains
                 call accumulate_data(vert_lev_vars%labs_leaf_sun, Labs_leaf_data(count), leaf_icell, isubstep)
                 call accumulate_data(vert_lev_vars%labs_leaf_shd, Labs_leaf_data(count), leaf_icell, isubstep)
 
-                if (output_data) then
+                if (output_data .and. isubstep > 0) then
                    write(*,*)leaf_icell, Labs_leaf_data(count)
                 end if
             end if
           end do
        end do
     end do
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(*,*)'];'
     end if
 

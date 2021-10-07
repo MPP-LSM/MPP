@@ -318,7 +318,6 @@ contains
 
        write(step_string,*)istep
        write(substep_string,*)isubstep
-       write(*,*)'mpp.is_active{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
        do icair = 1, ncair
           do ileaf = 1, nleaf
              do k = 1, nz
@@ -382,7 +381,6 @@ contains
              end do
           end do
        end do
-       write(*,*)'];'
 
     end select
 
@@ -565,7 +563,7 @@ contains
        call goveq%GetRValues(AUXVAR_INTERNAL, VAR_NET_PHOTOSYNTHESIS  , ncells, an_data)
     end select
 
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(step_string,*)istep
        write(substep_string,*)isubstep
        write(*,*)'mpp.gs{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
@@ -584,11 +582,11 @@ contains
        call accumulate_data(vert_lev_vars%anet_leaf_sun, an_data(icell         ), icell, isubstep)
        call accumulate_data(vert_lev_vars%anet_leaf_shd, an_data(icell + offset), icell, isubstep)
 
-       if (output_data) then
+       if (output_data .and. isubstep > 0) then
           write(*,*)icell, gs_data(icell), gs_data(icell + offset)
        end if
     end do
-    if (output_data) then
+    if (output_data .and. isubstep > 0) then
        write(*,*)'];'
     endif
 
