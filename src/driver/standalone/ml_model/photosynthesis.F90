@@ -363,13 +363,6 @@ contains
 
                    case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
                       call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
-                      if (isubstep == -3) then
-                         if (icell == 1) then
-                            cur_goveq%mesh%is_active(icell) = PETSC_TRUE
-                         else
-                            cur_goveq%mesh%is_active(icell) = PETSC_FALSE
-                         end if
-                      end if
 
                    case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
                       ! Do nothing
@@ -492,7 +485,7 @@ contains
                       v_p((icell-1)*2 + 1) = 0.002d0
                       v_p((icell-1)*2 + 2) = 0.002d0
                    case (VAR_SCM_MEDLYN, VAR_SCM_BBERRY)
-                      v_p(icell) = 0.7d0 * get_value_from_condition(bnd_cond%co2ref, icair)
+                      v_p(icell) = 0.9d0 * get_value_from_condition(bnd_cond%co2ref, icair)
                    case default
                       write(*,*)'Unknown gstype to set initial condition'
                    end select
