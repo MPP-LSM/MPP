@@ -227,7 +227,7 @@ contains
     PetscErrorCode                :: ierr
 
     call VecGetArrayF90(phtsyn_mpp%soe%solver%soln, ci_p, ierr); CHKERRQ(ierr)
-    ci_p(:) = 152.d0
+    ci_p(:) = 0.9d0 * 380.d0   ! = 0.9 * cair
     call VecRestoreArrayF90(phtsyn_mpp%soe%solver%soln, ci_p, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_condition
