@@ -962,7 +962,6 @@ contains
     if (output_data .and. isubstep > 0) then
        write(*,*)'];'
     endif
-    if (isubstep == 12) call exit(0)
 
     deallocate(tleaf_data)
     deallocate(tair_data)
