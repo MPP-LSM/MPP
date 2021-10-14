@@ -164,6 +164,7 @@ contains
     !
     use mlc_conditions, only : mlc_add_conditions_to_goveqns
     use mlc_parameters, only : mlc_set_parameters
+    use RSLPsiHat     , only : InitializePsiHat
     !
     implicit none
     !
@@ -184,6 +185,8 @@ contains
     call mlc_mpp%SetupProblem()
 
     call mlc_set_parameters(mlc_mpp)
+
+    call InitializePsiHat()
 
   end subroutine init_mlc
 

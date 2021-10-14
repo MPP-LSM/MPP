@@ -13,6 +13,7 @@ set(MPP_UTIL_SOURCES
   mpp_varcon.F90
   mpp_varctl.F90
   mpp_varpar.F90
+  RSLPsiHat.F90
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)
