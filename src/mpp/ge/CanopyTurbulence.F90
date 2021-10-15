@@ -126,103 +126,111 @@ contains
     PetscReal :: ga_below_hc, ga_above_hc
     PetscReal :: zoc_g, zlog_m, zlog_c, ustar_g
 
-    do icair = 1, cturb%ncair
+    associate ( &
+         hc       => cturb%hc       , &
+         zs       => cturb%zs       , &
+         obu      => cturb%obu      , &
+         ntop     => cturb%ntop     , &
+         disp     => cturb%disp     , &
+         beta     => cturb%beta     , &
+         ga_prof  => cturb%ga_prof  , &
+         zref     => cturb%zref     , &
+         Lc       => cturb%Lc       , &
+         rhomol   => cturb%rhomol   , &
+         ustar    => cturb%ustar    , &
+         wind     => cturb%wind     , &
+         PrSc     => cturb%PrSc       &
+         )
 
-       ! Above-canopy
-       h_minus_d = cturb%hc(icair) - cturb%disp(icair)
+      do icair = 1, cturb%ncair
 
-       do k = cturb%ntop(icair)+1, cturb%ncan_lev-1
+         ! Above-canopy
+         h_minus_d = hc(icair) - disp(icair)
 
-          ! Lower height
-          call ComputePsiRSL (cturb%zs(icair,k), cturb%hc(icair), cturb%disp(icair), &
-               cturb%obu(icair), cturb%beta(icair), cturb%PrSc(icair), psim1, psic1)
+         do k = ntop(icair)+1, cturb%ncan_lev-1
 
-          ! Upper height
-          call ComputePsiRSL (cturb%zs(icair,k+1), cturb%hc(icair), cturb%disp(icair), &
-               cturb%obu(icair), cturb%beta(icair), cturb%PrSc(icair), psim2, psic2)
+            ! Lower height
+            call ComputePsiRSL (zs(icair,k  ), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim1, psic1)
+            call ComputePsiRSL (zs(icair,k+1), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim2, psic2)
 
-          psic = psic2 - psic1
-          zlog = log((cturb%zs(icair,k+1) - cturb%disp(icair))/ (cturb%zs(icair,k) - cturb%disp(icair)))
-          cturb%ga_prof(icair,k) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
-       end do
+            psic = psic2 - psic1
+            zlog = log((zs(icair,k+1) - disp(icair))/ (zs(icair,k) - disp(icair)))
+            ga_prof(icair,k) = rhomol(icair) * VKC * ustar(icair) / (zlog + psic)
+         end do
 
-       ! At top to the reference height
-       k = cturb%ncan_lev
-       call ComputePsiRSL (cturb%zs(icair,k), cturb%hc(icair), cturb%disp(icair), &
-            cturb%obu(icair), cturb%beta(icair), cturb%PrSc(icair), psim1, psic1)
+         ! At top to the reference height
+         k = cturb%ncan_lev
+         call ComputePsiRSL (zs(icair,k), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim1, psic1)
+         call ComputePsiRSL (zref(icair), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim2, psic2)
 
-       call ComputePsiRSL (cturb%zref(icair), cturb%hc(icair), cturb%disp(icair), &
-            cturb%obu(icair), cturb%beta(icair), cturb%PrSc(icair), psim2, psic2)
+         psic = psic2 - psic1
+         zlog = log((zref(icair) - disp(icair))/ (zs(icair,k) - disp(icair)))
+         ga_prof(icair,k) = rhomol(icair) * VKC * ustar(icair) / (zlog + psic)
 
-       psic = psic2 - psic1
-       zlog = log((cturb%zref(icair) - cturb%disp(icair))/ (cturb%zs(icair,k) - cturb%disp(icair)))
-       cturb%ga_prof(icair,k) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
+         ! Within canopy
+         lm = 2.d0 * beta(icair)**3.d0 * Lc(icair)
+         lm_over_beta = lm/beta(icair)
 
-       ! Within canopy
-       lm = 2.d0 * cturb%beta(icair)**3.d0 * cturb%Lc(icair)
-       lm_over_beta = lm/cturb%beta(icair)
+         do k = 2, ntop(icair)-1
+            zl = zs(icair,k  ) - hc(icair)
+            zu = zs(icair,k+1) - hc(icair)
+            res = PrSc(icair) / ( beta(icair) * ustar(icair)) * &
+                 (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
+            ga_prof(icair,k) = rhomol(icair)/res;
+         end do
 
-       do k = 2, cturb%ntop(icair)-1
-          zl = cturb%zs(icair,k  ) - cturb%hc(icair)
-          zu = cturb%zs(icair,k+1) - cturb%hc(icair)
-          res = cturb%PrSc(icair) / ( cturb%beta(icair) * cturb%ustar(icair)) * &
-               (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
-          cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res;
-       end do
+         ! Top of canopy layer
+         k = ntop(icair)
+         zl = zs(icair,k) - hc(icair)
+         zu = hc(icair)   - hc(icair)
+         res = PrSc(icair) / ( beta(icair) * ustar(icair)) * &
+              (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
+         ga_below_hc = rhomol(icair)/res;
 
-       ! Top of canopy layer
-       k = cturb%ntop(icair)
-       zl = cturb%zs(icair,k) - cturb%hc(icair)
-       zu = cturb%hc(icair)   - cturb%hc(icair)
-       res = cturb%PrSc(icair) / ( cturb%beta(icair) * cturb%ustar(icair)) * &
-            (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
-       ga_below_hc = cturb%rhomol(icair)/res;
+         call ComputePsiRSL (hc(icair    ), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim1, psic1)
+         call ComputePsiRSL (zs(icair,k+1), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim2, psic2)
 
-       call ComputePsiRSL (cturb%hc(icair), cturb%hc(icair), cturb%disp(icair), &
-            cturb%obu(icair), cturb%beta(icair), cturb%PrSc(icair), psim1, psic1)
+         psic = psic2 - psic1
+         zlog = log((zs(icair,k+1) - disp(icair))/ (hc(icair) - disp(icair)))
+         ga_above_hc = rhomol(icair) * VKC * ustar(icair) / (zlog + psic)
 
-       call ComputePsiRSL (cturb%zs(icair,k+1), cturb%hc(icair), cturb%disp(icair), &
-            cturb%obu(icair), cturb%beta(icair), cturb%PrSc(icair), psim2, psic2)
+         ga_prof(icair,k) = 1.d0 / (1.d0/ga_below_hc + 1.d0/ga_above_hc)
 
-       psic = psic2 - psic1
-       zlog = log((cturb%zs(icair,k+1) - cturb%disp(icair))/ (cturb%hc(icair) - cturb%disp(icair)))
-       ga_above_hc = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
+         ! Check aerodynamic resistance sums to 1/gac
+         sumres = 1.d0/ga_above_hc
+         do k = ntop(icair)+1, cturb%ncan_lev
+            sumres = sumres + 1.d0/ga_prof(icair,k)
+         end do
 
-       cturb%ga_prof(icair,k) = 1.d0 / (1.d0/ga_below_hc + 1.d0/ga_above_hc)
+         if (abs(1.d0/sumres - cturb%gac(icair)) > 1e-06) then
+            write(iulog,*)'ERROR: *** Above canopy conductances does not sums to 1/gac ***'
+            call endrun(msg=errMsg(__FILE__, __LINE__))
+         end if
 
-       ! Check aerodynamic resistance sums to 1/gac
-       sumres = 1.d0/ga_above_hc
-       do k = cturb%ntop(icair)+1, cturb%ncan_lev
-          sumres = sumres + 1.d0/cturb%ga_prof(icair,k)
-       end do
+         ! At ground
+         k = 1
+         zoc_g = 0.1d0 * z0mg
+         zlog_m = log(zs(icair,k+1)/z0mg)
+         zlog_c = log(zs(icair,k+1)/zoc_g)
+         ustar_g = wind(icair,k+1) * VKC /zlog_m;
+         ustar_g = max(ustar_g, 0.01d0)
+         res = zlog_c/(VKC * ustar_g)
+         ga_prof(icair,k) = rhomol(icair)/res
 
-       if (abs(1.d0/sumres - cturb%gac(icair)) > 1e-06) then
-          write(iulog,*)'ERROR: *** Above canopy conductances does not sums to 1/gac ***'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       end if
+         !gac0(p) = rhomol(p) * vkc * ustar_g / zlog_c   !!! CLMml v0 CODE !!!
 
-       ! At ground
-       k = 1
-       zoc_g = 0.1d0 * z0mg
-       zlog_m = log(cturb%zs(icair,k+1)/z0mg)
-       zlog_c = log(cturb%zs(icair,k+1)/zoc_g)
-       ustar_g = cturb%wind(icair,k+1) * VKC /zlog_m;
-       ustar_g = max(ustar_g, 0.01d0)
-       res = zlog_c/(VKC * ustar_g)
-       cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res
+         res = min (rhomol(icair)/ga_prof(icair,k), ra_max)
+         ga_prof(icair,k) = rhomol(icair) / res
 
-       !gac0(p) = rhomol(p) * vkc * ustar_g / zlog_c   !!! CLMml v0 CODE !!!
+         ! Limit resistance to < 500 s/m
+         k = 1
+         do k = 1+1, cturb%ncan_lev
+            res = min(rhomol(icair)/ga_prof(icair,k), 500.d0)
+            ga_prof(icair,k) = rhomol(icair)/res
+         end do
+      end do
 
-       res = min (cturb%rhomol(icair)/cturb%ga_prof(icair,k), ra_max)
-       cturb%ga_prof(icair,k) = cturb%rhomol(icair) / res
-
-       ! Limit resistance to < 500 s/m
-       k = 1
-       do k = 1+1, cturb%ncan_lev
-          res = min(cturb%rhomol(icair)/cturb%ga_prof(icair,k), 500.d0)
-          cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res
-       end do
-    end do
+    end associate
 
   end subroutine AerodynamicConductances
 
