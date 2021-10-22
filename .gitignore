@@ -4,3 +4,5 @@ local
 *.stdout
 *.regression
 *xcode
+.DS_Store
+regression_tests/*/*.bin*

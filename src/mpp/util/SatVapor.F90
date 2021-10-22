@@ -14,7 +14,7 @@ module WaterVaporMod
   !
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: SatVap     ! Saturation vapor pressure and derivative
-  !public :: LatVap     ! Latent heat of vaporization
+  public :: LatVap     ! Latent heat of vaporization
   !
   ! This code is from Gordan Bonan's (NCAR) repository at
   ! https://github.com/gbonan/CLM-ml_v0
@@ -113,7 +113,6 @@ contains
 
   end subroutine SatVap
 
-#if 0
   !-----------------------------------------------------------------------
   function LatVap (t) result(lambda)
     !
@@ -121,7 +120,7 @@ contains
     ! Latent heat of vaporization in relation to air temperature
     !
     ! !USES:
-    use clm_varcon, only : tfrz, mmh2o, hfus, hvap
+    use MultiPhysicsProbConstants, only: TFRZ, HVAP, HSUB, MM_H2O
     !
     ! !ARGUMENTS:
     implicit none
@@ -131,12 +130,14 @@ contains
     PetscReal :: lambda             ! Molar latent heat of vaporization (J/mol)
     !---------------------------------------------------------------------
 
-    lambda = hvap                                  ! Used in CLM (J/kg)
-    if (t <= tfrz) lambda = lambda + hfus          ! Add latent heat of fusion (J/kg)
-    lambda = lambda * mmh2o                        ! Molar latent heat of vaporization (J/mol)
+    if (t > TFRZ) then
+       lambda = HVAP
+    else
+       lambda = HSUB
+    endif
+    lambda = lambda * MM_H2O ! Molar latent heat of vaporization (J/mol)
 
   end function LatVap
-#endif
 
 #endif
 

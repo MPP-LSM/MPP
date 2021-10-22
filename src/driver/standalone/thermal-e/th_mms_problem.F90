@@ -26,7 +26,7 @@ module th_mms_problem
   PetscInt              :: problem_type
   
   PetscInt              :: nx,ny,nz
-  PetscInt              :: ncells
+  PetscInt              :: ncells_local
   PetscInt              :: ncells_ghost
 
   PetscReal             :: dx, dy, dz
@@ -81,6 +81,7 @@ module th_mms_problem
   PetscInt, pointer :: b_cpl_data(:,:)
 
   public :: run_th_mms_problem
+  public :: output_regression_th_mms_problem
 
 contains
 
@@ -236,11 +237,11 @@ contains
          x_min, y_min, z_min, &
          soil_xc_1d, soil_yc_1d, soil_zc_1d)
 
-    allocate(soil_filter(ncells))
-    allocate(soil_dx_1d (ncells))
-    allocate(soil_dy_1d (ncells))
-    allocate(soil_dz_1d (ncells))
-    allocate(soil_area  (ncells))
+    allocate(soil_filter(ncells_local))
+    allocate(soil_dx_1d (ncells_local))
+    allocate(soil_dy_1d (ncells_local))
+    allocate(soil_dz_1d (ncells_local))
+    allocate(soil_area  (ncells_local))
 
     soil_filter (:) = 1
     soil_dx_1d  (:) = dx
@@ -255,7 +256,7 @@ contains
     call th_mpp%MeshSetName        (imesh, 'Soil mesh')
     call th_mpp%MeshSetOrientation (imesh, MESH_AGAINST_GRAVITY)
     call th_mpp%MeshSetID          (imesh, MESH_CLM_SOIL_COL)
-    call th_mpp%MeshSetDimensions  (imesh, ncells, ncells_ghost, nz)
+    call th_mpp%MeshSetDimensions  (imesh, ncells_local, ncells_ghost, nz)
 
     call th_mpp%MeshSetGridCellFilter      (imesh, soil_filter)
     call th_mpp%MeshSetGeometricAttributes (imesh, VAR_XC   , soil_xc_1d)
@@ -652,12 +653,12 @@ contains
     PetscReal, pointer :: perm(:)
     PetscInt , pointer :: satfunc_type(:)
 
-    allocate(por             (ncells))
-    allocate(perm            (ncells))
-    allocate(alpha           (ncells))
-    allocate(lambda          (ncells))
-    allocate(residual_sat    (ncells))
-    allocate(satfunc_type    (ncells))
+    allocate(por             (ncells_local))
+    allocate(perm            (ncells_local))
+    allocate(alpha           (ncells_local))
+    allocate(lambda          (ncells_local))
+    allocate(residual_sat    (ncells_local))
+    allocate(satfunc_type    (ncells_local))
     
     call goveq_richards%SetDensityType(density_type)
 
@@ -704,16 +705,16 @@ contains
     PetscReal, pointer :: t_cond_wet(:)
     PetscReal, pointer :: t_alpha(:)
 
-    allocate(por          (ncells))
-    allocate(perm         (ncells))
-    allocate(alpha        (ncells))
-    allocate(lambda       (ncells))
-    allocate(residual_sat (ncells))
-    allocate(satfunc_type (ncells))
-    allocate(heat_cap     (ncells))
-    allocate(t_cond_dry   (ncells))
-    allocate(t_cond_wet   (ncells))
-    allocate(t_alpha      (ncells))
+    allocate(por          (ncells_local))
+    allocate(perm         (ncells_local))
+    allocate(alpha        (ncells_local))
+    allocate(lambda       (ncells_local))
+    allocate(residual_sat (ncells_local))
+    allocate(satfunc_type (ncells_local))
+    allocate(heat_cap     (ncells_local))
+    allocate(t_cond_dry   (ncells_local))
+    allocate(t_cond_wet   (ncells_local))
+    allocate(t_alpha      (ncells_local))
     
     call goveq_enthalpy%SetDensityType(density_type)
     call goveq_enthalpy%SetIntEnergyEnthalpyType(int_energy_enthalpy_type)
@@ -911,7 +912,7 @@ contains
     class(sysofeqns_base_type) , pointer :: base_soe
     PetscErrorCode                       :: ierr
 
-    allocate(source_sink(ncells))
+    allocate(source_sink(ncells_local))
 
     base_soe => th_mpp%soe
 
@@ -968,7 +969,7 @@ contains
     ylim = y_max - y_min
     zlim = z_max - z_min
 
-    ncells = nx*ny*nz
+    ncells_local = nx*ny*nz
     ncells_ghost = 0
 
     dx = (x_max - x_min)/nx
@@ -1619,7 +1620,7 @@ contains
     call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
 
     call VecCreate(PETSC_COMM_SELF, source, ierr); CHKERRQ(ierr)
-    call VecSetSizes(source, ncells, PETSC_DECIDE, ierr); CHKERRQ(ierr)
+    call VecSetSizes(source, ncells_local, PETSC_DECIDE, ierr); CHKERRQ(ierr)
     call VecSetFromOptions(source, ierr); CHKERRQ(ierr)
 
     call VecGetArrayF90(source, v_p, ierr)
@@ -1630,5 +1631,54 @@ contains
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
   end subroutine save_perm
+
+  !------------------------------------------------------------------------
+  subroutine output_regression_th_mms_problem(filename_base, num_cells)
+   !
+   use MultiPhysicsProbTH        , only : th_mpp
+   use MultiPhysicsProbConstants , only : AUXVAR_INTERNAL
+   use MultiPhysicsProbConstants , only : VAR_PRESSURE
+   use MultiPhysicsProbConstants , only : VAR_TEMPERATURE
+   use regression_mod            , only : regression_type
+   !
+   implicit none
+   !
+   character(len=256)    :: filename_base
+   character(len=512)    :: filename
+   PetscInt, intent(in)  :: num_cells
+   !
+   PetscInt              :: output
+   character(len=64)     :: category
+   character(len=64)     :: name
+   PetscReal, pointer    :: data(:)
+   PetscReal, pointer    :: data_subset(:)
+   type(regression_type) :: regression
+
+   allocate(data(ncells_local*2))
+   allocate(data_subset(ncells_local))
+
+   call regression%Init(filename_base, num_cells)
+   call regression%OpenOutput()
+
+   name = 'liquid_pressure'
+   category = 'pressure'
+   call th_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
+        VAR_PRESSURE, -1, data)
+   data_subset(:) = data(1:ncells_local)
+   call regression%WriteData(name, category, data_subset)
+
+   name = 'temperature'
+   category = 'temperature'
+   call th_mpp%soe%GetDataForCLM(AUXVAR_INTERNAL,  &
+        VAR_TEMPERATURE, -1, data)
+   data_subset(:) = data(ncells_local+1:ncells_local*2)
+   call regression%WriteData(name, category, data_subset)
+
+   call regression%CloseOutput()
+   
+   deallocate(data)
+   deallocate(data_subset)
+
+ end subroutine output_regression_th_mms_problem
 
 end module th_mms_problem

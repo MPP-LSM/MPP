@@ -18,7 +18,7 @@ module thermal_mms_problem
   PetscInt              :: problem_type
   
   public :: run_thermal_mms_problem
-  public :: output_regression_th_mms_problem
+  public :: output_regression_thermal_mms_problem
 
 contains
 !------------------------------------------------------------------------
@@ -841,7 +841,7 @@ contains
 
 
   !------------------------------------------------------------------------
-  subroutine output_regression_th_mms_problem(filename_base, num_cells)
+  subroutine output_regression_thermal_mms_problem(filename_base, num_cells)
     !
     use MultiPhysicsProbConstants    , only : AUXVAR_INTERNAL
     use MultiPhysicsProbConstants    , only : VAR_TEMPERATURE
@@ -884,7 +884,7 @@ contains
     
     deallocate(data)
 
-  end subroutine output_regression_th_mms_problem
+  end subroutine output_regression_thermal_mms_problem
   
 end module thermal_mms_problem
   

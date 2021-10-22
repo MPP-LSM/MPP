@@ -73,9 +73,14 @@ contains
     ! !ARGUMENTS
     class(goveqn_leaf_bnd_lyr_type) :: this
     !
+    PetscInt :: icell
+    !
 
     ! Allocate memory and initialize aux vars: For internal connections
     allocate(this%aux_vars_in(this%mesh%ncells_all))
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%Init()
+    enddo
 
   end subroutine LeafBndLyrAllocateAuxVars
 
@@ -99,7 +104,7 @@ contains
     avars => this%aux_vars_in
 
     do icell = 1, this%mesh%ncells_all
-        avars(icell)%rhomol = avars(icell)%patm / (RGAS * avars(icell)%tair)
+        avars(icell)%rhomol = avars(icell)%pref / (RGAS * avars(icell)%tref)
     enddo
   end subroutine LeafBndLyrPreSolve
 
@@ -178,7 +183,7 @@ contains
 
     do icell = 1, this%mesh%ncells_local
         ! adjust diffusivity for temperature and pressure
-        factor = 101325.d0 / avars(icell)%patm * (avars(icell)%tair/TFRZ)**1.81d0
+        factor = 101325.d0 / avars(icell)%pref * (avars(icell)%tref/TFRZ)**1.81d0
 
         visc = VISC_0C * factor
         Dh = MOD_DIFF_HEAT_OC * factor
@@ -234,7 +239,7 @@ contains
         b_p((icell-1)*3 + 2) = avars(icell)%gbv
         b_p((icell-1)*3 + 3) = avars(icell)%gbc
 
-    end do
+     end do
 
     call VecRestoreArrayF90(B, b_p, ierr)
 

@@ -10,7 +10,7 @@ module GoveqnShortwaveType
   use mpp_abortutils            , only : endrun
   use mpp_shr_log_mod           , only : errMsg => shr_log_errMsg
   use GoverningEquationBaseType , only : goveqn_base_type
-  use ShortwaveAuxType           , only : shortwave_auxvar_type
+  use ShortwaveAuxType          , only : shortwave_auxvar_type
   use petscvec
   use petscmat
   use petscsys
@@ -26,15 +26,23 @@ module GoveqnShortwaveType
 
      PetscInt                                   :: nLeaf
 
+     ! For post-processing of the data to copmute absorbed diffuse radiation:
+     ! I_absorbed_d = I_mat_d * Solution + I_rhs
+     Vec :: I_absorbed_d
+     Vec :: I_up_dn
+     Mat :: I_mat_d
+
    contains
 
      procedure, public :: Setup                     => ShortwaveSetup
      procedure, public :: AllocateAuxVars           => ShortwaveAllocateAuxVars
      procedure, public :: PreSolve                  => ShortwavePreSolve
+     procedure, public :: PostSolve                 => ShortwavePostSolve
      procedure, public :: UpdateAuxVars             => ShortwaveUpdateAuxVars
      procedure, public :: SavePrimaryIndependentVar => ShortwaveSavePrmIndepVar
      procedure, public :: ComputeRhs                => ShortwaveComputeRhs
      procedure, public :: ComputeOperatorsDiag      => ShortwaveComputeOperatorsDiag
+     procedure, public :: GetRValues                => ShortwaveGetRValues
 
   end type goveqn_shortwave_type
 
@@ -62,7 +70,7 @@ contains
     nullify(this%aux_vars_in)
     nullify(this%aux_vars_bc)
 
-    this%nLeaf = 1
+    this%nLeaf = 2
 
   end subroutine ShortwaveSetup
 
@@ -82,7 +90,8 @@ contains
     class(goveqn_shortwave_type)   :: this
     !
     type(condition_type) , pointer :: cur_cond
-    PetscInt                       :: ghosted_id, ncells_cond, icond
+    PetscInt                       :: ghosted_id, ncells_cond, icond, nrow, ncol, nband
+    PetscErrorCode                 :: ierr
 
     ! Allocate memory and initialize aux vars: For internal cells
     allocate(this%aux_vars_in(this%mesh%ncells_all))
@@ -107,6 +116,16 @@ contains
     do icond = 1,ncells_cond
        call this%aux_vars_bc(icond)%Init(0)
     enddo
+
+    nband = this%aux_vars_in(1)%nband
+    nrow = this%mesh%ncells_all * nband
+    ncol = nrow * 2
+    call MatCreateSeqAIJ(PETSC_COMM_SELF, nrow, ncol, &
+         2, PETSC_NULL_INTEGER, this%I_mat_d, ierr); CHKERRQ(ierr)
+
+    call VecCreateSeq(PETSC_COMM_SELF, nrow, this%I_absorbed_d, ierr); CHKERRQ(ierr)
+    call VecCreateSeq(PETSC_COMM_SELF, ncol, this%I_up_dn     , ierr); CHKERRQ(ierr)
+
   end subroutine ShortwaveAllocateAuxVars
 
   !------------------------------------------------------------------------
@@ -145,6 +164,7 @@ contains
        call endrun(msg="ERROR size of vector /= number of cells in the mesh "//errmsg(__FILE__, __LINE__))
     end if
 
+    call VecCopy(x, this%I_up_dn, ierr)
     call VecGetArrayF90(x, x_p, ierr); CHKERRQ(ierr)
 
     nband = this%aux_vars_in(1)%nband
@@ -183,7 +203,78 @@ contains
        end if
     enddo
 
+    call ShortwaveSetupAbsorbedFluxMatAndVec(this)
+
   end subroutine ShortwaveUpdateAuxVars
+
+ !------------------------------------------------------------------------
+  subroutine ShortwaveSetupAbsorbedFluxMatAndVec(this)
+    !
+    ! !DESCRIPTION:
+    !
+    use ConditionType             , only : condition_type
+    use ConditionType             , only : condition_type
+    use ConnectionSetType         , only : connection_set_type
+    use MultiPhysicsProbConstants , only : STEFAN_BOLTZMAN_CONSTANT
+    use ConnectionSetType         , only : connection_set_type
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_shortwave_type)           :: this
+    Vec                                    :: B
+    PetscErrorCode                         :: ierr
+    !
+    type(shortwave_auxvar_type) , pointer  :: avars(:)
+    class(connection_set_type)  , pointer  :: cur_conn_set
+    class(condition_type)       , pointer  :: cur_cond
+    PetscScalar                 , pointer  :: r_p(:)
+    PetscInt                               :: icell, row, col, iband, idx, nband
+    PetscReal                              :: value
+
+    avars => this%aux_vars_in
+
+    nband = avars(1)%nband
+
+    ! Set RHS for upwind and absorbed radiation
+    do icell = 1, this%mesh%ncells_local
+
+       if (avars(icell)%is_soil) then
+          do iband = 1, nband
+             idx = (icell-1)*this%dof/2 + (iband-1)*avars(icell)%nband + 2
+
+             value = (1.d0 - avars(icell)%soil_albedo_d(iband))
+
+             row = (icell-1)*this%dof/2 + iband - 1
+
+             col = (icell-1)*this%dof   + (iband-1)*avars(icell)%nband + 1
+             call MatSetValues(this%I_mat_d, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+          end do
+
+       else
+          ! Absorbed flux: -2 * (1-tau_{d,i}) * emiss * sigma * T^4
+          do iband = 1, nband
+
+             idx = (icell-1)*this%dof/2 + (iband-1)*avars(icell)%nband + 2
+
+             row = (icell-1)*this%dof/2 + iband - 1
+             value = (1.d0 - avars(icell)%leaf_td) * (1.d0 - avars(icell)%leaf_omega(iband))
+
+             col = (icell-1)*this%dof   + (iband-1)*avars(icell)%nband + 1
+             call MatSetValues(this%I_mat_d, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+
+             col = (icell-1)*this%dof   + (iband-1)*avars(icell)%nband - this%dof
+             call MatSetValues(this%I_mat_d, 1, row, 1, col, value, INSERT_VALUES, ierr); CHKERRQ(ierr);
+          end do
+       end if
+
+    end do
+
+
+    call MatAssemblyBegin(this%I_mat_d, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(  this%I_mat_d, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
+
+  end subroutine ShortwaveSetupAbsorbedFluxMatAndVec
 
   !------------------------------------------------------------------------
   subroutine ShortwaveComputeRhs(this, B, ierr)
@@ -436,6 +527,166 @@ contains
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
 
   end subroutine ShortwaveComputeOperatorsDiag
+
+  !------------------------------------------------------------------------
+  subroutine ShortwavePostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Presolve
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_shortwave_type) :: this
+    !
+    ! !LOCAL VARIABLES
+    type(shortwave_auxvar_type) , pointer  :: avars(:)
+    PetscInt                     :: ghosted_id, iband, nband
+    PetscScalar, pointer         :: v_p(:)
+    PetscReal                    :: diffuse, direct, sun, shade, denom
+    PetscErrorCode               :: ierr
+    PetscViewer :: viewer
+
+    call this%UpdateAuxVars()
+
+    call MatMult(this%I_mat_d, this%I_up_dn, this%I_absorbed_d, ierr); CHKERRQ(ierr)
+
+    call VecGetArrayF90(this%I_absorbed_d, v_p, ierr)
+
+    avars => this%aux_vars_in
+    nband = avars(1)%nband
+
+    ! Update aux vars for internal cells
+    do ghosted_id = 1, this%mesh%ncells_all
+       if (this%mesh%is_active(ghosted_id)) then
+          call avars(ghosted_id)%AuxVarCompute()
+
+          if (avars(ghosted_id)%is_soil) then
+
+             do iband = 1, nband
+                diffuse = v_p((ghosted_id-1)*nband + iband)
+                direct  = avars(ghosted_id)%Iskyb(iband) * avars(ghosted_id)%leaf_tbcum * (1.d0 - avars(ghosted_id)%soil_albedo_b(iband))
+                avars(ghosted_id)%Iabs_soil(iband) = diffuse + direct
+             end do
+
+          else
+
+             do iband = 1, nband
+                diffuse = v_p((ghosted_id-1)*nband + iband) ! equation 14.47
+                direct  = avars(ghosted_id)%Iskyb(iband) * avars(ghosted_id)%leaf_tbcum * (1.d0 - avars(ghosted_id)%leaf_tb) * (1.d0 - avars(ghosted_id)%leaf_omega(iband)) ! equation 14.48
+
+                sun   = diffuse * avars(ghosted_id)%leaf_fssh(1) + direct
+                shade = diffuse * avars(ghosted_id)%leaf_fssh(2)
+
+                denom = avars(ghosted_id)%leaf_fssh(1)*avars(ghosted_id)%leaf_dpai
+                if (denom > 0.d0) then
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = sun/denom ! equation 14.53*
+                else
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 1) = 0.d0
+                end if
+
+                denom = avars(ghosted_id)%leaf_fssh(2)*avars(ghosted_id)%leaf_dpai
+                if (denom > 0.d0) then
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = shade/denom ! equation 14.52*
+                else
+                   avars(ghosted_id)%Iabs_leaf((iband-1)*avars(ghosted_id)%nleaf + 2) = 0.d0
+                end if
+             end do
+
+          end if
+       end if
+    enddo
+
+    call VecRestoreArrayF90(this%I_absorbed_d, v_p, ierr)
+
+  end subroutine ShortwavePostSolve
+
+  !------------------------------------------------------------------------
+  subroutine ShortwaveGetRValues (this, auxvar_type, var_type, nauxvar, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    !
+    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants, only : AUXVAR_BC
+    use MultiPhysicsProbConstants, only : AUXVAR_SS
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_shortwave_type) :: this
+    PetscInt                     :: auxvar_type
+    PetscInt                     :: var_type
+    PetscInt                     :: nauxvar
+    PetscReal, pointer           :: var_values(:)
+
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
+    select case(auxvar_type)
+    case(AUXVAR_INTERNAL)
+       call ShortwaveGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
+    case default
+       write(*,*)'Unknown auxvar_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+    
+  end subroutine ShortwaveGetRValues
+
+  !------------------------------------------------------------------------
+  subroutine ShortwaveGetRValuesFromAuxVars (aux_var, var_type, ncells, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI
+    use MultiPhysicsProbConstants, only : VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(shortwave_auxvar_type) , pointer :: aux_var(:)
+    PetscInt                              :: var_type
+    PetscInt                              :: ncells
+    PetscReal                   , pointer :: var_values(:)
+    !
+    PetscInt :: ghosted_id, iband, count, nband
+
+    nband = aux_var(1)%nband
+
+    select case(var_type)
+    case(VAR_LEAF_ABSORBED_SHORTWAVE_RAD_PER_LAI)
+       count = 0
+       do ghosted_id = 1, ncells
+          do iband = 1, nband ! VIS and NIR
+
+             ! sunlit
+             count = count + 1
+             var_values(count) = aux_var(ghosted_id)%Iabs_leaf((iband-1)*aux_var(ghosted_id)%nleaf + 1)
+
+             ! shaded
+             count = count + 1
+             var_values(count) = aux_var(ghosted_id)%Iabs_leaf((iband-1)*aux_var(ghosted_id)%nleaf + 2)
+          end do
+       end do
+
+    case(VAR_SOIL_ABSORBED_SHORTWAVE_RAD_PER_GROUND)
+
+       count = 0
+       do ghosted_id = 1, ncells
+          do iband = 1, nband
+             count = count + 1
+             var_values(count) = aux_var(ghosted_id)%Iabs_soil(iband)
+          end do
+       end do
+
+    case default
+       write(iulog,*) 'CLeafTempGetRValuesFromAuxVars: Unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine ShortwaveGetRValuesFromAuxVars
 
 #endif
 

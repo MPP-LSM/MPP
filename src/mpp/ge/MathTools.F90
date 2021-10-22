@@ -149,7 +149,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     integer, parameter                  :: itmax = 50     ! Maximum number of iterations
-    PetscReal           , parameter     :: eps = 1.e-08 ! Relative error tolerance
+    PetscReal           , parameter     :: eps = 1.d-08 ! Relative error tolerance
     integer                             :: iter           ! Iteration loop index
     PetscReal                           :: a,b,c,d,e,fa,fb,fc,p,q,r,s,tol1,xm
     PetscReal                           :: root
@@ -319,8 +319,8 @@ contains
     PetscReal :: ser
     integer  :: j
 
-    PetscReal, parameter :: coef(6) = (/ 76.18009172947146e0, -86.50532032941677e0, &
-         24.01409824083091e0, -1.231739572450155e0, 0.1208650973866179e-02, -0.5395239384953e-05 /)
+    PetscReal, parameter :: coef(6) = (/ 76.18009172947146d0, -86.50532032941677d0, &
+         24.01409824083091d0, -1.231739572450155d0, 0.1208650973866179d-02, -0.5395239384953d-05 /)
     PetscReal, parameter :: stp = 2.5066282746310005d0
 
     y = x

@@ -35,6 +35,7 @@ module GoveqnLongwaveType
      procedure, public :: SavePrimaryIndependentVar => LongwaveSavePrmIndepVar
      procedure, public :: ComputeRhs                => LongwaveComputeRhs
      procedure, public :: ComputeOperatorsDiag      => LongwaveComputeOperatorsDiag
+     procedure, public :: GetRValues                => LongwaveGetRValues
 
   end type goveqn_longwave_type
 
@@ -346,7 +347,7 @@ contains
 
        if (avars(icell)%is_soil) then
 
-          value = avars(icell)%f
+          value = -avars(icell)%f
           row = (icell-1)*this%dof
           col = row + 1
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr);
@@ -431,6 +432,87 @@ contains
     call MatAssemblyEnd(  B, MAT_FINAL_ASSEMBLY, ierr);CHKERRQ(ierr)
 
   end subroutine LongwaveComputeOperatorsDiag
+
+  !------------------------------------------------------------------------
+  subroutine LongwaveGetRValues (this, auxvar_type, var_type, nauxvar, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    !
+    use MultiPhysicsProbConstants, only : AUXVAR_INTERNAL
+    use MultiPhysicsProbConstants, only : AUXVAR_BC
+    use MultiPhysicsProbConstants, only : AUXVAR_SS
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_longwave_type) :: this
+    PetscInt                     :: auxvar_type
+    PetscInt                     :: var_type
+    PetscInt                     :: nauxvar
+    PetscReal, pointer           :: var_values(:)
+
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
+    select case(auxvar_type)
+    case(AUXVAR_INTERNAL)
+       call LongwaveGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
+    case default
+       write(*,*)'Unknown auxvar_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine LongwaveGetRValues
+
+  !------------------------------------------------------------------------
+  subroutine LongwaveGetRValuesFromAuxVars (aux_var, var_type, ncells, var_values)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    use MultiPhysicsProbConstants, only : VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI
+    use MultiPhysicsProbConstants, only : VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    type(longwave_auxvar_type) , pointer :: aux_var(:)
+    PetscInt                              :: var_type
+    PetscInt                              :: ncells
+    PetscReal                   , pointer :: var_values(:)
+    !
+    PetscInt :: ghosted_id, ileaf
+
+    var_values(:) = 0.d0
+
+    select case(var_type)
+    case(VAR_LEAF_ABSORBED_LONGWAVE_RAD_PER_LAI)
+
+       ileaf = 1
+       do ghosted_id = 1, ncells
+          if (.not. aux_var(ghosted_id)%is_soil) then
+             if (aux_var(ghosted_id)%leaf_dpai(ileaf) > 0.d0) then
+                var_values(ghosted_id) = aux_var(ghosted_id)%Iabs/aux_var(ghosted_id)%leaf_dpai(ileaf)
+             end if
+          end if
+       end do
+
+    case(VAR_SOIL_ABSORBED_LONGWAVE_RAD_PER_GROUND)
+       do ghosted_id = 1, ncells
+          if (aux_var(ghosted_id)%is_soil) then
+             var_values(ghosted_id) = aux_var(ghosted_id)%Iabs
+          end if
+       end do
+
+    case default
+       write(iulog,*) 'LongwaveGetRValuesFromAuxVars: Unknown var_type'
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine LongwaveGetRValuesFromAuxVars
+
 #endif
 
 end module GoveqnLongwaveType

@@ -23,13 +23,14 @@ module CanopyTurbulenceAuxType
      PetscReal, pointer :: zref(:)      ! Reference height (m)
      PetscReal, pointer :: pref(:)      ! Atmospheric pressure (Pa)
      PetscReal, pointer :: uref(:)      ! Wind speed at reference height (m/s)
-     PetscReal, pointer :: vref(:)      ! Water vapor at reference height (mol/mol)
+     PetscReal, pointer :: qref(:)      ! Water vapor at reference height (mol/mol)
      PetscReal, pointer :: tref(:)      ! Air temperature at reference height (K)
      PetscReal, pointer :: rhref(:)     ! Relative humidity at reference height (%)
+     PetscReal, pointer :: eref(:)      ! Water vapor pressure at reference height (Pa)
      !PetscReal, pointer :: shref(:)     ! Specific humidity at reference height (kg/kg)
 
      PetscReal, pointer :: ucan(:)      ! Wind speed at canopy top (m/s)
-     PetscReal, pointer :: vcan(:)      ! Water vapor at canopy top (mol/mol)
+     PetscReal, pointer :: qcan(:)      ! Water vapor at canopy top (mol/mol)
      PetscReal, pointer :: tcan(:)      ! Air temperature at canopy top (K)
 
      PetscReal, pointer :: rhomol(:)    ! Molar density (mol/m3)
@@ -49,19 +50,19 @@ module CanopyTurbulenceAuxType
      PetscReal, pointer :: PrSc(:)      ! Prandtl (Schmidt) number at canopy top
      PetscReal, pointer :: ustar(:)     ! Friction velocity (m/s)
      PetscReal, pointer :: tstar(:)     ! Temperature scale (K)
-     PetscReal, pointer :: vstar(:)     ! Water vapor scale (mol/mol)
+     PetscReal, pointer :: qstar(:)     ! Water vapor scale (mol/mol)
      PetscReal, pointer :: gac(:)       ! Aerodynamic conductance for a scalar above canopy (mol/m2/s)
      PetscReal, pointer :: obu_ustar(:) ! Obukhov length used for u* (m)
      PetscReal, pointer :: obu(:)       ! Value for Obukhov length (m)
 
      PetscReal, pointer :: pai(:)       ! Canopy plant area index (m2/m2): LAI + SAI
 
-     PetscReal, pointer :: tksoi(:)     ! Soil thermal conductivity (W/m/K)
-     PetscReal, pointer :: dzsoi(:)     ! Soil layer depth (m)
-     PetscReal, pointer :: tsoi(:)      ! Soil temperature (K)
-     PetscReal, pointer :: ressoi(:)    ! Soil evaporative resistance (s/m)
-     PetscReal, pointer :: rhgsoi(:)    ! Relative humidity of airspace at soil surface (fraction)
-     PetscReal, pointer :: rnsoi(:)     ! Net radiation at ground (W/m2)
+     PetscReal, pointer :: soil_tk(:)          ! Soil thermal conductivity (W/m/K)
+     PetscReal, pointer :: soil_dz(:)          ! Soil layer depth (m)
+     PetscReal, pointer :: soil_temperature(:) ! Soil temperature (K)
+     PetscReal, pointer :: soil_res(:)         ! Soil evaporative resistance (s/m)
+     PetscReal, pointer :: soil_rhg(:)         ! Relative humidity of airspace at soil surface (fraction)
+     PetscReal, pointer :: soil_rn(:)          ! Net radiation at ground (W/m2)
 
      PetscReal, pointer :: zs(:,:)
      PetscReal, pointer :: wind(:,:)
@@ -93,13 +94,14 @@ contains
 
     allocate(this%pref      (ncair))
     allocate(this%uref      (ncair))
-    allocate(this%vref      (ncair))
+    allocate(this%qref      (ncair))
     allocate(this%tref      (ncair))
     allocate(this%rhref     (ncair))
+    allocate(this%eref      (ncair))
     !allocate(this%shref     (ncair))
 
     allocate(this%ucan      (ncair))
-    allocate(this%vcan      (ncair))
+    allocate(this%qcan      (ncair))
     allocate(this%tcan      (ncair))
 
     allocate(this%rhomol    (ncair))
@@ -119,19 +121,19 @@ contains
     allocate(this%PrSc      (ncair))
     allocate(this%ustar     (ncair))
     allocate(this%tstar     (ncair))
-    allocate(this%vstar     (ncair))
+    allocate(this%qstar     (ncair))
     allocate(this%gac       (ncair))
     allocate(this%obu_ustar (ncair))
     allocate(this%obu       (ncair))
 
     allocate(this%pai       (ncair))
 
-    allocate(this%tksoi     (ncair))
-    allocate(this%dzsoi     (ncair))
-    allocate(this%tsoi      (ncair))
-    allocate(this%ressoi    (ncair))
-    allocate(this%rhgsoi    (ncair))
-    allocate(this%rnsoi     (ncair))
+    allocate(this%soil_tk          (ncair))
+    allocate(this%soil_dz          (ncair))
+    allocate(this%soil_temperature (ncair))
+    allocate(this%soil_res         (ncair))
+    allocate(this%soil_rhg         (ncair))
+    allocate(this%soil_rn          (ncair))
 
     allocate(this%zs(ncair, this%ncan_lev))
     allocate(this%wind(ncair,this%ncan_lev))
@@ -155,24 +157,24 @@ contains
     implicit none
     !
     class (canopy_turbulence_auxvar_type) :: this
+    PetscInt                              :: icair
     !
-    PetscReal :: esat, desatdt, eref, vref_kg_kg
-    PetscInt :: icair
+    PetscReal                             :: eref
 
-    call satvap (this%tref(icair), esat, desatdt);
+    !call satvap (this%tref(icair), esat, desatdt);
+    !eref = (this%rhref(icair) / 100.d0) * esat
+    !this%qref(icair) = eref / this%pref(icair)
 
-    eref = (this%rhref(icair) / 100.d0) * esat
-    this%vref(icair) = eref / this%pref(icair)
+    eref = this%qref(icair) * this%pref(icair) / (MM_H2O / MM_DRY_AIR + (1.d0 - MM_H2O / MM_DRY_AIR) * this%qref(icair))
+    this%eref(icair) = eref
 
     this%rhomol(icair) = this%pref(icair) / (RGAS * this%tref(icair))
     this%rhoair(icair) = this%rhomol(icair) * MM_DRY_AIR * (1.d0 - (1.d0 - MM_H2O/MM_DRY_AIR) * eref / this%pref(icair))
     this%mmair(icair)  = this%rhoair(icair) / this%rhomol(icair)
     this%thref(icair)  = this%tref(icair) + 0.0098d0 * this%zref(icair)
 
-    vref_kg_kg = MM_H2O/MM_DRY_AIR * eref / (this%pref(icair) - (1.d0 - MM_H2O/MM_DRY_AIR) * eref)
-
-    this%cpair(icair)  = CPD * (1.d0 + (CPW/CPD - 1.d0) * vref_kg_kg) * this%mmair(icair)
-    this%thvref(icair) = this%thref(icair) * (1.d0 + 0.61d0 * vref_kg_kg)
+    this%cpair(icair)  = CPD * (1.d0 + (CPW/CPD - 1.d0) * this%qref(icair)) * this%mmair(icair)
+    this%thvref(icair) = this%thref(icair) * (1.d0 + 0.61d0 * this%qref(icair))
 
   end subroutine CAirTurbComputeDerivedAtmInputs
 

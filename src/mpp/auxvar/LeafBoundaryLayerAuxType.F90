@@ -19,7 +19,8 @@ module LeafBoundaryLayerAuxType
      PetscReal :: gbv    ! boundary layer conductance for water (mol H2O/m2 leaf/s)
      PetscReal :: gbc    ! boundary layer conductance for CO2 (mol CO2/m2 leaf/s)
 
-     PetscReal :: patm   ! atmospheric pressure (Pa)
+     PetscReal :: pref   ! atmospheric pressure at reference height (Pa)
+     PetscReal :: tref   ! air temperature at reference height (K)
      PetscReal :: rhomol ! Molar density (mol/m3)
      PetscReal :: wind   ! wind speed (m/s)
      PetscReal :: tair   ! air temperature (K)
@@ -43,7 +44,8 @@ contains
     this%gbv    = 0.d0
     this%gbc    = 0.d0
 
-    this%patm   = 0.d0
+    this%pref   = 0.d0
+    this%tref   = 0.d0
     this%rhomol = 0.d0
     this%wind   = 0.d0
     this%tair   = 0.d0

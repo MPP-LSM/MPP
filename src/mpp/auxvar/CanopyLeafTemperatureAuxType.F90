@@ -16,16 +16,18 @@ module CanopyLeafTemperatureAuxType
   type, public :: cleaf_temp_auxvar_type
 
      ! primary unknown independent variable
-     PetscReal :: temperature        ! Vegetation temperature from previous timestep (K)
+     PetscReal :: temperature        ! Vegetation temperature (K)
 
+     PetscReal :: temperature_prev   ! Vegetation temperature from previous timestep (K)
      PetscReal :: air_temperature    ! Air temperature for previous timestep (K)
      PetscReal :: pref               ! Atmospheric pressure (Pa)
-     PetscReal :: water_vapor_canopy ! Water vapor for previous timestep (mol/mol)
+     PetscReal :: qcanopy            ! Water vapor for previous timestep (mol/mol)
      PetscReal :: cpair              ! Specific heat of air at constant pressure (J/mol/K)
      PetscReal :: gbh                ! Leaf boundary layer conductance, heat (mol/m2 leaf/s)
      PetscReal :: gbv                ! Leaf boundary layer conductance, H2O (mol H2O/m2 leaf/s)
      PetscReal :: gs                 ! Leaf stomatal conductance (mol H2O/m2 leaf/s)
      PetscReal :: rn                 ! Leaf net radiation (W/m2 leaf)
+     PetscReal :: heat_storage       ! Leaf heat storage (W/m2 leaf)
      PetscReal :: cp                 ! Leaf heat capacity (J/m2 leaf/K)
      PetscReal :: fssh               ! Sunlit or shaded fraction of canopy layer
      PetscReal :: dpai               ! Layer plant area index (m2/m2)
@@ -33,7 +35,9 @@ module CanopyLeafTemperatureAuxType
      PetscReal :: fdry               ! Fraction of plant area index that is green and dry
 
    contains
-     procedure, public :: Init => CLeafTempAuxVarInit
+     procedure, public :: Init      => CLeafTempAuxVarInit
+     procedure, public :: PreSolve  => CLeafTempAuxVarPreSolve
+     procedure, public :: PostSolve => CLeafTempAuxVarPostSolve
   end type cleaf_temp_auxvar_type
 
 contains
@@ -52,7 +56,7 @@ contains
 
     this%air_temperature    = 0.d0
     this%pref               = 0.d0
-    this%water_vapor_canopy = 0.d0
+    this%qcanopy            = 0.d0
     this%gbh                = 0.d0
     this%gbv                = 0.d0
     this%gs                 = 0.d0
@@ -64,6 +68,36 @@ contains
     this%fdry               = 0.d0
 
   end subroutine CLeafTempAuxVarInit
+
+  !------------------------------------------------------------------------
+  subroutine CLeafTempAuxVarPreSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Make a copy of solution from previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(cleaf_temp_auxvar_type)   :: this
+
+    this%temperature_prev = this%temperature
+
+  end subroutine CLeafTempAuxVarPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine CLeafTempAuxVarPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Make a copy of solution from previous timestep
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(cleaf_temp_auxvar_type)   :: this
+
+    this%heat_storage = (this%temperature - this%temperature_prev)*this%cp
+
+  end subroutine CLeafTempAuxVarPostSolve
 
 #endif
 

@@ -40,11 +40,14 @@ program standalone_mpp
   use vsfm_spac_campbell_problem  , only : run_vsfm_spac_campbell_problem
   use vsfm_spac_campbell_problem  , only : output_regression_vsfm_spac_campbell_problem
   use thermal_mms_problem         , only : run_thermal_mms_problem
-  use thermal_mms_problem         , only : output_regression_th_mms_problem
+  use thermal_mms_problem         , only : output_regression_thermal_mms_problem
+  use th_mms_problem              , only : run_th_mms_problem
+  use th_mms_problem              , only : output_regression_th_mms_problem
   use mlc_problem                 , only : run_mlc_problem, output_regression_mlc_problem
   use leafbndlyr_problem          , only : run_leafbndlyr_problem, output_regression_leafbndlyr_problem
   use longwave_problem            , only : run_longwave_problem, output_regression_longwave_problem
   use shortwave_problem           , only : run_shortwave_problem, output_regression_shortwave_problem
+  use photosynthesis_problem      , only : run_photosynthesis_problem, output_regression_photosynthesis_problem
   
   use petscsys
   !
@@ -159,14 +162,21 @@ program standalone_mpp
         call output_regression_vsfm_spac_campbell_problem(filename_base, num_cells)
      endif
 
-  else if(trim(problem_type) == 'thermal_mms') then
-     call run_thermal_mms_problem(namelist_filename)
-
-     if (write_regression_output) then
-        call output_regression_th_mms_problem(filename_base, num_cells)
-     endif
-
-  else if(trim(problem_type) == 'mlc') then
+   else if(trim(problem_type) == 'thermal_mms') then
+      call run_thermal_mms_problem(namelist_filename)
+ 
+      if (write_regression_output) then
+         call output_regression_thermal_mms_problem(filename_base, num_cells)
+      endif
+ 
+   else if(trim(problem_type) == 'th_mms') then
+      call run_th_mms_problem()
+ 
+      if (write_regression_output) then
+         call output_regression_th_mms_problem(filename_base, num_cells)
+      endif
+ 
+   else if(trim(problem_type) == 'mlc') then
      call run_mlc_problem(namelist_filename)
 
      if (write_regression_output) then
@@ -192,6 +202,13 @@ program standalone_mpp
  
       if (write_regression_output) then
          call output_regression_shortwave_problem(filename_base, num_cells)
+      endif
+
+    else if(trim(problem_type) == 'photosynthesis') then
+       call run_photosynthesis_problem(namelist_filename)
+ 
+      if (write_regression_output) then
+         call output_regression_photosynthesis_problem(filename_base, num_cells)
       endif
 
    else

@@ -18,6 +18,23 @@ module CanopyTurbulence
   public :: WindProfile
   public :: AerodynamicConductances
 
+  PetscReal, parameter :: cd = 0.25d0               ! RSL - leaf drag coefficient (dimensionless)
+  PetscReal, parameter :: beta_neutral_max = 0.35d0 ! RSL - maximum value for beta in neutral conditions
+  PetscReal, parameter :: cr = 0.3d0                ! RSL - parameter to calculate beta_neutral
+  PetscReal, parameter :: c2 = 0.5d0                ! RSL - depth scale multiplier
+  PetscReal, parameter :: Pr0 = 0.5d0               ! RSL - neutral value for Pr (Sc)
+  PetscReal, parameter :: Pr1 = 0.3d0               ! RSL - magnitude of variation of Pr (Sc) with stability
+  PetscReal, parameter :: Pr2 = 2.0d0               ! RSL - scale of variation of Pr (Sc) with stability
+  PetscReal, parameter :: z0mg = 0.01d0             ! RSL - roughness length of ground (m)
+  PetscReal, parameter :: wind_forc_min = 1.0d0     ! Minimum wind speed at forcing height (m/s)
+  PetscReal, parameter :: eta_max = 20.d0           ! Maximum value for "eta" parameter (used to constrain lm/beta)
+  PetscReal, parameter :: zeta_min = -2.0d0         ! Minimum value for Monin-Obukhov zeta parameter
+  PetscReal, parameter :: zeta_max = 1.0d0          ! Maximum value for Monin-Obukhov zeta parameter
+  PetscReal, parameter :: beta_min = 0.2d0          ! Minimum value for H&F beta parameter
+  PetscReal, parameter :: beta_max = 0.5d0          ! Maximum value for H&F beta parameter
+  PetscReal, parameter :: wind_min = 0.1d0          ! Minimum wind speed in canopy (m/s)
+  PetscReal, parameter :: ra_max = 500.d0           ! Maximum aerodynamic resistance (s/m)
+
 contains
 
   !------------------------------------------------------------------------
@@ -27,10 +44,8 @@ contains
     !
     class(canopy_turbulence_auxvar_type) :: cturb
     !
-    PetscReal :: cd, obu0, obu1, tol, dummy
+    PetscReal :: obu0, obu1, tol, dummy
     PetscInt  :: icair
-
-    cd = 0.25d0
 
     do icair = 1, cturb%ncair
 
@@ -59,23 +74,19 @@ contains
     PetscReal :: lm, lm_over_beta
     PetscInt  :: icair, k
     PetscReal :: dp, z_minus_d, h_minus_d
-    PetscReal :: psi_m_hc, psi_m_rsl_hc, psi_m_zs, psi_m_rsl_zs, psim
+    PetscReal :: psim, psic
 
     do icair = 1, cturb%ncair
 
        ! Above-canopy
        h_minus_d = cturb%hc(icair) - cturb%disp(icair)
 
-       psi_m_hc     = psim_monin_obukhov (h_minus_d / cturb%obu(icair) );
-       psi_m_rsl_hc = 0.d0
-
-       do k = cturb%ntop(icair)+1, cturb%ncair
+       do k = cturb%ntop(icair)+1, cturb%ncan_lev
           z_minus_d = cturb%zs(icair, k) - cturb%disp(icair)
 
-          psi_m_zs     = psim_monin_obukhov (z_minus_d / cturb%obu(icair) );
-          psi_m_rsl_zs = 0.d0
+          call ComputePsiRSL (cturb%zs(icair,k), cturb%hc(icair), cturb%disp(icair), &
+               cturb%obu(icair), cturb%beta(icair), cturb%PrSc(icair), psim, psic)
 
-          psim = -psi_m_zs + psi_m_hc + psi_m_rsl_zs - psi_m_rsl_hc + VKC/cturb%beta(icair)
           cturb%wind(icair,k) = cturb%ustar(icair) / VKC * (log(z_minus_d/h_minus_d) + psim)
        end do
 
@@ -111,117 +122,115 @@ contains
     PetscReal :: z_minus_d, h_minus_d, zlog
     PetscReal :: zl, zu, res
     PetscReal :: psi_c_hc, psi_c_rsl_hc, psi_c_zs, psi_c_rsl_zs
-    PetscReal :: psic, psic1, psic2
+    PetscReal :: psic, psic1, psic2, psim1, psim2
     PetscReal :: ga_below_hc, ga_above_hc
-    PetscReal :: zom_g, zoc_g, zlog_m, zlog_c, ustar_g
+    PetscReal :: zoc_g, zlog_m, zlog_c, ustar_g
 
-    do icair = 1, cturb%ncair
+    associate ( &
+         hc       => cturb%hc       , &
+         zs       => cturb%zs       , &
+         obu      => cturb%obu      , &
+         ntop     => cturb%ntop     , &
+         disp     => cturb%disp     , &
+         beta     => cturb%beta     , &
+         ga_prof  => cturb%ga_prof  , &
+         zref     => cturb%zref     , &
+         Lc       => cturb%Lc       , &
+         rhomol   => cturb%rhomol   , &
+         ustar    => cturb%ustar    , &
+         wind     => cturb%wind     , &
+         PrSc     => cturb%PrSc       &
+         )
 
-       ! Above-canopy
-       h_minus_d = cturb%hc(icair) - cturb%disp(icair)
+      do icair = 1, cturb%ncair
 
-       psi_c_hc     = psic_monin_obukhov (h_minus_d / cturb%obu(icair) );
-       psi_c_rsl_hc = 0.d0
+         ! Above-canopy
+         h_minus_d = hc(icair) - disp(icair)
 
-       do k = cturb%ntop(icair)+1, cturb%ncan_lev-1
+         do k = ntop(icair)+1, cturb%ncan_lev-1
 
-          ! Lower height
-          z_minus_d = cturb%zs(icair, k) - cturb%disp(icair)
-          psi_c_zs     = psic_monin_obukhov (z_minus_d / cturb%obu(icair) );
-          psi_c_rsl_zs = 0.d0
-          psic1 = -psi_c_zs + psi_c_hc + psi_c_rsl_zs - psi_c_rsl_hc
+            ! Lower height
+            call ComputePsiRSL (zs(icair,k  ), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim1, psic1)
+            call ComputePsiRSL (zs(icair,k+1), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim2, psic2)
 
-          ! Upper height
-          z_minus_d = cturb%zs(icair, k+1) - cturb%disp(icair)
-          psi_c_zs     = psic_monin_obukhov (z_minus_d / cturb%obu(icair) );
-          psi_c_rsl_zs = 0.d0
-          psic2 = -psi_c_zs + psi_c_hc + psi_c_rsl_zs - psi_c_rsl_hc
+            psic = psic2 - psic1
+            zlog = log((zs(icair,k+1) - disp(icair))/ (zs(icair,k) - disp(icair)))
+            ga_prof(icair,k) = rhomol(icair) * VKC * ustar(icair) / (zlog + psic)
+         end do
 
-          psic = psic2 - psic1
-          zlog = log((cturb%zs(icair,k+1) - cturb%disp(icair))/ (cturb%zs(icair,k) - cturb%disp(icair)))
-          cturb%ga_prof(icair,k) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
-       end do
+         ! At top to the reference height
+         k = cturb%ncan_lev
+         call ComputePsiRSL (zs(icair,k), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim1, psic1)
+         call ComputePsiRSL (zref(icair), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim2, psic2)
 
-       ! At top to the reference height
-       k = cturb%ncan_lev
-       z_minus_d = cturb%zs(icair, k) - cturb%disp(icair)
-       psi_c_zs     = psic_monin_obukhov (z_minus_d / cturb%obu(icair) );
-       psi_c_rsl_zs = 0.d0
-       psic1 = -psi_c_zs + psi_c_hc + psi_c_rsl_zs - psi_c_rsl_hc
+         psic = psic2 - psic1
+         zlog = log((zref(icair) - disp(icair))/ (zs(icair,k) - disp(icair)))
+         ga_prof(icair,k) = rhomol(icair) * VKC * ustar(icair) / (zlog + psic)
 
-       z_minus_d = cturb%zref(icair) - cturb%disp(icair)
-       psi_c_zs     = psic_monin_obukhov (z_minus_d / cturb%obu(icair) );
-       psi_c_rsl_zs = 0.d0
-       psic2 = -psi_c_zs + psi_c_hc + psi_c_rsl_zs - psi_c_rsl_hc
+         ! Within canopy
+         lm = 2.d0 * beta(icair)**3.d0 * Lc(icair)
+         lm_over_beta = lm/beta(icair)
 
-       psic = psic2 - psic1
-       zlog = log((cturb%zref(icair) - cturb%disp(icair))/ (cturb%zs(icair,k) - cturb%disp(icair)))
-       cturb%ga_prof(icair,k) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
+         do k = 2, ntop(icair)-1
+            zl = zs(icair,k  ) - hc(icair)
+            zu = zs(icair,k+1) - hc(icair)
+            res = PrSc(icair) / ( beta(icair) * ustar(icair)) * &
+                 (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
+            ga_prof(icair,k) = rhomol(icair)/res;
+         end do
 
-       ! Within canopy
-       lm = 2.d0 * cturb%beta(icair)**3.d0 * cturb%Lc(icair)
-       lm_over_beta = lm/cturb%beta(icair)
+         ! Top of canopy layer
+         k = ntop(icair)
+         zl = zs(icair,k) - hc(icair)
+         zu = hc(icair)   - hc(icair)
+         res = PrSc(icair) / ( beta(icair) * ustar(icair)) * &
+              (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
+         ga_below_hc = rhomol(icair)/res;
 
-       do k = 2, cturb%ntop(icair)-1
-          zl = cturb%zs(icair,k  ) - cturb%hc(icair)
-          zu = cturb%zs(icair,k+1) - cturb%hc(icair)
-          res = cturb%PrSc(icair) / ( cturb%beta(icair) * cturb%ustar(icair)) * &
-               (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
-          cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res;
-       end do
+         call ComputePsiRSL (hc(icair    ), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim1, psic1)
+         call ComputePsiRSL (zs(icair,k+1), hc(icair), disp(icair), obu(icair), beta(icair), PrSc(icair), psim2, psic2)
 
-       ! Top of canopy layer
-       k = cturb%ntop(icair)
-       zl = cturb%zs(icair,k) - cturb%hc(icair)
-       zu = cturb%hc(icair)   - cturb%hc(icair)
-       res = cturb%PrSc(icair) / ( cturb%beta(icair) * cturb%ustar(icair)) * &
-            (exp(-zl/lm_over_beta) - exp(-zu/lm_over_beta))
-       ga_below_hc = cturb%rhomol(icair)/res;
+         psic = psic2 - psic1
+         zlog = log((zs(icair,k+1) - disp(icair))/ (hc(icair) - disp(icair)))
+         ga_above_hc = rhomol(icair) * VKC * ustar(icair) / (zlog + psic)
 
-       z_minus_d = cturb%hc(icair) - cturb%disp(icair)
-       psi_c_zs     = psic_monin_obukhov (z_minus_d / cturb%obu(icair) );
-       psi_c_rsl_zs = 0.d0
-       psic1 = -psi_c_zs + psi_c_hc + psi_c_rsl_zs - psi_c_rsl_hc
+         ga_prof(icair,k) = 1.d0 / (1.d0/ga_below_hc + 1.d0/ga_above_hc)
 
-       z_minus_d = cturb%zs(icair, k+1) - cturb%disp(icair)
-       psi_c_zs     = psic_monin_obukhov (z_minus_d / cturb%obu(icair) );
-       psi_c_rsl_zs = 0.d0
-       psic2 = -psi_c_zs + psi_c_hc + psi_c_rsl_zs - psi_c_rsl_hc
+         ! Check aerodynamic resistance sums to 1/gac
+         sumres = 1.d0/ga_above_hc
+         do k = ntop(icair)+1, cturb%ncan_lev
+            sumres = sumres + 1.d0/ga_prof(icair,k)
+         end do
 
-       psic = psic2 - psic1
-       zlog = log((cturb%zs(icair,k+1) - cturb%disp(icair))/ (cturb%hc(icair) - cturb%disp(icair)))
-       ga_above_hc = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
+         if (abs(1.d0/sumres - cturb%gac(icair)) > 1e-06) then
+            write(iulog,*)'ERROR: *** Above canopy conductances does not sums to 1/gac ***'
+            call endrun(msg=errMsg(__FILE__, __LINE__))
+         end if
 
-       cturb%ga_prof(icair,k) = 1.d0 / (1.d0/ga_below_hc + 1.d0/ga_above_hc)
+         ! At ground
+         k = 1
+         zoc_g = 0.1d0 * z0mg
+         zlog_m = log(zs(icair,k+1)/z0mg)
+         zlog_c = log(zs(icair,k+1)/zoc_g)
+         ustar_g = wind(icair,k+1) * VKC /zlog_m;
+         ustar_g = max(ustar_g, 0.01d0)
+         res = zlog_c/(VKC * ustar_g)
+         ga_prof(icair,k) = rhomol(icair)/res
 
-       ! Check aerodynamic resistance sums to 1/gac
-       sumres = 1.d0/ga_above_hc
-       do k = cturb%ntop(icair)+1, cturb%ncan_lev
-          sumres = sumres + 1.d0/cturb%ga_prof(icair,k)
-       end do
+         !gac0(p) = rhomol(p) * vkc * ustar_g / zlog_c   !!! CLMml v0 CODE !!!
 
-       if (abs(1.d0/sumres - cturb%gac(icair)) > 1e-06) then
-          write(iulog,*)'ERROR: *** Above canopy conductances does not sums to 1/gac ***'
-          call endrun(msg=errMsg(__FILE__, __LINE__))
-       end if
+         res = min (rhomol(icair)/ga_prof(icair,k), ra_max)
+         ga_prof(icair,k) = rhomol(icair) / res
 
-       ! At ground
-       k = 1
-       zom_g = 0.01d0
-       zoc_g = 0.1d0 * zom_g
-       zlog_m = log(cturb%zs(icair,k+1)/zom_g)
-       zlog_c = log(cturb%zs(icair,k+1)/zoc_g)
-       ustar_g = cturb%wind(icair,k+1) * VKC /zlog_m;
-       ustar_g = max(ustar_g, 0.01d0)
-       res = zlog_c/(VKC * ustar_g)
-       cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res
+         ! Limit resistance to < 500 s/m
+         k = 1
+         do k = 1+1, cturb%ncan_lev
+            res = min(rhomol(icair)/ga_prof(icair,k), 500.d0)
+            ga_prof(icair,k) = rhomol(icair)/res
+         end do
+      end do
 
-       ! Limit resistance to < 500 s/m
-       do k = 1, cturb%ncan_lev
-          res = min(cturb%rhomol(icair)/cturb%ga_prof(icair,k), 500.d0)
-          cturb%ga_prof(icair,k) = cturb%rhomol(icair)/res
-       end do
-    end do
+    end associate
 
   end subroutine AerodynamicConductances
 
@@ -240,19 +249,21 @@ contains
      PetscReal :: beta_neutral, LcL, beta
      PetscReal :: a, b, c, d, q, r
      PetscReal :: dp, z_minus_d, h_minus_d
-     PetscReal :: PrSc0, PrSc1, PrSc2
      PetscReal :: phi_m_hc
      PetscReal :: phi_c_hc
-     PetscReal :: psim, psi_m_zref, psi_m_hc, psi_m_rsl_zref, psi_m_rsl_hc
-     PetscReal :: psic, psi_c_zref, psi_c_hc, psi_c_rsl_zref, psi_c_rsl_hc
+     PetscReal :: psim, psic
      PetscReal :: zlog, tvstar
-     !
+     PetscReal :: c1, zeta, obu_cur
 
-     beta_neutral = 0.35d0
+     obu_cur = obu_val
+     ! Limit the value of Obukhov length
+     if (abs(obu_cur) < 0.1d0) obu_cur = 0.1d0
 
-     if (abs(obu_val) < 0.1d0) obu_val = 0.1d0
+     ! neutral value of beta
+     c1 = (VKC / log((cturb%hc(icair) + z0mg)/z0mg))**2.d0
+     beta_neutral = min(sqrt(c1 + cr*cturb%pai(icair)), beta_neutral_max)
 
-     LcL = cturb%Lc(icair)/obu_val
+     LcL = cturb%Lc(icair)/obu_cur
 
      if (LcL <= 0.d0) then
 
@@ -270,66 +281,221 @@ contains
         beta = -(b+r)/(3.d0*a) - (b**2.d0 - 3.d0*a*c)/(3.d0*a*r)
      end if
 
-     beta = min(0.50d0, max(beta,0.20d0))
+     beta = min(beta_max, max(beta, beta_min))
      cturb%beta(icair) = beta
 
-     dp = beta**2 * cturb%Lc(icair)
+     dp = beta**2.d0 * cturb%Lc(icair)
+     dp = dp * (1.d0 - exp(-0.25d0*cturb%pai(icair)/beta**2.d0))
+     dp = min(cturb%hc(icair), dp)
      cturb%disp(icair) = max(cturb%hc(icair) - dp, 0.d0)
 
      z_minus_d = cturb%zref(icair) - cturb%disp(icair) ! zdisp
      h_minus_d = cturb%hc(icair)   - cturb%disp(icair)
 
-     PrSc0 = 0.5d0;        ! Neutral value for Pr (Sc)
-     PrSc1 = 0.3d0;        ! Magnitude of variation of Pr (Sc) with stability
-     PrSc2 = 2.0d0;        ! Scale of variation of Pr (Sc) with stability
+     ! Prandtl (Schmidt) number at canopy top
+     cturb%PrSc(icair) = Pr0 + Pr1 * tanh(Pr2*cturb%Lc(icair)/obu_cur);
+     cturb%PrSc(icair) = (1.d0 - beta_neutral/beta_neutral_max) * 1.d0 + (beta_neutral/beta_neutral_max) * cturb%PrSc(icair)
 
-     cturb%PrSc(icair) = PrSc0 + PrSc1 * tanh(PrSc2*cturb%Lc(icair)/obu_val);
+     zeta = (cturb%zref(icair) - cturb%disp(icair)) / obu_cur
+     if (zeta >= 0.d0) then
+        zeta = min(zeta_max, max(zeta,0.01d0))
+     else
+        zeta = max(zeta_min, min(zeta,-0.01d0))
+     end if
+     obu_cur = (cturb%zref(icair) - cturb%disp(icair)) / zeta
 
      ! Compute Monin-Obokhov phi functions for momentum and scalar
-     phi_m_hc = phim_monin_obukhov(h_minus_d / obu_val)
-     phi_c_hc = phic_monin_obukhov(h_minus_d / obu_val)
+     phi_m_hc = phim_monin_obukhov(h_minus_d / obu_cur)
+     phi_c_hc = phic_monin_obukhov(h_minus_d / obu_cur)
 
-     cturb%c2(icair) = 0.5d0;
+     cturb%c2(icair)  = c2;
      cturb%c1m(icair) = (1.d0 - VKC/ (2.d0 * beta * phi_m_hc)) * exp(0.5d0 * cturb%c2(icair))
 
-     ! Compute psi_hat
-     psi_m_rsl_zref = 0.d0
-     psi_m_rsl_hc   = 0.d0
-
-     psi_c_rsl_zref = 0.d0
-     psi_c_rsl_hc   = 0.d0
-
-     ! Compute the Monin-Obukhov psi functions for momentum and scalar
-     ! at the reference height and the canopy top
-     psi_m_zref = psim_monin_obukhov (z_minus_d / obu_val);
-     psi_m_hc   = psim_monin_obukhov (h_minus_d / obu_val);
-
-     psi_c_zref = psic_monin_obukhov (z_minus_d / obu_val);
-     psi_c_hc   = psic_monin_obukhov (h_minus_d / obu_val);
+     ! Compute psi terms in eqn. 6.78 and 6.101 in Bonan's book
+     call ComputePsiRSL(cturb%zref(icair), cturb%hc(icair), cturb%disp(icair), obu_cur, &
+          cturb%beta(icair), cturb%PrSc(icair), psim, psic)
 
      ! Calculate u*, T*, q* and Tv*
      zlog = log(z_minus_d/h_minus_d);
-     psim = -psi_m_zref + psi_m_hc + psi_m_rsl_zref - psi_m_rsl_hc + VKC/beta;
-     psic = -psi_c_zref + psi_c_hc + psi_c_rsl_zref - psi_c_rsl_hc;
-
      cturb%ustar(icair)     =  cturb%uref(icair)                       * VKC / (zlog + psim)
      cturb%tstar(icair)     = (cturb%thref(icair) - cturb%tcan(icair)) * VKC / (zlog + psic)
-     cturb%vstar(icair)     = (cturb%vref(icair)  - cturb%vcan(icair)) * VKC / (zlog + psic)
-     cturb%obu_ustar(icair) = obu_val
+     cturb%qstar(icair)     = (cturb%qref(icair)  - cturb%qcan(icair)) * VKC / (zlog + psic)
+     cturb%obu_ustar(icair) = obu_cur
 
      ! Aerodynamic conductance
      cturb%gac(icair) = cturb%rhomol(icair) * VKC * cturb%ustar(icair) / (zlog + psic)
 
      ! New Obukhov length
-     tvstar = cturb%tstar(icair) + 0.61d0 * cturb%thref(icair) * cturb%vstar(icair) * MM_H2O/MM_DRY_AIR
+     tvstar = cturb%tstar(icair) + 0.61d0 * cturb%thref(icair) * cturb%qstar(icair)
      cturb%obu(icair) = cturb%ustar(icair)**2.d0 * cturb%thvref(icair)/ (VKC * GRAVITY_CONSTANT * tvstar)
 
      obu_dif = cturb%obu(icair) - obu_val
 
    end function Obukhov
 
-  !-----------------------------------------------------------------------
-  function phim_monin_obukhov (zeta) result(phi)
+   !-----------------------------------------------------------------------
+   subroutine ComputePsiRSL (za, hc, disp, obu, beta, PrSc, psim, psic)
+     !
+     use MultiPhysicsProbConstants, only : VKC, GRAVITY_CONSTANT
+     use RSLPsiHat
+     !
+     implicit none
+     !
+     PetscReal, intent(in) :: za, hc, disp, obu, beta, PrSc
+     PetscReal, intent(out) :: psim, psic
+     !
+     PetscReal :: c1, phim, phic
+     PetscReal :: psihat1, psihat2
+     PetscReal :: z_minus_d, h_minus_d
+     PetscReal :: psi_m_zref     , psi_m_hc
+     PetscReal :: psi_m_rsl_zref , psi_m_rsl_hc
+     PetscReal :: psi_c_zref     , psi_c_hc
+     PetscReal :: psi_c_rsl_zref , psi_c_rsl_hc
+
+     z_minus_d = za - disp
+     h_minus_d = hc - disp
+
+     !
+     ! Computation for momentum
+     !
+
+     ! Compute the Monin-Obukhov psi for momentum
+     ! at the reference height and the canopy top
+     phim = phim_monin_obukhov(h_minus_d/obu)
+     c1 = (1.d0 - VKC/(2.d0 * beta * phim)) * exp(0.5d0*c2)
+
+     psi_m_zref = psim_monin_obukhov (z_minus_d / obu);
+     psi_m_hc   = psim_monin_obukhov (h_minus_d / obu);
+
+     ! Compute the RSL psi_hat for momentum
+     ! at the reference height and the canopy top
+     call LookupPsihat((za - hc)/h_minus_d, h_minus_d/obu, zdtgridM, dtLgridM, psigridM, psihat1)
+     call LookupPsihat((hc - hc)/h_minus_d, h_minus_d/obu, zdtgridM, dtLgridM, psigridM, psihat2)
+
+     psi_m_rsl_zref = psihat1 * c1
+     psi_m_rsl_hc   = psihat2 * c1
+
+     psim = -psi_m_zref + psi_m_hc + psi_m_rsl_zref - psi_m_rsl_hc + VKC/beta;
+
+     !
+     ! Computation for scalar
+     !
+
+     ! Compute the Monin-Obukhov psi for scalar
+     ! at the reference height and the canopy top
+     phic = phic_monin_obukhov(h_minus_d)
+     c1 = (1.d0 - PrSc*VKC/(2.d0 * beta * phim)) * exp(0.5d0*c2)
+
+     psi_c_zref = psic_monin_obukhov (z_minus_d / obu);
+     psi_c_hc   = psic_monin_obukhov (h_minus_d / obu);
+
+     ! Compute the RSL psi_hat for momentum
+     ! at the reference height and the canopy top
+     call LookupPsihat((za - hc)/h_minus_d, h_minus_d/obu, zdtgridH, dtLgridH, psigridH, psihat1)
+     call LookupPsihat((hc - hc)/h_minus_d, h_minus_d/obu, zdtgridH, dtLgridH, psigridH, psihat2)
+     psi_c_rsl_zref = psihat1 * c1
+     psi_c_rsl_hc   = psihat2 * c1
+
+     psic = -psi_c_zref + psi_c_hc + psi_c_rsl_zref - psi_c_rsl_hc;
+
+   end subroutine ComputePsiRSL
+
+   !-----------------------------------------------------------------------
+   subroutine LookupPsihat (zdt, dtL, zdtgrid, dtLgrid, psigrid, psihat)
+     !
+     use RSLPsiHat, only : nZ, nL
+     !
+     ! !ARGUMENTS:
+     implicit none
+     !
+     PetscReal, intent(in) :: zdt, dtL
+     PetscReal, intent(in) :: zdtgrid(nZ,1), dtLgrid(1,nL), psigrid(nZ,nL)
+     PetscReal, intent(out) :: psihat
+     !
+     !LOCAL VARIABLES
+     PetscInt  :: ii, jj
+     PetscInt  :: L1, L2, Z1, Z2
+     PetscReal :: wL1, wL2, wZ1, wZ2
+     !---------------------------------------------------------------------
+
+
+     !  dtLgrid
+     !  /|\
+     !   |
+     !   |
+     !   |
+     !   |
+     !   |
+     !   |
+     !   |
+     !   |
+     !   ---------------------->
+     !                      zdtgrid
+
+     L1 = 0 ; L2 = 0
+     if (dtL <= dtLgrid(1,1)) then
+        L1 = 1
+        L2 = 1
+        wL1 = 0.5d0
+        wL2 = 0.5d0
+     else if (dtL > dtLgrid(1,nL)) then
+        L1 = nL
+        L2 = nL
+        wL1 = 0.5d0
+        wL2 = 0.5d0
+     else
+        do jj = 1, nL-1
+           if ((dtL <= dtLgrid(1,jj+1)) .and. (dtL > dtLgrid(1,jj))) then
+              L1 = jj
+              L2 = jj + 1
+              wL1 = (dtLgrid(1,L2) - dtL) / (dtLgrid(1,L2) - dtLgrid(1,L1))
+              wL2 = 1.d0 - wL1
+           end if
+        end do
+     end if
+
+     if (L1 == 0 .or. L2 == 0) then
+        call endrun (msg=' ERROR: LookupPsihat error: indices L1 and L2 not found')
+     end if
+
+     ! Find indices and weights for zdt values which bracket the specified zdt
+
+     Z1 = 0 ; Z2 = 0
+     if (zdt > zdtgrid(1,1)) then
+        Z1 = 1
+        Z2 = 1
+        wZ1 = 0.5d0
+        wZ2 = 0.5d0
+     else if (zdt < zdtgrid(nZ,1)) then
+        Z1 = nZ
+        Z2 = nZ
+        wZ1 = 0.5d0
+        wZ2 = 0.5d0
+     else
+        do ii = 1, nZ-1
+           if ((zdt >= zdtgrid(ii+1,1)) .and. (zdt < zdtgrid(ii,1))) then
+              Z1 = ii
+              Z2 = ii + 1
+              wZ1 = (zdt - zdtgrid(ii+1,1)) / (zdtgrid(ii,1) - zdtgrid(ii+1,1))
+              wZ2 = 1.d0 - wZ1
+           end if
+        end do
+     end if
+
+     if (Z1 == 0 .or. Z2 == 0) then
+        call endrun (msg=' ERROR: LookupPsihat error: indices Z1 and Z2 not found')
+     end if
+
+     ! Calculate psihat as a weighted average of the values of psihat on the grid
+
+     psihat = wZ1 * wL1 * psigrid(Z1,L1) + wZ2 * wL1 * psigrid(Z2,L1) &
+          + wZ1 * wL2 * psigrid(Z1,L2) + wZ2 * wL2 * psigrid(Z2,L2)
+     !psihat = 0.d0
+
+   end subroutine LookupPsihat
+
+   !-----------------------------------------------------------------------
+   function phim_monin_obukhov (zeta) result(phi)
     !
     ! !DESCRIPTION:
     ! Monin-Obukhov phi stability function for momentum

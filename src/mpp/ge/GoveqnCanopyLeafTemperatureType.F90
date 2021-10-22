@@ -27,6 +27,8 @@ module GoveqnCanopyLeafTemperatureType
 
      procedure, public :: Setup                     => CLeafTempSetup
      procedure, public :: AllocateAuxVars           => CLeafTempAllocateAuxVars
+     procedure, public :: PreSolve                  => CLeafTempPreSolve
+     procedure, public :: PostSolve                 => CLeafTempPostSolve
      procedure, public :: GetFromSoeAuxVarsCturb    => CLeafTempGetFromSoeAuxVarsCturb
      procedure, public :: SavePrimaryIndependentVar => CLeafTempSavePrmIndepVar
      procedure, public :: GetRValues                => CLeafTempGetRValues
@@ -138,6 +140,48 @@ contains
   end subroutine CLeafTempAllocateAuxVars
 
   !------------------------------------------------------------------------
+  subroutine CLeafTempPreSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Perform computation before solving the equations
+    !
+    ! !USES:
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cleaf_temp_type) :: this
+    !
+    PetscInt                      :: icell
+
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%PreSolve()
+    end do
+
+  end subroutine CLeafTempPreSolve
+
+  !------------------------------------------------------------------------
+  subroutine CLeafTempPostSolve(this)
+    !
+    ! !DESCRIPTION:
+    ! Perform computation after solving the equations
+    !
+    ! !USES:
+    !
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(goveqn_cleaf_temp_type) :: this
+
+    PetscInt                      :: icell
+
+    do icell = 1, this%mesh%ncells_all
+       call this%aux_vars_in(icell)%PostSolve()
+    end do
+
+  end subroutine CLeafTempPostSolve
+
+  !------------------------------------------------------------------------
   subroutine CLeafTempGetFromSoeAuxVarsCturb(this, cturb)
     !
     ! !DESCRIPTION:
@@ -216,6 +260,10 @@ contains
     PetscInt                     :: nauxvar
     PetscReal, pointer           :: var_values(:)
 
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
     select case(auxvar_type)
     case(AUXVAR_INTERNAL)
        call CLeafTempGetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
@@ -245,6 +293,10 @@ contains
     PetscInt                     :: nauxvar
     PetscReal, pointer           :: var_values(:)
 
+    if (nauxvar > this%mesh%ncells_all) then
+      call endrun(msg="ERROR nauxvar exceeds the number of cells in the mesh "//errmsg(__FILE__, __LINE__))
+    endif
+
     select case(auxvar_type)
     case(AUXVAR_INTERNAL)
        call CLeafTempSetRValuesFromAuxVars(this%aux_vars_in, var_type, nauxvar, var_values)
@@ -262,6 +314,7 @@ contains
     !
     ! !USES:
     use MultiPhysicsProbConstants, only : VAR_LEAF_TEMPERATURE
+    use MultiPhysicsProbConstants, only : VAR_LEAF_HEAT_STORAGE
     !
     implicit none
     !
@@ -277,6 +330,10 @@ contains
     case(VAR_LEAF_TEMPERATURE)
        do iauxvar = 1,nauxvar
           var_values(iauxvar) = aux_var(iauxvar)%temperature
+       end do
+    case(VAR_LEAF_HEAT_STORAGE)
+       do iauxvar = 1,nauxvar
+          var_values(iauxvar) = aux_var(iauxvar)%heat_storage
        end do
     case default
        write(iulog,*) 'CLeafTempGetRValuesFromAuxVars: Unknown var_type'
@@ -311,7 +368,7 @@ contains
        end do
     case(VAR_WATER_VAPOR)
        do iauxvar = 1,nauxvar
-          aux_var(iauxvar)%water_vapor_canopy = var_values(iauxvar)
+          aux_var(iauxvar)%qcanopy = var_values(iauxvar)
        end do
     case default
        write(iulog,*) 'CLeafTempGetSValuesFromAuxVars: Unknown var_type'
@@ -339,7 +396,7 @@ contains
     PetscInt                                :: icell, ileaf
     PetscScalar                   , pointer :: b_p(:)
     class(cleaf_temp_auxvar_type) , pointer :: auxvar(:)
-    PetscReal                               :: qsat, si, gleaf, gleaf_et, lambda
+    PetscReal                               :: qsat, dqsat, esat, desat, gleaf, gleaf_et, lambda
 
     lambda = HVAP * MM_H2O
 
@@ -351,9 +408,9 @@ contains
 
        if (auxvar(icell)%dpai > 0.d0) then
 
-          call SatVap(auxvar(icell)%temperature, qsat, si)
-          qsat = qsat/this%aux_vars_in(icell)%pref
-          si   = si  /this%aux_vars_in(icell)%pref
+          call SatVap(auxvar(icell)%temperature, esat, desat)
+          qsat  = esat/this%aux_vars_in(icell)%pref
+          dqsat = desat/this%aux_vars_in(icell)%pref
 
           gleaf = &
                 auxvar(icell)%gs * auxvar(icell)%gbv / &
@@ -365,7 +422,7 @@ contains
 
           b_p(icell) = auxvar(icell)%rn &
                + auxvar(icell)%cp/this%dtime * auxvar(icell)%temperature &
-               - lambda * (qsat - si * auxvar(icell)%temperature) * gleaf_et
+               - lambda * (qsat - dqsat * auxvar(icell)%temperature) * gleaf_et
 
        end if
     end do
@@ -404,7 +461,7 @@ contains
     PetscInt                             :: cell_id, cell_id_up, cell_id_dn
     PetscInt                             :: row, col
     PetscReal                            :: value, ga, dist
-    PetscReal                            :: qsat, si, gleaf, gleaf_et, lambda
+    PetscReal                            :: qsat, dqsat, esat, desat, gleaf, gleaf_et, lambda
     class(connection_set_type) , pointer :: cur_conn_set
     type(condition_type)       , pointer :: cur_cond
 
@@ -414,9 +471,9 @@ contains
        row = icell-1; col = icell-1
        if (this%aux_vars_in(icell)%dpai > 0.d0) then
 
-          call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-          qsat = qsat/this%aux_vars_in(icell)%pref
-          si   = si  /this%aux_vars_in(icell)%pref
+          call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+          qsat  = esat /this%aux_vars_in(icell)%pref
+          dqsat = desat/this%aux_vars_in(icell)%pref
 
           gleaf = &
                this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
@@ -428,7 +485,7 @@ contains
 
           value = this%aux_vars_in(icell)%cp/this%dtime + &
                2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh + &
-               lambda * si * gleaf_et
+               lambda * dqsat * gleaf_et
        else
           value = 1.d0
        end if
@@ -468,7 +525,7 @@ contains
     !
     ! !LOCAL VARIABLES
     PetscInt :: icell, ileaf, row, col
-    PetscReal :: value, gleaf, gleaf_et, qsat, si, lambda
+    PetscReal :: value, gleaf, gleaf_et, qsat, dqsat, esat, desat, lambda
 
     lambda = HVAP * MM_H2O
     select case (itype_of_other_goveq)
@@ -488,9 +545,9 @@ contains
           row = icell-1; col = icell-1
           col = this%Leaf2CAir(icell) - 1
           if (this%aux_vars_in(icell)%dpai > 0.d0) then
-             call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-             qsat = qsat/this%aux_vars_in(icell)%pref
-             si   = si  /this%aux_vars_in(icell)%pref
+             call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+             qsat  = esat /this%aux_vars_in(icell)%pref
+             dqsat = desat/this%aux_vars_in(icell)%pref
 
              gleaf = &
                   this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
