@@ -201,7 +201,6 @@ module PhotosynthesisAuxType
 
      procedure, public :: Init                         => PhotosynthesisInit
      procedure, public :: AuxVarCompute                => PhotosynthesisAuxVarCompute
-     procedure, public :: IsWUESolutionBounded         => PhotosynthesisIsWUESolutionBounded
      procedure, public :: DetermineIfSolutionIsBounded => PhotosynthesisDetermineIfSolutionIsBounded
      procedure, public :: PreSolve                     => PhotosynthesisPreSolve
      procedure, public :: PostSolve                    => PhotosynthesisPostSolve
@@ -1601,35 +1600,6 @@ contains
   end subroutine GsMedlyn
 
   !------------------------------------------------------------------------
-  subroutine PhotosynthesisIsWUESolutionBounded(this, bounded)
-    !
-    implicit none
-    !
-    class(photosynthesis_auxvar_type) :: this
-    PetscBool                         :: bounded
-    !
-    PetscInt                          :: idof
-    PetscReal                         :: res_1, res_2
-
-    idof = 1
-    this%gs(idof) = gs_min_wue
-    call this%AuxVarCompute()
-    res_1 = this%residual_wue(idof)
-
-    this%gs(idof) = gs_max_wue
-    call this%AuxVarCompute()
-    res_2 = this%residual_wue(idof)
-
-    if (res_1 * res_2 > 0.d0) then
-       bounded = PETSC_FALSE
-    else
-       bounded = PETSC_TRUE
-    end if
-    this%soln_is_bounded(idof) = bounded
-
-  end subroutine PhotosynthesisIsWUESolutionBounded
-
-  !------------------------------------------------------------------------
   subroutine PhotosynthesisDetermineIfSolutionIsBounded(this)
     !
     implicit none
@@ -1642,39 +1612,66 @@ contains
     PetscReal                         :: res_wue_1, res_wue_2
     PetscReal                         :: res_hyd_1, res_hyd_2
 
-    ! Residual at minimum gs
-    this%gs(idof_wue) = gs_min_wue
-    this%gs(idof_hyd) = gs_min_wue
+    select case (this%gstype)
+    case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+       this%gs(idof_wue) = gs_min_wue
+       call this%AuxVarCompute()
+       res_wue_1 = this%residual_wue(idof_wue)
 
-    call this%AuxVarCompute()
+       this%gs(idof_wue) = gs_max_wue
+       call this%AuxVarCompute()
+       res_wue_2 = this%residual_wue(idof_wue)
 
-    res_wue_1 = this%residual_wue(idof_wue)
-    res_hyd_1 = this%residual_hyd(idof_hyd)
-
-    ! Residual at maximum gs
-    this%gs(idof_wue) = gs_max_wue
-    this%gs(idof_hyd) = gs_max_wue
-
-    call this%AuxVarCompute()
-
-    res_wue_2 = this%residual_wue(idof_wue)
-    res_hyd_2 = this%residual_hyd(idof_hyd)
-
-    if ( min(res_wue_1,res_hyd_1) * min(res_wue_2,res_hyd_2) < 0.d0) then
-       if ( res_wue_1 * res_wue_2 < 0.d0) then
-          this%soln_is_bounded(idof_wue) = PETSC_TRUE
-       else
+       if (res_wue_1 * res_wue_2 > 0.d0) then
           this%soln_is_bounded(idof_wue) = PETSC_FALSE
-       end if
-       if ( res_hyd_1 * res_hyd_2 < 0.d0) then
-          this%soln_is_bounded(idof_hyd) = PETSC_TRUE
        else
-          this%soln_is_bounded(idof_hyd) = PETSC_FALSE
+          this%soln_is_bounded(idof_wue) = PETSC_TRUE
        end if
-    else
-       this%soln_is_bounded(idof_wue) = PETSC_FALSE
-       this%soln_is_bounded(idof_hyd) = PETSC_FALSE
-    end if
+
+    case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
+    
+          ! Residual at minimum gs
+          this%gs(idof_wue) = gs_min_wue
+          this%gs(idof_hyd) = gs_min_wue
+
+          call this%AuxVarCompute()
+
+          res_wue_1 = this%residual_wue(idof_wue)
+          res_hyd_1 = this%residual_hyd(idof_hyd)
+
+          ! Residual at maximum gs
+          this%gs(idof_wue) = gs_max_wue
+          this%gs(idof_hyd) = gs_max_wue
+
+          call this%AuxVarCompute()
+
+          res_wue_2 = this%residual_wue(idof_wue)
+          res_hyd_2 = this%residual_hyd(idof_hyd)
+
+          if ( min(res_wue_1,res_hyd_1) * min(res_wue_2,res_hyd_2) < 0.d0) then
+             if ( res_wue_1 * res_wue_2 < 0.d0) then
+                this%soln_is_bounded(idof_wue) = PETSC_TRUE
+             else
+                this%soln_is_bounded(idof_wue) = PETSC_FALSE
+             end if
+             if ( res_hyd_1 * res_hyd_2 < 0.d0) then
+                this%soln_is_bounded(idof_hyd) = PETSC_TRUE
+             else
+                this%soln_is_bounded(idof_hyd) = PETSC_FALSE
+             end if
+          else
+             this%soln_is_bounded(idof_wue) = PETSC_FALSE
+             this%soln_is_bounded(idof_hyd) = PETSC_FALSE
+          end if
+
+       case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN, VAR_SCM_OSMWANG)
+          ! Do nothing
+
+       case default
+          write(*,*)'Unknown stomatal model'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
+
+       end select
 
   end subroutine PhotosynthesisDetermineIfSolutionIsBounded
 

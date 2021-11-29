@@ -119,14 +119,7 @@ contains
              auxvar%plant%leaf_lai(:)    = 500.d0
              auxvar%plant%k_stem2leaf(:) = 4.d0
 
-             if (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_WUE) then
-                ! Set cell active/inactive if the solution is bounded/unbounded
-                call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
-                cur_goveq%mesh%is_active(icell) = bounded
-             elseif (cur_goveq%aux_vars_in(icell)%gstype == VAR_SCM_BONAN14) then
-                call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
-             end if
-
+             call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
 
           end do
        end do
