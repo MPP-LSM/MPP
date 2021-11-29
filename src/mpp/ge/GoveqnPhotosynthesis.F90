@@ -357,7 +357,7 @@ contains
                 value = 1.d0
              end if
 
-          case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+          case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
              res_1 = avars(icell)%residual_wue(idof)
              gs_1  = avars(icell)%gs(idof)
 

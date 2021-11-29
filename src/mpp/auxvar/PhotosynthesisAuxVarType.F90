@@ -1613,7 +1613,7 @@ contains
     PetscReal                         :: res_hyd_1, res_hyd_2
 
     select case (this%gstype)
-    case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+    case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
        this%gs(idof_wue) = gs_min_wue
        call this%AuxVarCompute()
        res_wue_1 = this%residual_wue(idof_wue)
@@ -1664,7 +1664,7 @@ contains
              this%soln_is_bounded(idof_hyd) = PETSC_FALSE
           end if
 
-       case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN, VAR_SCM_OSMWANG)
+       case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
           ! Do nothing
 
        case default
@@ -1744,7 +1744,7 @@ contains
        else
           idof = idof_wue
        end if
-    case (VAR_SCM_BBERRY, VAR_SCM_MANZONI11, VAR_SCM_MEDLYN, VAR_SCM_WUE)
+    case (VAR_SCM_BBERRY, VAR_SCM_MANZONI11, VAR_SCM_MEDLYN, VAR_SCM_WUE, VAR_SCM_OSMWANG)
        idof = idof_wue
     case default
         write(*,*)'Unknown stomatal conductance model'
