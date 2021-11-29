@@ -922,17 +922,23 @@ contains
     PetscReal                           :: Kl, Kl_pert, dKl_dpsi
     PetscReal                           :: aquad, bquad, cquad
     PetscReal                           :: root1, root2
+    PetscReal                           :: k_s2l, resist_s, factor
 
     head    = g * denh2o * 1.d-6 ! MPa/m
     Cp      = plant%leaf_capc(ileaf)
     dt      = plant%dtime
-    Kmax    = plant%leaf_lsc(ileaf)
     psi_old = plant%leaf_psi(ileaf)
     psi_soil= plant%psi_soil(ileaf)
     h       = plant%leaf_height(ileaf)
     E       = 1.d3*etflx
 
-    Kl       = Kmax*exp(-(-psi_old/w_b)**w_c)
+    ! Compute leaf-specific hydraulic conductance while accounting
+    ! for leaf water potential on stem-to-leaf conductance through
+    ! a weibull function
+    factor  = exp(-(-psi_old/w_b)**w_c)
+    k_s2l   = plant%k_stem2leaf(ileaf)
+    resist_s= plant%resist_soil(ileaf)
+    Kl      = 1.d0/( 1.d0/(k_s2l * factor) + resist_s)
 
     psi_new = ( (Cp/dt) * psi_old + Kl*(psi_soil - head * h) - E )/ ( Cp/dt + Kl)
 
