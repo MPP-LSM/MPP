@@ -17,6 +17,7 @@ module photosynthesis
   use MultiPhysicsProbConstants           , only : VAR_SCM_BONAN14
   use MultiPhysicsProbConstants           , only : VAR_SCM_MODIFIED_BONAN14
   use MultiPhysicsProbConstants           , only : VAR_SCM_MANZONI11
+  use MultiPhysicsProbConstants           , only : VAR_SCM_OSMWANG
 
   implicit none
 
@@ -364,7 +365,7 @@ contains
                    case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
                       call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
 
-                   case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
+                   case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN, VAR_SCM_OSMWANG)
                       ! Do nothing
                    case default
                       write(*,*)'Unknown stomatal model'
@@ -479,7 +480,7 @@ contains
              do ileaf = 1, nleaf
                 icell = icell + 1
                 select case(gstype)
-                   case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+                   case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
                       v_p(icell) = 0.002d0
                    case (VAR_SCM_BONAN14,VAR_SCM_MODIFIED_BONAN14)
                       v_p((icell-1)*2 + 1) = 0.002d0

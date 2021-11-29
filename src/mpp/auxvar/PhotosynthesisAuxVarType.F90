@@ -16,6 +16,7 @@ module PhotosynthesisAuxType
   use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
   use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
   use MultiPhysicsProbConstants , only : VAR_SCM_WUE
+  use MultiPhysicsProbConstants , only : VAR_SCM_OSMWANG
   use petscsys
 
   implicit none
@@ -60,6 +61,10 @@ module PhotosynthesisAuxType
      PetscReal, pointer :: resist_soil(:) ! hydraulic resistance (MPa.s.m2/mmol H2O)
      PetscReal, pointer :: psi_soil(:)    ! weighted water potential (MPa)
      PetscReal, pointer :: dpsi_leaf(:)   ! change in weighted water potential (MPa)
+
+     PetscReal, pointer :: weibull_c(:)   ! Weibull parameter [-]
+     PetscReal, pointer :: weibull_b(:)   ! Weibull parameter [MPa]
+     PetscReal, pointer :: leaf_psi_crt(:)! critical leaf pressure [MPa]
 
      PetscReal          :: dtime          ! Time step for plant hydraulics
    contains
@@ -479,6 +484,11 @@ contains
     this%root%resist  = 0.d0
 
     this%soil%nlevsoi = 0
+
+    allocate(this%plant%weibull_c(ndof))
+    allocate(this%plant%weibull_b(ndof))
+    allocate(this%plant%leaf_psi_crt(ndof))
+
     this%plant%nleaf  = 0
     this%plant%dtime  = 300.d0
 
@@ -515,6 +525,7 @@ contains
     case default
        write(iulog,*)'Unsupported photosynthesis pathway: ',this%c3psn
        call endrun(msg=errMsg(__FILE__, __LINE__))
+
     end select
 
   end subroutine SetPathwayParameters
@@ -536,57 +547,76 @@ contains
     select case (this%c3psn)
     case (VAR_PHOTOSYNTHETIC_PATHWAY_C4) ! C4
 
-       if (this%gstype == VAR_SCM_BBERRY) then
+       select case(this%gstype)
+       case (VAR_SCM_BBERRY)
 
           this%g0opt = 0.04d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 4.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_SCM_MEDLYN) then
+       case (VAR_SCM_MEDLYN)
 
           this%g0opt = 1.0d-4;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 1.62d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_SCM_WUE) then
+       case(VAR_SCM_WUE, VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
 
-       elseif (this%gstype == VAR_SCM_BONAN14) then
-
-       elseif (this%gstype == VAR_SCM_MODIFIED_BONAN14) then
-
-       elseif (this%gstype == VAR_SCM_MANZONI11) then
-
-       else
+       case default
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
           call endrun(msg=errMsg(__FILE__, __LINE__))
-       end if
+       end select
 
     case (VAR_PHOTOSYNTHETIC_PATHWAY_C3) ! C3
 
-       if (this%gstype == VAR_SCM_BBERRY) then
+       select case(this%gstype)
+          case(VAR_SCM_BBERRY)
 
           this%g0opt = 0.01d0;       ! Ball-Berry minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 9.0d0;        ! Ball-Berry slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_SCM_MEDLYN) then
+       case (VAR_SCM_MEDLYN)
 
           this%g0opt = 1.0d-4;        ! Medlyn minimum leaf conductance (mol H2O/m2/s)
           this%g1opt = 4.45d0;       ! Medlyn slope of conductance-photosynthesis relationship
 
-       elseif (this%gstype == VAR_SCM_WUE) then
+       case (VAR_SCM_WUE, VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
 
-       elseif (this%gstype == VAR_SCM_BONAN14) then
-
-       elseif (this%gstype == VAR_SCM_MODIFIED_BONAN14) then
-
-       elseif (this%gstype == VAR_SCM_MANZONI11) then
-
-       else
+       case default
           write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
           call endrun(msg=errMsg(__FILE__, __LINE__))
-       end if
+       end select
 
     end select
   end subroutine SetStomatalConductanceParameters
 
+  !------------------------------------------------------------------------
+  subroutine SetPlantParameters(this)
+    !
+    ! !DESCRIPTION:
+    !
+    ! !USES:
+    implicit none
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type)    :: this
+
+    select case(this%gstype)
+    case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN, VAR_SCM_WUE, VAR_SCM_BONAN14, VAR_SCM_MANZONI11)
+
+    case(VAR_SCM_MODIFIED_BONAN14)
+       this%plant%weibull_b(:) = 2.d0
+       this%plant%weibull_c(:) = 5.d0
+
+    case (VAR_SCM_OSMWANG)
+       this%plant%weibull_b(:) = 1.2d0
+       this%plant%weibull_c(:) = 5.d0
+
+       this%plant%leaf_psi_crt(:) = - 1.2d0 * (log(1.d3))**(1.d0/5.d0)
+
+    case default
+       write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+    end select
+
+  end subroutine SetPlantParameters
   !------------------------------------------------------------------------
   subroutine ComputeSoilResistance(this)
     !
@@ -713,13 +743,15 @@ contains
     class(plant_auxvar_type) , pointer   :: plant
     PetscReal                            :: t1, t2, t3, etflx
     PetscReal                            :: an, gbc, delta_c
-    PetscReal                            :: gs_val_wue, gs_val_hyd, an_low, an_high, check, psi_new
+    PetscReal                            :: gs_val_wue, gs_val_hyd, an_low, an_high, check, psi_new, cost_low, cost_high
+    PetscReal                            :: etflx_low, etflx_high, etflx_c
     PetscReal                            :: factor
     PetscInt                 , parameter :: ileaf = 1 ! Currently only one leaf is supported
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
     PetscInt , parameter :: idof_wue = 1
     PetscInt , parameter :: idof_hyd = 2
+    PetscInt :: ii
 
     plant => this%plant
     select case (this%gstype)
@@ -784,8 +816,73 @@ contains
           !this%residual_hyd(idof_hyd) = 0.d0
        end if
 
+    case (VAR_SCM_OSMWANG)
+
+       gs_val_wue = this%gs(idof_wue)
+
+       ! compute value at 'gs - delta_gs'
+       this%gs(idof_wue) = gs_val_wue - gs_delta_wue
+       call PhotosynthesisAuxVarCompute_WUE(this)
+
+       an_low = this%an(idof_wue)
+       etflx_low  = (this%esat - this%eair)/this%pref * this%gleaf_w(idof_wue) * this%fdry
+
+       ! compute value at 'gs'
+       this%gs(idof_wue) = gs_val_wue
+       call PhotosynthesisAuxVarCompute_WUE(this)
+
+       an_high = this%an(idof_wue)
+       etflx_high  = (this%esat - this%eair)/this%pref * this%gleaf_w(idof_wue) * this%fdry
+
+       call ComputeSoilResistance(this)
+
+       call ComputeCriticalFlow(plant, etflx_c)
+
+       cost_low  = an_low *etflx_low /etflx_c
+       cost_high = an_high*etflx_high/etflx_c
+
+       this%residual_wue(idof_wue) = (an_high - an_low)/(etflx_high - etflx_low) - an_high/(etflx_c - etflx_high)!, 1.d-7)
+
+       this%residual_wue(idof_wue) = (an_high - an_low)/(etflx_high - etflx_low) - (cost_high - cost_low)/(etflx_high - etflx_low)
+
+    case default
+       write(iulog,*)'Unsupported stomatal conductance: ',this%gstype
+       call endrun(msg=errMsg(__FILE__, __LINE__))
+
     end select
   end subroutine PhotosynthesisAuxVarCompute
+
+  !------------------------------------------------------------------------
+  subroutine ComputeCriticalFlow(plant, etflx_crt)
+    !
+    type(plant_auxvar_type) , pointer       :: plant
+    PetscReal               , intent(inout) :: etflx_crt        ! [mol H2O/m2/s]
+    !
+    PetscInt                , parameter     :: ileaf = 1
+    PetscReal               , parameter     :: g = 9.80665d0    ! [m/s^2]
+    PetscReal               , parameter     :: denh2o = 1000.d0 ! [kg/m^3]
+    PetscReal                               :: Kmax             ! [mmol/m^2/MPa]
+    PetscReal                               :: kl               ! [mmol/m^2/MPa]
+    PetscReal                               :: w_c              ! [-]
+    PetscReal                               :: w_b              ! [MPa]
+    PetscReal                               :: psi_crt          ! [MPa]
+    PetscReal                               :: psi_soil         ! [MPa]
+    PetscReal                               :: head             ! [MPa/m]
+    PetscReal                               :: h                ! [m]
+
+    head     = g * denh2o * 1.d-6
+
+    Kmax     = plant%leaf_lsc     (ileaf)
+    w_b      = plant%weibull_b    (ileaf)
+    w_c      = plant%weibull_c    (ileaf)
+    psi_crt  = plant%leaf_psi_crt (ileaf)
+    psi_soil = plant%psi_soil     (ileaf)
+    h        = plant%leaf_height  (ileaf)
+
+    kl   = Kmax*exp(-(-psi_soil/w_b)**w_c)
+    etflx_crt = max(Kl * (psi_soil - psi_crt - head * h)/1.d3, 1.d-7)
+
+  end subroutine ComputeCriticalFlow
 
   !------------------------------------------------------------------------
   subroutine ComputeChangeInPsi(plant, etflx)
@@ -838,7 +935,7 @@ contains
 
     Kl       = Kmax*exp(-(-psi_old/w_b)**w_c)
 
-    psi_new = ( (Cp/dt) * psi_old + Kl*(psi_soil - head) - E )/ ( Cp/dt + Kl)
+    psi_new = ( (Cp/dt) * psi_old + Kl*(psi_soil - head * h) - E )/ ( Cp/dt + Kl)
 
   end subroutine ComputePsi_ModifiedBonan14
 
@@ -868,6 +965,7 @@ contains
     if (this%pathway_and_stomatal_params_defined  == 0) then
        call SetPathwayParameters(this)
        call SetStomatalConductanceParameters(this)
+       call SetPlantParameters(this)
        this%pathway_and_stomatal_params_defined = 1
     end if
 
@@ -968,6 +1066,7 @@ contains
     if (this%pathway_and_stomatal_params_defined  == 0) then
        call SetPathwayParameters(this)
        call SetStomatalConductanceParameters(this)
+       call SetPlantParameters(this)
        this%pathway_and_stomatal_params_defined = 1
     end if
 

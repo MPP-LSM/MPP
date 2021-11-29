@@ -20,6 +20,7 @@ module GoveqnPhotosynthesisType
   use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
   use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
   use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_SCM_OSMWANG
   !
   implicit none
   private
@@ -228,6 +229,19 @@ contains
                 f_p(idx) =  avars(icell)%residual_hyd(idof)
              end if
           end if
+
+       case (VAR_SCM_OSMWANG)
+          do idof = 1, this%dof
+
+             idx = (icell-1)*this%dof + idof
+
+             if ( (.not. this%mesh%is_active(icell)) .or. &
+                  (.not. avars(icell)%soln_is_bounded(idof))) then
+                f_p(idx) = 0.d0
+             else
+                f_p(idx) = avars(icell)%residual_wue(idof)
+             end if
+          end do
        case default
           write(*,*)'Unknown stomatal conductance model'
           call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -434,22 +448,19 @@ contains
    do ghosted_id = 1, this%mesh%ncells_local
 
       select case (this%aux_vars_in(ghosted_id)%gstype)
-      case (VAR_SCM_BBERRY)
+      case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_SCM_MEDLYN)
-         do idof = 1, this%dof
-            this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
-         end do
-      case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+
+      case (VAR_SCM_WUE, VAR_SCM_MANZONI11,VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14, VAR_SCM_OSMWANG)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
-         do idof = 1, this%dof
-            this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
-         end do
+
+      case default
+          write(*,*)'Unknown stomatal conductance model'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
       end select
    end do
 
