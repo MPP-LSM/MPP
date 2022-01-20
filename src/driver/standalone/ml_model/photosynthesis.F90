@@ -17,6 +17,7 @@ module photosynthesis
   use MultiPhysicsProbConstants           , only : VAR_SCM_BONAN14
   use MultiPhysicsProbConstants           , only : VAR_SCM_MODIFIED_BONAN14
   use MultiPhysicsProbConstants           , only : VAR_SCM_MANZONI11
+  use MultiPhysicsProbConstants           , only : VAR_SCM_OSMWANG
 
   implicit none
 
@@ -281,7 +282,6 @@ contains
     PetscReal                  , pointer   :: tleaf_local(:)
     PetscReal                  , parameter :: unit_conversion = 4.6d0 ! w/m2 to mmol_photons/m2/s
     PetscInt                   , parameter :: nlev = 10
-    PetscBool                              :: bounded
     character(len=20)                      :: step_string, substep_string
 
     call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
@@ -355,21 +355,7 @@ contains
                    cur_goveq%aux_vars_in(icell)%soil%h2osoi_vol(j) = get_value_from_condition(bnd_cond%h2osoi_vol, j)
                 end do
 
-                select case (cur_goveq%aux_vars_in(icell)%gstype)
-                   case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
-                      ! Set cell active/inactive if the solution is bounded/unbounded
-                      call cur_goveq%aux_vars_in(icell)%IsWUESolutionBounded(bounded)
-                      cur_goveq%mesh%is_active(icell) = bounded
-
-                   case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
-                      call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
-
-                   case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
-                      ! Do nothing
-                   case default
-                      write(*,*)'Unknown stomatal model'
-                      call endrun(msg=errMsg(__FILE__, __LINE__))
-                end select
+                call cur_goveq%aux_vars_in(icell)%DetermineIfSolutionIsBounded()
 
              end do
           end do
@@ -479,7 +465,7 @@ contains
              do ileaf = 1, nleaf
                 icell = icell + 1
                 select case(gstype)
-                   case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+                   case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
                       v_p(icell) = 0.002d0
                    case (VAR_SCM_BONAN14,VAR_SCM_MODIFIED_BONAN14)
                       v_p((icell-1)*2 + 1) = 0.002d0

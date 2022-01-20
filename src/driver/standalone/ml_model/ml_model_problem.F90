@@ -80,6 +80,7 @@ contains
     use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
     use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
     use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
+    use MultiPhysicsProbConstants , only : VAR_SCM_OSMWANG
     !
     implicit none
     !
@@ -120,6 +121,8 @@ contains
        gstype = VAR_SCM_MODIFIED_BONAN14
     case ('manzoni11')
        gstype = VAR_SCM_MANZONI11
+    case ('osmwang')
+       gstype = VAR_SCM_OSMWANG
     case default
        write(iulog,*) 'Invalid value for -stomatal_conductance_model and valid values are: '
        write(iulog,*) '  ball-berry'
@@ -128,6 +131,7 @@ contains
        write(iulog,*) '  bonan14'
        write(iulog,*) '  modified_bonan14'
        write(iulog,*) '  manzoni'
+       write(iulog,*) '  osmwang'
        call exit(-1)
     end select
 
