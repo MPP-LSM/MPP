@@ -993,6 +993,11 @@ contains
 
     call mlc_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
+    if (.not.converged) then
+       write(*,*)'MLC model did not converge'
+       call exit(0)
+    endif
+
     call extract_data_from_mlc(mlc_mpp, istep, isubstep, dt)
 
   end subroutine solve_mlc

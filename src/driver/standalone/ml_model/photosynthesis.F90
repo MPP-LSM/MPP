@@ -596,6 +596,11 @@ contains
 
     call psy_mpp%soe%StepDT(dt, (istep-1)*12 + isubstep, converged, converged_reason, ierr)
 
+    if (.not.converged) then
+       write(*,*)'Photosynthesis model did not converge'
+       call exit(0)
+    endif
+
     call extract_data_from_photosynthesis(psy_mpp, istep, isubstep)
 
   end subroutine solve_photosynthesis
