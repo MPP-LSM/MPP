@@ -43,7 +43,7 @@ module SystemOfEquationsBaseType
 
      PetscReal                       :: time                         ! [sec]
      PetscReal                       :: dtime                        ! [sec]
-     PetscReal                       :: nstep                        ! [-]
+     PetscInt                        :: nstep                        ! [-]
 
      PetscInt                        :: num_calls_to_ifunction
      PetscInt                        :: num_calls_to_ijacobian
