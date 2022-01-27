@@ -36,6 +36,7 @@ module GoverningEquationBaseType
      type(condition_list_type)       :: source_sinks                         ! source/sinks in the GE
 
      PetscReal                       :: dtime                                ! time step [sec]
+     PetscInt                        :: nstep
 
      ! Track variables supplied by other governing equations.
      type(coupling_variable_list_type) :: coupling_vars
@@ -96,6 +97,7 @@ contains
     this%mesh_rank        = 0
     this%dof              = 1
     this%dtime            = 0.d0
+    this%nstep            = 0
 
     nullify(this%mesh)
     call this%boundary_conditions%Init()

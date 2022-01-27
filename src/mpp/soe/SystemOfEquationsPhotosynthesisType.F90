@@ -205,6 +205,8 @@ contains
     cur_goveq => this%goveqns
     do
        if (.not.associated(cur_goveq)) exit
+
+       cur_goveq%nstep = this%nstep
        select type(cur_goveq)
        class is (goveqn_photosynthesis_type)
 
