@@ -466,7 +466,7 @@ contains
                 icell = icell + 1
                 select case(gstype)
                    case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
-                      v_p(icell) = 0.002d0
+                      v_p(icell) = 0.005d0
                    case (VAR_SCM_BONAN14,VAR_SCM_MODIFIED_BONAN14)
                       v_p((icell-1)*2 + 1) = 0.002d0
                       v_p((icell-1)*2 + 2) = 0.002d0

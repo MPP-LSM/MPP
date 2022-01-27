@@ -212,9 +212,9 @@ module PhotosynthesisAuxType
   private :: fth25 ! scaling factor for photosynthesis temperature inhibition
 
   PetscReal, parameter :: gs_min = 1.d-6
-  PetscReal, parameter :: gs_min_wue = 0.002d0
+  PetscReal, parameter :: gs_min_wue = 0.005d0
   PetscReal, parameter :: gs_max_wue = 2.0d0
-  PetscReal, parameter :: gs_delta_wue = 0.001d0
+  PetscReal, parameter :: gs_delta_wue = 1.d-5
 
 contains
 

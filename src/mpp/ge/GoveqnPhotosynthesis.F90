@@ -241,6 +241,11 @@ contains
              else
                 f_p(idx) = avars(icell)%residual_wue(idof)
              end if
+
+             if (this%aux_vars_in(idx)%gs(idof) < 0.d0) then
+                f_p(idx) = 0.d0
+                f_p(idx) = f_p(idx)/f_p(idx)
+             end if
           end do
        case default
           write(*,*)'Unknown stomatal conductance model'
@@ -305,7 +310,7 @@ contains
              gs_perturb = -1.e-14
           else
              ci_perturb = -1.e-7
-             gs_perturb = -1.e-8
+             gs_perturb = -1.e-5
           endif
 
           if (.not. (avars(icell)%gstype == VAR_SCM_WUE .or. avars(icell)%gstype == VAR_SCM_MANZONI11)) then
