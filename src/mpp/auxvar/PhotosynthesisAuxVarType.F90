@@ -215,6 +215,8 @@ module PhotosynthesisAuxType
   PetscReal, parameter :: gs_min_wue = 0.005d0
   PetscReal, parameter :: gs_max_wue = 2.0d0
   PetscReal, parameter :: gs_delta_wue = 1.d-5
+  PetscReal, parameter :: gs_min_bonan14 = 0.002d0
+  PetscReal, parameter :: gs_delta_bonan14 = 0.001d0
 
 contains
 
@@ -785,8 +787,8 @@ contains
        gs_val_wue = this%gs(idof_wue)
        gs_val_hyd = this%gs(idof_hyd)
 
-       this%gs(idof_wue) = gs_val_wue - gs_delta_wue
-       this%gs(idof_hyd) = gs_val_hyd - gs_delta_wue
+       this%gs(idof_wue) = gs_val_wue - gs_delta_bonan14
+       this%gs(idof_hyd) = gs_val_hyd - gs_delta_bonan14
        call PhotosynthesisAuxVarCompute_WUE(this)
        an_low = this%an(idof_wue)
 
@@ -795,7 +797,7 @@ contains
        call PhotosynthesisAuxVarCompute_WUE(this)
        an_high = this%an(idof_wue)
 
-       this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_wue * this%vpd
+       this%residual_wue(idof_wue) = (an_high - an_low) - this%iota * gs_delta_bonan14 * this%vpd
 
        !
        ! Residual for hydraulics equation =  psi_{t} + dpsi_{t+1} - leaf_minlwp
@@ -1637,8 +1639,8 @@ contains
     case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
     
           ! Residual at minimum gs
-          this%gs(idof_wue) = gs_min_wue
-          this%gs(idof_hyd) = gs_min_wue
+          this%gs(idof_wue) = gs_min_bonan14
+          this%gs(idof_hyd) = gs_min_bonan14
 
           call this%AuxVarCompute()
 

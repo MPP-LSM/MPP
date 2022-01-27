@@ -308,6 +308,9 @@ contains
                (avars(icell)%gstype == VAR_SCM_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
              ci_perturb = -1.e-13
              gs_perturb = -1.e-14
+          elseif (avars(icell)%gstype == VAR_SCM_BONAN14 .or. avars(icell)%gstype == VAR_SCM_MODIFIED_BONAN14) then
+             ci_perturb = -1.e-7
+             gs_perturb = -1.e-8
           else
              ci_perturb = -1.e-7
              gs_perturb = -1.e-5
