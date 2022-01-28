@@ -20,6 +20,7 @@ module GoveqnPhotosynthesisType
   use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
   use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
   use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
+  use MultiPhysicsProbConstants , only : VAR_SCM_OSMWANG
   !
   implicit none
   private
@@ -228,6 +229,24 @@ contains
                 f_p(idx) =  avars(icell)%residual_hyd(idof)
              end if
           end if
+
+       case (VAR_SCM_OSMWANG)
+          do idof = 1, this%dof
+
+             idx = (icell-1)*this%dof + idof
+
+             if ( (.not. this%mesh%is_active(icell)) .or. &
+                  (.not. avars(icell)%soln_is_bounded(idof))) then
+                f_p(idx) = 0.d0
+             else
+                f_p(idx) = avars(icell)%residual_wue(idof)
+             end if
+
+             if (this%aux_vars_in(idx)%gs(idof) < 0.d0) then
+                f_p(idx) = 0.d0
+                f_p(idx) = f_p(idx)/f_p(idx)
+             end if
+          end do
        case default
           write(*,*)'Unknown stomatal conductance model'
           call endrun(msg=errMsg(__FILE__, __LINE__))
@@ -289,9 +308,12 @@ contains
                (avars(icell)%gstype == VAR_SCM_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
              ci_perturb = -1.e-13
              gs_perturb = -1.e-14
-          else
+          elseif (avars(icell)%gstype == VAR_SCM_BONAN14 .or. avars(icell)%gstype == VAR_SCM_MODIFIED_BONAN14) then
              ci_perturb = -1.e-7
              gs_perturb = -1.e-8
+          else
+             ci_perturb = -1.e-7
+             gs_perturb = -1.e-5
           endif
 
           if (.not. (avars(icell)%gstype == VAR_SCM_WUE .or. avars(icell)%gstype == VAR_SCM_MANZONI11)) then
@@ -343,7 +365,7 @@ contains
                 value = 1.d0
              end if
 
-          case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+          case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
              res_1 = avars(icell)%residual_wue(idof)
              gs_1  = avars(icell)%gs(idof)
 
@@ -434,22 +456,19 @@ contains
    do ghosted_id = 1, this%mesh%ncells_local
 
       select case (this%aux_vars_in(ghosted_id)%gstype)
-      case (VAR_SCM_BBERRY)
+      case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_SCM_MEDLYN)
-         do idof = 1, this%dof
-            this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
-         end do
-      case (VAR_SCM_WUE, VAR_SCM_MANZONI11)
+
+      case (VAR_SCM_WUE, VAR_SCM_MANZONI11,VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14, VAR_SCM_OSMWANG)
          do idof = 1, this%dof
             this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
          end do
-      case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
-         do idof = 1, this%dof
-            this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
-         end do
+
+      case default
+          write(*,*)'Unknown stomatal conductance model'
+          call endrun(msg=errMsg(__FILE__, __LINE__))
       end select
    end do
 

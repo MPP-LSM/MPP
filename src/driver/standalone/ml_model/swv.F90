@@ -572,6 +572,11 @@ contains
 
     call swv_mpp%soe%StepDT(dt, istep, converged, converged_reason, ierr)
 
+    if (.not.converged) then
+       write(*,*)'Shortwave model did not converge'
+       call exit(0)
+    endif
+
     call extract_data_from_swv(swv_mpp, istep)
 
   end subroutine solve_swv

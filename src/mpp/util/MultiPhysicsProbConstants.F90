@@ -167,6 +167,7 @@ module MultiPhysicsProbConstants
   PetscInt, parameter, public :: VAR_SENSIBLE_HEAT_FLUX                     = 670
   PetscInt, parameter, public :: VAR_LEAF_TRANSPIRATION                     = 671
   PetscInt, parameter, public :: VAR_POT_SINK_DOWNREG_FACTOR                = 672
+  PetscInt, parameter, public :: VAR_SCM_OSMWANG                            = 673
   !
   PetscInt, parameter, public :: AUXVAR_INTERNAL                   = 701
   PetscInt, parameter, public :: AUXVAR_BC                         = 702
