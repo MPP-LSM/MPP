@@ -58,6 +58,7 @@ contains
   subroutine compute_vertical_veg_structure(dlai, dsai, dpai, cumpai, sumpai, leaf_td)
     !
     use ml_model_global_vars , only : hc, nveg, nbot, ntop, nz_cair, ncair, dz_cair, ntree
+    use ml_model_global_vars , only : output_data
     !
     implicit none
     !
@@ -170,6 +171,14 @@ contains
           cumpai(k) = cumpai(k+1) + dpai(k)
        end if
     end do
+
+    if (output_data) then
+       write(*,*)'mpp.veg_structure = [';
+       do k = nbot, ntop
+          write(*,*)dlai(k),dsai(k),cumpai(k)
+       end do
+       write(*,*)'];'
+    end if
 
   end subroutine compute_vertical_veg_structure
 
