@@ -41,6 +41,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #=============================================================================
 
+# Provide option that allows the PETSc tests to be skipped, setting default to OFF
+option(PETSC_SKIP_TESTS "PETSC_SKIP_TESTS" OFF)
+
 # Outline:
 # 1. Get flags from PETSc-generated pkg-config file
 # 2. Test compile and run program using shared library linking
@@ -94,11 +97,11 @@ if (PETSC_FOUND AND NOT TARGET PETSC::petsc_static)
 endif()
 
 # Attempt to build and run PETSc test program
-#if (DOLFIN_SKIP_BUILD_TESTS)
-if (TRUE)
+if (PETSC_SKIP_TESTS)
 
   # Assume PETSc works
   set(PETSC_TEST_RUNS TRUE)
+  message( "PETSc tests will be skipped at user's request" )
 
 elseif (PETSC_FOUND)
 

@@ -12,6 +12,7 @@ CC         = not-set
 CXX        = not-set
 FC         = not-set
 travis = not-set
+
 # This proxies everything to the builddir cmake.
 
 cputype = $(shell uname -m | sed "s/\\ /_/g")
@@ -21,6 +22,16 @@ BUILDDIR := build/$(systype)-$(cputype)
 CONFIG_FLAGS = -DUNIX=1 -Wno-dev
 
 # Process configuration options.
+
+# Should we skip PETSc tests (generally because we are running on a compile node at a supercomputing center, on which cannot run tests)?
+# Note that we check for both SKIP_PETSC_TESTS or PETSC_SKIP_TESTS,
+# since it seems easy for users to confuse the order if only one is considered "correct".
+ifdef SKIP_PETSC_TESTS
+  CONFIG_FLAGS += -DPETSC_SKIP_TESTS:BOOL=ON
+endif
+ifdef PETSC_SKIP_TESTS
+  CONFIG_FLAGS += -DPETSC_SKIP_TESTS:BOOL=ON
+endif
 
 # Travis-CI build
 ifeq ($(travis), not-set)
