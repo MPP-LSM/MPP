@@ -25,7 +25,7 @@ CONFIG_FLAGS = -DUNIX=1 -Wno-dev
 
 # Should we skip PETSc tests (generally because we are running on a compile node at a supercomputing center, on which cannot run tests)?
 # Note that we check for both SKIP_PETSC_TESTS or PETSC_SKIP_TESTS,
-# since it seems easy for users to confuse the order if only one is considered "correct".
+# since it is easy for users to confuse the order if only one is considered "correct".
 ifdef SKIP_PETSC_TESTS
   CONFIG_FLAGS += -DPETSC_SKIP_TESTS:BOOL=ON
 endif
