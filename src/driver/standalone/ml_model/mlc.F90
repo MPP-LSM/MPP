@@ -715,15 +715,16 @@ contains
                       cur_goveq%aux_vars_in(icell)%rn   = &
                            get_value_from_condition(int_cond%Ileaf_sun_vis, count) + &
                            get_value_from_condition(int_cond%Ileaf_sun_nir, count) + &
-                           get_value_from_condition(int_cond%Labs_leaf_sun       , count)
+                           get_value_from_condition(int_cond%Labs_leaf_sun, count)
 
                       call accumulate_data(vert_lev_vars%rn_leaf_sun, &
                            cur_goveq%aux_vars_in(icell)%rn, count, isubstep)
 
                       if (output_data .and. isubstep == 12) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
-                           get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
-                           get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
-                           get_value_from_condition(int_cond%Labs_leaf_shd       , count)
+                           get_value_from_condition(int_cond%Ileaf_sun_vis, count), &
+                           get_value_from_condition(int_cond%Ileaf_sun_nir, count), &
+                           get_value_from_condition(int_cond%Labs_leaf_sun, count), &
+                           fssh(k)
                    else
                       cur_goveq%aux_vars_in(icell)%gbh  = get_value_from_condition(int_cond%gbh, count + offset)
                       cur_goveq%aux_vars_in(icell)%gbv  = get_value_from_condition(int_cond%gbv, count + offset)
@@ -733,7 +734,7 @@ contains
                       cur_goveq%aux_vars_in(icell)%rn   = &
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count) + &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count) + &
-                           get_value_from_condition(int_cond%Labs_leaf_shd       , count)
+                           get_value_from_condition(int_cond%Labs_leaf_shd, count)
 
                       call accumulate_data(vert_lev_vars%rn_leaf_shd, &
                            cur_goveq%aux_vars_in(icell)%rn, count, isubstep)
@@ -741,7 +742,8 @@ contains
                       if (output_data .and. isubstep == 12) write(*,*)icell,cur_goveq%aux_vars_in(icell)%rn, &
                            get_value_from_condition(int_cond%Ileaf_shd_vis, count), &
                            get_value_from_condition(int_cond%Ileaf_shd_nir, count), &
-                           get_value_from_condition(int_cond%Labs_leaf_shd       , count)
+                           get_value_from_condition(int_cond%Labs_leaf_shd, count), &
+                           fssh(k)
                    end if
                 end if
 
@@ -865,6 +867,17 @@ contains
        write(substep_string,*)isubstep
        write(*,*)'mpp.tleaf{' // trim(adjustl(step_string)) // ',' //trim(adjustl(substep_string)) // '} = ['
     end if
+
+    ncells = ncair*(nz_cair+1)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, VAR_TEMPERATURE       , ncells, tair_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_WATER_VAPOR       , ncells, qair_data)
+
+    ncells = ncair*(nz_cair+1)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, VAR_SENSIBLE_HEAT_FLUX, ncells, sh_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_LATENT_HEAT_FLUX  , ncells, lh_data)
+    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_LEAF_TRANSPIRATION, ncells, tr_data)
+
+
     ncells = ncair*ntree*(nz_cair+1)
     do ileaf = 1, 2
        if (ileaf == 1) then
@@ -903,15 +916,24 @@ contains
     end do
     if (output_data .and. isubstep == 12) then
        write(*,*)'];'
+
+       write(*,*)'mpp.energy_fluxes = ['
+       idx_data = 0
+       do icair = 1, ncair
+          do itree = 1, ntree
+             do k = 1, nz_cair + 1
+                if (k>=nbot .and. k<=ntop) then
+                   write(*,*) &
+                        sh_data(idx_data + 1), sh_data(idx_data + 2), &
+                        lh_data(idx_data + 1), lh_data(idx_data + 2), &
+                        tr_data(idx_data + 1), tr_data(idx_data + 2)
+                end if
+                idx_data = idx_data + 2
+             end do
+          end do
+       end do
+       write(*,*)'];'
     end if
-
-    ncells = ncair*(nz_cair+1)
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, VAR_TEMPERATURE       , ncells, tair_data)
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_TEMP_GE, VAR_SENSIBLE_HEAT_FLUX, ncells, sh_data)
-
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_WATER_VAPOR       , ncells, qair_data)
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_LATENT_HEAT_FLUX  , ncells, lh_data)
-    call get_data_from_mlc_eqn(mlc_mpp, CAIR_VAPR_GE, VAR_LEAF_TRANSPIRATION, ncells, tr_data)
 
     base_soe => mlc_mpp%soe
 
