@@ -87,7 +87,7 @@ contains
     type(ugrid_type), pointer :: ugrid                 ! unstructured grid object
     integer , intent(in)     :: mpicom                 ! MPI communicator group
     integer , intent(in)     :: beg, end               ! beg/end of grid bounds at processsor level
-    integer , intent(in)     :: ldecomp_gdc2glo(:)     !
+    integer , intent(in)     :: ldecomp_gdc2glo(beg:)     !
     integer , intent(in)     :: cellsOnCell_old(:,:)   ! grid cell level connectivity information as read in from netcdf file
     integer , intent(in)     :: maxEdges               ! maximum number of grid neighbor [size(cellsOnCell_old,1)]
     integer , intent(in)     :: ncells_loc_old         ! no. of grid cell for which grid connectivity information was read [size(cellsOnCells_old,2)]

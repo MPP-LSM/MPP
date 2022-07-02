@@ -6,3 +6,4 @@ local
 *xcode
 .DS_Store
 regression_tests/*/*.bin*
+*.mod
