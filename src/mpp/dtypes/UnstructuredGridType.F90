@@ -47,10 +47,13 @@ module UnstructuredGridType
      PetscInt,  pointer       :: gridsOnGrid_local (:,:) ! grid cell connectivity information in local-order
      PetscReal, pointer       :: dcOnGrid_local    (:,:) ! distance between neighboring grid cells
      PetscReal, pointer       :: dvOnGrid_local    (:,:) ! edge length between neighboring grid cells
+     PetscReal, pointer       :: cosEdgeOnGrid_local(:,:)! cosine of the angle between the vector joining cell centroid and edge normal
      PetscReal, pointer       :: areaGrid_ghosted  (:)   ! area of grid cells
      PetscReal, pointer       :: xGrid_ghosted     (:)   ! x location of grid cell centroid [m]
      PetscReal, pointer       :: yGrid_ghosted     (:)   ! y location of grid cell centroid [m]
      PetscReal, pointer       :: zGrid_ghosted     (:)   ! z location of grid cell centroid [m]
+     PetscReal, pointer       :: vcosGrid_ghosted  (:)   ! cosine of the angle between the unit vertical vector (aka gravity vector)
+                                                         ! and the plane forming the grid cell
 
      PetscInt,pointer         :: grid_id_norder(:)       ! grid cell ids in natural-order
      PetscInt,pointer         :: grid_id_porder(:)       ! grid cell ids in PETSc-order
