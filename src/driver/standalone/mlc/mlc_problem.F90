@@ -86,6 +86,7 @@ contains
     use mlc_conditions            , only : add_conditions_to_goveqns
     use mlc_meshes                , only : setup_meshes
     use mlc_parameters            , only : set_parameters
+    use RSLPsiHat                 , only : InitializePsiHat
 
     implicit none
     !
@@ -118,6 +119,8 @@ contains
 
     ! 9.
     call set_parameters(mlc_mpp)
+
+    call InitializePsiHat()
 
     ! 10. 
     call set_initial_conditions(mlc_mpp)
