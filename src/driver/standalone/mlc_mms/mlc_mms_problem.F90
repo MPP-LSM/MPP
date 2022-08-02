@@ -41,6 +41,11 @@ contains
 
     ncair = 1;
     ntree = 1;
+    nz_cair = 92; nz_cleaf = nz_cair
+    nbot = 6; ntop = 42;
+
+    z_cair = 46.d0; z_cleaf = z_cair
+    hc = 21.d0
 
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
