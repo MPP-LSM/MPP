@@ -345,8 +345,8 @@ contains
     do kk = 1, nconn
        id_up(kk)      = 0
        id_dn(kk)      = kk
-       dist_up(kk)    = z_cleaf/nz_cleaf/2.d0
-       dist_dn(kk)    = z_cleaf/nz_cleaf/2.d0
+       dist_up(kk)    = dz_cair/2.d0
+       dist_dn(kk)    = dz_cair/2.d0
        area(kk)       = 1.d0
        unit_vec(kk,1) = -1.d0
        unit_vec(kk,2) = 0.d0

@@ -4,6 +4,7 @@ set(MLC_MMS_PROBLEM_SOURCES
   mlc_mms_global_vars.F90
   mlc_mms_meshes.F90
   mlc_mms_parameters.F90
+  mlc_mms_functions.F90
   )
 
 include_directories(${CMAKE_BINARY_DIR}/src/mpp/dtypes)

@@ -11,11 +11,14 @@ module mlc_mms_global_vars
 
   PetscReal :: hc
   PetscReal :: z_cair
-  PetscReal :: z_cleaf
+  !PetscReal :: z_cleaf
 
   PetscInt :: nz_cair, nz_cleaf
   PetscInt :: ncair
   PetscInt :: ntree
+
+  PetscReal :: zmax_l, zmin_l, z_l
+  PetscReal :: dz_cair
 
   PetscInt :: nbot, ntop
 

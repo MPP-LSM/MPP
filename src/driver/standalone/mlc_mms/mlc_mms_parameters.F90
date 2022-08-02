@@ -5,6 +5,7 @@ module mlc_mms_parameters
   use mpp_shr_log_mod     , only : errMsg => shr_log_errMsg
   use MultiPhysicsProbMLC , only : mpp_mlc_type
   use mlc_mms_global_vars
+  use mlc_mms_functions
   use petscsys
 
   implicit none
@@ -59,6 +60,7 @@ contains
     class(goveqn_base_type)    , pointer :: cur_goveq
     PetscInt                             :: k, ileaf, icair, icell
     PetscReal                  , pointer :: dpai(:), fssh(:), gs_sun(:), gs_shd(:)
+    PetscReal                            :: zlevel, f, df_dz, df_dt
 
     base_soe => mlc_mpp%soe
 
@@ -78,8 +80,12 @@ contains
 
       do icair = 1, ncair
          do k = 1, nz_cair
-            icell = (icair-1)*(nz_cair+1) + k
-            cur_goveq%aux_vars_in(icell)%gbh  = 2.268731551029694d0
+            icell = (icair-1)*(nz_cair+1) + k + 1
+
+            zlevel = (k-1)*dz_cair + dz_cair/2.d0
+
+            call mms_gbh(zlevel,f,df_dz,df_dt)
+            cur_goveq%aux_vars_in(icell)%gbh  = f
 
             cur_goveq%aux_vars_in(icell)%leaf_dpai(:) = dpai(k)/ntree
             cur_goveq%aux_vars_in(icell)%leaf_fwet(:) = 0.d0
@@ -251,12 +257,12 @@ contains
     ! integrating the plant area density (beta distribution) between
     ! the bottom and top heights for that layer
 
-    dz_leaf = z_cleaf/nz_cleaf;
+    dz_leaf = dz_cair
     pbeta   = 3.5d0;              ! Parameter for beta distribution
     qbeta   = 2.d0;               ! Parameter for beta distribution
     pai     = 5.051612734794617d0
 
-    do k = 2, 42 + 1
+    do k = 2, nbot + 1
        zl = dz_leaf * (k-2);
        zu = dz_leaf * (k-1);
        dpai(k) = 0.d0
