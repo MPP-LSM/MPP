@@ -624,12 +624,12 @@ contains
     !
     !
     ! !ARGUMENTS:
-    type(ugrid_type), pointer      :: ugrid
-    integer , intent(in )          :: nblocks
-    integer , intent(in )          :: ndata_send
-    PetscReal, intent(in ), pointer :: data_send(:)
-    integer , intent(in )          :: ndata_recv
-    PetscReal, intent(out), pointer :: data_recv(:)
+    type(ugrid_type), pointer :: ugrid
+    integer , intent(in )     :: nblocks
+    integer , intent(in )     :: ndata_send
+    PetscReal, intent(in )    :: data_send(1:ndata_send)
+    integer , intent(in )     :: ndata_recv
+    PetscReal, intent(out)    :: data_recv(1:ndata_recv)
     !
     ! !LOCAL VARIABLES:
     type(ugdm_type), pointer       :: dm
