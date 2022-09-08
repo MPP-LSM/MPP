@@ -339,6 +339,7 @@ contains
     class(sysofeqns_mlc_type) :: this
     KSP                       :: ksp
     Mat                       :: A, B
+    MatType                   :: mat_type
     PetscErrorCode            :: ierr
 
     !
@@ -360,8 +361,10 @@ contains
     allocate (dms(nDM))
     call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
 
-    ! Initialize the matrix
-    call MatZeroEntries(B, ierr); CHKERRQ(ierr)
+    ! Note: Previously there was a MatZeroEntries() call here to initialize the entries of B to zero.
+    ! This is no longer needed now that we are using MatPreallocatorPreallocate() to do the preallocation for
+    ! the matrix, as we are instructing MatPreallocatorPreallocate() to zero the entires when it does the
+    ! preallocation.
 
     ! Get submatrices
     allocate(is(nDM))

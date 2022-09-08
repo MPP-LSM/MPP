@@ -571,6 +571,9 @@ contains
     PetscInt                   :: num_linear_iterations
     PetscReal                  :: target_time
     PetscReal                  :: dt_iter
+    Mat                        :: preallocator
+    PetscInt                   :: m_local, n_local, m_global, n_global
+    ISLocalToGlobalMapping     :: rmapping, cmapping
 
     ! initialize
     soe%time       = 0.d0
@@ -585,6 +588,27 @@ contains
 
     ! Compute the 'b' vector
     call soe%ComputeRHS(soe%solver%ksp, soe%solver%rhs, ierr)
+
+    ! Do precise preallocation for the matrix 'A' using MATPREALLOCATOR.
+    ! There is no easy way to accurately determine the needed preallocation a priori, so we use
+    ! use MATPREALLOCATOR to count. This is fine, as hash tables are fast!
+
+    ! Note: We really should do the MatCreate() call as below, but PetscObjectComm() is currently
+    ! unsupported in Fortran. So we are cheating and using PETSC_COMM_WORLD, since currently no
+    ! other communicator is used. We could also use PETSC_COMM_SELF, as currently we also only run
+    ! this on a single rank. But these things may change, so it would be better to get the communicator
+    ! directly from soe%solver%Amat.
+    ! call MatCreate(PetscObjectComm(soe%solver%Amat), preallocator, ierr); CHKERRQ(ierr)
+    call MatCreate(PETSC_COMM_WORLD, preallocator, ierr); CHKERRQ(ierr)
+    call MatSetType(preallocator, MATPREALLOCATOR, ierr); CHKERRQ(ierr)
+    call MatGetSize(soe%solver%Amat, m_global, n_global, ierr); CHKERRQ(ierr)
+    call MatGetLocalSize(soe%solver%Amat, m_local, n_local, ierr); CHKERRQ(ierr)
+    call MatSetSizes(preallocator, m_local, n_local, m_global, n_global, ierr); CHKERRQ(ierr)
+    call MatSetUp(preallocator, ierr); CHKERRQ(ierr);
+    call MatGetLocalToGlobalMapping(soe%solver%Amat, rmapping, cmapping, ierr); CHKERRQ(ierr)
+    call MatSetLocalToGlobalMapping(preallocator, rmapping, cmapping, ierr); CHKERRQ(ierr)
+    call soe%ComputeOperators(soe%solver%ksp, preallocator, preallocator, ierr);
+    call MatPreallocatorPreallocate(preallocator, PETSC_TRUE, soe%solver%Amat, ierr); CHKERRQ(ierr)
 
     ! Compute the 'A' matrix
     call soe%ComputeOperators(soe%solver%ksp, soe%solver%Amat, soe%solver%Amat, ierr);
