@@ -609,6 +609,7 @@ contains
     call MatSetLocalToGlobalMapping(preallocator, rmapping, cmapping, ierr); CHKERRQ(ierr)
     call soe%ComputeOperators(soe%solver%ksp, preallocator, preallocator, ierr);
     call MatPreallocatorPreallocate(preallocator, PETSC_TRUE, soe%solver%Amat, ierr); CHKERRQ(ierr)
+    call MatDestroy(preallocator, ierr); CHKERRQ(ierr)
 
     ! Compute the 'A' matrix
     call soe%ComputeOperators(soe%solver%ksp, soe%solver%Amat, soe%solver%Amat, ierr);
