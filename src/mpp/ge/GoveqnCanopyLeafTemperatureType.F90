@@ -471,8 +471,10 @@ contains
     PetscErrorCode                :: ierr
     !
     ! !LOCAL VARIABLES
-    PetscInt :: icell, ileaf, row, col
+    PetscInt  :: icell, ileaf, row, col
     PetscReal :: value, gleaf, gleaf_et, qsat, si, lambda
+    PetscBool :: compute_values
+    MatType   :: mat_type
 
     lambda = HVAP * MM_H2O
     select case (itype_of_other_goveq)
@@ -482,7 +484,7 @@ contains
           row = icell-1; col = icell-1
           col = this%Leaf2CAir(icell) - 1
           if (this%aux_vars_in(icell)%dpai > 0.d0) then
-             value = -2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh
+             if (compute_values) value = -2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if
        end do
@@ -492,19 +494,21 @@ contains
           row = icell-1; col = icell-1
           col = this%Leaf2CAir(icell) - 1
           if (this%aux_vars_in(icell)%dpai > 0.d0) then
-             call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-             qsat = qsat/this%aux_vars_in(icell)%pref
-             si   = si  /this%aux_vars_in(icell)%pref
+             if (compute_values) then
+                call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
+                qsat = qsat/this%aux_vars_in(icell)%pref
+                si   = si  /this%aux_vars_in(icell)%pref
 
-             gleaf = &
-                  this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
-                  (this%aux_vars_in(icell)%gs + this%aux_vars_in(icell)%gbv )
+                gleaf = &
+                     this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
+                     (this%aux_vars_in(icell)%gs + this%aux_vars_in(icell)%gbv )
 
-             gleaf_et = &
-                  gleaf                       * this%aux_vars_in(icell)%fdry + &
-                  this%aux_vars_in(icell)%gbv * this%aux_vars_in(icell)%fwet
+                gleaf_et = &
+                     gleaf                       * this%aux_vars_in(icell)%fdry + &
+                     this%aux_vars_in(icell)%gbv * this%aux_vars_in(icell)%fwet
 
-             value = -lambda * gleaf_et
+                value = -lambda * gleaf_et
+             endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if
