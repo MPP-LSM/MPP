@@ -884,9 +884,16 @@ contains
     class(connection_set_type)   , pointer :: cur_conn_set
     PetscInt                               :: icell, ileaf, row, col, iconn, geq_leaf_temp_rank, cair_auxvar_idx, leaf_idx
     PetscReal                              :: value, gleaf, gleaf_et, gsw, gsa, gs0, lambda
-    PetscBool                              :: found
+    PetscBool                              :: found, compute_values
+    MatType                                :: mat_type
 
-    lambda = HVAP * MM_H2O
+    call MatGetType(B, mat_type, ierr); CHKERRQ(ierr)
+    if (mat_type == MATPREALLOCATOR) then
+       compute_values = PETSC_FALSE
+    else
+       compute_values = PETSC_TRUE
+       lambda = HVAP * MM_H2O
+    endif
 
     cur_conn_set => this%mesh%intrn_conn_set_list%first
 
@@ -912,11 +919,13 @@ contains
                 call endrun(msg=errMsg(__FILE__, __LINE__))
              end if
 
-             gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-             gsa = this%aux_vars_conn_in(1)%ga
-             gs0 = gsw * gsa / (gsw + gsa)
+             if (compute_values) then
+                gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
+                gsa = this%aux_vars_conn_in(1)%ga
+                gs0 = gsw * gsa / (gsw + gsa)
 
-             value = - lambda * gs0
+                value = - lambda * gs0
+             endif
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           endif
        enddo
@@ -930,18 +939,20 @@ contains
 
           if (this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) > 0.d0) then
 
-          row = cair_auxvar_idx-1; col = ileaf-1
+             row = cair_auxvar_idx-1; col = ileaf-1
 
+             if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
+                value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 #else
-             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) / &
-                  this%mesh%vol(cair_auxvar_idx)
+                value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) / &
+                     this%mesh%vol(cair_auxvar_idx)
 #endif
+             endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if
