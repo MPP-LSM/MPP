@@ -745,7 +745,7 @@ contains
        enddo
 
        if (icond > num_conditions) then
-          write(iulog,*),'Could not find the BC whose ' // &
+          write(iulog,*) 'Could not find the BC whose ' // &
                'connection set needs to be updated.'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
@@ -764,7 +764,7 @@ contains
        enddo
 
        if (icond > num_conditions) then
-          write(iulog,*),'Could not find the SS whose ' // &
+          write(iulog,*) 'Could not find the SS whose ' // &
                'connection set needs to be updated.'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif

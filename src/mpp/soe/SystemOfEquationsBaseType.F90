@@ -488,7 +488,7 @@ contains
 
           if (soe%solver%use_dynamic_linesearch .and. linesearch_iter < max_linesearch_iter) then
              ! Let's try another linesearch
-             write(iulog,*),'On proc ', soe%mpi_rank, ' time_step = ', soe%nstep, &
+             write(iulog,*) 'On proc ', soe%mpi_rank, ' time_step = ', soe%nstep, &
                   linesearch_name // ' unsuccessful. Trying another one.'
              call VecCopy(soe%solver%soln_prev, soe%solver%soln, ierr); CHKERRQ(ierr)
           else
@@ -499,7 +499,7 @@ contains
              ! SNES diverged, so let's cut the timestep and try again.
              num_time_cuts = num_time_cuts + 1
              dt_iter = 0.5d0*dt_iter
-             write(iulog,*),'On proc ', soe%mpi_rank, ' time_step = ', soe%nstep, &
+             write(iulog,*) 'On proc ', soe%mpi_rank, ' time_step = ', soe%nstep, &
                   'snes_reason = ',snes_reason,' cutting dt to ',dt_iter
           endif
 
