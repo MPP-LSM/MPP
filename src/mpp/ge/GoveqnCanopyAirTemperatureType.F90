@@ -682,9 +682,16 @@ contains
     PetscInt                             :: row, col
     PetscReal                            :: value, ga, dist, gsw, gsa, gs0
     PetscReal                            :: qsat, si, lambda
-    PetscBool                            :: found
+    PetscBool                            :: found, compute_values
+    MatType                              :: mat_type
 
-    lambda = HVAP * MM_H2O
+    call MatGetType(B, mat_type, ierr); CHKERRQ(ierr)
+    if (mat_type == MATPREALLOCATOR) then
+       compute_values = PETSC_FALSE
+    else
+       compute_values = PETSC_TRUE
+       lambda = HVAP * MM_H2O
+    endif
 
     ! For soil cell
     icell = 1
@@ -713,49 +720,55 @@ contains
              call endrun(msg=errMsg(__FILE__, __LINE__))
           end if
 
-          call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
-          qsat = qsat/this%aux_vars_in(icell)%pref
-          si   = si  /this%aux_vars_in(icell)%pref
+          if (compute_values) then
+             call SatVap(this%aux_vars_in(icell)%temperature, qsat, si)
+             qsat = qsat/this%aux_vars_in(icell)%pref
+             si   = si  /this%aux_vars_in(icell)%pref
 
-          gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-          gsa = this%aux_vars_conn_in(iconn)%ga
-          gs0 = gsw * gsa / (gsw + gsa)
+             gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
+             gsa = this%aux_vars_conn_in(iconn)%ga
+             gs0 = gsw * gsa / (gsw + gsa)
 
-          value = &
-               this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(iconn)%ga + &
-               lambda * this%aux_vars_in(icell)%soil_rhg * gs0 * si + &
-               this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz
+             value = &
+                  this%aux_vars_in(icell)%cpair *this%aux_vars_conn_in(iconn)%ga + &
+                  lambda * this%aux_vars_in(icell)%soil_rhg * gs0 * si + &
+                  this%aux_vars_in(icell)%soil_tk/this%aux_vars_in(icell)%soil_dz
+          endif
 
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           ! For soil-cell <--> air temperature
           row = icell-1; col = icell+1-1
-          value = -this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(iconn)%ga
+          if (compute_values) value = -this%aux_vars_in(icell)%cpair * this%aux_vars_conn_in(iconn)%ga
 
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
        else
+          if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-          value = this%aux_vars_in(icell)%rhomol/this%dtime * this%mesh%vol(icell)
+             value = this%aux_vars_in(icell)%rhomol/this%dtime * this%mesh%vol(icell)
 #else
-          value = this%aux_vars_in(icell)%rhomol/this%dtime
+             value = this%aux_vars_in(icell)%rhomol/this%dtime
 #endif
+          endif
 
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           do ileaf = 1, this%aux_vars_in(icell)%nleaf
              if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
 
+                if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-                value = 2.d0 * this%aux_vars_in(icell)%gbh * &
-                     this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                     this%aux_vars_in(icell)%leaf_dpai(ileaf)
+                   value = 2.d0 * this%aux_vars_in(icell)%gbh * &
+                        this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
+                        this%aux_vars_in(icell)%leaf_dpai(ileaf)
 #else
-                value = 2.d0 * this%aux_vars_in(icell)%gbh * &
-                     this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                     this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
-                     this%mesh%vol(icell)
+                   value = 2.d0 * this%aux_vars_in(icell)%gbh * &
+                        this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
+                        this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
+                        this%mesh%vol(icell)
 #endif
+                endif
 
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
              end if
@@ -778,11 +791,14 @@ contains
                cur_conn_set%conn(iconn)%GetDistDn()
 
           ga = this%aux_vars_conn_in(iconn)%ga
+          if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-          value = ga
+             value = ga
 #else
-          value = ga/dist
+             value = ga/dist
 #endif
+          endif
+
           if (.not.this%aux_vars_in(cell_id_up)%is_soil) then
              call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_dn-1, -value, ADD_VALUES, ierr); CHKERRQ(ierr)
              call MatSetValuesLocal(B, 1, cell_id_up-1, 1, cell_id_up-1,  value, ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -819,11 +835,13 @@ contains
              cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
              row = cell_id-1; col = cell_id-1;
 
+             if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-             value = this%aux_vars_conn_bc(sum_conn)%ga
+                value = this%aux_vars_conn_bc(sum_conn)%ga
 #else
-             value = this%aux_vars_conn_bc(sum_conn)%ga/dist
+                value = this%aux_vars_conn_bc(sum_conn)%ga/dist
 #endif
+             endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
