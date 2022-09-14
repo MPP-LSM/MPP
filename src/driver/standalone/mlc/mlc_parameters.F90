@@ -272,7 +272,7 @@ contains
           end if
 
           zrel = min(z_int/hc,1.d0)
-          beta_pdf = (zrel**(pbeta-1) * (1.d0 - zrel)**(qbeta-1))/exp(lgamma(pbeta) + lgamma(qbeta) - lgamma(pbeta+qbeta));
+          beta_pdf = (zrel**(pbeta-1) * (1.d0 - zrel)**(qbeta-1))/exp(log_gamma(pbeta) + log_gamma(qbeta) - log_gamma(pbeta+qbeta));
           pad = (pai / hc) * beta_pdf
 
           dpai(k) = dpai(k) + pad * dz_int
