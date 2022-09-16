@@ -1182,7 +1182,7 @@ contains
     PetscInt                  , pointer, intent(in) :: id_of_other_goveqs(:)
     PetscBool                 , pointer, optional   :: icoupling_of_other_goveqns(:)
     PetscInt                  , intent(in), optional:: region_type
-    type(connection_set_type) , pointer, optional   :: conn_set
+    class(connection_set_type) , pointer, optional   :: conn_set
     !
     ! !LOCAL VARIABLES
     class(goveqn_base_type)   , pointer             :: cur_goveq
@@ -1236,7 +1236,7 @@ contains
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
     PetscInt, optional                          :: region_type
-    type(connection_set_type),pointer, optional :: conn_set
+    class(connection_set_type),pointer, optional :: conn_set
     !
     class(goveqn_base_type),pointer             :: cur_goveq
     class(goveqn_base_type),pointer             :: other_goveq

@@ -35,7 +35,7 @@ module ConditionType
      PetscBool                 , pointer :: is_the_other_GE_coupled_via_int_auxvars(:) ! TRUE : The i-th coupling governing equation is coupled via internal auxvars
                                                                                        ! FALSE: The i-th coupling governing equation is coupled via boundary auxvars
 
-     type(connection_set_type) , pointer :: conn_set                                   ! Applicable to BC condition type
+     class(connection_set_type) , pointer :: conn_set                                   ! Applicable to BC condition type
      type(condition_type)      , pointer :: next                                       ! Pointer to next condition
 
      contains
