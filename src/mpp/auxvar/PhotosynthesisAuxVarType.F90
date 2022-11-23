@@ -204,6 +204,7 @@ module PhotosynthesisAuxType
      procedure, public :: DetermineIfSolutionIsBounded => PhotosynthesisDetermineIfSolutionIsBounded
      procedure, public :: PreSolve                     => PhotosynthesisPreSolve
      procedure, public :: PostSolve                    => PhotosynthesisPostSolve
+     procedure, public :: SetDefaultParameters         => PhotosynthesisAuxVarSetDefaultParameters
 
   end type photosynthesis_auxvar_type
 
@@ -947,6 +948,30 @@ contains
   end subroutine ComputePsi_ModifiedBonan14
 
   !------------------------------------------------------------------------
+  subroutine PhotosynthesisAuxVarSetDefaultParameters(this)
+    !
+    ! !DESCRIPTION:
+    ! Set default parameters depending on photosynthetic pathway (i.e., C3/C4)
+    ! and stomatal conductance model.
+    !
+    ! !USES:
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type) :: this
+    !
+
+    if (this%pathway_and_stomatal_params_defined  == 0) then
+       call SetPathwayParameters(this)
+       call SetStomatalConductanceParameters(this)
+       call SetPlantParameters(this)
+       this%pathway_and_stomatal_params_defined = 1
+    end if
+
+end subroutine PhotosynthesisAuxVarSetDefaultParameters
+
+
+  !------------------------------------------------------------------------
   subroutine PhotosynthesisAuxVarCompute_SemiEmpirical(this)
     !
     ! !DESCRIPTION:
@@ -969,12 +994,7 @@ contains
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
 
-    if (this%pathway_and_stomatal_params_defined  == 0) then
-       call SetPathwayParameters(this)
-       call SetStomatalConductanceParameters(this)
-       call SetPlantParameters(this)
-       this%pathway_and_stomatal_params_defined = 1
-    end if
+    call this%SetDefaultParameters()
 
     if (this%dpai > 0.d0) then
 

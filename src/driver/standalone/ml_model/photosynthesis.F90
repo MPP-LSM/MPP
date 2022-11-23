@@ -174,7 +174,30 @@ contains
                 cur_goveq%aux_vars_in(icell)%plant%leaf_lai(:)    = 4.1516127586364746d0
                 cur_goveq%aux_vars_in(icell)%plant%k_stem2leaf(:) = 4.d0
 
-               end do
+                call cur_goveq%aux_vars_in(icell)%SetDefaultParameters()
+
+                select case(gstype)
+                case (VAR_SCM_MEDLYN)
+                   cur_goveq%aux_vars_in(icell)%g0opt = 0.0001d0
+                   cur_goveq%aux_vars_in(icell)%g1opt = 4.0d0
+
+                case (VAR_SCM_BBERRY)
+                   cur_goveq%aux_vars_in(icell)%g0opt = 0.027d0
+                   cur_goveq%aux_vars_in(icell)%g1opt = 9.0d0
+
+                case (VAR_SCM_WUE)
+                   cur_goveq%aux_vars_in(icell)%iota = 820.0d0
+
+                case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
+                   cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -2.5d0
+                   cur_goveq%aux_vars_in(icell)%iota = 820.0d0
+
+                case (VAR_SCM_MANZONI11)
+                   cur_goveq%aux_vars_in(icell)%manzoni11_beta = -1.0d0
+
+                end select
+
+             end do
           end do
        end do
 
