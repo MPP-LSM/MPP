@@ -1639,6 +1639,7 @@ end subroutine PhotosynthesisAuxVarSetDefaultParameters
     PetscInt, parameter               :: idof_hyd = 2
     PetscReal                         :: res_wue_1, res_wue_2
     PetscReal                         :: res_hyd_1, res_hyd_2
+    PetscReal                         :: gs_1, gs_2
 
     select case (this%gstype)
     case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
@@ -1693,7 +1694,33 @@ end subroutine PhotosynthesisAuxVarSetDefaultParameters
           end if
 
        case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
-          ! Do nothing
+
+         if (this%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3) then
+            this%ci(idof_wue) = 0.7d0 * this%cair
+         else
+            this%ci(idof_wue) = 0.4d0 * this%cair
+         endif
+         call this%AuxVarCompute()
+         gs_1 = this%gs(1)
+         res_wue_1 = this%an(idof_wue)
+
+         res_wue_2 = -999.d0
+         gs_2 = -999.d0
+
+         if (this%an(idof_wue) < 0.d0) then
+            this%soln_is_bounded(idof_wue) = PETSC_FALSE
+         else
+            this%ci(idof_wue) = 0.99d0 * this%cair
+            call this%AuxVarCompute()
+            res_wue_2 = this%an(idof_wue)
+            gs_2 = this%gs(1)
+
+            if (this%an(idof_wue) < 0.d0) then
+               this%soln_is_bounded(idof_wue) = PETSC_FALSE
+            else
+               this%soln_is_bounded(idof_wue) = PETSC_TRUE
+            endif
+         endif
 
        case default
           write(*,*)'Unknown stomatal model'
