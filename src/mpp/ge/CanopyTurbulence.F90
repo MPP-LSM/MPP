@@ -383,8 +383,8 @@ contains
 
      ! Compute the Monin-Obukhov psi for scalar
      ! at the reference height and the canopy top
-     phic = phic_monin_obukhov(h_minus_d)
-     c1 = (1.d0 - PrSc*VKC/(2.d0 * beta * phim)) * exp(0.5d0*c2)
+     phic = phic_monin_obukhov(h_minus_d/obu)
+     c1 = (1.d0 - PrSc*VKC/(2.d0 * beta * phic)) * exp(0.5d0*c2)
 
      psi_c_zref = psic_monin_obukhov (z_minus_d / obu);
      psi_c_hc   = psic_monin_obukhov (h_minus_d / obu);
@@ -490,7 +490,6 @@ contains
 
      psihat = wZ1 * wL1 * psigrid(Z1,L1) + wZ2 * wL1 * psigrid(Z2,L1) &
           + wZ1 * wL2 * psigrid(Z1,L2) + wZ2 * wL2 * psigrid(Z2,L2)
-     !psihat = 0.d0
 
    end subroutine LookupPsihat
 
