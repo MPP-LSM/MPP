@@ -216,7 +216,7 @@ module PhotosynthesisAuxType
   PetscReal, parameter :: gs_min_wue = 0.005d0
   PetscReal, parameter :: gs_max_wue = 2.0d0
   PetscReal, parameter :: gs_delta_wue = 1.d-5
-  PetscReal, parameter :: gs_min_bonan14 = 0.002d0
+  PetscReal, parameter :: gs_min_bonan14 = 0.005d0
   PetscReal, parameter :: gs_delta_bonan14 = 0.001d0
 
 contains
@@ -455,7 +455,7 @@ contains
     this%cs      = 0.d0
 
     this%iota    = 750.d0
-    this%manzoni11_beta = -1.5d0 ! Liu et al. (2020) Nature Climate Change
+    this%manzoni11_beta = -1.5d-3 ! Liu et al. (2020) Nature Climate Change
     allocate(this%residual_wue(ndof))
     allocate(this%residual_hyd(ndof))
     allocate(this%soln_is_bounded(ndof))
@@ -1643,13 +1643,14 @@ end subroutine PhotosynthesisAuxVarSetDefaultParameters
 
     select case (this%gstype)
     case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
-       this%gs(idof_wue) = gs_min_wue
-       call this%AuxVarCompute()
-       res_wue_1 = this%residual_wue(idof_wue)
 
        this%gs(idof_wue) = gs_max_wue
        call this%AuxVarCompute()
        res_wue_2 = this%residual_wue(idof_wue)
+
+       this%gs(idof_wue) = gs_min_wue
+       call this%AuxVarCompute()
+       res_wue_1 = this%residual_wue(idof_wue)
 
        if (res_wue_1 * res_wue_2 > 0.d0) then
           this%soln_is_bounded(idof_wue) = PETSC_FALSE
@@ -1659,15 +1660,6 @@ end subroutine PhotosynthesisAuxVarSetDefaultParameters
 
     case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
     
-          ! Residual at minimum gs
-          this%gs(idof_wue) = gs_min_bonan14
-          this%gs(idof_hyd) = gs_min_bonan14
-
-          call this%AuxVarCompute()
-
-          res_wue_1 = this%residual_wue(idof_wue)
-          res_hyd_1 = this%residual_hyd(idof_hyd)
-
           ! Residual at maximum gs
           this%gs(idof_wue) = gs_max_wue
           this%gs(idof_hyd) = gs_max_wue
@@ -1676,6 +1668,15 @@ end subroutine PhotosynthesisAuxVarSetDefaultParameters
 
           res_wue_2 = this%residual_wue(idof_wue)
           res_hyd_2 = this%residual_hyd(idof_hyd)
+
+          ! Residual at minimum gs
+          this%gs(idof_wue) = gs_min_bonan14
+          this%gs(idof_hyd) = gs_min_bonan14
+
+          call this%AuxVarCompute()
+
+          res_wue_1 = this%residual_wue(idof_wue)
+          res_hyd_1 = this%residual_hyd(idof_hyd)
 
           if ( min(res_wue_1,res_hyd_1) * min(res_wue_2,res_hyd_2) < 0.d0) then
              if ( res_wue_1 * res_wue_2 < 0.d0) then
