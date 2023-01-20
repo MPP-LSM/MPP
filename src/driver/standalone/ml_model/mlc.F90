@@ -1041,7 +1041,7 @@ contains
     end select
 
     call VecCreate(PETSC_COMM_SELF, checkpoint_vec, ierr); CHKERRA(ierr)
-    call VecSetSizes(checkpoint_vec, 93*5, PETSC_DECIDE, ierr); CHKERRA(ierr)
+    call VecSetSizes(checkpoint_vec, (nz_cair + 1)*5, PETSC_DECIDE, ierr); CHKERRA(ierr)
     call VecSetFromOptions(checkpoint_vec, ierr); CHKERRA(ierr)
 
     call VecGetArrayF90(checkpoint_vec, c_p, ierr)
