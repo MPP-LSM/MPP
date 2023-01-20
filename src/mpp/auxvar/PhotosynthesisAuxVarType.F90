@@ -1744,6 +1744,7 @@ end subroutine PhotosynthesisAuxVarSetDefaultParameters
     PetscReal                         :: etflx, esat, desat
     PetscInt, parameter               :: ileaf = 1
 
+    call ComputeSoilResistance(this)
     call SatVap (this%tleaf_prev, esat, desat)
 
     etflx = (esat + desat * (this%tleaf - this%tleaf_prev) - this%eair)/this%pref * this%gleaf_w_soln * this%fdry

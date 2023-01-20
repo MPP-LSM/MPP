@@ -72,7 +72,7 @@ contains
   !------------------------------------------------------------------------
   subroutine read_command_options()
     !
-    use ml_model_global_vars      , only : ncair, ntree, output_data, bc_file, ic_file, use_ic
+    use ml_model_global_vars      , only : ncair, ntree, output_data, bc_file, mlc_ic_file, psy_ic_file, use_ic
     use ml_model_global_vars      , only : checkpoint_data, beg_step, end_step, nsubstep, gstype
     use MultiPhysicsProbConstants , only : VAR_SCM_MEDLYN
     use MultiPhysicsProbConstants , only : VAR_SCM_BBERRY
@@ -87,6 +87,10 @@ contains
     character(len=256) :: stomatal_conductance_model
     PetscBool          :: flg
     PetscErrorCode     :: ierr
+    PetscBool          :: mlc_ic_file_specified, psy_ic_file_specified
+
+    mlc_ic_file_specified = PETSC_FALSE
+    psy_ic_file_specified = PETSC_FALSE
 
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ncair',ncair,flg,ierr)
     call PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ntree',ntree,flg,ierr)
@@ -96,10 +100,29 @@ contains
 
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-output_data',output_data,flg,ierr)
     call PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-checkpoint_data',checkpoint_data,flg,ierr)
-    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-ic_file',ic_file,flg,ierr)
-    if (flg) use_ic = PETSC_TRUE
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-mlc_ic_file',mlc_ic_file,flg,ierr)
+    if (flg) mlc_ic_file_specified = PETSC_TRUE
 
-    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-photosynthesis_ic_file',psy_ic_file,flg,ierr)
+    if (flg) psy_ic_file_specified = PETSC_TRUE
+
+    if (mlc_ic_file_specified .and. (.not. psy_ic_file_specified)) then
+       write(*,*)'ERROR: IC file was specified for the MLC model, but not for the Photosynthesis model.'
+       write(*,*)'       Need to specify IC for both models'
+       call exit(-1)
+    endif
+
+    if ((.not. mlc_ic_file_specified) .and. psy_ic_file_specified) then
+      write(*,*)'ERROR: IC file was specified for the Photosynthesis model, but not for the MLC model.'
+      write(*,*)'       Need to specify IC for both models'
+      call exit(-1)
+   endif
+
+   if (mlc_ic_file_specified .and. psy_ic_file_specified) then
+      use_ic = PETSC_TRUE
+   endif
+
+      call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
     if (.not.flg) then
        write(*,*)'ERROR: Need to specify the boundary condition file via -bc_file <filename>'
        call exit(-1)
@@ -210,7 +233,8 @@ contains
   subroutine initialize_from_checkpoint()
     !
     use mlc                       , only : mlc_initialize_from_checkpoint
-    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair, ic_file
+    use photosynthesis            , only : photosynthesis_initialize_from_checkpoint
+    use ml_model_global_vars      , only : nbot, ntop, ncair, ntree, nz_cair, mlc_ic_file, psy_ic_file
     use ml_model_global_vars      , only : bnd_cond, int_cond
     use ml_model_utils            , only : get_value_from_condition
     use ml_model_utils            , only : set_value_in_condition
@@ -227,7 +251,7 @@ contains
     PetscReal, pointer :: ic_p(:)
 
     ! Load boundary condition data
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, ic_file, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, mlc_ic_file, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
     call VecCreate(PETSC_COMM_WORLD, ic_data, ierr);CHKERRQ(ierr)
     call VecLoad(ic_data, viewer, ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
@@ -258,8 +282,10 @@ contains
     end do
 
     call VecRestoreArrayF90(ic_data, ic_p, ierr); CHKERRA(ierr)
+    call VecDestroy(ic_data, ierr); CHKERRA(ierr)
 
     call mlc_initialize_from_checkpoint(mlc_mpp)
+    call photosynthesis_initialize_from_checkpoint(psy_mpp, psy_ic_file)
 
   end subroutine initialize_from_checkpoint
 
@@ -276,7 +302,7 @@ contains
     use swv                          , only : solve_swv
     use lwv                          , only : solve_lwv
     use lbl                          , only : solve_lbl
-    use photosynthesis               , only : solve_photosynthesis
+    use photosynthesis               , only : solve_photosynthesis, checkpoint_photosynthesis
     use mlc                          , only : solve_mlc, checkpoint_mlc
     use ml_model_global_vars         , only : dsai, dlai, dpai, fssh, cumpai, sumpai, leaf_td, ncair, ntree, nz_cair, nbot, ntop
     use ml_model_global_vars         , only : nz_cair, ntree, output_data, bc_file, checkpoint_data, use_ic
@@ -300,6 +326,7 @@ contains
     PetscLogEvent :: event_phy
     PetscLogEvent :: event_mlc
     PetscClassId  :: classid
+    PetscBool     :: is_first_substep
 
     classid = 0
     call PetscLogEventRegister('SWV', classid, event_swv, ierr)
@@ -334,7 +361,7 @@ contains
 
     dt = 3600.d0/nsubstep
     istep = beg_step
-    call read_boundary_conditions(istep, bc_data)
+    call read_boundary_conditions(1, bc_data)
 
     if (.not.use_ic) then
        call set_initial_conditions()
@@ -343,7 +370,7 @@ contains
     end if
 
     do istep = beg_step, end_step
-       call read_boundary_conditions(istep, bc_data)
+       call read_boundary_conditions(1, bc_data)
        write(*,*)'%istep: ',istep
 
        write(*,*)'%  Solving shortwave radiation'
@@ -368,7 +395,12 @@ contains
 
           write(*,*)'%    Solving photosynthesis'
           call PetscLogEventBegin(event_phy, ierr)
-          call solve_photosynthesis(psy_mpp, istep, isubstep, dt)
+          if (istep == beg_step .and. isubstep == 1) then
+            is_first_substep = PETSC_TRUE
+          else
+            is_first_substep = PETSC_FALSE
+          endif
+          call solve_photosynthesis(psy_mpp, istep, isubstep, is_first_substep, dt)
           call PetscLogEventEnd(event_phy, ierr)
 
           write(*,*)'%    Solving MLC'
@@ -380,6 +412,7 @@ contains
 
        if (checkpoint_data) then
           call checkpoint_mlc(mlc_mpp, istep, isubstep-1)
+          call checkpoint_photosynthesis(psy_mpp, istep, isubstep-1)
        end if
     end do
 
