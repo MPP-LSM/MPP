@@ -688,6 +688,7 @@ contains
     call MatGetType(B, mat_type, ierr); CHKERRQ(ierr)
     if (mat_type == MATPREALLOCATOR) then
        compute_values = PETSC_FALSE
+       value = 0.d0
     else
        compute_values = PETSC_TRUE
        lambda = HVAP * MM_H2O
@@ -890,6 +891,7 @@ contains
     call MatGetType(B, mat_type, ierr); CHKERRQ(ierr)
     if (mat_type == MATPREALLOCATOR) then
        compute_values = PETSC_FALSE
+       value = 0.d0
     else
        compute_values = PETSC_TRUE
        lambda = HVAP * MM_H2O
