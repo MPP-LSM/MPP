@@ -213,9 +213,6 @@ contains
     allocate (dms(nDM))
     call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
 
-    ! Initialize the matrix
-    call MatZeroEntries(B, ierr); CHKERRQ(ierr)
-
     ! Get submatrices
     allocate(is(nDM))
     allocate(B_submats(nDM,nDM))
