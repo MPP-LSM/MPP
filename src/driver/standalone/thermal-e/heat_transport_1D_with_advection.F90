@@ -72,9 +72,9 @@ program heat_transport_1D_with_advection
         string = 'initial_soln_' // trim(output_suffix) // '.bin'
      endif
 
-     call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-     call VecView(thermal_enthalpy_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
-     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+     call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRA(ierr)
+     call VecView(thermal_enthalpy_mpp%soe%solver%soln,viewer,ierr);CHKERRA(ierr)
+     call PetscViewerDestroy(viewer,ierr);CHKERRA(ierr)
   endif
 
   do istep = 1, nstep
@@ -83,7 +83,7 @@ program heat_transport_1D_with_advection
 
      ! Run the model
      call thermal_enthalpy_mpp%soe%StepDT(dtime, istep, &
-          converged, converged_reason, ierr); CHKERRQ(ierr)
+          converged, converged_reason, ierr); CHKERRA(ierr)
   enddo
 
   if (save_final_soln) then
@@ -92,9 +92,9 @@ program heat_transport_1D_with_advection
      else
         string = 'final_soln_' // trim(output_suffix) // '.bin'
      endif
-     call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRQ(ierr)
-     call VecView(thermal_enthalpy_mpp%soe%solver%soln,viewer,ierr);CHKERRQ(ierr)
-     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+     call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(string),FILE_MODE_WRITE,viewer,ierr);CHKERRA(ierr)
+     call VecView(thermal_enthalpy_mpp%soe%solver%soln,viewer,ierr);CHKERRA(ierr)
+     call PetscViewerDestroy(viewer,ierr);CHKERRA(ierr)
   endif
 
 end program heat_transport_1D_with_advection

@@ -166,6 +166,15 @@ enable_testing()
 
 # Source code itself.
 include_directories("${PROJECT_SOURCE_DIR}")
+
+# RTM: I had to add these to build on OLCF Crusher; not sure why these are needed there but on some other machines
+include_directories("${PROJECT_BINARY_DIR}/src/mpp")
+include_directories("${PROJECT_BINARY_DIR}/src/mpp/auxvar")
+include_directories("${PROJECT_BINARY_DIR}/src/mpp/dtypes")
+include_directories("${PROJECT_BINARY_DIR}/src/mpp/ge")
+include_directories("${PROJECT_BINARY_DIR}/src/mpp/mpp")
+include_directories("${PROJECT_BINARY_DIR}/src/mpp/soe")
+include_directories("${PROJECT_BINARY_DIR}/src/mpp/util")
 add_subdirectory(src)
 
 add_test(

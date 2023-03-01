@@ -667,7 +667,7 @@ contains
     ! !ARGUMENTS
     type(mesh_type)                   :: mesh
     PetscInt                          :: region_itype
-    type(connection_set_type),pointer :: conn_set
+    class(connection_set_type),pointer :: conn_set
     PetscInt, intent(out)             :: ncells_local
     PetscInt,optional                 :: soil_top_cell_offset
     PetscBool, optional               :: use_clm_dist_to_interface

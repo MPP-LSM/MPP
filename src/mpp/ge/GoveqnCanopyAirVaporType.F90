@@ -938,10 +938,23 @@ contains
     PetscReal                            :: value, ga, dist, gsw, gsa, gs0_value
     PetscReal                            :: qsat, dqsat, esat, desat, gleaf, gleaf_et
     PetscReal                            :: beta0_value, lambda
+    PetscBool                            :: compute_values
+    MatType                              :: mat_type
 
     lambda = HVAP * MM_H2O
 
     cur_conn_set => this%mesh%intrn_conn_set_list%first
+
+    call MatGetType(B, mat_type, ierr); CHKERRQ(ierr)
+    if (mat_type == MATPREALLOCATOR) then
+       compute_values = PETSC_FALSE
+       value = 0.d0
+    else
+       compute_values = PETSC_TRUE
+    endif
+
+    ! For soil cell
+    icell = 1
 
     ! For interior and top cell
     do icell = 1, this%mesh%ncells_local
@@ -980,35 +993,40 @@ contains
 
        else
 
+          if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-          value = this%aux_vars_in(icell)%rhomol/this%dtime*this%mesh%vol(icell)
+             value = this%aux_vars_in(icell)%rhomol/this%dtime*this%mesh%vol(icell)
 #else
-          value = this%aux_vars_in(icell)%rhomol/this%dtime
+             value = this%aux_vars_in(icell)%rhomol/this%dtime
 #endif
+          endif
+
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           do ileaf = 1, this%aux_vars_in(icell)%num_leaves
              if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
 
-                call SatVap(this%aux_vars_in(icell)%leaf_temperature(ileaf), esat, desat)
-                qsat = esat/this%aux_vars_in(icell)%pref
-                dqsat= desat/this%aux_vars_in(icell)%pref
+                if (compute_values) then
+                   call SatVap(this%aux_vars_in(icell)%leaf_temperature(ileaf), esat, desat)
+                   qsat = esat/this%aux_vars_in(icell)%pref
+                   dqsat= desat/this%aux_vars_in(icell)%pref
 
-                gleaf = &
-                     this%aux_vars_in(icell)%leaf_gs(ileaf) * this%aux_vars_in(icell)%gbv(ileaf)/ &
-                     (this%aux_vars_in(icell)%leaf_gs(ileaf) + this%aux_vars_in(icell)%gbv(ileaf))
+                   gleaf = &
+                        this%aux_vars_in(icell)%leaf_gs(ileaf) * this%aux_vars_in(icell)%gbv(ileaf)/ &
+                        (this%aux_vars_in(icell)%leaf_gs(ileaf) + this%aux_vars_in(icell)%gbv(ileaf))
 
-                gleaf_et = &
-                     gleaf                              * this%aux_vars_in(icell)%leaf_fdry(ileaf) + &
-                     this%aux_vars_in(icell)%gbv(ileaf) * this%aux_vars_in(icell)%leaf_fwet(ileaf)
+                   gleaf_et = &
+                        gleaf                              * this%aux_vars_in(icell)%leaf_fdry(ileaf) + &
+                        this%aux_vars_in(icell)%gbv(ileaf) * this%aux_vars_in(icell)%leaf_fwet(ileaf)
 
-                gleaf_et = gleaf_et * this%aux_vars_in(icell)%leaf_fssh(ileaf) * this%aux_vars_in(icell)%leaf_dpai(ileaf)
+                   gleaf_et = gleaf_et * this%aux_vars_in(icell)%leaf_fssh(ileaf) * this%aux_vars_in(icell)%leaf_dpai(ileaf)
 
 #ifdef USE_BONAN_FORMULATION
-                value = gleaf_et
+                   value = gleaf_et
 #else
-                value = gleaf_et * dqsat /this%mesh%vol(icell)
+                   value = gleaf_et * dqsat /this%mesh%vol(icell)
 #endif
+                endif
 
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
              end if
@@ -1039,20 +1057,24 @@ contains
                 cell_id = cell_id_dn
              end if
 
-             gs0_value = gs0(this, cell_id, iconn)
+             if (compute_values) then
+                gs0_value = gs0(this, cell_id, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-             value = gs0_value
+                value = gs0_value
 #else
-             value = gs0_value/dist
+                value = gs0_value/dist
 #endif
+             endif
           else
-             ga = this%aux_vars_conn_in(iconn)%ga
+             if (compute_values) then
+                ga = this%aux_vars_conn_in(iconn)%ga
 #ifdef USE_BONAN_FORMULATION
-             value = ga
+                value = ga
 #else
-             value = ga/dist
+                value = ga/dist
 #endif
+             endif
           end if
 
           if (.not.this%aux_vars_in(cell_id_up)%is_soil) then
@@ -1101,11 +1123,13 @@ contains
              cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
              row = cell_id-1; col = cell_id-1;
 
+             if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-             value = this%aux_vars_conn_bc(sum_conn)%ga
+                value = this%aux_vars_conn_bc(sum_conn)%ga
 #else
-             value = this%aux_vars_conn_bc(sum_conn)%ga/dist
+                value = this%aux_vars_conn_bc(sum_conn)%ga/dist
 #endif
+             endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
@@ -1154,6 +1178,8 @@ contains
     PetscInt                      :: icell, ileaf, row, col, cair_auxvar_idx, leaf_idx, geq_leaf_temp_rank, iconn
     PetscReal                     :: value, qsat, dqsat, esat, desat, gs0, gsa, gsw, alpha0_value
     PetscReal                     :: gleaf, gleaf_et
+    PetscBool :: compute_values
+    MatType   :: mat_type
 
     select case (itype_of_other_goveq)
        case (GE_CANOPY_AIR_TEMP)
@@ -1167,24 +1193,27 @@ contains
                 value = 0.d0
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-                ! The specific humidity (or partial pressure of water vapor) at ground
-                ! contributes to the canopy air cell above the ground
-                call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
-                qsat = esat/this%aux_vars_in(icell)%pref
-                dqsat= desat/this%aux_vars_in(icell)%pref
+                if (compute_values) then
+                   ! The specific humidity (or partial pressure of water vapor) at ground
+                   ! contributes to the canopy air cell above the ground
+                   call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+                   qsat = esat/this%aux_vars_in(icell)%pref
+                   dqsat= desat/this%aux_vars_in(icell)%pref
 
-                iconn = SoilAirIConn(this, icell)
-                gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
-                gsa = this%aux_vars_conn_in(iconn)%ga
-                gs0 = gsw * gsa / (gsw + gsa)
+                   iconn = SoilAirIConn(this, icell)
+                   gsw = 1.d0 / this%aux_vars_in(icell)%soil_resis * this%aux_vars_in(icell)%rhomol
+                   gsa = this%aux_vars_conn_in(iconn)%ga
+                   gs0 = gsw * gsa / (gsw + gsa)
 
-                alpha0_value = alpha0(this, icell, iconn)
+                   alpha0_value = alpha0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-                value = - this%aux_vars_in(icell)%soil_rhg * dqsat * gs0 * alpha0_value
+                   value = - this%aux_vars_in(icell)%soil_rhg * dqsat * gs0 * alpha0_value
 #else
-                value = - this%aux_vars_in(icell)%soil_rhg * dqsat * gs0 * alpha0_value / this%mesh%vol(icell+1)
+                   value = - this%aux_vars_in(icell)%soil_rhg * dqsat * gs0 * alpha0_value / this%mesh%vol(icell+1)
 #endif
+                endif
+
                 row = icell; col = icell;
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
              end if
@@ -1200,25 +1229,28 @@ contains
              if (this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) > 0.d0) then
                 row = cair_auxvar_idx-1; col = ileaf-1
 
-                call SatVap(this%aux_vars_in(cair_auxvar_idx)%leaf_temperature(leaf_idx), esat, desat)
-                qsat  = qsat /this%aux_vars_in(cair_auxvar_idx)%pref
-                dqsat = desat/this%aux_vars_in(cair_auxvar_idx)%pref
+                if (compute_values) then
 
-                gleaf = &
-                     this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank)/ &
-                     (this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) + this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank))
+                   call SatVap(this%aux_vars_in(cair_auxvar_idx)%leaf_temperature(leaf_idx), esat, desat)
+                   qsat  = qsat /this%aux_vars_in(cair_auxvar_idx)%pref
+                   dqsat = desat/this%aux_vars_in(cair_auxvar_idx)%pref
 
-                gleaf_et = &
-                     gleaf                       * this%aux_vars_in(cair_auxvar_idx)%leaf_fdry(leaf_idx) + &
-                     this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank) * this%aux_vars_in(cair_auxvar_idx)%leaf_fwet(leaf_idx)
+                   gleaf = &
+                        this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank)/ &
+                        (this%aux_vars_in(cair_auxvar_idx)%leaf_gs(leaf_idx) + this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank))
 
-                gleaf_et = gleaf_et * this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
+                   gleaf_et = &
+                        gleaf                       * this%aux_vars_in(cair_auxvar_idx)%leaf_fdry(leaf_idx) + &
+                        this%aux_vars_in(cair_auxvar_idx)%gbv(geq_leaf_temp_rank) * this%aux_vars_in(cair_auxvar_idx)%leaf_fwet(leaf_idx)
+
+                   gleaf_et = gleaf_et * this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 
 #ifdef USE_BONAN_FORMULATION
-                value = -dqsat * gleaf_et
+                   value = -dqsat * gleaf_et
 #else
-                value = -dqsat * gleaf_et/this%mesh%vol(cair_auxvar_idx)
+                   value = -dqsat * gleaf_et/this%mesh%vol(cair_auxvar_idx)
 #endif
+                endif
 
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
              end if

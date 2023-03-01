@@ -882,6 +882,16 @@ contains
     PetscInt                             :: row, col
     PetscReal                            :: value, ga, dist
     PetscReal                            :: alpha0_value
+    PetscBool                            :: compute_values
+    MatType                              :: mat_type
+
+    call MatGetType(B, mat_type, ierr); CHKERRQ(ierr)
+    if (mat_type == MATPREALLOCATOR) then
+       compute_values = PETSC_FALSE
+       value = 0.d0
+    else
+       compute_values = PETSC_TRUE
+    endif
 
     ! For soil cell
     icell = 1
@@ -895,50 +905,55 @@ contains
 
        if (this%aux_vars_in(icell)%is_soil) then
 
-          ! Get soil-air connection id
-          iconn = SoilAirIConn(this, icell)
-
           ! The ground temperature
           value = 1.d0
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
-          value = -alpha0(this, icell, iconn)
+          if (compute_values) value = -alpha0(this, icell, iconn)
           row = icell-1; col = icell
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           ! The ground temperature contributes to the canopy air space layer above the ground
           row = icell; col = icell
-          alpha0_value = alpha0(this, icell, iconn)
+          if (compute_values) then
+             alpha0_value = alpha0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-          value = -alpha0_value * this%aux_vars_conn_in(iconn)%ga
+             value = -alpha0_value * this%aux_vars_conn_in(iconn)%ga
 #else
-          value = -alpha0_value * this%aux_vars_conn_in(iconn)%ga / this%mesh%vol(icell+1)
+             value = -alpha0_value * this%aux_vars_conn_in(iconn)%ga / this%mesh%vol(icell+1)
 #endif
+          end if
+
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
        else
+          if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-          value = this%aux_vars_in(icell)%rhomol/this%dtime * this%mesh%vol(icell)
+             value = this%aux_vars_in(icell)%rhomol/this%dtime * this%mesh%vol(icell)
 #else
-          value = this%aux_vars_in(icell)%rhomol/this%dtime
+             value = this%aux_vars_in(icell)%rhomol/this%dtime
 #endif
+          endif
 
           call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
           do ileaf = 1, this%aux_vars_in(icell)%num_leaves
              if (this%aux_vars_in(icell)%leaf_dpai(ileaf) > 0.d0) then
 
+                if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-                value = 2.d0 * this%aux_vars_in(icell)%gbh(ileaf) * &
-                     this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                     this%aux_vars_in(icell)%leaf_dpai(ileaf)
+                   value = 2.d0 * this%aux_vars_in(icell)%gbh(ileaf) * &
+                        this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
+                        this%aux_vars_in(icell)%leaf_dpai(ileaf)
 #else
-                value = 2.d0 * this%aux_vars_in(icell)%gbh(ileaf) * &
-                     this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
-                     this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
-                     this%mesh%vol(icell)
+                   value = 2.d0 * this%aux_vars_in(icell)%gbh(ileaf) * &
+                        this%aux_vars_in(icell)%leaf_fssh(ileaf) * &
+                        this%aux_vars_in(icell)%leaf_dpai(ileaf) / &
+                        this%mesh%vol(icell)
 #endif
+                end if
+
                 call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
              end if
           end do
@@ -960,11 +975,14 @@ contains
                cur_conn_set%conn(iconn)%GetDistDn()
 
           ga = this%aux_vars_conn_in(iconn)%ga
+          if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-          value = ga
+             value = ga
 #else
-          value = ga/dist
+             value = ga/dist
 #endif
+          endif
+
           if (.not.this%aux_vars_in(cell_id_up)%is_soil) then
 
              ! Skip if cell_id_up = Canopy-air and cell_id_dn = soil
@@ -1011,11 +1029,13 @@ contains
              cell_id  = cur_conn_set%conn(iconn)%GetIDDn()
              row = cell_id-1; col = cell_id-1;
 
+             if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-             value = this%aux_vars_conn_bc(sum_conn)%ga
+                value = this%aux_vars_conn_bc(sum_conn)%ga
 #else
-             value = this%aux_vars_conn_bc(sum_conn)%ga/dist
+                value = this%aux_vars_conn_bc(sum_conn)%ga/dist
 #endif
+             endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
@@ -1059,6 +1079,16 @@ contains
     PetscInt                               :: icell, ileaf, row, col, iconn, geq_leaf_temp_rank, cair_auxvar_idx, leaf_idx
     PetscReal                              :: value, gleaf, gleaf_et
     PetscReal                              :: beta0_value
+    PetscBool                              :: compute_values
+    MatType                                :: mat_type
+
+    call MatGetType(B, mat_type, ierr); CHKERRQ(ierr)
+    if (mat_type == MATPREALLOCATOR) then
+       compute_values = PETSC_FALSE
+       value = 0.d0
+    else
+       compute_values = PETSC_TRUE
+    endif
 
     cur_conn_set => this%mesh%intrn_conn_set_list%first
 
@@ -1071,20 +1101,24 @@ contains
              ! Get soil-air connection id
              iconn = SoilAirIConn(this, icell)
 
+
              ! The ground temperature
-             value = -beta0(this, icell, iconn)
+             if (compute_values) value = -beta0(this, icell, iconn)
              row = icell-1; col = icell
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
 
              ! The ground temperature contributes to the canopy air space layer above the ground
-             beta0_value = beta0(this, icell, iconn)
+             if (compute_values) then
+                beta0_value = beta0(this, icell, iconn)
 
 #ifdef USE_BONAN_FORMULATION
-             value = -beta0_value * this%aux_vars_conn_in(iconn)%ga
+                value = -beta0_value * this%aux_vars_conn_in(iconn)%ga
 #else
-             value = -beta0_value * this%aux_vars_conn_in(iconn)%ga/this%mesh%vol(icell+1)
+                value = -beta0_value * this%aux_vars_conn_in(iconn)%ga/this%mesh%vol(icell+1)
 #endif
+             end if
              row = icell ; col = icell
+
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           endif
        enddo
@@ -1098,18 +1132,21 @@ contains
 
           if (this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) > 0.d0) then
 
-          row = cair_auxvar_idx-1; col = ileaf-1
+             row = cair_auxvar_idx-1; col = ileaf-1
 
+             if (compute_values) then
 #ifdef USE_BONAN_FORMULATION
-             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh(geq_leaf_temp_rank) * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
+
+                value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh(geq_leaf_temp_rank) * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx)
 #else
-             value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh(geq_leaf_temp_rank) * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
-                  this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) / &
-                  this%mesh%vol(cair_auxvar_idx)
+                value = -2.d0 * this%aux_vars_in(cair_auxvar_idx)%gbh(geq_leaf_temp_rank) * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_fssh(leaf_idx) * &
+                     this%aux_vars_in(cair_auxvar_idx)%leaf_dpai(leaf_idx) / &
+                     this%mesh%vol(cair_auxvar_idx)
 #endif
+             endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if

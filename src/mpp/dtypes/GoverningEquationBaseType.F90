@@ -576,7 +576,7 @@ contains
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
     PetscInt, optional                          :: region_type
-    type(connection_set_type),pointer, optional :: conn_set
+    class(connection_set_type),pointer, optional :: conn_set
     !
     type(condition_type), pointer :: cond
 
@@ -634,7 +634,7 @@ contains
     PetscInt                  , intent(in), pointer              :: itype_of_other_goveqs(:)
     PetscBool                 , intent(in), pointer, optional    :: icoupling_of_other_goveqns(:)
     PetscInt                  , intent(in), optional             :: region_type
-    type(connection_set_type) , intent(inout), pointer, optional :: conn_set
+    class(connection_set_type) , intent(inout), pointer, optional :: conn_set
     !
     type(condition_type)      , pointer                          :: cond
 
@@ -685,7 +685,7 @@ contains
     character(len =*)                           :: unit
     PetscInt                                    :: cond_type
     PetscInt, optional                          :: region_type
-    type(connection_set_type),pointer, optional :: conn_set
+    class(connection_set_type),pointer, optional :: conn_set
 
     cond%name         = trim(name)
     cond%units        = trim(unit)
@@ -765,7 +765,7 @@ contains
        enddo
 
        if (icond > num_conditions) then
-          write(iulog,*),'Could not find the BC whose ' // &
+          write(iulog,*) 'Could not find the BC whose ' // &
                'connection set needs to be updated.'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif
@@ -784,7 +784,7 @@ contains
        enddo
 
        if (icond > num_conditions) then
-          write(iulog,*),'Could not find the SS whose ' // &
+          write(iulog,*) 'Could not find the SS whose ' // &
                'connection set needs to be updated.'
           call endrun(msg=errMsg(__FILE__, __LINE__))
        endif

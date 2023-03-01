@@ -462,6 +462,8 @@ contains
     PetscInt                             :: row, col
     PetscReal                            :: value, ga, dist
     PetscReal                            :: qsat, dqsat, esat, desat, gleaf, gleaf_et, lambda
+    PetscBool                            :: compute_values
+    MatType                              :: mat_type
     class(connection_set_type) , pointer :: cur_conn_set
     type(condition_type)       , pointer :: cur_cond
 
@@ -469,25 +471,27 @@ contains
     ! For interior and top cell
     do icell = 1, this%mesh%ncells_local
        row = icell-1; col = icell-1
-       if (this%aux_vars_in(icell)%dpai > 0.d0) then
+       if (compute_values) then
+          if (this%aux_vars_in(icell)%dpai > 0.d0) then
 
-          call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
-          qsat  = esat /this%aux_vars_in(icell)%pref
-          dqsat = desat/this%aux_vars_in(icell)%pref
+             call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+             qsat  = esat /this%aux_vars_in(icell)%pref
+             dqsat = desat/this%aux_vars_in(icell)%pref
 
-          gleaf = &
-               this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
-               (this%aux_vars_in(icell)%gs + this%aux_vars_in(icell)%gbv )
+             gleaf = &
+                  this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
+                  (this%aux_vars_in(icell)%gs + this%aux_vars_in(icell)%gbv )
 
-          gleaf_et = &
-               gleaf                       * this%aux_vars_in(icell)%fdry + &
-               this%aux_vars_in(icell)%gbv * this%aux_vars_in(icell)%fwet
+             gleaf_et = &
+                  gleaf                       * this%aux_vars_in(icell)%fdry + &
+                  this%aux_vars_in(icell)%gbv * this%aux_vars_in(icell)%fwet
 
-          value = this%aux_vars_in(icell)%cp/this%dtime + &
-               2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh + &
-               lambda * dqsat * gleaf_et
-       else
-          value = 1.d0
+             value = this%aux_vars_in(icell)%cp/this%dtime + &
+                  2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh + &
+                  lambda * dqsat * gleaf_et
+          else
+             value = 1.d0
+          end if
        end if
 
        call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
@@ -526,6 +530,8 @@ contains
     ! !LOCAL VARIABLES
     PetscInt :: icell, ileaf, row, col
     PetscReal :: value, gleaf, gleaf_et, qsat, dqsat, esat, desat, lambda
+    PetscBool :: compute_values
+    MatType   :: mat_type
 
     lambda = HVAP * MM_H2O
     select case (itype_of_other_goveq)
@@ -535,7 +541,7 @@ contains
           row = icell-1; col = icell-1
           col = this%Leaf2CAir(icell) - 1
           if (this%aux_vars_in(icell)%dpai > 0.d0) then
-             value = -2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh
+             if (compute_values) value = -2.d0 * this%aux_vars_in(icell)%cpair * this%aux_vars_in(icell)%gbh
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if
        end do
@@ -545,19 +551,22 @@ contains
           row = icell-1; col = icell-1
           col = this%Leaf2CAir(icell) - 1
           if (this%aux_vars_in(icell)%dpai > 0.d0) then
-             call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
-             qsat  = esat /this%aux_vars_in(icell)%pref
-             dqsat = desat/this%aux_vars_in(icell)%pref
+             if (compute_values) then
 
-             gleaf = &
-                  this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
-                  (this%aux_vars_in(icell)%gs + this%aux_vars_in(icell)%gbv )
+                call SatVap(this%aux_vars_in(icell)%temperature, esat, desat)
+                qsat  = esat /this%aux_vars_in(icell)%pref
+                dqsat = desat/this%aux_vars_in(icell)%pref
 
-             gleaf_et = &
-                  gleaf                       * this%aux_vars_in(icell)%fdry + &
-                  this%aux_vars_in(icell)%gbv * this%aux_vars_in(icell)%fwet
+                gleaf = &
+                     this%aux_vars_in(icell)%gs * this%aux_vars_in(icell)%gbv / &
+                     (this%aux_vars_in(icell)%gs + this%aux_vars_in(icell)%gbv )
 
-             value = -lambda * gleaf_et
+                gleaf_et = &
+                     gleaf                       * this%aux_vars_in(icell)%fdry + &
+                     this%aux_vars_in(icell)%gbv * this%aux_vars_in(icell)%fwet
+
+                value = -lambda * gleaf_et
+             endif
 
              call MatSetValuesLocal(B, 1, row, 1, col, value, ADD_VALUES, ierr); CHKERRQ(ierr)
           end if

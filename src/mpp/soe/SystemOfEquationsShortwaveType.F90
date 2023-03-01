@@ -197,7 +197,7 @@ contains
     call DMCompositeGetEntriesArray(this%solver%dm, dms, ierr); CHKERRQ(ierr)
 
     ! Initialize the matrix
-    call MatZeroEntries(B, ierr); CHKERRQ(ierr)
+    !call MatZeroEntries(B, ierr); CHKERRQ(ierr)
 
     ! Get submatrices
     allocate(is(nDM))
