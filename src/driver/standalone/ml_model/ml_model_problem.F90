@@ -113,16 +113,16 @@ contains
     endif
 
     if ((.not. mlc_ic_file_specified) .and. psy_ic_file_specified) then
-      write(*,*)'ERROR: IC file was specified for the Photosynthesis model, but not for the MLC model.'
-      write(*,*)'       Need to specify IC for both models'
-      call exit(-1)
-   endif
+       write(*,*)'ERROR: IC file was specified for the Photosynthesis model, but not for the MLC model.'
+       write(*,*)'       Need to specify IC for both models'
+       call exit(-1)
+    endif
 
-   if (mlc_ic_file_specified .and. psy_ic_file_specified) then
-      use_ic = PETSC_TRUE
-   endif
+    if (mlc_ic_file_specified .and. psy_ic_file_specified) then
+       use_ic = PETSC_TRUE
+    endif
 
-      call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
+    call PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-bc_file',bc_file,flg,ierr)
     if (.not.flg) then
        write(*,*)'ERROR: Need to specify the boundary condition file via -bc_file <filename>'
        call exit(-1)
