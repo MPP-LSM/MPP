@@ -808,10 +808,10 @@ contains
 
        plant => this%plant
        if (this%gstype == VAR_SCM_BONAN14) then
-          call ComputeChangeInPsi(plant, etflx)
+          !call ComputeChangeInPsi(plant, etflx)
           this%residual_hyd(idof_hyd) =  plant%leaf_psi(ileaf) + plant%dpsi_leaf(ileaf) - plant%leaf_minlwp(ileaf)
        else
-          call ComputePsi_ModifiedBonan14(plant, etflx, psi_new)
+          !call ComputePsi_ModifiedBonan14(plant, etflx, psi_new)
           plant%dpsi_leaf(ileaf) = psi_new - plant%leaf_psi(ileaf)
           this%residual_hyd(idof_hyd) = psi_new - plant%leaf_minlwp(ileaf)
           !this%residual_hyd(idof_hyd) = 0.d0
@@ -837,7 +837,7 @@ contains
 
        call ComputeSoilResistance(this)
 
-       call ComputeCriticalFlow(plant, etflx_c)
+       !call ComputeCriticalFlow(plant, etflx_c)
 
        cost_low  = an_low *etflx_low /etflx_c
        cost_high = an_high*etflx_high/etflx_c

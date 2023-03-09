@@ -32,7 +32,7 @@ contains
     ! !ARGUMENTS
     class(sysofeqns_photosynthesis_auxvar_type) :: this
 
-    call this%Init()
+    !call this%Init()
     
     this%ci  = 0.d0
 
