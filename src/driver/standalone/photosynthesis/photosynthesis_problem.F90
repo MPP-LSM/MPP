@@ -219,16 +219,28 @@ contains
   subroutine set_initial_condition(phtsyn_mpp)
     !
     use MultiPhysicsProbConstants , only : MPP_PHOTOSYNTHESIS_SNES
+    use MultiPhysicsProbConstants , only : VAR_SCM_BBERRY
+    use MultiPhysicsProbConstants , only : VAR_SCM_MEDLYN
+    use MultiPhysicsProbConstants , only : VAR_SCM_WUE
+    use MultiPhysicsProbConstants , only : VAR_SCM_MANZONI11
+    use MultiPhysicsProbConstants , only : VAR_SCM_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_SCM_MODIFIED_BONAN14
+    use MultiPhysicsProbConstants , only : VAR_SCM_OSMWANG
     !
     implicit none
 
     type(mpp_photosynthesis_type) :: phtsyn_mpp
-    PetscScalar, pointer          :: ci_p(:)
+    PetscScalar, pointer          :: soln_p(:)
     PetscErrorCode                :: ierr
 
-    call VecGetArrayF90(phtsyn_mpp%soe%solver%soln, ci_p, ierr); CHKERRQ(ierr)
-    ci_p(:) = 0.9d0 * 380.d0   ! = 0.9 * cair
-    call VecRestoreArrayF90(phtsyn_mpp%soe%solver%soln, ci_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(phtsyn_mpp%soe%solver%soln, soln_p, ierr); CHKERRQ(ierr)
+    select case (gstype)
+    case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
+       soln_p(:) = 0.9d0 * 380.d0   ! = 0.9 * cair
+    case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14, VAR_SCM_OSMWANG)
+       soln_p(:) = 0.002d0
+    end select
+    call VecRestoreArrayF90(phtsyn_mpp%soe%solver%soln, soln_p, ierr); CHKERRQ(ierr)
 
   end subroutine set_initial_condition
 

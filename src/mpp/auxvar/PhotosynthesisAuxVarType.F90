@@ -204,6 +204,7 @@ module PhotosynthesisAuxType
      procedure, public :: DetermineIfSolutionIsBounded => PhotosynthesisDetermineIfSolutionIsBounded
      procedure, public :: PreSolve                     => PhotosynthesisPreSolve
      procedure, public :: PostSolve                    => PhotosynthesisPostSolve
+     procedure, public :: SetDefaultParameters         => PhotosynthesisAuxVarSetDefaultParameters
 
   end type photosynthesis_auxvar_type
 
@@ -215,7 +216,7 @@ module PhotosynthesisAuxType
   PetscReal, parameter :: gs_min_wue = 0.005d0
   PetscReal, parameter :: gs_max_wue = 2.0d0
   PetscReal, parameter :: gs_delta_wue = 1.d-5
-  PetscReal, parameter :: gs_min_bonan14 = 0.002d0
+  PetscReal, parameter :: gs_min_bonan14 = 0.005d0
   PetscReal, parameter :: gs_delta_bonan14 = 0.001d0
 
 contains
@@ -454,7 +455,7 @@ contains
     this%cs      = 0.d0
 
     this%iota    = 750.d0
-    this%manzoni11_beta = -1.5d0 ! Liu et al. (2020) Nature Climate Change
+    this%manzoni11_beta = -1.5d-3 ! Liu et al. (2020) Nature Climate Change
     allocate(this%residual_wue(ndof))
     allocate(this%residual_hyd(ndof))
     allocate(this%soln_is_bounded(ndof))
@@ -947,6 +948,30 @@ contains
   end subroutine ComputePsi_ModifiedBonan14
 
   !------------------------------------------------------------------------
+  subroutine PhotosynthesisAuxVarSetDefaultParameters(this)
+    !
+    ! !DESCRIPTION:
+    ! Set default parameters depending on photosynthetic pathway (i.e., C3/C4)
+    ! and stomatal conductance model.
+    !
+    ! !USES:
+    implicit none
+    !
+    ! !ARGUMENTS
+    class(photosynthesis_auxvar_type) :: this
+    !
+
+    if (this%pathway_and_stomatal_params_defined  == 0) then
+       call SetPathwayParameters(this)
+       call SetStomatalConductanceParameters(this)
+       call SetPlantParameters(this)
+       this%pathway_and_stomatal_params_defined = 1
+    end if
+
+end subroutine PhotosynthesisAuxVarSetDefaultParameters
+
+
+  !------------------------------------------------------------------------
   subroutine PhotosynthesisAuxVarCompute_SemiEmpirical(this)
     !
     ! !DESCRIPTION:
@@ -969,12 +994,7 @@ contains
     PetscReal                , parameter :: g = 9.80665d0
     PetscReal                , parameter :: denh2o = 1000.d0
 
-    if (this%pathway_and_stomatal_params_defined  == 0) then
-       call SetPathwayParameters(this)
-       call SetStomatalConductanceParameters(this)
-       call SetPlantParameters(this)
-       this%pathway_and_stomatal_params_defined = 1
-    end if
+    call this%SetDefaultParameters()
 
     if (this%dpai > 0.d0) then
 
@@ -1619,16 +1639,18 @@ contains
     PetscInt, parameter               :: idof_hyd = 2
     PetscReal                         :: res_wue_1, res_wue_2
     PetscReal                         :: res_hyd_1, res_hyd_2
+    PetscReal                         :: gs_1, gs_2
 
     select case (this%gstype)
     case (VAR_SCM_WUE, VAR_SCM_MANZONI11, VAR_SCM_OSMWANG)
-       this%gs(idof_wue) = gs_min_wue
-       call this%AuxVarCompute()
-       res_wue_1 = this%residual_wue(idof_wue)
 
        this%gs(idof_wue) = gs_max_wue
        call this%AuxVarCompute()
        res_wue_2 = this%residual_wue(idof_wue)
+
+       this%gs(idof_wue) = gs_min_wue
+       call this%AuxVarCompute()
+       res_wue_1 = this%residual_wue(idof_wue)
 
        if (res_wue_1 * res_wue_2 > 0.d0) then
           this%soln_is_bounded(idof_wue) = PETSC_FALSE
@@ -1638,15 +1660,6 @@ contains
 
     case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
     
-          ! Residual at minimum gs
-          this%gs(idof_wue) = gs_min_bonan14
-          this%gs(idof_hyd) = gs_min_bonan14
-
-          call this%AuxVarCompute()
-
-          res_wue_1 = this%residual_wue(idof_wue)
-          res_hyd_1 = this%residual_hyd(idof_hyd)
-
           ! Residual at maximum gs
           this%gs(idof_wue) = gs_max_wue
           this%gs(idof_hyd) = gs_max_wue
@@ -1655,6 +1668,15 @@ contains
 
           res_wue_2 = this%residual_wue(idof_wue)
           res_hyd_2 = this%residual_hyd(idof_hyd)
+
+          ! Residual at minimum gs
+          this%gs(idof_wue) = gs_min_bonan14
+          this%gs(idof_hyd) = gs_min_bonan14
+
+          call this%AuxVarCompute()
+
+          res_wue_1 = this%residual_wue(idof_wue)
+          res_hyd_1 = this%residual_hyd(idof_hyd)
 
           if ( min(res_wue_1,res_hyd_1) * min(res_wue_2,res_hyd_2) < 0.d0) then
              if ( res_wue_1 * res_wue_2 < 0.d0) then
@@ -1673,7 +1695,33 @@ contains
           end if
 
        case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
-          ! Do nothing
+
+         if (this%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3) then
+            this%ci(idof_wue) = 0.7d0 * this%cair
+         else
+            this%ci(idof_wue) = 0.4d0 * this%cair
+         endif
+         call this%AuxVarCompute()
+         gs_1 = this%gs(1)
+         res_wue_1 = this%an(idof_wue)
+
+         res_wue_2 = -999.d0
+         gs_2 = -999.d0
+
+         if (this%an(idof_wue) < 0.d0) then
+            this%soln_is_bounded(idof_wue) = PETSC_FALSE
+         else
+            this%ci(idof_wue) = 0.99d0 * this%cair
+            call this%AuxVarCompute()
+            res_wue_2 = this%an(idof_wue)
+            gs_2 = this%gs(1)
+
+            if (this%an(idof_wue) < 0.d0) then
+               this%soln_is_bounded(idof_wue) = PETSC_FALSE
+            else
+               this%soln_is_bounded(idof_wue) = PETSC_TRUE
+            endif
+         endif
 
        case default
           write(*,*)'Unknown stomatal model'
@@ -1696,6 +1744,7 @@ contains
     PetscReal                         :: etflx, esat, desat
     PetscInt, parameter               :: ileaf = 1
 
+    call ComputeSoilResistance(this)
     call SatVap (this%tleaf_prev, esat, desat)
 
     etflx = (esat + desat * (this%tleaf - this%tleaf_prev) - this%eair)/this%pref * this%gleaf_w_soln * this%fdry

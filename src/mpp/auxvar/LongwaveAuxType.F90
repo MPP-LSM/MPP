@@ -102,7 +102,7 @@ contains
 
     if (this%is_soil) then
 
-       aa = this%trans + (1 - this%trans) * this%leaf_tau
+       aa = (1.d0 - this%trans) * this%leaf_tau + this%trans
        bb = (1.d0 - this%trans) * this%leaf_rho
        this%e = aa/bb
 
@@ -111,11 +111,10 @@ contains
 
     else
 
-       aa = this%trans + (1 - this%trans) * this%leaf_tau
+       aa = (1.d0 - this%trans) * this%leaf_tau + this%trans
        bb = (1.d0 - this%trans) * this%leaf_rho
 
-       this%f = (1.d0 - this%trans) * this%leaf_rho - &
-            aa**2.d0/bb
+       this%f = bb - aa*aa/bb
 
        this%e = aa/bb
 
@@ -123,14 +122,15 @@ contains
        do ileaf = 1, this%nleaf
 
           ! frac * (1 - tau) * emiss * sigma * T^4
-          cc = this%leaf_fssh(ileaf)    * &
-               (1.d0 - this%trans)          * &
-               STEFAN_BOLTZMAN_CONSTANT     * &
+          cc = &
                this%leaf_emiss              * &
-               this%leaf_temperature(ileaf)**4.d0
+               STEFAN_BOLTZMAN_CONSTANT     * &
+               this%leaf_temperature(ileaf)**4.d0 * &
+               this%leaf_fssh(ileaf)
 
           this%rad_source = this%rad_source + cc
        end do
+       this%rad_source = this%rad_source * (1.d0 - this%trans)
 
     end if
 

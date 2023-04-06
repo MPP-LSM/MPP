@@ -299,7 +299,7 @@ contains
   subroutine mlc_initialize_from_checkpoint(mlc_mpp)
     !
     use MultiPhysicsProbConstants , only : MM_H2O, MM_DRY_AIR
-    use ml_model_global_vars      , only : ic_file
+    use ml_model_global_vars      , only : mlc_ic_file
     !
     ! !DESCRIPTION:
     !
@@ -333,7 +333,7 @@ contains
     PetscErrorCode                       :: ierr
     PetscReal                            :: qref_value, factor
 
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, ic_file, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, mlc_ic_file, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
     call VecCreate(PETSC_COMM_WORLD, ic_data, ierr);CHKERRQ(ierr)
     call VecLoad(ic_data, viewer, ierr);CHKERRQ(ierr)
     call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
@@ -1041,7 +1041,7 @@ contains
     end select
 
     call VecCreate(PETSC_COMM_SELF, checkpoint_vec, ierr); CHKERRA(ierr)
-    call VecSetSizes(checkpoint_vec, 93*5, PETSC_DECIDE, ierr); CHKERRA(ierr)
+    call VecSetSizes(checkpoint_vec, (nz_cair + 1)*5, PETSC_DECIDE, ierr); CHKERRA(ierr)
     call VecSetFromOptions(checkpoint_vec, ierr); CHKERRA(ierr)
 
     call VecGetArrayF90(checkpoint_vec, c_p, ierr)

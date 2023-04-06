@@ -1,0 +1,8 @@
+&mpp_driver
+  problem_type = 'th_mms'
+/
+
+&regression_test
+  write_regression_output = .true.
+  num_cells = 5
+/

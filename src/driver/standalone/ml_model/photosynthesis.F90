@@ -27,6 +27,8 @@ module photosynthesis
   public :: photosynthesis_set_boundary_conditions
   public :: solve_photosynthesis
   public :: extract_data_from_photosynthesis
+  public :: checkpoint_photosynthesis
+  public :: photosynthesis_initialize_from_checkpoint
 
 contains
 
@@ -174,7 +176,33 @@ contains
                 cur_goveq%aux_vars_in(icell)%plant%leaf_lai(:)    = 4.1516127586364746d0
                 cur_goveq%aux_vars_in(icell)%plant%k_stem2leaf(:) = 4.d0
 
-               end do
+                call cur_goveq%aux_vars_in(icell)%SetDefaultParameters()
+
+                select case(gstype)
+                case (VAR_SCM_MEDLYN)
+                   cur_goveq%aux_vars_in(icell)%g0opt = 0.0001d0
+                   cur_goveq%aux_vars_in(icell)%g1opt = 4.0d0
+
+                case (VAR_SCM_BBERRY)
+                   cur_goveq%aux_vars_in(icell)%g0opt = 0.027d0
+                   cur_goveq%aux_vars_in(icell)%g1opt = 9.0d0
+
+                case (VAR_SCM_WUE)
+                   cur_goveq%aux_vars_in(icell)%iota = 820.0d0
+                   cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -2.5d0
+
+                case (VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14)
+                   cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -2.5d0
+                   cur_goveq%aux_vars_in(icell)%iota = 820.0d0
+
+                case (VAR_SCM_MANZONI11)
+                  cur_goveq%aux_vars_in(icell)%plant%leaf_minlwp(:) = -2.5d0
+                  cur_goveq%aux_vars_in(icell)%manzoni11_beta = -0.001d0
+                  cur_goveq%aux_vars_in(icell)%iota = 820.0d0
+
+                end select
+
+             end do
           end do
        end do
 
@@ -250,7 +278,7 @@ contains
  end subroutine set_soil_parameters
 
  !------------------------------------------------------------------------
-  subroutine photosynthesis_set_boundary_conditions(psy_mpp, istep, isubstep)
+  subroutine photosynthesis_set_boundary_conditions(psy_mpp, istep, isubstep, is_first_substep)
 
     ! !DESCRIPTION
     !
@@ -272,6 +300,7 @@ contains
     !
     type(mpp_photosynthesis_type)        :: psy_mpp
     PetscInt :: istep, isubstep
+    PetscBool :: is_first_substep
     !
     class(goveqn_base_type)    , pointer   :: cur_goveq
     class(connection_set_type) , pointer   :: cur_conn_set
@@ -347,7 +376,9 @@ contains
 
                 cur_goveq%aux_vars_in(icell)%ci = get_value_from_condition(bnd_cond%co2ref, icair)
 
-                if (.not.(istep == 1 .and. isubstep == 1))  then
+                ! - For run that uses IC, call PreSolve for all substeps
+                ! - For run that does not uses IC, skip calling PreSolve only on the first substep
+                if (use_ic .or. (.not. is_first_substep)) then
                    call cur_goveq%aux_vars_in(icell)%PreSolve()
                 endif
 
@@ -576,12 +607,134 @@ contains
   end subroutine extract_data_from_photosynthesis
 
   !------------------------------------------------------------------------
-  subroutine solve_photosynthesis(psy_mpp, istep, isubstep, dt)
+  subroutine checkpoint_photosynthesis(psy_mpp, istep, isubstep)
+    !
+    use ml_model_global_vars , only : nbot, ntop, ncair, ntree, nz_cair, output_data
+    use ml_model_meshes      , only : nleaf
+    !
+    implicit none
+    !
+    class(mpp_photosynthesis_type) :: psy_mpp
+    PetscInt                       :: istep, isubstep
+    !
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscViewer                          :: viewer
+    PetscErrorCode                       :: ierr
+    PetscReal                  , pointer :: c_p(:)
+    character(len=240)                   :: step_string , substep_string, filename
+    Vec                                  :: checkpoint_vec
+    PetscInt                             :: ncells, count, icell, ileaf, nvars
+
+    nvars = &
+      1 + & ! leaf_psi
+      1 + & ! tleaf
+      1     ! gleaf_w_soln
+
+    ncells = ncair * ntree * (ntop - nbot + 1) * nleaf * nvars
+
+    write(step_string,'(I0.3)')istep
+    write(substep_string,*)isubstep
+    write(filename,*)'photosynthesis_checkpoint.' // trim(adjustl(step_string)) // '.' //trim(adjustl(substep_string)) // '.bin'
+
+    call VecCreate(PETSC_COMM_SELF, checkpoint_vec, ierr); CHKERRA(ierr)
+    call VecSetSizes(checkpoint_vec, ncells, PETSC_DECIDE, ierr); CHKERRA(ierr)
+    call VecSetFromOptions(checkpoint_vec, ierr); CHKERRA(ierr)
+
+    call VecGetArrayF90(checkpoint_vec, c_p, ierr)
+
+    call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
+
+    select type(cur_goveq)
+    class is (goveqn_photosynthesis_type)
+
+       count = 0
+       do icell = 1,  ncair * ntree * (ntop - nbot + 1) * nleaf
+          do ileaf = 1, 1!nleaf
+             count = count + 1
+             c_p(count) = cur_goveq%aux_vars_in(icell)%plant%leaf_psi(ileaf)
+
+             count = count + 1
+             c_p(count) = cur_goveq%aux_vars_in(icell)%tleaf
+
+             count = count + 1
+             c_p(count) = cur_goveq%aux_vars_in(icell)%gleaf_w_soln
+
+          end do
+       end do
+    end select
+
+    call VecRestoreArrayF90(checkpoint_vec, c_p, ierr)
+
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(adjustl(filename)), FILE_MODE_WRITE, viewer, ierr); CHKERRA(ierr)
+    call VecView(checkpoint_vec, viewer, ierr); CHKERRA(ierr)
+    call PetscViewerDestroy(viewer, ierr); CHKERRA(ierr)
+
+  end subroutine checkpoint_photosynthesis
+
+  !------------------------------------------------------------------------
+  subroutine photosynthesis_initialize_from_checkpoint(psy_mpp, filename)
+    !
+    use ml_model_global_vars , only : nbot, ntop, ncair, ntree, nz_cair, output_data
+    use ml_model_meshes      , only : nleaf
+    !
+    implicit none
+    !
+    class(mpp_photosynthesis_type) :: psy_mpp
+    character(len=*)                   :: filename
+    !
+    class(goveqn_base_type)    , pointer :: cur_goveq
+    PetscViewer                          :: viewer
+    PetscErrorCode                       :: ierr
+    PetscReal                  , pointer :: c_p(:)
+    Vec                                  :: checkpoint_vec
+    PetscInt                             :: ncells, count, icell, ileaf, nvars
+
+    nvars = &
+      1 + & ! leaf_psi
+      1 + & ! tleaf
+      1     ! gleaf_w_soln
+
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, filename, FILE_MODE_READ, viewer, ierr);CHKERRQ(ierr)
+    call VecCreate(PETSC_COMM_WORLD, checkpoint_vec, ierr);CHKERRQ(ierr)
+    call VecLoad(checkpoint_vec, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer, ierr);CHKERRQ(ierr)
+
+    call VecGetArrayF90(checkpoint_vec, c_p, ierr)
+
+    call psy_mpp%soe%SetPointerToIthGovEqn(PHOTOSYNTHESIS_GE, cur_goveq)
+
+    select type(cur_goveq)
+    class is (goveqn_photosynthesis_type)
+
+       count = 0
+       do icell = 1,  ncair * ntree * (ntop - nbot + 1) * nleaf
+          do ileaf = 1, 1
+             count = count + 1
+             cur_goveq%aux_vars_in(icell)%plant%leaf_psi(ileaf) = c_p(count)
+
+             count = count + 1
+             cur_goveq%aux_vars_in(icell)%tleaf_prev = c_p(count)
+
+             count = count + 1
+             cur_goveq%aux_vars_in(icell)%gleaf_w_soln = c_p(count)
+
+          end do
+       end do
+    end select
+
+    call VecRestoreArrayF90(checkpoint_vec, c_p, ierr); CHKERRA(ierr)
+    call VecDestroy(checkpoint_vec, ierr); CHKERRA(ierr)
+
+  end subroutine photosynthesis_initialize_from_checkpoint
+
+  !------------------------------------------------------------------------
+  subroutine solve_photosynthesis(psy_mpp, istep, isubstep, is_first_substep, dt)
     !
     implicit none
     !
     class(mpp_photosynthesis_type) :: psy_mpp
     PetscInt                 :: istep, isubstep
+    PetscBool                :: is_first_substep
     PetscReal                :: dt
     !
     PetscScalar, pointer          :: ci_p(:)
@@ -592,7 +745,7 @@ contains
 
     call set_initial_conditions(psy_mpp)
 
-    call photosynthesis_set_boundary_conditions(psy_mpp, istep, isubstep)
+    call photosynthesis_set_boundary_conditions(psy_mpp, istep, isubstep, is_first_substep)
 
     call psy_mpp%soe%StepDT(dt, (istep-1)*12 + isubstep, converged, converged_reason, ierr)
 

@@ -112,7 +112,8 @@ module ml_model_global_vars
 
 
   character(len=1024) :: bc_file
-  character(len=1024) :: ic_file
+  character(len=1024) :: mlc_ic_file
+  character(len=1024) :: psy_ic_file
 
   ! Mesh attributes
   PetscInt  , parameter :: nx       = 1

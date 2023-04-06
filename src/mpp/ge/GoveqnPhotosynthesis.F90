@@ -306,8 +306,8 @@ contains
           if ( &
                (avars(icell)%gstype == VAR_SCM_BBERRY .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) .or. &
                (avars(icell)%gstype == VAR_SCM_MEDLYN .and. (avars(icell)%c3psn == VAR_PHOTOSYNTHETIC_PATHWAY_C3)) ) then
-             ci_perturb = -1.e-13
-             gs_perturb = -1.e-14
+             ci_perturb = -1.e-7
+             gs_perturb = -1.e-8
           elseif (avars(icell)%gstype == VAR_SCM_BONAN14 .or. avars(icell)%gstype == VAR_SCM_MODIFIED_BONAN14) then
              ci_perturb = -1.e-7
              gs_perturb = -1.e-8
@@ -458,12 +458,16 @@ contains
       select case (this%aux_vars_in(ghosted_id)%gstype)
       case (VAR_SCM_BBERRY, VAR_SCM_MEDLYN)
          do idof = 1, this%dof
-            this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+            if (this%aux_vars_in(ghosted_id)%soln_is_bounded(idof)) then
+               this%aux_vars_in(ghosted_id)%ci(idof) = x_p((ghosted_id-1)*this%dof + idof)
+            endif
          end do
 
       case (VAR_SCM_WUE, VAR_SCM_MANZONI11,VAR_SCM_BONAN14, VAR_SCM_MODIFIED_BONAN14, VAR_SCM_OSMWANG)
          do idof = 1, this%dof
-            this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
+            if (this%aux_vars_in(ghosted_id)%soln_is_bounded(idof)) then
+               this%aux_vars_in(ghosted_id)%gs(idof) = x_p((ghosted_id-1)*this%dof + idof)
+            endif
          end do
 
       case default
