@@ -32,7 +32,7 @@ solves biophysics problems relevant to global land surface models (LSMs).
 cd <directory-of-choice>
 git clone https://bitbucket.org/petsc/petsc petsc
 cd petsc
-git checkout v3.8.3
+git checkout v3.16.2
 ```
 
 2. Configure PETSc. (Detailed PETSc installation instructions are available [here](http://www.mcs.anl.gov/petsc/documentation/installation.html))
