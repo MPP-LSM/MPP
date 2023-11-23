@@ -609,6 +609,8 @@ contains
     call VecScatterCreate(ugdm%global_vec,ugdm%is_local_norder, natural_vec, &
          ugdm%is_local_porder,ugdm%scatter_n2g, ierr); CHKERRQ(ierr)
 
+    call VecDestroy(natural_vec, ierr); CHKERRQ(ierr)
+
   end subroutine create_ugdm
   
   !------------------------------------------------------------------------
